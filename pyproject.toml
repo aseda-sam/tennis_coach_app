@@ -1,0 +1,38 @@
+[project]
+name = "tennis-analysis-system"
+version = "0.1.0"
+description = "Computer vision-based tennis analysis system"
+authors = [{name = "Aseda Ohene-Adu", email = "aoheneadu23@gmail.com"}]
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi>=0.104.1",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+    "sqlalchemy>=2.0.23",
+    "alembic>=1.12.1",
+    "opencv-python>=4.8.1.78",
+    "ultralytics>=8.0.196",
+    "numpy>=1.24.3",
+    "pandas>=2.1.3",
+    "pydantic>=2.5.0",
+    "python-dotenv>=1.0.0",
+    "pytest>=7.4.3",
+    "httpx>=0.25.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "ANN", "B", "BLE", "SIM", "S", "RUF"]
+ignore = ["E501", "D1", "D203", "D212", "D401", "FA102", "S311", "PERF401", "TRY003", "EM101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+known-third-party = ["fastapi", "uvicorn", "sqlalchemy", "opencv", "ultralytics", "numpy", "pandas", "pydantic"] 
