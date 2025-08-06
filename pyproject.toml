@@ -20,6 +20,14 @@ dependencies = [
     "httpx>=0.25.2",
 ]
 
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["backend"]
+include = ["app*"]
+
 [project.optional-dependencies]
 dev = [
     "ruff>=0.1.0",
