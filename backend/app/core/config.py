@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./data/database/tennis_analysis.db"
     
     # File storage
-    UPLOAD_DIR: str = "./data/videos/raw"
-    PROCESSED_DIR: str = "./data/videos/processed"
+    UPLOAD_DIR: str = "../data/videos/raw"
+    PROCESSED_DIR: str = "../data/videos/processed"
     MAX_FILE_SIZE: int = 104857600  # 100MB
     SUPPORTED_FORMATS: list[str] = [".mp4", ".mov", ".avi"]
     
