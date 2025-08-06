@@ -1,6 +1,7 @@
 ---
 alwaysApply: true
 ---
+
 # Tennis Computer Vision Analysis System - Cursor Rules
 
 ## Code Quality Standards
@@ -24,6 +25,18 @@ alwaysApply: true
 ### Imports
 - Use explicit imports, avoid `from module import *`
 - Import organization handled by ruff (configured in pyproject.toml)
+
+### Code Quality Tools
+- **Always run ruff before committing**: `ruff check .` and `ruff format .`
+- **Fix auto-fixable issues**: `ruff check --fix .`
+- **Format code**: `ruff format .`
+- **Check specific file**: `ruff check backend/app/api/routes/video.py`
+- **Format specific file**: `ruff format backend/app/api/routes/video.py`
+- **Common ruff issues to fix**:
+  - `BLE001`: Don't use bare `except:` - specify exception types
+  - `F841`: Remove unused variables
+  - `E501`: Line too long (handled by ruff format)
+  - `I001`: Import sorting (handled by ruff format)
 
 ### Solution Philosophy
 - **Prefer simple solutions over complex ones** - When facing a problem, try the simplest approach first
@@ -333,6 +346,9 @@ git push origin feature/video-processing
 
 ### Project Presentation
 - **Keep README updated** - Clear project status and features
+- **Document technical challenges** - Explain how you solved problems
+### Project Presentation
+- **Keep README updated** - Clear project status and features
 - **Document technical challenges** - Explain how you solved problems# Tennis Computer Vision Analysis System - Cursor Rules
 
 ## Code Quality Standards
@@ -356,6 +372,18 @@ git push origin feature/video-processing
 ### Imports
 - Use explicit imports, avoid `from module import *`
 - Import organization handled by ruff (configured in pyproject.toml)
+
+### Code Quality Tools
+- **Always run ruff before committing**: `ruff check .` and `ruff format .`
+- **Fix auto-fixable issues**: `ruff check --fix .`
+- **Format code**: `ruff format .`
+- **Check specific file**: `ruff check backend/app/api/routes/video.py`
+- **Format specific file**: `ruff format backend/app/api/routes/video.py`
+- **Common ruff issues to fix**:
+  - `BLE001`: Don't use bare `except:` - specify exception types
+  - `F841`: Remove unused variables
+  - `E501`: Line too long (handled by ruff format)
+  - `I001`: Import sorting (handled by ruff format)
 
 ### Solution Philosophy
 - **Prefer simple solutions over complex ones** - When facing a problem, try the simplest approach first
@@ -663,6 +691,9 @@ git push origin feature/video-processing
 - **Include comprehensive tests** - Show testing knowledge
 - **Document architecture decisions** - Explain technical choices
 
+### Project Presentation
+- **Keep README updated** - Clear project status and features
+- **Document technical challenges** - Explain how you solved problems
 ### Project Presentation
 - **Keep README updated** - Clear project status and features
 - **Document technical challenges** - Explain how you solved problems

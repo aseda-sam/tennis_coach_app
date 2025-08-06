@@ -33,10 +33,10 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] Test upload functionality
 - [x] Verify file storage
 
-#### Step 3: Video File Information
-- [ ] Extract video metadata (duration, resolution, fps)
-- [ ] Display video information after upload
-- [ ] Test with different video formats
+#### Step 3: Video File Information ✅
+- [x] Extract video metadata (duration, resolution, fps)
+- [x] Display video information after upload
+- [x] Test with different video formats
 
 #### Step 4: File Management
 - [ ] List uploaded videos endpoint
@@ -115,9 +115,10 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - ✅ Video upload endpoint with validation
 - ✅ File storage system
 - ✅ Error handling for file size and format
+- ✅ Video metadata extraction (duration, resolution, fps)
 
 **Next Step:**
-- Extract video metadata (duration, resolution, fps)
+- File management endpoints (list, delete, get details)
 
 ## Success Metrics
 

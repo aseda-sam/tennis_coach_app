@@ -5,6 +5,7 @@ backend/app/main.py
 backend/app/api/__init__.py
 backend/app/api/models/__init__.py
 backend/app/api/routes/__init__.py
+backend/app/api/routes/video.py
 backend/app/core/__init__.py
 backend/app/core/config.py
 backend/app/services/__init__.py
