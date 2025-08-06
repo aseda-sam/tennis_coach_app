@@ -1,1 +1,1 @@
-# Core configuration and database 
+# Core configuration and database
