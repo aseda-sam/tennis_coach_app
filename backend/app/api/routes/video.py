@@ -72,9 +72,6 @@ def extract_video_metadata(video_path: Path) -> dict:
         return {}
 
 
-
-
-
 @router.get("/", response_model=List[VideoListItem])
 async def list_videos(db: Session = Depends(get_db)) -> List[VideoListItem]:
     """List all uploaded videos from database."""
@@ -144,7 +141,9 @@ async def delete_video(filename: str, db: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/upload", response_model=VideoInfo)
-async def upload_video(file: UploadFile = File(...), db: Session = Depends(get_db)) -> VideoInfo:
+async def upload_video(
+    file: UploadFile = File(...), db: Session = Depends(get_db)
+) -> VideoInfo:
     """Upload a video file and return basic information with metadata."""
 
     # Validate file
