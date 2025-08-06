@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import cv2
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -22,6 +22,16 @@ class VideoInfo(BaseModel):
     height: Optional[int] = None
     frame_count: Optional[int] = None
     message: str
+
+
+class VideoListItem(BaseModel):
+    """Video information for list endpoint."""
+
+    filename: str
+    file_size: int
+    duration: Optional[float] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
 
 
 def extract_video_metadata(video_path: Path) -> dict:
@@ -52,6 +62,91 @@ def extract_video_metadata(video_path: Path) -> dict:
     except (cv2.error, OSError, ValueError):
         # Return empty dict if metadata extraction fails
         return {}
+
+
+def get_video_files() -> List[Path]:
+    """Get list of video files in upload directory."""
+    upload_dir = Path(settings.UPLOAD_DIR)
+    if not upload_dir.exists():
+        return []
+
+    video_files = []
+    for file_path in upload_dir.iterdir():
+        if file_path.is_file() and file_path.suffix.lower() in settings.SUPPORTED_FORMATS:
+            video_files.append(file_path)
+
+    return sorted(video_files, key=lambda x: x.stat().st_mtime, reverse=True)
+
+
+@router.get("/", response_model=List[VideoListItem])
+async def list_videos() -> List[VideoListItem]:
+    """List all uploaded videos."""
+    video_files = get_video_files()
+    videos = []
+
+    for file_path in video_files:
+        file_size = file_path.stat().st_size
+        metadata = extract_video_metadata(file_path)
+
+        videos.append(VideoListItem(
+            filename=file_path.name,
+            file_size=file_size,
+            duration=metadata.get("duration"),
+            width=metadata.get("width"),
+            height=metadata.get("height")
+        ))
+
+    return videos
+
+
+@router.get("/{filename}", response_model=VideoInfo)
+async def get_video_details(filename: str) -> VideoInfo:
+    """Get detailed information about a specific video."""
+    upload_dir = Path(settings.UPLOAD_DIR)
+    file_path = upload_dir / filename
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"Video {filename} not found")
+
+    if not file_path.is_file():
+        raise HTTPException(status_code=400, detail=f"{filename} is not a file")
+
+    if file_path.suffix.lower() not in settings.SUPPORTED_FORMATS:
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {file_path.suffix}")
+
+    file_size = file_path.stat().st_size
+    metadata = extract_video_metadata(file_path)
+
+    return VideoInfo(
+        filename=filename,
+        file_size=file_size,
+        content_type="video/mp4",  # Default, could be enhanced
+        duration=metadata.get("duration"),
+        fps=metadata.get("fps"),
+        width=metadata.get("width"),
+        height=metadata.get("height"),
+        frame_count=metadata.get("frame_count"),
+        message="Video details retrieved successfully"
+    )
+
+
+@router.delete("/{filename}")
+async def delete_video(filename: str) -> dict:
+    """Delete a video file."""
+    upload_dir = Path(settings.UPLOAD_DIR)
+    file_path = upload_dir / filename
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"Video {filename} not found")
+
+    if not file_path.is_file():
+        raise HTTPException(status_code=400, detail=f"{filename} is not a file")
+
+    try:
+        file_path.unlink()
+        return {"message": f"Video {filename} deleted successfully"}
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete video: {e}") from e
 
 
 @router.post("/upload", response_model=VideoInfo)

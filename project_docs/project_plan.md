@@ -38,10 +38,10 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] Display video information after upload
 - [x] Test with different video formats
 
-#### Step 4: File Management
-- [ ] List uploaded videos endpoint
-- [ ] Delete video endpoint
-- [ ] Get video details endpoint
+#### Step 4: File Management ✅
+- [x] List uploaded videos endpoint
+- [x] Delete video endpoint
+- [x] Get video details endpoint
 
 ### Phase 2: Database Integration
 
@@ -116,9 +116,10 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - ✅ File storage system
 - ✅ Error handling for file size and format
 - ✅ Video metadata extraction (duration, resolution, fps)
+- ✅ File management endpoints (list, delete, get details)
 
 **Next Step:**
-- File management endpoints (list, delete, get details)
+- Database integration (SQLite setup, video metadata table)
 
 ## Success Metrics
 
