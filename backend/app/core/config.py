@@ -29,17 +29,16 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Tennis Analysis API"
 
     # CORS
-    BACKEND_CORS_ORIGINS: list[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ]
+    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     class Config:
         env_file = ".env"
         case_sensitive = True
 
+
 # Create settings instance
 settings = Settings()
+
 
 def create_directories() -> None:
     """Create necessary directories if they don't exist."""
@@ -47,11 +46,12 @@ def create_directories() -> None:
         Path(settings.UPLOAD_DIR),
         Path(settings.PROCESSED_DIR),
         Path("./data/database"),
-        Path("./data/analysis_cache")
+        Path("./data/analysis_cache"),
     ]
 
     for directory in directories:
         directory.mkdir(parents=True, exist_ok=True)
+
 
 # Initialize directories
 create_directories()

@@ -32,6 +32,9 @@ alwaysApply: true
 - **Format code**: `ruff format .`
 - **Check specific file**: `ruff check backend/app/api/routes/video.py`
 - **Format specific file**: `ruff format backend/app/api/routes/video.py`
+- **Check new files/folders**: `ruff check backend/app/core/ backend/app/models/ backend/app/services/`
+- **Format new files/folders**: `ruff format backend/app/core/ backend/app/models/ backend/app/services/`
+- **When creating new Python files**: Always run ruff on the entire folder or new files
 - **Common ruff issues to fix**:
   - `BLE001`: Don't use bare `except:` - specify exception types
   - `F841`: Remove unused variables

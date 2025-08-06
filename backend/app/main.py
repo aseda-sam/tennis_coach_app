@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import video
+from app.core.database import create_tables
 
 # Create FastAPI app
 app = FastAPI(
@@ -23,6 +24,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create database tables on startup
+create_tables()
 
 # Include API routes
 app.include_router(video.router, prefix="/api/videos", tags=["videos"])

@@ -2,10 +2,18 @@ from pathlib import Path
 from typing import List, Optional
 
 import cv2
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.database import get_db
+from app.services.video_service import (
+    create_video_record,
+    delete_video_record,
+    get_all_videos,
+    get_video_by_filename,
+)
 
 router = APIRouter()
 
@@ -64,93 +72,79 @@ def extract_video_metadata(video_path: Path) -> dict:
         return {}
 
 
-def get_video_files() -> List[Path]:
-    """Get list of video files in upload directory."""
-    upload_dir = Path(settings.UPLOAD_DIR)
-    if not upload_dir.exists():
-        return []
 
-    video_files = []
-    for file_path in upload_dir.iterdir():
-        if file_path.is_file() and file_path.suffix.lower() in settings.SUPPORTED_FORMATS:
-            video_files.append(file_path)
-
-    return sorted(video_files, key=lambda x: x.stat().st_mtime, reverse=True)
 
 
 @router.get("/", response_model=List[VideoListItem])
-async def list_videos() -> List[VideoListItem]:
-    """List all uploaded videos."""
-    video_files = get_video_files()
+async def list_videos(db: Session = Depends(get_db)) -> List[VideoListItem]:
+    """List all uploaded videos from database."""
+    db_videos = get_all_videos(db)
     videos = []
 
-    for file_path in video_files:
-        file_size = file_path.stat().st_size
-        metadata = extract_video_metadata(file_path)
-
-        videos.append(VideoListItem(
-            filename=file_path.name,
-            file_size=file_size,
-            duration=metadata.get("duration"),
-            width=metadata.get("width"),
-            height=metadata.get("height")
-        ))
+    for db_video in db_videos:
+        videos.append(
+            VideoListItem(
+                filename=db_video.filename,
+                file_size=db_video.file_size,
+                duration=db_video.duration,
+                width=db_video.width,
+                height=db_video.height,
+            )
+        )
 
     return videos
 
 
 @router.get("/{filename}", response_model=VideoInfo)
-async def get_video_details(filename: str) -> VideoInfo:
-    """Get detailed information about a specific video."""
-    upload_dir = Path(settings.UPLOAD_DIR)
-    file_path = upload_dir / filename
+async def get_video_details(filename: str, db: Session = Depends(get_db)) -> VideoInfo:
+    """Get detailed information about a specific video from database."""
+    db_video = get_video_by_filename(db, filename)
 
-    if not file_path.exists():
+    if not db_video:
         raise HTTPException(status_code=404, detail=f"Video {filename} not found")
 
-    if not file_path.is_file():
-        raise HTTPException(status_code=400, detail=f"{filename} is not a file")
-
-    if file_path.suffix.lower() not in settings.SUPPORTED_FORMATS:
-        raise HTTPException(status_code=400, detail=f"Unsupported format: {file_path.suffix}")
-
-    file_size = file_path.stat().st_size
-    metadata = extract_video_metadata(file_path)
-
     return VideoInfo(
-        filename=filename,
-        file_size=file_size,
-        content_type="video/mp4",  # Default, could be enhanced
-        duration=metadata.get("duration"),
-        fps=metadata.get("fps"),
-        width=metadata.get("width"),
-        height=metadata.get("height"),
-        frame_count=metadata.get("frame_count"),
-        message="Video details retrieved successfully"
+        filename=db_video.filename,
+        file_size=db_video.file_size,
+        content_type=db_video.content_type,
+        duration=db_video.duration,
+        fps=db_video.fps,
+        width=db_video.width,
+        height=db_video.height,
+        frame_count=db_video.frame_count,
+        message="Video details retrieved successfully",
     )
 
 
 @router.delete("/{filename}")
-async def delete_video(filename: str) -> dict:
-    """Delete a video file."""
+async def delete_video(filename: str, db: Session = Depends(get_db)) -> dict:
+    """Delete a video file and database record."""
+    # Check if video exists in database
+    db_video = get_video_by_filename(db, filename)
+    if not db_video:
+        raise HTTPException(status_code=404, detail=f"Video {filename} not found")
+
+    # Delete from file system
     upload_dir = Path(settings.UPLOAD_DIR)
     file_path = upload_dir / filename
 
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"Video {filename} not found")
+    if file_path.exists() and file_path.is_file():
+        try:
+            file_path.unlink()
+        except OSError as e:
+            raise HTTPException(
+                status_code=500, detail=f"Failed to delete video file: {e}"
+            ) from e
 
-    if not file_path.is_file():
-        raise HTTPException(status_code=400, detail=f"{filename} is not a file")
+    # Delete from database
+    if not delete_video_record(db, filename):
+        raise HTTPException(status_code=500, detail="Failed to delete video record")
 
-    try:
-        file_path.unlink()
-        return {"message": f"Video {filename} deleted successfully"}
-    except OSError as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete video: {e}") from e
+    return {"message": f"Video {filename} deleted successfully"}
 
 
 @router.post("/upload", response_model=VideoInfo)
-async def upload_video(file: UploadFile = File(...)) -> VideoInfo:
+async def upload_video(file: UploadFile = File(...), db: Session = Depends(get_db)) -> VideoInfo:
     """Upload a video file and return basic information with metadata."""
 
     # Validate file
@@ -194,8 +188,11 @@ async def upload_video(file: UploadFile = File(...)) -> VideoInfo:
     # Extract video metadata
     metadata = extract_video_metadata(file_path)
 
-    return VideoInfo(
+    # Save to database
+    db_video = create_video_record(
+        db=db,
         filename=file.filename,
+        file_path=str(file_path),
         file_size=file_size,
         content_type=file.content_type,
         duration=metadata.get("duration"),
@@ -203,5 +200,16 @@ async def upload_video(file: UploadFile = File(...)) -> VideoInfo:
         width=metadata.get("width"),
         height=metadata.get("height"),
         frame_count=metadata.get("frame_count"),
+    )
+
+    return VideoInfo(
+        filename=db_video.filename,
+        file_size=db_video.file_size,
+        content_type=db_video.content_type,
+        duration=db_video.duration,
+        fps=db_video.fps,
+        width=db_video.width,
+        height=db_video.height,
+        frame_count=db_video.frame_count,
         message="Video uploaded successfully",
     )
