@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from app.core.config import settings
+from app.api.routes import video
 
 # Create FastAPI app
 app = FastAPI(
@@ -22,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include API routes
+app.include_router(video.router, prefix="/api/videos", tags=["videos"])
 
 # Mount static files for processed videos
 processed_videos_dir = Path("data/videos/processed")
