@@ -38,6 +38,9 @@ venv.bak/
 # Cursor
 .cursor/
 
+# Ruff
+.ruff_cache/
+
 # OS
 .DS_Store
 .DS_Store?
