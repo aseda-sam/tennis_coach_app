@@ -46,8 +46,11 @@ export const videoApi = {
 
   // Get list of uploaded videos
   getVideos: async (): Promise<VideoListResponse> => {
-    const response = await api.get<VideoListResponse>('/videos');
-    return response.data;
+    const response = await api.get<VideoMetadata[]>('/videos');
+    return {
+      videos: response.data,
+      total: response.data.length
+    };
   },
 
   // Get video details by ID
@@ -57,8 +60,8 @@ export const videoApi = {
   },
 
   // Delete a video
-  deleteVideo: async (id: string): Promise<void> => {
-    await api.delete(`/videos/${id}`);
+  deleteVideo: async (filename: string): Promise<void> => {
+    await api.delete(`/videos/${filename}`);
   },
 };
 

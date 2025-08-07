@@ -1,15 +1,11 @@
 export interface VideoMetadata {
-  id: string;
   filename: string;
-  original_filename: string;
   file_size: number;
-  duration: number;
-  width: number;
-  height: number;
-  fps: number;
-  format: string;
-  created_at: string;
-  updated_at: string;
+  duration?: number;
+  width?: number;
+  height?: number;
+  fps?: number;
+  frame_count?: number;
 }
 
 export interface VideoUploadResponse {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import './VideoList.css';
@@ -31,15 +31,15 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
     loadVideos();
   }, []);
 
-  const handleDelete = async (videoId: string) => {
+  const handleDelete = async (filename: string) => {
     if (!window.confirm('Are you sure you want to delete this video?')) {
       return;
     }
 
     try {
-      setDeletingId(videoId);
-      await videoApi.deleteVideo(videoId);
-      setVideos(videos.filter(video => video.id !== videoId));
+      setDeletingId(filename);
+      await videoApi.deleteVideo(filename);
+      setVideos(videos.filter(video => video.filename !== filename));
       onVideoDeleted();
     } catch (err: any) {
       setError('Failed to delete video. Please try again.');
@@ -62,15 +62,7 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+
 
   if (loading) {
     return (
@@ -99,38 +91,39 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
       ) : (
         <div className="videos-grid">
           {videos.map((video) => (
-            <div key={video.id} className="video-card">
+            <div key={video.filename} className="video-card">
               <div className="video-thumbnail">
                 <span className="video-icon">🎾</span>
               </div>
               
               <div className="video-info">
-                <h3 className="video-title">{video.original_filename}</h3>
+                <h3 className="video-title">{video.filename}</h3>
                 
                 <div className="video-metadata">
-                  <div className="metadata-item">
-                    <span className="label">Duration:</span>
-                    <span className="value">{formatDuration(video.duration)}</span>
-                  </div>
+                  {video.duration && (
+                    <div className="metadata-item">
+                      <span className="label">Duration:</span>
+                      <span className="value">{formatDuration(video.duration)}</span>
+                    </div>
+                  )}
                   
-                  <div className="metadata-item">
-                    <span className="label">Resolution:</span>
-                    <span className="value">{video.width}×{video.height}</span>
-                  </div>
+                  {video.width && video.height && (
+                    <div className="metadata-item">
+                      <span className="label">Resolution:</span>
+                      <span className="value">{video.width}×{video.height}</span>
+                    </div>
+                  )}
                   
-                  <div className="metadata-item">
-                    <span className="label">FPS:</span>
-                    <span className="value">{video.fps}</span>
-                  </div>
+                  {video.fps && (
+                    <div className="metadata-item">
+                      <span className="label">FPS:</span>
+                      <span className="value">{video.fps}</span>
+                    </div>
+                  )}
                   
                   <div className="metadata-item">
                     <span className="label">Size:</span>
                     <span className="value">{formatFileSize(video.file_size)}</span>
-                  </div>
-                  
-                  <div className="metadata-item">
-                    <span className="label">Uploaded:</span>
-                    <span className="value">{formatDate(video.created_at)}</span>
                   </div>
                 </div>
               </div>
@@ -138,10 +131,10 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
               <div className="video-actions">
                 <button
                   className="delete-btn"
-                  onClick={() => handleDelete(video.id)}
-                  disabled={deletingId === video.id}
+                  onClick={() => handleDelete(video.filename)}
+                  disabled={deletingId === video.filename}
                 >
-                  {deletingId === video.id ? 'Deleting...' : 'Delete'}
+                  {deletingId === video.filename ? 'Deleting...' : 'Delete'}
                 </button>
               </div>
             </div>
