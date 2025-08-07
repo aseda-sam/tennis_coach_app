@@ -262,12 +262,16 @@ alwaysApply: true
 
 ### Branch Strategy
 - **Main branch**: `main` - Always stable, deployable code
-- **Feature branches**: `feature/description` - For new features
+- **Phase branches**: `feature/phase-X-description` - For major development phases
+- **Step branches**: `feature/phase-X-step-Y-description` - For individual steps within phases
+- **Feature branches**: `feature/description` - For smaller features
 - **Bug fix branches**: `fix/description` - For bug fixes
 - **Hotfix branches**: `hotfix/description` - For urgent fixes
 
 ### Branch Naming Conventions
-- Use descriptive branch names: `feature/video-upload`, `fix/ball-tracking-error`
+- **Phase branches**: `feature/phase-3-frontend`, `feature/phase-4-cv`
+- **Step branches**: `feature/phase-3-step-7-react-setup`, `feature/phase-3-step-8-video-management`
+- **Feature branches**: `feature/video-upload`, `fix/ball-tracking-error`
 - Use kebab-case for branch names
 - Include ticket/issue number if applicable: `feature/TENNIS-123-video-processing`
 
@@ -282,17 +286,25 @@ alwaysApply: true
 
 ### Git Workflow Commands
 ```bash
-# Start new feature
+# Start new phase
 git checkout main
 git pull origin main
-git checkout -b feature/video-processing
+git checkout -b feature/phase-3-frontend
+
+# Start new step within phase
+git checkout feature/phase-3-frontend
+git checkout -b feature/phase-3-step-7-react-setup
 
 # Make changes and commit
 git add .
-git commit -m "feat: implement video processing pipeline"
+git commit -m "feat: implement React setup and basic components"
 
-# Push and create PR
-git push origin feature/video-processing
+# Push and create PR for step
+git push origin feature/phase-3-step-7-react-setup
+
+# After step is merged, continue with next step
+git checkout feature/phase-3-frontend
+git checkout -b feature/phase-3-step-8-video-management
 ```
 
 ### Pull Request Guidelines
@@ -323,9 +335,12 @@ git push origin feature/video-processing
 ## Development Workflow
 
 ### Phase-Based Development
-- Complete each task before moving to the next
+- Complete each phase before moving to the next
+- **Create phase branch for major phases** - `feature/phase-X-description`
+- **Create step branches for individual steps** - `feature/phase-X-step-Y-description`
+- **Merge step branches into phase branch** - Keep phase work organized
+- **Merge phase branches into main** - Maintain stable main branch
 - Document any deviations from planned approach
-- **Create feature branch for each phase** - Keep work organized
 
 ### Testing Strategy & Workflow
 - **Write tests for video processing logic** - Mock external APIs and CV models for unit testing
