@@ -327,11 +327,49 @@ git push origin feature/video-processing
 - Document any deviations from planned approach
 - **Create feature branch for each phase** - Keep work organized
 
-### Testing Strategy
-- Write tests for video processing logic
-- Mock external APIs and CV models for unit testing
-- Use test videos for integration testing
-- Test database operations with test data
+### Testing Strategy & Workflow
+- **Write tests for video processing logic** - Mock external APIs and CV models for unit testing
+- **Use test videos for integration testing** - Test database operations with test data
+- **Follow TDD when possible** - Write tests before implementing features
+- **Update testing documentation** - Keep `project_docs/testing_guide.md` current with new patterns
+
+### Testing Workflow
+- **Before writing code**: Plan test scenarios and edge cases
+- **While writing code**: Write tests alongside implementation
+- **After writing code**: Run full test suite and check coverage
+- **Before committing**: Ensure all tests pass and new code has tests
+- **When adding features**: Update testing guide with new patterns/examples
+- **When refactoring**: Update tests to reflect new implementation
+- **When fixing bugs**: Add tests to prevent regression
+
+### Testing Commands
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=app --cov-report=html
+
+# Run specific test types
+pytest backend/tests/unit/          # Unit tests only
+pytest backend/tests/integration/   # Integration tests only
+
+# Run specific test file
+pytest backend/tests/unit/test_video_service.py
+
+# Run specific test function
+pytest backend/tests/unit/test_video_service.py::TestVideoService::test_create_video_record_success
+
+# Update testing documentation
+# Edit project_docs/testing_guide.md when adding new test patterns
+```
+
+### Test Structure Evolution
+- **Start simple**: Begin with flat test structure (`backend/tests/test_*.py`)
+- **Organize when needed**: Create folders only when you have many tests of one type
+- **Evolve based on actual needs**: Don't pre-create empty folders
+- **Update documentation**: Reflect actual structure in testing guide
+- **Keep it maintainable**: Don't over-engineer test organization
 
 ### Code Review Guidelines
 - **Review for simplicity** - Is this the simplest solution?
