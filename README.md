@@ -1,22 +1,21 @@
 # Tennis Computer Vision Analysis System
 
-A computer vision-based tennis analysis system that demonstrates data engineering and AI evaluation skills. Process tennis videos to extract meaningful insights about player performance, ball trajectory, and court positioning.
+A computer vision-based tennis analysis system that demonstrates data engineering and AI evaluation skills. Currently implements a robust backend for video upload and management, with plans for computer vision analysis.
 
-## 🎾 Features
+## 🎾 Current Features
 
-- **Video Upload & Processing**: Batch analysis of tennis video clips (30-60 seconds)
-- **Ball Tracking**: YOLO-based ball detection with trajectory analysis
-- **Player Positioning**: MediaPipe pose estimation for court position analysis
-- **Stroke Detection**: Basic forehand identification and analysis
-- **Metrics Dashboard**: Visualization of key tennis performance metrics
-- **Historical Analysis**: Store and compare analysis results over time
+- **Video Upload & Management**: Secure file upload with validation and metadata extraction
+- **Database Integration**: SQLite database with comprehensive video metadata storage
+- **RESTful API**: FastAPI backend with full CRUD operations
+- **File Management**: List, view details, and delete uploaded videos
+- **Error Handling**: Comprehensive validation and error responses
+- **Documentation**: Complete API documentation and testing guides
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Python 3.8+
-- Node.js 16+
-- M1 MacBook Pro (GPU acceleration available)
+- Git
 
 ### Local Development
 
@@ -26,28 +25,25 @@ git clone <repository-url>
 cd tennis_coach_app_2
 
 # Create Python virtual environment
-python3 -m venv tennis_env
-source tennis_env/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-2. **Backend Setup**
+2. **Install Dependencies**
+```bash
+pip install -e .
+```
+
+3. **Run Backend Server**
 ```bash
 cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-3. **Frontend Setup**
-```bash
-cd frontend
-npm install
-npm start
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
 4. **Access the Application**
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
-- **Frontend**: http://localhost:3000
+- **Health Check**: http://localhost:8000/health
 
 ## 📁 Project Structure
 
@@ -58,126 +54,119 @@ tennis_coach_app_2/
 │   │   ├── api/            # API routes and models
 │   │   ├── core/           # Configuration and database
 │   │   ├── services/       # Business logic
-│   │   └── utils/          # Helper functions
-│   └── requirements.txt
-├── frontend/               # React frontend
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── pages/          # Page components
-│   │   └── utils/          # Frontend utilities
-│   └── package.json
-├── data/                   # Data storage
-│   ├── videos/             # Video files
-│   ├── database/           # SQLite database
-│   └── analysis_cache/     # Processing cache
+│   │   └── models/         # Database models
+│   └── data/               # Local data storage
 ├── project_docs/           # Project documentation
-└── tests/                  # Test files
+├── pyproject.toml          # Python project configuration
+└── README.md               # This file
 ```
 
 ## 🛠 Tech Stack
 
 - **Backend**: FastAPI (Python)
-- **Frontend**: React
-- **Computer Vision**: YOLO + MediaPipe
-- **Database**: SQLite (MVP) → PostgreSQL (later)
-- **Storage**: Local file system → S3/MinIO (later)
-- **Processing**: Batch processing with background tasks
+- **Database**: SQLite with SQLAlchemy ORM
+- **File Storage**: Local file system
+- **Validation**: Pydantic models
+- **Code Quality**: Ruff linting and formatting
 
-## 📊 Key Metrics Tracked
+## 📊 API Endpoints
 
-- Ball trajectory and speed
-- Player court positioning (baseline vs service line)
-- Stroke count and types
-- Rally duration and patterns
-- Court coverage heatmaps
+### Video Management
+- `GET /api/videos/` - List all uploaded videos
+- `GET /api/videos/{filename}` - Get video details
+- `POST /api/videos/upload` - Upload new video
+- `DELETE /api/videos/{filename}` - Delete video
+
+### Health & Status
+- `GET /` - API information
+- `GET /health` - Health check
 
 ## 🎯 Portfolio Highlights
 
 This project demonstrates:
-- **Computer Vision Pipeline Development**: YOLO ball detection, MediaPipe pose estimation
-- **Data Engineering**: FastAPI backend, SQLite database, batch processing
-- **Full-Stack Development**: React frontend with real-time updates
-- **Scalable Architecture**: Modular design for future enhancements
-- **Real-World Application**: Tennis performance analysis
+- **FastAPI Development**: RESTful API with proper error handling
+- **Database Design**: SQLAlchemy ORM with comprehensive schema
+- **File Management**: Secure file upload with validation
+- **Code Quality**: Type hints, linting, and comprehensive testing
+- **Documentation**: Professional project documentation and guides
 
 ## 📚 Documentation
 
-- [Project Overview](project_docs/README.md)
+- [Project Plan](project_docs/project_plan.md)
 - [API Documentation](project_docs/api_documentation.md)
 - [Database Schema](project_docs/database_schema.md)
-- [Deployment Guide](project_docs/deployment_guide.md)
+- [Testing Guide](project_docs/testing_guide.md)
+- [React Frontend Guide](project_docs/react_frontend_guide.md)
 
 ## 🔧 Development
 
 ### Backend Development
 ```bash
 cd backend
-# Install dependencies
-pip install -r requirements.txt
 
 # Run development server
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload
 
-# Run tests
+# Run code formatting
+ruff format .
+
+# Run linting
+ruff check .
+
+# Run tests (when implemented)
 pytest
-
-# Database migrations
-alembic upgrade head
 ```
 
-### Frontend Development
+### Database Operations
 ```bash
-cd frontend
-# Install dependencies
-npm install
-
-# Start development server
-npm start
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
+# Database is automatically created on startup
+# Located at: data/database/tennis_analysis.db
 ```
 
-## 🚀 Deployment
+## 🚀 Current Status
 
-### Local Development
-- Backend: http://localhost:8000
-- Frontend: http://localhost:3000
+### ✅ Completed (Phase 1-2)
+- [x] FastAPI server setup with configuration
+- [x] Video upload with file validation
+- [x] Video metadata extraction (duration, resolution, fps)
+- [x] SQLite database with comprehensive schema
+- [x] Full CRUD operations for video management
+- [x] Error handling and validation
+- [x] API documentation and testing infrastructure
 
-### Cloud Deployment Options
-- **Railway**: Free tier available
-- **Render**: Free tier available
-- **Vercel**: Frontend deployment
-- **AWS**: Full production setup
+### 🔄 Next Steps (Phase 3)
+- [ ] React frontend development
+- [ ] Video upload interface
+- [ ] Video list and management UI
+- [ ] Frontend-backend integration
 
-See [Deployment Guide](project_docs/deployment_guide.md) for detailed instructions.
+### 📋 Future Phases
+- [ ] Computer vision integration (YOLO, MediaPipe)
+- [ ] Video analysis pipeline
+- [ ] Analysis results display
+- [ ] Advanced features and deployment
 
 ## 🎾 Tennis Analysis Features
 
-### Current MVP Features
-- ✅ Video upload and processing
-- ✅ Ball tracking with YOLO
-- ✅ Player pose estimation
-- ✅ Basic forehand detection
-- ✅ Court position analysis
-- ✅ Metrics dashboard
+### Current Backend Foundation
+- ✅ Video upload and storage
+- ✅ Metadata extraction and storage
+- ✅ Database management
+- ✅ API endpoints for all operations
 
-### Future Enhancements
-- 🔄 Backhand and serve detection
+### Planned Features
+- 🔄 Computer vision ball tracking
+- 🔄 Player pose estimation
+- 🔄 Stroke detection and analysis
+- 🔄 Performance metrics dashboard
 - 🔄 Real-time processing
-- 🔄 Advanced stroke analysis
-- 🔄 Player comparison features
-- 🔄 Cloud deployment
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Add tests
+4. Add tests if applicable
 5. Submit a pull request
 
 ## 📄 License
@@ -187,18 +176,19 @@ This project is for portfolio demonstration purposes.
 ## 🎯 Success Metrics
 
 ### Technical Goals
-- [ ] Process 30-60 second tennis videos successfully
-- [ ] Detect and track tennis ball with 80%+ accuracy
-- [ ] Identify player position on court correctly
-- [ ] Detect forehand strokes with reasonable accuracy
-- [ ] Generate meaningful tennis performance metrics
+- [x] Secure video upload with validation
+- [x] Comprehensive database schema
+- [x] RESTful API with proper error handling
+- [x] Professional code quality and documentation
+- [ ] React frontend integration
+- [ ] Computer vision analysis pipeline
 
 ### Portfolio Goals
-- [ ] Clean, well-documented codebase
-- [ ] Demonstrates data engineering best practices
-- [ ] Shows computer vision pipeline development
-- [ ] Scalable architecture design
-- [ ] Professional project presentation
+- [x] Clean, well-documented codebase
+- [x] Demonstrates backend development best practices
+- [x] Shows database design and API development
+- [x] Professional project documentation
+- [ ] Full-stack development demonstration
 
 ---
 
