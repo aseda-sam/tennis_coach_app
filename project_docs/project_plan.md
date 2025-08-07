@@ -62,10 +62,11 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [ ] Create video upload component
 - [ ] Display uploaded videos list
 
-#### Step 8: Analysis Display
-- [ ] Show analysis results
-- [ ] Basic charts for metrics
-- [ ] Video playback with overlay
+#### Step 8: Video Management Interface
+- [ ] Add video deletion functionality
+- [ ] Show video metadata (size, duration, resolution)
+- [ ] Handle upload errors and loading states
+- [ ] Test complete upload/list/delete workflow
 
 ### Phase 4: Computer Vision Foundation
 
@@ -96,14 +97,22 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [ ] Display basic tennis metrics
 - [ ] Test end-to-end analysis pipeline
 
-### Phase 6: Enhancement & Polish
+### Phase 6: Frontend Analysis Display
 
-#### Step 14: Advanced Features
+#### Step 14: Analysis Interface
+- [ ] Show analysis results in frontend
+- [ ] Basic charts for metrics
+- [ ] Video playback with overlay
+- [ ] Display processing status
+
+### Phase 7: Enhancement & Polish
+
+#### Step 15: Advanced Features
 - [ ] Stroke type detection (forehand/backhand)
 - [ ] Rally duration analysis
 - [ ] Court coverage heatmaps
 
-#### Step 15: Testing & Documentation
+#### Step 16: Testing & Documentation
 - [ ] End-to-end testing
 - [ ] API documentation
 - [ ] README updates
