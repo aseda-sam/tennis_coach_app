@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { videoApi } from '../services/api';
+import { videoApi, analysisApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
+import { AnalysisData } from './AnalysisResults';
 import './VideoList.css';
 
 interface VideoListProps {
@@ -9,16 +10,22 @@ interface VideoListProps {
 
 const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
   const [videos, setVideos] = useState<VideoMetadata[]>([]);
+  const [analyses, setAnalyses] = useState<AnalysisData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
   const loadVideos = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await videoApi.getVideos();
-      setVideos(response.videos);
+      const [videosResponse, analysesResponse] = await Promise.all([
+        videoApi.getVideos(),
+        analysisApi.getAllAnalyses()
+      ]);
+      setVideos(videosResponse.videos);
+      setAnalyses(analysesResponse);
     } catch (err: any) {
       setError('Failed to load videos. Please try again.');
       console.error('Error loading videos:', err);
@@ -49,6 +56,25 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
     }
   };
 
+  const handleAnalyze = async (filename: string) => {
+    try {
+      setAnalyzingId(filename);
+      await analysisApi.startAnalysis(filename);
+      // Reload analyses to get the new analysis
+      const analysesResponse = await analysisApi.getAllAnalyses();
+      setAnalyses(analysesResponse);
+    } catch (err: any) {
+      setError('Failed to start analysis. Please try again.');
+      console.error('Error starting analysis:', err);
+    } finally {
+      setAnalyzingId(null);
+    }
+  };
+
+  const getAnalysisForVideo = (filename: string): AnalysisData | null => {
+    return analyses.find(analysis => analysis.video_filename === filename) || null;
+  };
+
   const formatFileSize = (bytes: number): string => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     if (bytes === 0) return '0 Bytes';
@@ -61,8 +87,6 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
     const remainingSeconds = Math.floor(seconds % 60);
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
-
-
 
   if (loading) {
     return (
@@ -90,55 +114,96 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
         </div>
       ) : (
         <div className="videos-grid">
-          {videos.map((video) => (
-            <div key={video.filename} className="video-card">
-              <div className="video-thumbnail">
-                <span className="video-icon">🎾</span>
-              </div>
-              
-              <div className="video-info">
-                <h3 className="video-title">{video.filename}</h3>
+          {videos.map((video) => {
+            const analysis = getAnalysisForVideo(video.filename);
+            const isAnalyzing = analyzingId === video.filename;
+            
+            return (
+              <div key={video.filename} className="video-card">
+                <div className="video-thumbnail">
+                  <span className="video-icon">🎾</span>
+                  {analysis && (
+                    <div className="analysis-badge">
+                      <span className="analysis-icon">📊</span>
+                    </div>
+                  )}
+                </div>
                 
-                <div className="video-metadata">
-                  {video.duration && (
-                    <div className="metadata-item">
-                      <span className="label">Duration:</span>
-                      <span className="value">{formatDuration(video.duration)}</span>
-                    </div>
-                  )}
+                <div className="video-info">
+                  <h3 className="video-title">{video.filename}</h3>
                   
-                  {video.width && video.height && (
+                  <div className="video-metadata">
+                    {video.duration && (
+                      <div className="metadata-item">
+                        <span className="label">Duration:</span>
+                        <span className="value">{formatDuration(video.duration)}</span>
+                      </div>
+                    )}
+                    
+                    {video.width && video.height && (
+                      <div className="metadata-item">
+                        <span className="label">Resolution:</span>
+                        <span className="value">{video.width}×{video.height}</span>
+                      </div>
+                    )}
+                    
+                    {video.fps && (
+                      <div className="metadata-item">
+                        <span className="label">FPS:</span>
+                        <span className="value">{video.fps}</span>
+                      </div>
+                    )}
+                    
                     <div className="metadata-item">
-                      <span className="label">Resolution:</span>
-                      <span className="value">{video.width}×{video.height}</span>
+                      <span className="label">Size:</span>
+                      <span className="value">{formatFileSize(video.file_size)}</span>
                     </div>
-                  )}
-                  
-                  {video.fps && (
-                    <div className="metadata-item">
-                      <span className="label">FPS:</span>
-                      <span className="value">{video.fps}</span>
-                    </div>
-                  )}
-                  
-                  <div className="metadata-item">
-                    <span className="label">Size:</span>
-                    <span className="value">{formatFileSize(video.file_size)}</span>
+
+                    {analysis && (
+                      <div className="metadata-item analysis-summary">
+                        <span className="label">Analysis:</span>
+                        <span className="value">
+                          {analysis.total_ball_detections} balls detected
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
+                
+                <div className="video-actions">
+                  {!analysis && (
+                    <button
+                      className="analyze-btn"
+                      onClick={() => handleAnalyze(video.filename)}
+                      disabled={isAnalyzing}
+                    >
+                      {isAnalyzing ? 'Analyzing...' : 'Analyze'}
+                    </button>
+                  )}
+                  
+                  {analysis && (
+                    <button
+                      className="view-analysis-btn"
+                      onClick={() => {
+                        // TODO: Navigate to analysis view
+                        console.log('View analysis for:', video.filename);
+                      }}
+                    >
+                      View Analysis
+                    </button>
+                  )}
+                  
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDelete(video.filename)}
+                    disabled={deletingId === video.filename}
+                  >
+                    {deletingId === video.filename ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
               </div>
-              
-              <div className="video-actions">
-                <button
-                  className="delete-btn"
-                  onClick={() => handleDelete(video.filename)}
-                  disabled={deletingId === video.filename}
-                >
-                  {deletingId === video.filename ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
