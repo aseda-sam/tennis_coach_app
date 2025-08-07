@@ -1,37 +1,110 @@
-import React, { useState } from 'react';
-import VideoUpload from './components/VideoUpload';
-import VideoList from './components/VideoList';
-import { VideoMetadata } from './types/video';
+import { useState } from 'react';
 import './App.css';
+import AnalysisDashboard from './components/AnalysisDashboard';
+import VideoList from './components/VideoList';
+import VideoUpload from './components/VideoUpload';
+import { VideoMetadata } from './types/video';
 
 function App() {
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [currentView, setCurrentView] = useState<'upload' | 'list' | 'dashboard'>('upload');
+  const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(null);
 
-  const handleUploadSuccess = (video: VideoMetadata) => {
-    // Trigger a refresh of the video list
-    setRefreshKey(prev => prev + 1);
+  const handleVideoUploaded = () => {
+    setCurrentView('list');
   };
 
   const handleVideoDeleted = () => {
-    // The video list will automatically refresh after deletion
-    console.log('Video deleted successfully');
+    // Refresh the list view
+    setCurrentView('list');
+  };
+
+  const handleViewAnalysis = (video: VideoMetadata) => {
+    setSelectedVideo(video);
+    setCurrentView('dashboard');
+  };
+
+  const handleBackToList = () => {
+    setCurrentView('list');
+    setSelectedVideo(null);
+  };
+
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'upload':
+        return (
+          <div className="app-container">
+            <div className="upload-section">
+              <h1 className="app-title">Tennis Video Analyzer</h1>
+              <p className="app-subtitle">
+                Upload your tennis videos for advanced performance analysis and technique insights
+              </p>
+              <VideoUpload onUploadSuccess={handleVideoUploaded} />
+              <div className="view-videos-section">
+                <button 
+                  className="view-videos-btn"
+                  onClick={() => setCurrentView('list')}
+                >
+                  View My Videos
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'list':
+        return (
+          <div className="app-container">
+            <div className="list-section">
+              <div className="list-header">
+                <button 
+                  className="back-to-upload-btn"
+                  onClick={() => setCurrentView('upload')}
+                >
+                  ← Back to Upload
+                </button>
+                <button 
+                  className="upload-new-btn"
+                  onClick={() => setCurrentView('upload')}
+                >
+                  Upload New Video
+                </button>
+              </div>
+              <VideoList 
+                onVideoDeleted={handleVideoDeleted}
+                onViewAnalysis={handleViewAnalysis}
+              />
+            </div>
+          </div>
+        );
+
+      case 'dashboard':
+        if (!selectedVideo) {
+          return (
+            <div className="app-container">
+              <div className="error-message">
+                <p>No video selected. Please go back and select a video.</p>
+                <button onClick={handleBackToList}>Back to Videos</button>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <AnalysisDashboard
+            videoFilename={selectedVideo.filename}
+            videoUrl={`http://localhost:8000/api/videos/${selectedVideo.filename}`}
+            onClose={handleBackToList}
+          />
+        );
+
+      default:
+        return null;
+    }
   };
 
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>🎾 Tennis Analysis System</h1>
-        <p>Upload and analyze your tennis videos with computer vision</p>
-      </header>
-      
-      <main className="App-main">
-        <VideoUpload onUploadSuccess={handleUploadSuccess} />
-        <VideoList key={refreshKey} onVideoDeleted={handleVideoDeleted} />
-      </main>
-      
-      <footer className="App-footer">
-        <p>Computer Vision Tennis Analysis - Phase 3</p>
-      </footer>
+      {renderCurrentView()}
     </div>
   );
 }

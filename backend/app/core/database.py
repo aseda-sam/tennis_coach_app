@@ -32,4 +32,6 @@ def get_db() -> Generator[Session, None, None]:
 
 def create_tables() -> None:
     """Create all database tables."""
+    # Import models here to avoid circular imports
+
     Base.metadata.create_all(bind=engine)
