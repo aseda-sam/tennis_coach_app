@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import video
+from app.api.routes import analysis, video
 from app.core.database import create_tables
 
 # Create FastAPI app
@@ -13,7 +13,7 @@ app = FastAPI(
     description="Computer vision-based tennis analysis system",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # Add CORS middleware
@@ -30,11 +30,15 @@ create_tables()
 
 # Include API routes
 app.include_router(video.router, prefix="/api/videos", tags=["videos"])
+app.include_router(analysis.router, prefix="/api/analysis", tags=["analysis"])
 
 # Mount static files for processed videos
 processed_videos_dir = Path("data/videos/processed")
 if processed_videos_dir.exists():
-    app.mount("/processed", StaticFiles(directory=str(processed_videos_dir)), name="processed")
+    app.mount(
+        "/processed", StaticFiles(directory=str(processed_videos_dir)), name="processed"
+    )
+
 
 @app.get("/")
 async def root() -> dict[str, str]:
@@ -43,14 +47,17 @@ async def root() -> dict[str, str]:
         "message": "Tennis Analysis API",
         "version": "1.0.0",
         "docs": "/docs",
-        "status": "running"
+        "status": "running",
     }
+
 
 @app.get("/health")
 async def health_check() -> dict[str, str]:
     """Health check endpoint."""
     return {"status": "healthy"}
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
