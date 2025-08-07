@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import video
+from app.api.routes import video, analysis
 from app.core.database import create_tables
 
 # Create FastAPI app
@@ -30,6 +30,7 @@ create_tables()
 
 # Include API routes
 app.include_router(video.router, prefix="/api/videos", tags=["videos"])
+app.include_router(analysis.router, prefix="/api/analysis", tags=["analysis"])
 
 # Mount static files for processed videos
 processed_videos_dir = Path("data/videos/processed")
