@@ -70,15 +70,15 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 
 ### Phase 4: Computer Vision Foundation
 
-#### Step 9: Basic Video Processing
-- [ ] Add OpenCV for video frame extraction
-- [ ] Extract frames from uploaded videos
-- [ ] Test frame processing performance
+#### Step 9: Basic Video Processing ✅
+- [x] Add OpenCV for video frame extraction
+- [x] Extract frames from uploaded videos
+- [x] Test frame processing performance
 
-#### Step 10: YOLO Integration
-- [ ] Add YOLO model for object detection
-- [ ] Test ball detection on sample frames
-- [ ] Optimize detection performance
+#### Step 10: YOLO Integration ✅
+- [x] Add YOLO model for object detection
+- [x] Test ball detection on sample frames
+- [x] Optimize detection performance
 
 #### Step 11: MediaPipe Integration
 - [ ] Add MediaPipe for pose estimation
@@ -128,7 +128,8 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - ✅ File management endpoints (list, delete, get details)
 
 **Next Step:**
-- Phase 4: Computer Vision Foundation (OpenCV integration and YOLO setup)
+- Complete Phase 4: MediaPipe Integration (player pose estimation)
+- Phase 5: Analysis Pipeline (comprehensive tennis metrics)
 
 ## Success Metrics
 
