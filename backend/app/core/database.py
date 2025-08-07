@@ -6,6 +6,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 
+# Import models to ensure they're registered with Base
+from app.models.video import Video
+from app.models.analysis import Analysis
+
 # Create SQLAlchemy engine
 engine = create_engine(
     settings.DATABASE_URL,
