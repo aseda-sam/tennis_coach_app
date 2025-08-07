@@ -105,14 +105,40 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [ ] Video playback with overlay
 - [ ] Display processing status
 
-### Phase 7: Enhancement & Polish
+### Phase 7: React Analysis Components
 
-#### Step 15: Advanced Features
+#### Step 15: Analysis Results Display
+- [ ] Create AnalysisResults component
+- [ ] Display ball detection metrics (total detections, detection rate)
+- [ ] Show processing time and model information
+- [ ] Add analysis status indicators
+
+#### Step 16: Video Player Component
+- [ ] Create VideoPlayer component with HTML5 video
+- [ ] Add play/pause/seek controls
+- [ ] Display video metadata (duration, resolution, fps)
+- [ ] Handle different video formats
+
+#### Step 17: Analysis Dashboard
+- [ ] Create AnalysisDashboard component
+- [ ] Combine video player and analysis results
+- [ ] Add analysis trigger button
+- [ ] Show loading states during processing
+
+#### Step 18: Enhanced Video List
+- [ ] Update VideoList to show analysis status
+- [ ] Add "Analyze" button for each video
+- [ ] Display analysis summary in video cards
+- [ ] Link to detailed analysis view
+
+### Phase 8: Enhancement & Polish
+
+#### Step 19: Advanced Features
 - [ ] Stroke type detection (forehand/backhand)
 - [ ] Rally duration analysis
 - [ ] Court coverage heatmaps
 
-#### Step 16: Testing & Documentation
+#### Step 20: Testing & Documentation
 - [ ] End-to-end testing
 - [ ] API documentation
 - [ ] README updates
@@ -128,6 +154,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - ✅ File management endpoints (list, delete, get details)
 
 **Next Step:**
+- Phase 7: React Analysis Components (video player and analysis display)
 - Complete Phase 4: MediaPipe Integration (player pose estimation)
 - Phase 5: Analysis Pipeline (comprehensive tennis metrics)
 
