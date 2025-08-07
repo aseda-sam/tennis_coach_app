@@ -29,11 +29,14 @@ env.bak/
 venv.bak/
 
 # IDE
-.vscode/settings.json
+.vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# Cursor
+.cursor/
 
 # OS
 .DS_Store
