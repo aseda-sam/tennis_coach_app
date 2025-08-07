@@ -45,56 +45,56 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 
 ### Phase 2: Database Integration
 
-#### Step 5: Database Setup
-- [ ] Set up SQLite database
-- [ ] Create video metadata table
-- [ ] Store video information in database
+#### Step 5: Database Setup ✅
+- [x] Set up SQLite database
+- [x] Create video metadata table
+- [x] Store video information in database
 
-#### Step 6: Video Management with Database
-- [ ] Update upload to save to database
-- [ ] List videos from database
-- [ ] Delete videos from database and file system
+#### Step 6: Video Management with Database ✅
+- [x] Update upload to save to database
+- [x] List videos from database
+- [x] Delete videos from database and file system
 
-### Phase 3: Computer Vision Foundation
+### Phase 3: Frontend Development
 
-#### Step 7: Basic Video Processing
-- [ ] Add OpenCV for video frame extraction
-- [ ] Extract frames from uploaded videos
-- [ ] Test frame processing performance
-
-#### Step 8: YOLO Integration
-- [ ] Add YOLO model for object detection
-- [ ] Test ball detection on sample frames
-- [ ] Optimize detection performance
-
-#### Step 9: MediaPipe Integration
-- [ ] Add MediaPipe for pose estimation
-- [ ] Test player detection on sample frames
-- [ ] Extract basic pose data
-
-### Phase 4: Analysis Pipeline
-
-#### Step 10: Basic Analysis Engine
-- [ ] Process video frames with CV models
-- [ ] Store analysis results in database
-- [ ] Calculate basic metrics (stroke count, court position)
-
-#### Step 11: Analysis Results
-- [ ] Create analysis results endpoint
-- [ ] Display basic tennis metrics
-- [ ] Test end-to-end analysis pipeline
-
-### Phase 5: Frontend Development
-
-#### Step 12: Basic React Setup
+#### Step 7: Basic React Setup
 - [ ] Set up React frontend
 - [ ] Create video upload component
 - [ ] Display uploaded videos list
 
-#### Step 13: Analysis Display
+#### Step 8: Analysis Display
 - [ ] Show analysis results
 - [ ] Basic charts for metrics
 - [ ] Video playback with overlay
+
+### Phase 4: Computer Vision Foundation
+
+#### Step 9: Basic Video Processing
+- [ ] Add OpenCV for video frame extraction
+- [ ] Extract frames from uploaded videos
+- [ ] Test frame processing performance
+
+#### Step 10: YOLO Integration
+- [ ] Add YOLO model for object detection
+- [ ] Test ball detection on sample frames
+- [ ] Optimize detection performance
+
+#### Step 11: MediaPipe Integration
+- [ ] Add MediaPipe for pose estimation
+- [ ] Test player detection on sample frames
+- [ ] Extract basic pose data
+
+### Phase 5: Analysis Pipeline
+
+#### Step 12: Basic Analysis Engine
+- [ ] Process video frames with CV models
+- [ ] Store analysis results in database
+- [ ] Calculate basic metrics (stroke count, court position)
+
+#### Step 13: Analysis Results
+- [ ] Create analysis results endpoint
+- [ ] Display basic tennis metrics
+- [ ] Test end-to-end analysis pipeline
 
 ### Phase 6: Enhancement & Polish
 
@@ -119,7 +119,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - ✅ File management endpoints (list, delete, get details)
 
 **Next Step:**
-- Database integration (SQLite setup, video metadata table)
+- Phase 3: Frontend Development (React app for video upload and management)
 
 ## Success Metrics
 
