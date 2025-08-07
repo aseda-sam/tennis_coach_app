@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class CVService:
     """Computer Vision service for tennis video analysis."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the CV service."""
         self.ball_detector = None
         self.pose_detector = None
@@ -33,7 +33,7 @@ class CVService:
         except ImportError:
             logger.warning("Ultralytics not available, ball detection disabled")
             self.ball_detector = None
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Failed to initialize YOLO: {e}")
             self.ball_detector = None
 
@@ -62,10 +62,7 @@ class CVService:
             fps = cap.get(cv2.CAP_PROP_FPS)
 
             # Calculate frame interval to get max_frames
-            if total_frames > max_frames:
-                interval = total_frames // max_frames
-            else:
-                interval = 1
+            interval = total_frames // max_frames if total_frames > max_frames else 1
 
             logger.info(f"Extracting frames from {video_path}")
             logger.info(
@@ -91,7 +88,7 @@ class CVService:
             cap.release()
             logger.info(f"Extracted {len(frames)} frames")
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error extracting frames: {e}")
 
         return frames
@@ -143,7 +140,7 @@ class CVService:
             total_detections = sum(len(d) for d in detections)
             logger.info(f"Total ball detections: {total_detections}")
 
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError) as e:
             logger.error(f"Error in ball detection: {e}")
             detections = [[] for _ in frames]
 
@@ -226,7 +223,7 @@ class CVService:
             cap.release()
             return metadata
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error extracting video metadata: {e}")
             return {"error": str(e)}
 

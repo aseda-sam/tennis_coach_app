@@ -164,7 +164,7 @@ def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
             "frames_processed": analysis_results["frames_processed"],
         }
 
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         logger.error(f"Error analyzing video {video_filename}: {e}")
         return {"error": f"Analysis failed: {e!s}"}
 
