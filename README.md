@@ -15,7 +15,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 
 ### Prerequisites
 - Python 3.8+
-- Git
+
 
 ### Local Development
 
@@ -81,7 +81,7 @@ tennis_coach_app_2/
 - `GET /` - API information
 - `GET /health` - Health check
 
-## 🎯 Portfolio Highlights
+## 🎯 Project Highlights
 
 This project demonstrates:
 - **FastAPI Development**: RESTful API with proper error handling
@@ -123,28 +123,7 @@ pytest
 # Located at: data/database/tennis_analysis.db
 ```
 
-## 🚀 Current Status
 
-### ✅ Completed (Phase 1-2)
-- [x] FastAPI server setup with configuration
-- [x] Video upload with file validation
-- [x] Video metadata extraction (duration, resolution, fps)
-- [x] SQLite database with comprehensive schema
-- [x] Full CRUD operations for video management
-- [x] Error handling and validation
-- [x] API documentation and testing infrastructure
-
-### 🔄 Next Steps (Phase 3)
-- [ ] React frontend development
-- [ ] Video upload interface
-- [ ] Video list and management UI
-- [ ] Frontend-backend integration
-
-### 📋 Future Phases
-- [ ] Computer vision integration (YOLO, MediaPipe)
-- [ ] Video analysis pipeline
-- [ ] Analysis results display
-- [ ] Advanced features and deployment
 
 ## 🎾 Tennis Analysis Features
 
@@ -171,24 +150,7 @@ pytest
 
 ## 📄 License
 
-This project is for portfolio demonstration purposes.
-
-## 🎯 Success Metrics
-
-### Technical Goals
-- [x] Secure video upload with validation
-- [x] Comprehensive database schema
-- [x] RESTful API with proper error handling
-- [x] Professional code quality and documentation
-- [ ] React frontend integration
-- [ ] Computer vision analysis pipeline
-
-### Portfolio Goals
-- [x] Clean, well-documented codebase
-- [x] Demonstrates backend development best practices
-- [x] Shows database design and API development
-- [x] Professional project documentation
-- [ ] Full-stack development demonstration
+MIT License
 
 ---
 
