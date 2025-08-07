@@ -63,8 +63,8 @@ async def start_analysis(
     try:
         result = analyze_video(db, video_filename)
         return AnalysisSummary(**result)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {e!s}")
+    except (OSError, ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {e!s}") from e
 
 
 @router.get("/{video_filename}", response_model=AnalysisResponse)

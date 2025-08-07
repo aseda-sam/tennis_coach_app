@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { VideoListResponse, VideoMetadata, VideoUploadResponse } from '../types/video';
 import { AnalysisData } from '../components/AnalysisResults';
+import { VideoListResponse, VideoMetadata, VideoUploadResponse } from '../types/video';
 
 const API_BASE_URL = 'http://localhost:8000/api';
 
@@ -66,10 +66,25 @@ export const videoApi = {
   },
 };
 
+export interface AnalysisSummary {
+  message: string;
+  analysis_id?: number;
+  processing_time?: number;
+  analysis_summary?: {
+    total_frames: number;
+    frames_with_balls: number;
+    total_ball_detections: number;
+    average_detections_per_frame: number;
+    detection_rate: number;
+  };
+  frames_processed?: number;
+  error?: string;
+}
+
 export const analysisApi = {
   // Start analysis for a video
-  startAnalysis: async (videoFilename: string): Promise<{ message: string; analysis_id?: number }> => {
-    const response = await api.post(`/analysis/${videoFilename}`);
+  startAnalysis: async (videoFilename: string): Promise<AnalysisSummary> => {
+    const response = await api.post<AnalysisSummary>(`/analysis/${videoFilename}`);
     return response.data;
   },
 

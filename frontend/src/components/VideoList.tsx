@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { videoApi, analysisApi } from '../services/api';
+import { analysisApi, videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
+import AnalysisModal from './AnalysisModal';
 import { AnalysisData } from './AnalysisResults';
 import './VideoList.css';
 
@@ -15,6 +16,8 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
 
   const loadVideos = async () => {
     try {
@@ -69,6 +72,16 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
     } finally {
       setAnalyzingId(null);
     }
+  };
+
+  const handleViewAnalysis = (filename: string) => {
+    setSelectedVideo(filename);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedVideo(null);
   };
 
   const getAnalysisForVideo = (filename: string): AnalysisData | null => {
@@ -158,15 +171,6 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
                       <span className="label">Size:</span>
                       <span className="value">{formatFileSize(video.file_size)}</span>
                     </div>
-
-                    {analysis && (
-                      <div className="metadata-item analysis-summary">
-                        <span className="label">Analysis:</span>
-                        <span className="value">
-                          {analysis.total_ball_detections} balls detected
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
                 
@@ -184,10 +188,7 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
                   {analysis && (
                     <button
                       className="view-analysis-btn"
-                      onClick={() => {
-                        // TODO: Navigate to analysis view
-                        console.log('View analysis for:', video.filename);
-                      }}
+                      onClick={() => handleViewAnalysis(video.filename)}
                     >
                       View Analysis
                     </button>
@@ -205,6 +206,14 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted }) => {
             );
           })}
         </div>
+      )}
+
+      {modalOpen && selectedVideo && (
+        <AnalysisModal
+          isOpen={modalOpen}
+          onClose={handleCloseModal}
+          videoFilename={selectedVideo}
+        />
       )}
     </div>
   );
