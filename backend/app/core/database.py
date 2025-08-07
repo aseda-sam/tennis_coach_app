@@ -33,7 +33,5 @@ def get_db() -> Generator[Session, None, None]:
 def create_tables() -> None:
     """Create all database tables."""
     # Import models here to avoid circular imports
-    from app.models.video import Video
-    from app.models.analysis import Analysis
-    
+
     Base.metadata.create_all(bind=engine)

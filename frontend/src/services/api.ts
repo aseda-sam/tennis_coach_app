@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { VideoListResponse, VideoMetadata, VideoUploadResponse } from '../types/video';
+import { AnalysisData } from '../components/AnalysisResults';
 
 const API_BASE_URL = 'http://localhost:8000/api';
 
@@ -62,6 +63,31 @@ export const videoApi = {
   // Delete a video
   deleteVideo: async (filename: string): Promise<void> => {
     await api.delete(`/videos/${filename}`);
+  },
+};
+
+export const analysisApi = {
+  // Start analysis for a video
+  startAnalysis: async (videoFilename: string): Promise<{ message: string; analysis_id?: number }> => {
+    const response = await api.post(`/analysis/${videoFilename}`);
+    return response.data;
+  },
+
+  // Get analysis results for a video
+  getAnalysis: async (videoFilename: string): Promise<AnalysisData> => {
+    const response = await api.get<AnalysisData>(`/analysis/${videoFilename}`);
+    return response.data;
+  },
+
+  // Get all analyses
+  getAllAnalyses: async (): Promise<AnalysisData[]> => {
+    const response = await api.get<AnalysisData[]>('/analysis/');
+    return response.data;
+  },
+
+  // Delete analysis for a video
+  deleteAnalysis: async (videoFilename: string): Promise<void> => {
+    await api.delete(`/analysis/${videoFilename}`);
   },
 };
 

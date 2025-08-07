@@ -55,11 +55,31 @@
 .video-thumbnail {
   text-align: center;
   margin-bottom: 15px;
+  position: relative;
 }
 
 .video-icon {
   font-size: 48px;
   opacity: 0.8;
+}
+
+.analysis-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.analysis-icon {
+  font-size: 16px;
+  color: white;
 }
 
 .video-title {
@@ -99,8 +119,62 @@
   font-weight: 600;
 }
 
+.metadata-item.analysis-summary .value {
+  color: #667eea;
+  font-weight: 700;
+}
+
 .video-actions {
-  text-align: center;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.analyze-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  flex: 1;
+  min-width: 100px;
+}
+
+.analyze-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.analyze-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.view-analysis-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  flex: 1;
+  min-width: 100px;
+}
+
+.view-analysis-btn:hover {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
 }
 
 .delete-btn {
@@ -113,15 +187,21 @@
   font-weight: 500;
   transition: background-color 0.3s ease;
   font-size: 14px;
+  flex: 1;
+  min-width: 100px;
 }
 
 .delete-btn:hover:not(:disabled) {
   background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
 }
 
 .delete-btn:disabled {
   background: #6c757d;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .error-message {
@@ -152,5 +232,16 @@
   .metadata-item .label,
   .metadata-item .value {
     font-size: 13px;
+  }
+
+  .video-actions {
+    flex-direction: column;
+  }
+
+  .analyze-btn,
+  .view-analysis-btn,
+  .delete-btn {
+    flex: none;
+    width: 100%;
   }
 }
