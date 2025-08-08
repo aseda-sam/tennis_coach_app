@@ -19,10 +19,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadAnalysis();
-  }, [loadAnalysis]);
-
   const loadAnalysis = useCallback(async () => {
     try {
       setLoading(true);
@@ -36,6 +32,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       setLoading(false);
     }
   }, [videoFilename]);
+
+  useEffect(() => {
+    loadAnalysis();
+  }, [loadAnalysis]);
 
   const formatDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
