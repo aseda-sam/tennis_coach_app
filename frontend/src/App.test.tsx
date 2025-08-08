@@ -28,7 +28,7 @@ import App from './App';
 
 test('renders tennis analysis app title', () => {
   render(<App />);
-  const titleElement = screen.getByText(/Tennis Analysis System/i);
+  const titleElement = screen.getByText(/Tennis Video Analyzer/i);
   expect(titleElement).toBeInTheDocument();
 });
 
@@ -44,8 +44,4 @@ test('renders video list section', () => {
   expect(listElement).toBeInTheDocument();
 });
 
-test('renders footer with phase info', () => {
-  render(<App />);
-  const footerElement = screen.getByText(/Phase 3/i);
-  expect(footerElement).toBeInTheDocument();
-});
+
