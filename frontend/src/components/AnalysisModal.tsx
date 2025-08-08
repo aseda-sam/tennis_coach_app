@@ -18,12 +18,6 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen && videoFilename) {
-      loadAnalysis();
-    }
-  }, [isOpen, videoFilename, loadAnalysis]);
-
   const loadAnalysis = useCallback(async () => {
     try {
       setLoading(true);
@@ -37,6 +31,12 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({
       setLoading(false);
     }
   }, [videoFilename]);
+
+  useEffect(() => {
+    if (isOpen && videoFilename) {
+      loadAnalysis();
+    }
+  }, [isOpen, videoFilename, loadAnalysis]);
 
   if (!isOpen) return null;
 
