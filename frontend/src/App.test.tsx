@@ -38,10 +38,10 @@ test('renders upload section', () => {
   expect(uploadElement).toBeInTheDocument();
 });
 
-test('renders video list section', () => {
+test('renders view videos button', () => {
   render(<App />);
-  const listElement = screen.getByTestId('video-list');
-  expect(listElement).toBeInTheDocument();
+  const viewVideosButton = screen.getByText(/View My Videos/i);
+  expect(viewVideosButton).toBeInTheDocument();
 });
 
 
