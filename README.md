@@ -20,11 +20,30 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.8+
-- Node.js 16+
+### Option 1: Docker Development (Recommended)
 
-### Local Development
+**Prerequisites**: Docker and Docker Compose
+
+1. **Clone and Setup**
+```bash
+git clone <repository-url>
+cd tennis_coach_app_2
+```
+
+2. **Start All Services**
+```bash
+docker-compose up --build
+```
+
+3. **Access the Application**
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+
+### Option 2: Local Development
+
+**Prerequisites**: Python 3.8+, Node.js 16+
 
 1. **Clone and Setup**
 ```bash
@@ -155,7 +174,40 @@ docker run -p 8000:8000 ghcr.io/aseda-sam/tennis_coach_app/backend:latest
 
 ## 🔧 Development
 
-### Backend Development
+### Docker Development (Recommended)
+
+```bash
+# Start all services
+docker-compose up --build
+
+# Start in background
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Rebuild and restart
+docker-compose up --build --force-recreate
+
+# Run backend tests
+docker-compose exec backend pytest
+
+# Run frontend tests
+docker-compose exec frontend npm test
+
+# Access backend shell
+docker-compose exec backend bash
+
+# Access frontend shell
+docker-compose exec frontend sh
+```
+
+### Local Development
+
+#### Backend Development
 ```bash
 cd backend
 
@@ -172,7 +224,7 @@ ruff check .
 pytest
 ```
 
-### Frontend Development
+#### Frontend Development
 ```bash
 cd frontend
 
