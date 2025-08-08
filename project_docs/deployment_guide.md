@@ -2,7 +2,240 @@
 
 ## Overview
 
-This guide covers deployment options for the Tennis Analysis System, from local development to cloud deployment.
+This guide covers deployment options for the Tennis Analysis System, from local development to cloud deployment, including CI/CD pipeline setup.
+
+## CI/CD Pipeline
+
+### GitHub Actions Setup
+
+The project includes a comprehensive CI/CD pipeline using GitHub Actions with the following workflows:
+
+#### 1. Continuous Integration (CI)
+**File**: `.github/workflows/ci.yml`
+
+Runs on every push and pull request to ensure code quality:
+
+- **Backend Testing**:
+  - Python 3.11 environment setup
+  - Dependency installation with caching
+  - Ruff linting and formatting checks
+  - Pytest execution
+  - Code quality enforcement
+
+- **Frontend Testing**:
+  - Node.js 20 environment setup
+  - npm dependency installation with caching
+  - Build verification
+  - Test execution with coverage
+  - TypeScript compilation check
+
+#### 2. Frontend Deployment
+**File**: `.github/workflows/deploy-frontend.yml`
+
+Automatically deploys the React frontend to GitHub Pages on main branch pushes:
+
+- Triggers on frontend changes
+- Builds production bundle
+- Deploys to GitHub Pages
+- Provides deployment URL
+
+#### 3. Docker Containerization
+**File**: `.github/workflows/docker-publish.yml`
+
+Builds and publishes Docker images to GitHub Container Registry:
+
+- Multi-platform Docker builds
+- Automatic versioning
+- GitHub Container Registry integration
+- Health check validation
+
+### Docker Setup
+
+#### Backend Container
+**File**: `Dockerfile`
+
+```dockerfile
+# Base stage
+FROM python:3.11-slim as base
+
+WORKDIR /app
+
+# Install system dependencies including OpenCV requirements
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY backend/pyproject.toml ./
+
+# Development stage
+FROM base as development
+COPY backend/ ./backend/
+RUN pip install --no-cache-dir -e . && \
+    pip install --no-cache-dir pytest ruff
+RUN mkdir -p data/videos/raw data/videos/processed data/analysis_cache data/database
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# Production stage
+FROM base as production
+RUN pip install --no-cache-dir -e .
+COPY backend/ ./backend/
+RUN mkdir -p data/videos/raw data/videos/processed data/analysis_cache data/database
+RUN adduser --disabled-password --gecos '' appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+#### Docker Optimization
+**File**: `.dockerignore`
+
+Excludes unnecessary files from Docker build context:
+- Git files and documentation
+- Node.js dependencies
+- IDE files and OS artifacts
+- Large video files
+- Test files and coverage reports
+
+### CI/CD Benefits
+
+1. **Automated Quality Checks**:
+   - Code formatting with Ruff
+   - Linting for Python and TypeScript
+   - Test execution on every change
+   - Build verification
+
+2. **Deployment Automation**:
+   - Automatic frontend deployment to GitHub Pages
+   - Docker image publishing
+   - Zero-downtime deployments
+
+3. **Developer Experience**:
+   - Fast feedback on code changes
+   - Consistent development environment
+   - Automated dependency management
+
+4. **Production Readiness**:
+   - Containerized deployment
+   - Health checks and monitoring
+   - Scalable architecture
+
+### Setting Up CI/CD
+
+#### 1. Enable GitHub Actions
+- Go to your repository Settings
+- Navigate to Actions > General
+- Enable "Allow all actions and reusable workflows"
+
+#### 2. Configure Branch Protection
+- Go to Settings > Branches
+- Add rule for `main` branch
+- Enable "Require status checks to pass before merging"
+- Select the CI workflow as required
+
+#### 3. Set Up GitHub Pages
+- Go to Settings > Pages
+- Select "GitHub Actions" as source
+- The deployment workflow will automatically configure Pages
+
+#### 4. Configure Container Registry
+- Go to Settings > Actions > General
+- Enable "Read and write permissions" for Actions
+- This allows publishing to GitHub Container Registry
+
+### CI/CD Workflow Triggers
+
+```yaml
+# Main CI - runs on all pushes and PRs
+on:
+  push:
+    branches: [ main, develop, feature/** ]
+  pull_request:
+    branches: [ main ]
+
+# Frontend deployment - only on main branch
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+
+# Docker publishing - only on main branch
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'Dockerfile'
+```
+
+### Monitoring CI/CD
+
+#### GitHub Actions Dashboard
+- View workflow runs at `https://github.com/{owner}/{repo}/actions`
+- Monitor build times and success rates
+- Debug failed builds with detailed logs
+
+#### Deployment Status
+- Frontend: Check GitHub Pages settings for deployment URL
+- Docker: View published images in GitHub Container Registry
+- Backend: Monitor container health checks
+
+### Troubleshooting CI/CD
+
+#### Common Issues
+
+1. **Build Failures**:
+   ```bash
+   # Check local environment matches CI
+   cd backend
+   ruff check .
+   pytest
+   
+   cd ../frontend
+   npm run build
+   npm test
+   ```
+
+2. **Docker Build Issues**:
+   ```bash
+   # Test Docker build locally
+   docker build -t tennis-backend .
+   docker run -p 8000:8000 tennis-backend
+   ```
+
+3. **Deployment Failures**:
+   - Check GitHub Pages settings
+   - Verify repository permissions
+   - Review workflow logs for specific errors
+
+#### Performance Optimization
+
+1. **Cache Dependencies**:
+   - Python: Uses pip cache with pyproject.toml
+   - Node.js: Uses npm cache with package-lock.json
+   - Docker: Multi-stage builds for efficiency
+
+2. **Parallel Execution**:
+   - Backend and frontend jobs run in parallel
+   - Concurrency controls prevent resource conflicts
+   - Cancels in-progress builds on new commits
+
+3. **Selective Triggers**:
+   - Path-based triggers reduce unnecessary builds
+   - Branch-specific deployments
+   - Conditional job execution
 
 ## Local Development Setup
 

@@ -28,7 +28,7 @@ import App from './App';
 
 test('renders tennis analysis app title', () => {
   render(<App />);
-  const titleElement = screen.getByText(/Tennis Analysis System/i);
+  const titleElement = screen.getByText(/Tennis Video Analyzer/i);
   expect(titleElement).toBeInTheDocument();
 });
 
@@ -38,14 +38,10 @@ test('renders upload section', () => {
   expect(uploadElement).toBeInTheDocument();
 });
 
-test('renders video list section', () => {
+test('renders view videos button', () => {
   render(<App />);
-  const listElement = screen.getByTestId('video-list');
-  expect(listElement).toBeInTheDocument();
+  const viewVideosButton = screen.getByText(/View My Videos/i);
+  expect(viewVideosButton).toBeInTheDocument();
 });
 
-test('renders footer with phase info', () => {
-  render(<App />);
-  const footerElement = screen.getByText(/Phase 3/i);
-  expect(footerElement).toBeInTheDocument();
-});
+

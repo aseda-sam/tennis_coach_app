@@ -112,14 +112,7 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
     return `${mb.toFixed(2)} MB`;
   };
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
-  };
+
 
   const getStatusTag = (analysis: AnalysisData | null, isAnalyzing: boolean) => {
     if (isAnalyzing) {
