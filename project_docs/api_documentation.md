@@ -12,6 +12,10 @@ http://localhost:8000
 ## Authentication
 Currently, no authentication is required for MVP. Future versions will implement JWT-based authentication.
 
+## Interactive Documentation
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
 ## Endpoints
 
 ### Video Management
@@ -26,9 +30,14 @@ Upload a tennis video for analysis.
 **Response:**
 ```json
 {
-  "video_id": "uuid-string",
   "filename": "tennis_rally.mp4",
-  "status": "uploaded",
+  "file_size": 15728640,
+  "content_type": "video/mp4",
+  "duration": 45.2,
+  "fps": 30.0,
+  "width": 1920,
+  "height": 1080,
+  "frame_count": 1356,
   "message": "Video uploaded successfully"
 }
 ```
@@ -38,223 +47,187 @@ Retrieve list of uploaded videos.
 
 **Response:**
 ```json
-{
-  "videos": [
-    {
-      "video_id": "uuid-string",
-      "filename": "tennis_rally.mp4",
-      "upload_date": "2024-01-15T10:30:00Z",
-      "duration": 45.2,
-      "status": "processed",
-      "analysis_available": true
-    }
-  ]
-}
+[
+  {
+    "filename": "tennis_rally.mp4",
+    "file_size": 15728640,
+    "duration": 45.2,
+    "width": 1920,
+    "height": 1080
+  }
+]
 ```
 
-#### GET /api/videos/{video_id}
+#### GET /api/videos/{filename}
 Get detailed information about a specific video.
 
 **Response:**
 ```json
 {
-  "video_id": "uuid-string",
   "filename": "tennis_rally.mp4",
-  "upload_date": "2024-01-15T10:30:00Z",
-  "duration": 45.2,
   "file_size": 15728640,
-  "status": "processed",
-  "processing_time": 12.5,
-  "analysis_available": true
+  "content_type": "video/mp4",
+  "duration": 45.2,
+  "fps": 30.0,
+  "width": 1920,
+  "height": 1080,
+  "frame_count": 1356,
+  "message": "Video details retrieved successfully"
 }
 ```
 
-### Analysis Results
+#### DELETE /api/videos/{filename}
+Delete a video and its associated data.
 
-#### GET /api/analysis/{video_id}
+**Response:**
+```json
+{
+  "message": "Video deleted successfully"
+}
+```
+
+### Analysis
+
+#### POST /api/analysis/{video_filename}
+Start analysis for a specific video.
+
+**Response:**
+```json
+{
+  "message": "Analysis started successfully",
+  "analysis_id": 1,
+  "processing_time": 12.5,
+  "analysis_summary": {
+    "total_frames": 1356,
+    "frames_with_balls": 1200,
+    "total_ball_detections": 2400,
+    "average_detections_per_frame": 2.0,
+    "detection_rate": 0.88
+  },
+  "frames_processed": 1356,
+  "error": null
+}
+```
+
+#### GET /api/analysis/{video_filename}
 Get analysis results for a specific video.
 
 **Response:**
 ```json
 {
-  "video_id": "uuid-string",
-  "analysis_summary": {
-    "total_strokes": 12,
-    "forehand_count": 8,
-    "backhand_count": 4,
-    "serve_count": 0,
-    "average_rally_duration": 8.5,
-    "court_coverage_percentage": 65.2
-  },
-  "ball_trajectory": [
-    {
-      "frame": 1,
-      "timestamp": 0.0,
-      "x": 150,
-      "y": 200,
-      "confidence": 0.95
-    }
-  ],
-  "player_positions": [
-    {
-      "frame": 1,
-      "timestamp": 0.0,
-      "court_position": "baseline",
-      "x": 300,
-      "y": 400,
-      "confidence": 0.88
-    }
-  ],
-  "stroke_events": [
-    {
-      "frame": 15,
-      "timestamp": 0.5,
-      "stroke_type": "forehand",
-      "confidence": 0.92,
-      "position": {
-        "x": 320,
-        "y": 380
-      }
-    }
-  ]
+  "id": 1,
+  "video_filename": "tennis_rally.mp4",
+  "analysis_type": "ball_detection",
+  "total_frames": 1356,
+  "frames_with_balls": 1200,
+  "total_ball_detections": 2400,
+  "average_detections_per_frame": 2.0,
+  "detection_rate": 0.88,
+  "processing_time": 12.5,
+  "model_used": "yolov8n.pt",
+  "confidence_threshold": 0.5
 }
 ```
 
-#### GET /api/analysis/{video_id}/metrics
-Get detailed metrics for a video.
+#### GET /api/analysis
+List all analyses.
 
 **Response:**
 ```json
-{
-  "video_id": "uuid-string",
-  "performance_metrics": {
-    "stroke_speed": {
-      "average": 85.2,
-      "max": 120.5,
-      "min": 45.8
-    },
-    "court_positioning": {
-      "baseline_time": 65.2,
-      "service_line_time": 34.8,
-      "net_time": 0.0
-    },
-    "ball_trajectory": {
-      "average_speed": 45.8,
-      "max_height": 2.5,
-      "bounce_count": 8
-    }
-  },
-  "heatmap_data": {
-    "court_coverage": "base64-encoded-image",
-    "stroke_positions": "base64-encoded-image"
+[
+  {
+    "id": 1,
+    "video_filename": "tennis_rally.mp4",
+    "analysis_type": "ball_detection",
+    "total_frames": 1356,
+    "frames_with_balls": 1200,
+    "total_ball_detections": 2400,
+    "average_detections_per_frame": 2.0,
+    "detection_rate": 0.88,
+    "processing_time": 12.5,
+    "model_used": "yolov8n.pt",
+    "confidence_threshold": 0.5
   }
-}
+]
 ```
 
-### Processing Status
-
-#### GET /api/processing/status/{video_id}
-Check processing status of a video.
+#### DELETE /api/analysis/{video_filename}
+Delete analysis results for a specific video.
 
 **Response:**
 ```json
 {
-  "video_id": "uuid-string",
-  "status": "processing",
-  "progress": 75,
-  "current_step": "stroke_analysis",
-  "estimated_completion": "2024-01-15T10:35:00Z"
+  "message": "Analysis deleted successfully"
 }
 ```
 
-### Batch Operations
+### Health & Status
 
-#### POST /api/analysis/batch
-Process multiple videos in batch.
-
-**Request:**
-```json
-{
-  "video_ids": ["uuid-1", "uuid-2", "uuid-3"]
-}
-```
+#### GET /
+Get API information.
 
 **Response:**
 ```json
 {
-  "batch_id": "batch-uuid",
-  "total_videos": 3,
-  "status": "queued",
-  "estimated_completion": "2024-01-15T11:00:00Z"
+  "message": "Tennis Analysis API",
+  "version": "1.0.0",
+  "docs": "/docs",
+  "status": "running"
 }
 ```
+
+#### GET /health
+Health check endpoint.
+
+**Response:**
+```json
+{
+  "status": "healthy"
+}
+```
+
+### Static Files
+
+#### GET /processed/{filename}
+Access processed video files.
+
+**Response:**
+- Video file content (if file exists)
+- 404 Not Found (if file doesn't exist)
 
 ## Error Responses
 
-### Standard Error Format
+### 400 Bad Request
 ```json
 {
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid video format. Supported formats: MP4, MOV, AVI",
-    "details": {
-      "field": "video_file",
-      "value": "invalid_format"
-    }
-  }
+  "detail": "Invalid file format. Only MP4, MOV, AVI files are supported."
 }
 ```
 
-### Common Error Codes
-- `VALIDATION_ERROR`: Invalid input data
-- `FILE_TOO_LARGE`: Video file exceeds size limit
-- `UNSUPPORTED_FORMAT`: Video format not supported
-- `PROCESSING_FAILED`: Analysis processing failed
-- `VIDEO_NOT_FOUND`: Video ID not found
-- `ANALYSIS_NOT_AVAILABLE`: Analysis not yet completed
-
-## Rate Limiting
-- Upload: 10 requests per minute
-- Analysis: 5 requests per minute
-- General: 100 requests per minute
-
-## File Size Limits
-- Maximum video size: 100MB
-- Supported formats: MP4, MOV, AVI
-- Maximum duration: 5 minutes (for MVP)
-
-## WebSocket Endpoints
-
-### /ws/processing/{video_id}
-Real-time processing status updates.
-
-**Message Format:**
+### 404 Not Found
 ```json
 {
-  "type": "status_update",
-  "data": {
-    "progress": 50,
-    "current_step": "ball_tracking",
-    "message": "Tracking ball trajectory..."
-  }
+  "detail": "Video not found"
 }
 ```
 
-## Development Notes
-
-### Testing Endpoints
-Use the automatic FastAPI documentation at `/docs` for interactive testing.
-
-### Environment Variables
-```bash
-DATABASE_URL=sqlite:///./data/database/tennis_analysis.db
-UPLOAD_DIR=./data/videos/raw
-PROCESSED_DIR=./data/videos/processed
-MAX_FILE_SIZE=104857600  # 100MB
+### 500 Internal Server Error
+```json
+{
+  "detail": "Analysis failed: Model loading error"
+}
 ```
 
-### Response Headers
-All responses include:
-- `Content-Type: application/json`
-- `X-Processing-Time: 0.123s`
-- `X-Request-ID: uuid-string` 
+## File Upload Limits
+
+- **Maximum file size**: 100MB
+- **Supported formats**: MP4, MOV, AVI
+- **Processing time**: Varies based on video length and resolution
+
+## CORS Configuration
+
+The API is configured to allow requests from:
+- http://localhost:3000
+- http://127.0.0.1:3000
+
+This enables the React frontend to communicate with the backend. 
