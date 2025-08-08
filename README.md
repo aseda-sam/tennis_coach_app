@@ -4,20 +4,19 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 
 ## 🎾 Current Features
 
-- **Video Upload & Management**: Secure file upload with validation and metadata extraction
-- **Database Integration**: SQLite database with comprehensive video metadata storage
-- **RESTful API**: FastAPI backend with full CRUD operations
-- **React Frontend**: Modern web interface for video management and analysis
-- **Computer Vision Analysis**: Ball detection and analysis using YOLO models
-- **File Management**: List, view details, and delete uploaded videos
-- **Error Handling**: Comprehensive validation and error responses
-- **Documentation**: Complete API documentation and testing guides
+- **Video Upload & Playback**: Upload tennis videos and watch them directly in the browser
+- **Video Library Management**: Organize and manage your tennis video collection with easy browsing
+- **Ball Detection Analysis**: Automatically detect and track tennis balls in your videos
+- **Analysis Dashboard**: View detailed statistics about ball detection performance and video processing
+- **Real-time Processing**: Get instant feedback on analysis progress and results
+- **Cross-platform Access**: Use the web interface from any device with a modern browser
+- **Secure File Handling**: Your videos are processed locally with no external data sharing
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Python 3.8+
-- Node.js 16+ (for frontend)
+- Node.js 16+
 
 ### Local Development
 
@@ -188,4 +187,4 @@ MIT License
 
 ---
 
-**Built with ❤️ for tennis and data engineering** 
+**Built with Aseda's ❤️ for tennis and software engineering** 
