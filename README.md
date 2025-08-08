@@ -32,7 +32,7 @@ cd tennis_coach_app_2
 
 2. **Start All Services**
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 3. **Access the Application**
@@ -57,7 +57,9 @@ source venv/bin/activate
 
 2. **Install Backend Dependencies**
 ```bash
+cd backend
 pip install -e .
+cd ..
 ```
 
 3. **Install Frontend Dependencies**
@@ -95,7 +97,8 @@ tennis_coach_app_2/
 │   │   ├── core/           # Configuration and database
 │   │   ├── services/       # Business logic
 │   │   └── models/         # Database models
-│   └── data/               # Local data storage
+│   ├── pyproject.toml      # Python project configuration
+│   └── tests/              # Backend tests
 ├── frontend/               # React frontend
 │   ├── src/
 │   │   ├── components/     # React components
@@ -103,7 +106,8 @@ tennis_coach_app_2/
 │   │   └── types/          # TypeScript type definitions
 │   └── public/             # Static assets
 ├── project_docs/           # Project documentation
-├── pyproject.toml          # Python project configuration
+├── docker-compose.yml      # Docker development setup
+├── Dockerfile              # Backend container
 └── README.md               # This file
 ```
 
@@ -178,31 +182,31 @@ docker run -p 8000:8000 ghcr.io/aseda-sam/tennis_coach_app/backend:latest
 
 ```bash
 # Start all services
-docker-compose up --build
+docker compose up --build
 
 # Start in background
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop services
-docker-compose down
+docker compose down
 
 # Rebuild and restart
-docker-compose up --build --force-recreate
+docker compose up --build --force-recreate
 
 # Run backend tests
-docker-compose exec backend pytest
+docker compose exec backend pytest
 
 # Run frontend tests
-docker-compose exec frontend npm test
+docker compose exec frontend npm test
 
 # Access backend shell
-docker-compose exec backend bash
+docker compose exec backend bash
 
 # Access frontend shell
-docker-compose exec frontend sh
+docker compose exec frontend sh
 ```
 
 ### Local Development

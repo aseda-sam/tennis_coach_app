@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -11,6 +9,7 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./data:/app/data
+    working_dir: /app/backend
     environment:
       - DEBUG=True
       - DATABASE_URL=sqlite:///./data/database/tennis_analysis.db
@@ -23,6 +22,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: development
     ports:
       - "3000:3000"
     volumes:
