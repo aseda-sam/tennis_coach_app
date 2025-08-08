@@ -2,7 +2,7 @@ import axios from 'axios';
 import { AnalysisData } from '../components/AnalysisResults';
 import { VideoListResponse, VideoMetadata, VideoUploadResponse } from '../types/video';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -16,6 +16,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error('Request error:', error);
     return Promise.reject(error);
   }
 );
@@ -27,6 +28,10 @@ api.interceptors.response.use(
   },
   (error) => {
     console.error('API Error:', error.response?.data || error.message);
+    // If it's a network error (no backend available), show a user-friendly message
+    if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
+      console.warn('Backend API not available. Running in demo mode.');
+    }
     return Promise.reject(error);
   }
 );
