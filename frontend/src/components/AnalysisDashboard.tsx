@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { analysisApi } from '../services/api';
 import './AnalysisDashboard.css';
 import { AnalysisData } from './AnalysisResults';
@@ -21,9 +21,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   useEffect(() => {
     loadAnalysis();
-  }, [videoFilename]);
+  }, [loadAnalysis]);
 
-  const loadAnalysis = async () => {
+  const loadAnalysis = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -35,7 +35,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [videoFilename]);
 
   const formatDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -43,10 +43,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const formatFileSize = (bytes: number): string => {
-    const mb = bytes / (1024 * 1024);
-    return `${mb.toFixed(2)} MB`;
-  };
+
 
   const getAnalysisStatus = () => {
     if (loading) return { text: 'Loading...', color: 'loading' };
