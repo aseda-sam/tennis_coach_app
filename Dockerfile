@@ -7,19 +7,25 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
-COPY backend/pyproject.toml backend/README.md ./
+COPY backend/pyproject.toml ./
 
 # Development stage
 FROM base as development
+COPY backend/ ./backend/
 RUN pip install --no-cache-dir -e . && \
     pip install --no-cache-dir pytest ruff
-COPY backend/ ./backend/
 RUN mkdir -p data/videos/raw data/videos/processed data/analysis_cache data/database
 EXPOSE 8000
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # Production stage
 FROM base as production
@@ -32,4 +38,4 @@ USER appuser
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
