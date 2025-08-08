@@ -1,21 +1,22 @@
 # Tennis Computer Vision Analysis System
 
-A computer vision-based tennis analysis system that demonstrates data engineering and AI evaluation skills. Currently implements a robust backend for video upload and management, with plans for computer vision analysis.
+A computer vision-based tennis analysis system that demonstrates data engineering and AI evaluation skills. Currently implements a robust backend for video upload and management, with a React frontend for user interaction.
 
 ## 🎾 Current Features
 
-- **Video Upload & Management**: Secure file upload with validation and metadata extraction
-- **Database Integration**: SQLite database with comprehensive video metadata storage
-- **RESTful API**: FastAPI backend with full CRUD operations
-- **File Management**: List, view details, and delete uploaded videos
-- **Error Handling**: Comprehensive validation and error responses
-- **Documentation**: Complete API documentation and testing guides
+- **Video Upload & Playback**: Upload tennis videos and watch them directly in the browser
+- **Video Library Management**: Organize and manage your tennis video collection with easy browsing
+- **Ball Detection Analysis**: Automatically detect and track tennis balls in your videos
+- **Analysis Dashboard**: View detailed statistics about ball detection performance and video processing
+- **Real-time Processing**: Get instant feedback on analysis progress and results
+- **Cross-platform Access**: Use the web interface from any device with a modern browser
+- **Secure File Handling**: Your videos are processed locally with no external data sharing
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Python 3.8+
-
+- Node.js 16+
 
 ### Local Development
 
@@ -29,18 +30,32 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-2. **Install Dependencies**
+2. **Install Backend Dependencies**
 ```bash
 pip install -e .
 ```
 
-3. **Run Backend Server**
+3. **Install Frontend Dependencies**
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+4. **Run Backend Server**
 ```bash
 cd backend
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-4. **Access the Application**
+5. **Run Frontend Development Server** (in a new terminal)
+```bash
+cd frontend
+npm start
+```
+
+6. **Access the Application**
+- **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
 - **Health Check**: http://localhost:8000/health
@@ -56,6 +71,12 @@ tennis_coach_app_2/
 │   │   ├── services/       # Business logic
 │   │   └── models/         # Database models
 │   └── data/               # Local data storage
+├── frontend/               # React frontend
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   ├── services/       # API service layer
+│   │   └── types/          # TypeScript type definitions
+│   └── public/             # Static assets
 ├── project_docs/           # Project documentation
 ├── pyproject.toml          # Python project configuration
 └── README.md               # This file
@@ -64,6 +85,7 @@ tennis_coach_app_2/
 ## 🛠 Tech Stack
 
 - **Backend**: FastAPI (Python)
+- **Frontend**: React with TypeScript
 - **Database**: SQLite with SQLAlchemy ORM
 - **File Storage**: Local file system
 - **Validation**: Pydantic models
@@ -77,15 +99,28 @@ tennis_coach_app_2/
 - `POST /api/videos/upload` - Upload new video
 - `DELETE /api/videos/{filename}` - Delete video
 
+### Analysis
+- `POST /api/analysis/{video_filename}` - Start analysis for a video
+- `GET /api/analysis/{video_filename}` - Get analysis results
+- `GET /api/analysis/` - List all analyses
+- `DELETE /api/analysis/{video_filename}` - Delete analysis results
+
 ### Health & Status
 - `GET /` - API information
 - `GET /health` - Health check
+
+### Documentation & Static Files
+- `GET /docs` - Interactive API documentation (Swagger UI)
+- `GET /redoc` - Alternative API documentation (ReDoc)
+- `GET /processed/{filename}` - Access processed video files
 
 ## 🎯 Project Highlights
 
 This project demonstrates:
 - **FastAPI Development**: RESTful API with proper error handling
+- **React Frontend**: Modern web interface with TypeScript
 - **Database Design**: SQLAlchemy ORM with comprehensive schema
+- **Computer Vision**: YOLO-based ball detection and analysis
 - **File Management**: Secure file upload with validation
 - **Code Quality**: Type hints, linting, and comprehensive testing
 - **Documentation**: Professional project documentation and guides
@@ -97,6 +132,7 @@ This project demonstrates:
 - [Database Schema](project_docs/database_schema.md)
 - [Testing Guide](project_docs/testing_guide.md)
 - [React Frontend Guide](project_docs/react_frontend_guide.md)
+- [Deployment Guide](project_docs/deployment_guide.md)
 
 ## 🔧 Development
 
@@ -117,32 +153,29 @@ ruff check .
 pytest
 ```
 
+### Frontend Development
+```bash
+cd frontend
+
+# Run development server
+npm start
+
+# Build for production
+npm run build
+
+# Run tests
+npm test
+```
+
 ### Database Operations
 ```bash
 # Database is automatically created on startup
 # Located at: data/database/tennis_analysis.db
 ```
 
-
-
-## 🎾 Tennis Analysis Features
-
-### Current Backend Foundation
-- ✅ Video upload and storage
-- ✅ Metadata extraction and storage
-- ✅ Database management
-- ✅ API endpoints for all operations
-
-### Planned Features
-- 🔄 Computer vision ball tracking
-- 🔄 Player pose estimation
-- 🔄 Stroke detection and analysis
-- 🔄 Performance metrics dashboard
-- 🔄 Real-time processing
-
 ## 🤝 Contributing
 
-1. Fork the repository
+1. Fork the repository from main
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests if applicable
@@ -154,4 +187,4 @@ MIT License
 
 ---
 
-**Built with ❤️ for tennis and data engineering** 
+**Built with Aseda's ❤️ for tennis and software engineering** 
