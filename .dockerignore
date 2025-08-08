@@ -1,0 +1,59 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Node.js
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+data/videos/raw/*
+data/videos/processed/*
+data/analysis_cache/*
+data/database/*
+!data/videos/raw/.gitkeep
+!data/videos/processed/.gitkeep
+!data/analysis_cache/.gitkeep
+!data/database/.gitkeep
+
+# Documentation
+project_docs/
+*.md
+!backend/README.md
+
+# Frontend (not needed for backend container)
+frontend/
