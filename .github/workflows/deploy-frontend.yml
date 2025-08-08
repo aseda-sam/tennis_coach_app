@@ -37,6 +37,8 @@ jobs:
         
       - name: Build
         run: npm run build
+        env:
+          REACT_APP_API_URL: https://api.tennis-coach-app.com/api  # Placeholder - replace with actual backend URL when deployed
         
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import VideoList from './components/VideoList';
@@ -8,6 +8,28 @@ import { VideoMetadata } from './types/video';
 function App() {
   const [currentView, setCurrentView] = useState<'upload' | 'list' | 'dashboard'>('upload');
   const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+
+  // Check if we're in demo mode (no backend available)
+  useEffect(() => {
+    const checkBackendAvailability = async () => {
+      try {
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+        const response = await fetch(`${apiUrl}/health`);
+        if (!response.ok) {
+          setIsDemoMode(true);
+        }
+      } catch (error) {
+        console.log('Backend not available, running in demo mode');
+        setIsDemoMode(true);
+      }
+    };
+
+    // Only check in production (not localhost)
+    if (window.location.hostname !== 'localhost') {
+      checkBackendAvailability();
+    }
+  }, []);
 
   const handleVideoUploaded = () => {
     setCurrentView('list');
@@ -33,6 +55,11 @@ function App() {
       case 'upload':
         return (
           <div className="app-container">
+            {isDemoMode && (
+              <div className="demo-banner">
+                <p>🚧 Demo Mode: Backend API not available. This is a preview of the UI.</p>
+              </div>
+            )}
             <div className="upload-section">
               <h1 className="app-title">Tennis Video Analyzer</h1>
               <p className="app-subtitle">
@@ -92,7 +119,7 @@ function App() {
         return (
           <AnalysisDashboard
             videoFilename={selectedVideo.filename}
-            videoUrl={`http://localhost:8000/api/videos/${selectedVideo.filename}`}
+            videoUrl={`${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/videos/${selectedVideo.filename}`}
             onClose={handleBackToList}
           />
         );
