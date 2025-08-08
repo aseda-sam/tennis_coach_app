@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { analysisApi } from '../services/api';
 import './AnalysisModal.css';
 import { AnalysisData } from './AnalysisResults';
@@ -22,9 +22,9 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({
     if (isOpen && videoFilename) {
       loadAnalysis();
     }
-  }, [isOpen, videoFilename]);
+  }, [isOpen, videoFilename, loadAnalysis]);
 
-  const loadAnalysis = async () => {
+  const loadAnalysis = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -36,7 +36,7 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [videoFilename]);
 
   if (!isOpen) return null;
 
