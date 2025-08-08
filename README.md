@@ -2,6 +2,12 @@
 
 A computer vision-based tennis analysis system that demonstrates data engineering and AI evaluation skills. Currently implements a robust backend for video upload and management, with a React frontend for user interaction.
 
+## CI/CD Status
+
+- [![CI](https://github.com/aseda-sam/tennis_coach_app/workflows/CI/badge.svg)](https://github.com/aseda-sam/tennis_coach_app/actions)
+- [![Deploy Frontend](https://github.com/aseda-sam/tennis_coach_app/workflows/Deploy%20Frontend/badge.svg)](https://github.com/aseda-sam/tennis_coach_app/actions)
+- [![Docker](https://github.com/aseda-sam/tennis_coach_app/workflows/Publish%20Backend%20Docker%20Image/badge.svg)](https://github.com/aseda-sam/tennis_coach_app/actions)
+
 ## 🎾 Current Features
 
 - **Video Upload & Playback**: Upload tennis videos and watch them directly in the browser
@@ -14,11 +20,30 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.8+
-- Node.js 16+
+### Option 1: Docker Development (Recommended)
 
-### Local Development
+**Prerequisites**: Docker and Docker Compose
+
+1. **Clone and Setup**
+```bash
+git clone <repository-url>
+cd tennis_coach_app_2
+```
+
+2. **Start All Services**
+```bash
+docker compose up --build
+```
+
+3. **Access the Application**
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+
+### Option 2: Local Development
+
+**Prerequisites**: Python 3.8+, Node.js 16+
 
 1. **Clone and Setup**
 ```bash
@@ -32,7 +57,9 @@ source venv/bin/activate
 
 2. **Install Backend Dependencies**
 ```bash
+cd backend
 pip install -e .
+cd ..
 ```
 
 3. **Install Frontend Dependencies**
@@ -70,7 +97,8 @@ tennis_coach_app_2/
 │   │   ├── core/           # Configuration and database
 │   │   ├── services/       # Business logic
 │   │   └── models/         # Database models
-│   └── data/               # Local data storage
+│   ├── pyproject.toml      # Python project configuration
+│   └── tests/              # Backend tests
 ├── frontend/               # React frontend
 │   ├── src/
 │   │   ├── components/     # React components
@@ -78,7 +106,8 @@ tennis_coach_app_2/
 │   │   └── types/          # TypeScript type definitions
 │   └── public/             # Static assets
 ├── project_docs/           # Project documentation
-├── pyproject.toml          # Python project configuration
+├── docker-compose.yml      # Docker development setup
+├── Dockerfile              # Backend container
 └── README.md               # This file
 ```
 
@@ -134,9 +163,55 @@ This project demonstrates:
 - [React Frontend Guide](project_docs/react_frontend_guide.md)
 - [Deployment Guide](project_docs/deployment_guide.md)
 
+## 🚀 Deployment
+
+### Live Applications
+- **Frontend**: [GitHub Pages](https://aseda-sam.github.io/tennis_coach_app/)
+- **Backend API**: Available as Docker image at `ghcr.io/aseda-sam/tennis_coach_app/backend:latest`
+
+### Container Deployment
+```bash
+# Pull and run the backend container
+docker pull ghcr.io/aseda-sam/tennis_coach_app/backend:latest
+docker run -p 8000:8000 ghcr.io/aseda-sam/tennis_coach_app/backend:latest
+```
+
 ## 🔧 Development
 
-### Backend Development
+### Docker Development (Recommended)
+
+```bash
+# Start all services
+docker compose up --build
+
+# Start in background
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop services
+docker compose down
+
+# Rebuild and restart
+docker compose up --build --force-recreate
+
+# Run backend tests
+docker compose exec backend pytest
+
+# Run frontend tests
+docker compose exec frontend npm test
+
+# Access backend shell
+docker compose exec backend bash
+
+# Access frontend shell
+docker compose exec frontend sh
+```
+
+### Local Development
+
+#### Backend Development
 ```bash
 cd backend
 
@@ -153,7 +228,7 @@ ruff check .
 pytest
 ```
 
-### Frontend Development
+#### Frontend Development
 ```bash
 cd frontend
 
