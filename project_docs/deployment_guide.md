@@ -355,9 +355,9 @@ vercel --prod
 
 ### Option 2: Docker Deployment
 
-#### Docker Compose Setup
+#### Development Docker Compose
 ```yaml
-# docker-compose.yml
+# docker-compose.yml (Development)
 version: '3.8'
 
 services:
@@ -366,7 +366,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data  # Bind mount for easy development access
+      - ./backend:/app/backend  # Hot reload
     environment:
       - DATABASE_URL=sqlite:///./data/database/tennis_analysis.db
     depends_on:
@@ -376,6 +377,9 @@ services:
     build: ./frontend
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
 
@@ -383,6 +387,96 @@ services:
     image: redis:alpine
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
+```
+
+#### Production Docker Compose
+```yaml
+# docker-compose.prod.yml (Production)
+version: '3.8'
+
+services:
+  backend:
+    image: ghcr.io/your-repo/backend:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_data:/app/data  # Named volume for production
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/tennis_analysis
+      - UPLOAD_DIR=/app/data/videos/raw
+      - PROCESSED_DIR=/app/data/videos/processed
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+
+  frontend:
+    image: ghcr.io/your-repo/frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=tennis_analysis
+      - POSTGRES_USER=tennisuser
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  app_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/tennis-app/data  # Dedicated server path
+  postgres_data:
+  redis_data:
+```
+
+#### Volume Management Strategy
+
+**Development (Bind Mounts)**:
+- Easy file access for debugging
+- Direct host filesystem access
+- Perfect for development workflow
+
+**Production (Named Volumes)**:
+- Docker-managed storage optimization
+- Better performance and reliability
+- Proper backup and recovery support
+
+#### Volume Operations
+```bash
+# Backup production data
+docker run --rm -v tennis_app_data:/data -v $(pwd):/backup alpine tar czf /backup/app-data-backup.tar.gz /data
+
+# Restore production data
+docker run --rm -v tennis_app_data:/data -v $(pwd):/backup alpine tar xzf /backup/app-data-backup.tar.gz -C /
+
+# Migrate from development to production
+docker run --rm -v ./data:/source -v tennis_app_data:/dest alpine cp -r /source/* /dest/
 ```
 
 #### Backend Dockerfile
