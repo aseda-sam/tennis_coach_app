@@ -4,6 +4,15 @@
 
 This guide covers deployment options for the Tennis Analysis System, from local development to cloud deployment, including CI/CD pipeline setup.
 
+## 🚀 Current Live Deployment
+
+The application is currently live and accessible:
+
+- **Frontend**: [GitHub Pages](https://aseda-sam.github.io/tennis_coach_app/) 
+- **Backend API**: [tennis-coach-backend.onrender.com](https://tennis-coach-backend.onrender.com)
+- **API Documentation**: [tennis-coach-backend.onrender.com/docs](https://tennis-coach-backend.onrender.com/docs)
+- **Docker Images**: [GitHub Container Registry](https://github.com/aseda-sam/tennis_coach_app/pkgs/container/tennis_coach_app%2Fbackend)
+
 ## CI/CD Pipeline
 
 ### GitHub Actions Setup
@@ -311,53 +320,54 @@ npm start
 
 ## Production Deployment Options
 
-### Option 1: Simple Cloud Deployment (Recommended for Portfolio)
+### Current Production Setup ✅
 
-#### Railway (Free Tier Available)
+The application is currently deployed using a hybrid approach:
+
+#### Backend: Render (Currently Live)
+**URL**: `https://tennis-coach-backend.onrender.com`
+
+- **Automatic deployment** from GitHub main branch
+- **Docker-based deployment** using GitHub Container Registry images
+- **Environment**: Production-optimized with proper logging
+- **Database**: SQLite (with planned PostgreSQL migration)
+
+#### Frontend: GitHub Pages (Currently Live)  
+**URL**: Available via GitHub Pages
+
+- **Automatic deployment** via GitHub Actions on main branch changes
+- **Build optimization** with production environment variables
+- **API Integration**: Points to Render backend automatically
+- **CDN**: Served via GitHub's global CDN
+
+#### Docker Images: GitHub Container Registry
+- **Automatic publishing** on backend changes
+- **Multi-platform builds** for compatibility
+- **Versioned releases** with automatic tagging
+- **Pull command**: `docker pull ghcr.io/aseda-sam/tennis_coach_app/backend:latest`
+
+### Alternative Deployment Options
+
+#### Self-Hosted Docker (Advanced)
 ```bash
-# Install Railway CLI
+# Pull and run production images
+docker pull ghcr.io/aseda-sam/tennis_coach_app/backend:latest
+docker run -p 8000:8000 ghcr.io/aseda-sam/tennis_coach_app/backend:latest
+```
+
+#### Railway (Alternative Cloud Option)
+```bash
+# Alternative if switching from Render
 npm install -g @railway/cli
-
-# Login to Railway
 railway login
-
-# Deploy backend
-cd backend
-railway init
 railway up
-
-# Deploy frontend
-cd ../frontend
-railway init
-railway up
-```
-
-#### Render (Free Tier Available)
-```yaml
-# render.yaml
-services:
-  - type: web
-    name: tennis-analysis-backend
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: DATABASE_URL
-        value: sqlite:///./data/database/tennis_analysis.db
-```
-
-#### Vercel (Frontend Only)
-```bash
-# Deploy frontend to Vercel
-cd frontend
-vercel --prod
 ```
 
 ### Option 2: Docker Deployment
 
-#### Docker Compose Setup
+#### Development Docker Compose
 ```yaml
-# docker-compose.yml
+# docker-compose.yml (Development)
 version: '3.8'
 
 services:
@@ -366,7 +376,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data  # Bind mount for easy development access
+      - ./backend:/app/backend  # Hot reload
     environment:
       - DATABASE_URL=sqlite:///./data/database/tennis_analysis.db
     depends_on:
@@ -376,6 +387,9 @@ services:
     build: ./frontend
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
 
@@ -383,6 +397,96 @@ services:
     image: redis:alpine
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
+```
+
+#### Production Docker Compose
+```yaml
+# docker-compose.prod.yml (Production)
+version: '3.8'
+
+services:
+  backend:
+    image: ghcr.io/aseda-sam/tennis_coach_app/backend:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_data:/app/data  # Named volume for production
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/tennis_analysis
+      - UPLOAD_DIR=/app/data/videos/raw
+      - PROCESSED_DIR=/app/data/videos/processed
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+
+  frontend:
+    image: ghcr.io/your-repo/frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=tennis_analysis
+      - POSTGRES_USER=tennisuser
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  app_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/tennis-app/data  # Dedicated server path
+  postgres_data:
+  redis_data:
+```
+
+#### Volume Management Strategy
+
+**Development (Bind Mounts)**:
+- Easy file access for debugging
+- Direct host filesystem access
+- Perfect for development workflow
+
+**Production (Named Volumes)**:
+- Docker-managed storage optimization
+- Better performance and reliability
+- Proper backup and recovery support
+
+#### Volume Operations
+```bash
+# Backup production data
+docker run --rm -v tennis_app_data:/data -v $(pwd):/backup alpine tar czf /backup/app-data-backup.tar.gz /data
+
+# Restore production data
+docker run --rm -v tennis_app_data:/data -v $(pwd):/backup alpine tar xzf /backup/app-data-backup.tar.gz -C /
+
+# Migrate from development to production
+docker run --rm -v ./data:/source -v tennis_app_data:/dest alpine cp -r /source/* /dest/
 ```
 
 #### Backend Dockerfile

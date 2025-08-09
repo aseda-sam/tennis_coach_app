@@ -25,6 +25,15 @@ MANIFEST
 .pytest_cache/
 .coverage
 htmlcov/
+.nyc_output/
+coverage/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
 # Virtual Environment
 venv/
@@ -42,6 +51,9 @@ venv.bak/
 
 # Cursor
 .cursor/
+
+# Claude AI
+.claude/
 
 # Ruff
 .ruff_cache/

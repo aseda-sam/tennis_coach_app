@@ -48,6 +48,10 @@ pip-delete-this-directory.txt
 *.swo
 *~
 
+# AI Assistants
+.cursor/
+.claude/
+
 # OS
 .DS_Store
 .DS_Store?
