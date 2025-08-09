@@ -92,7 +92,7 @@ function App() {
         return (
           <AnalysisDashboard
             videoFilename={selectedVideo.filename}
-            videoUrl={`${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/videos/${selectedVideo.filename}`}
+            videoUrl={`${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/videos/${selectedVideo.filename}/stream`}
             onClose={handleBackToList}
           />
         );
