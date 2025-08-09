@@ -4,7 +4,13 @@
 
 This guide breaks down React frontend development into simple, digestible steps. We'll build a minimal but functional frontend that connects to our FastAPI backend.
 
-**Goal**: Simple React app that can upload videos and display the list.
+**Goal**: Simple React app that can upload videos, display the list, and play videos.
+
+## ✅ **Recent Updates**
+- **Video Playback** - Added comprehensive VideoPlayer component with controls
+- **Enhanced Testing** - Jest configuration with coverage thresholds
+- **Development Tools** - ESLint, Prettier, and type checking scripts  
+- **Best Practices** - Comprehensive React development rules in `.cursor/rules/react-frontend.mdc`
 
 ## Phase 5: Frontend Development - Step-by-Step
 
