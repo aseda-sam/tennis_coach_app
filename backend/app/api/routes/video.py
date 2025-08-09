@@ -114,7 +114,6 @@ async def stream_video(filename: str, db: Session = Depends(get_db)) -> FileResp
     return FileResponse(
         path=str(file_path),
         media_type=db_video.content_type or "video/mp4",
-        filename=filename,
     )
 
 
