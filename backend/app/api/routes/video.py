@@ -3,6 +3,7 @@ from typing import List, Optional
 
 import cv2
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -90,6 +91,31 @@ async def list_videos(db: Session = Depends(get_db)) -> List[VideoListItem]:
         )
 
     return videos
+
+
+@router.get("/{filename}/stream")
+async def stream_video(filename: str, db: Session = Depends(get_db)) -> FileResponse:
+    """Stream a video file."""
+    # Check if video exists in database
+    db_video = get_video_by_filename(db, filename)
+    if not db_video:
+        raise HTTPException(status_code=404, detail=f"Video {filename} not found")
+
+    # Check if file exists on disk
+    upload_dir = Path(settings.UPLOAD_DIR)
+    file_path = upload_dir / filename
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(
+            status_code=404, detail=f"Video file {filename} not found on disk"
+        )
+
+    # Return the video file
+    return FileResponse(
+        path=str(file_path),
+        media_type=db_video.content_type or "video/mp4",
+        filename=filename,
+    )
 
 
 @router.get("/{filename}", response_model=VideoInfo)
