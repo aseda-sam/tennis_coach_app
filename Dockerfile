@@ -24,6 +24,7 @@ COPY backend/ ./backend/
 RUN pip install --no-cache-dir -e . && \
     pip install --no-cache-dir pytest ruff
 RUN mkdir -p data/videos/raw data/videos/processed data/analysis_cache data/database
+WORKDIR /app/backend
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
@@ -35,6 +36,7 @@ RUN mkdir -p data/videos/raw data/videos/processed data/analysis_cache data/data
 RUN adduser --disabled-password --gecos '' appuser && \
     chown -R appuser:appuser /app
 USER appuser
+WORKDIR /app/backend
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
