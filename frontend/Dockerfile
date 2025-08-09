@@ -1,5 +1,5 @@
 # Development stage
-FROM node:20-alpine as development
+FROM node:20-alpine AS development
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ EXPOSE 3000
 CMD ["npm", "start"]
 
 # Build stage
-FROM node:20-alpine as builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -36,7 +36,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine as production
+FROM nginx:alpine AS production
 
 # Copy built app to nginx
 COPY --from=builder /app/build /usr/share/nginx/html

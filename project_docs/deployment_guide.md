@@ -51,6 +51,13 @@ Builds and publishes Docker images to GitHub Container Registry:
 
 ### Docker Setup
 
+#### Recent Docker Improvements ✅
+- **Fixed casing issues** - All `FROM ... AS` statements use consistent uppercase
+- **Improved layer caching** - Better organization for faster builds
+- **Added `.dockerignore` files** - Reduced build context size
+- **Updated health checks** - Now uses existing `/api/videos/` endpoint
+- **Enhanced error handling** - Better build process reliability
+
 #### Backend Container
 **File**: `Dockerfile`
 

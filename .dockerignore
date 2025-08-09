@@ -2,58 +2,70 @@
 .git
 .gitignore
 
-# Python
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-.Python
-env
-pip-log.txt
-pip-delete-this-directory.txt
-.tox
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.git
-.mypy_cache
-.pytest_cache
-.hypothesis
+# Documentation
+README.md
+project_docs/
 
-# Node.js
-node_modules
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Dependencies and builds (will be installed in container)
+node_modules/
+build/
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+
 # IDEs
-.vscode
-.idea
+.vscode/
+.idea/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Project specific
-data/videos/raw/*
-data/videos/processed/*
-data/analysis_cache/*
-data/database/*
-!data/videos/raw/.gitkeep
-!data/videos/processed/.gitkeep
-!data/analysis_cache/.gitkeep
-!data/database/.gitkeep
+# Data directories (mounted as volumes)
+data/
+backend/data/
 
-# Documentation
-project_docs/
-*.md
-!backend/README.md
+# Test coverage
+coverage/
+.coverage
+.nyc_output
 
-# Frontend (not needed for backend container)
-frontend/
+# Temporary files
+*.tmp
+*.temp

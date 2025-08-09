@@ -23,13 +23,52 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "test:ci": "CI=true react-scripts test --coverage --watchAll=false",
+    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write src/**/*.{ts,tsx,css,json}",
+    "format:check": "prettier --check src/**/*.{ts,tsx,css,json}",
+    "type-check": "tsc --noEmit",
     "eject": "react-scripts eject"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.0.0"
   },
   "eslintConfig": {
     "extends": [
       "react-app",
       "react-app/jest"
-    ]
+    ],
+    "rules": {
+      "@typescript-eslint/no-unused-vars": "error",
+      "react-hooks/exhaustive-deps": "error"
+    }
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.d.ts",
+      "!src/index.tsx",
+      "!src/reportWebVitals.ts",
+      "!src/setupTests.ts"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 7,
+        "functions": 8,
+        "lines": 20,
+        "statements": 20
+      }
+    }
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 80,
+    "tabWidth": 2
   },
   "browserslist": {
     "production": [

@@ -86,6 +86,40 @@
   backdrop-filter: blur(2px);
 }
 
+/* Error Overlay */
+.error-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.error-message {
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 80%;
+}
+
+.error-message .error-icon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.error-message p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
 .play-button {
   width: 80px;
   height: 80px;
