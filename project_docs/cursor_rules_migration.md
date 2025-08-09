@@ -11,6 +11,7 @@
 6. **`computer-vision.mdc`** - Computer vision patterns (alwaysApply: false)
 7. **`git-workflow.mdc`** - Git workflow and version control (alwaysApply: false)
 8. **`project-structure.mdc`** - Project structure documentation (alwaysApply: false)
+9. **`react-frontend.mdc`** ✅ **NEW** - React development patterns, testing, and best practices (alwaysApply: false)
 
 ### 📋 Project Docs Status
 

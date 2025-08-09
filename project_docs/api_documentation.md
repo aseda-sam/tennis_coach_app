@@ -76,6 +76,14 @@ Get detailed information about a specific video.
 }
 ```
 
+#### GET /api/videos/{filename}/stream ✅ **NEW**
+Stream a video file for playback.
+
+**Response:**
+- Video file content (binary stream)
+- Content-Type: video/mp4 (or appropriate video type)
+- 404 Not Found if video doesn't exist
+
 #### DELETE /api/videos/{filename}
 Delete a video and its associated data.
 
@@ -176,8 +184,10 @@ Get API information.
 }
 ```
 
-#### GET /health
-Health check endpoint.
+#### GET /health ⚠️ **DEPRECATED**
+Health check endpoint (not implemented in current version).
+
+**Alternative**: Use `GET /api/videos/` for health checks.
 
 **Response:**
 ```json

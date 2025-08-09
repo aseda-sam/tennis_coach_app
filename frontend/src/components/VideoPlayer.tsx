@@ -29,6 +29,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [showPlayOverlay, setShowPlayOverlay] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -36,6 +37,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
+      setError(null);
     };
 
     const handleTimeUpdate = () => {
@@ -52,27 +54,40 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setShowPlayOverlay(true);
     };
 
+    const handleError = () => {
+      setError('Failed to load video. Please check if the video file exists.');
+      setShowPlayOverlay(true);
+      setIsPlaying(false);
+    };
+
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
+    video.addEventListener('error', handleError);
 
     return () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
+      video.removeEventListener('error', handleError);
     };
   }, []);
 
-  const togglePlay = () => {
+  const togglePlay = async () => {
     const video = videoRef.current;
     if (!video) return;
 
-    if (isPlaying) {
-      video.pause();
-    } else {
-      video.play();
+    try {
+      if (isPlaying) {
+        video.pause();
+      } else {
+        await video.play();
+      }
+    } catch (err) {
+      console.error('Error playing video:', err);
+      setError('Failed to play video. Please try again.');
     }
   };
 
@@ -140,7 +155,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             preload="metadata"
           />
           
-          {showPlayOverlay && (
+          {error && (
+            <div className="error-overlay">
+              <div className="error-message">
+                <span className="error-icon">⚠️</span>
+                <p>{error}</p>
+              </div>
+            </div>
+          )}
+          
+          {showPlayOverlay && !error && (
             <div className="play-overlay">
               <div className="play-button">
                 <PlayIcon size={32} color="#3b82f6" />
