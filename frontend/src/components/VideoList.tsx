@@ -41,8 +41,14 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
       setVideos(videosResponse.videos);
       setAnalyses(analysesResponse);
     } catch (err: any) {
-      setError('Failed to load videos. Please try again.');
-      console.error('Error loading videos:', err);
+      console.error('Detailed error loading videos:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        url: err.config?.url,
+        baseURL: err.config?.baseURL
+      });
+      setError(`Failed to load videos: ${err.message}. Please try again.`);
     } finally {
       setLoading(false);
     }
