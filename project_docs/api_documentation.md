@@ -84,6 +84,14 @@ Stream a video file for playback.
 - Content-Type: video/mp4 (or appropriate video type)
 - 404 Not Found if video doesn't exist
 
+#### GET /api/videos/{filename}/annotated ✅ **NEW**
+Stream an annotated video file with pose and ball detection overlays.
+
+**Response:**
+- Annotated video file content (binary stream)
+- Content-Type: video/mp4
+- 404 Not Found if annotated video doesn't exist
+
 #### DELETE /api/videos/{filename}
 Delete a video and its associated data.
 
@@ -125,14 +133,18 @@ Get analysis results for a specific video.
 {
   "id": 1,
   "video_filename": "tennis_rally.mp4",
-  "analysis_type": "ball_detection",
+  "analysis_type": "ball_detection_and_pose",
   "total_frames": 1356,
   "frames_with_balls": 1200,
   "total_ball_detections": 2400,
   "average_detections_per_frame": 2.0,
   "detection_rate": 0.88,
+  "frames_with_pose": 1200,
+  "pose_detection_rate": 0.88,
+  "pose_detections": "{\"left_shoulder\": [x, y], ...}",
+  "annotated_video_path": "../data/videos/processed/tennis_rally_annotated.mp4",
   "processing_time": 12.5,
-  "model_used": "yolov8n.pt",
+  "model_used": "yolov8n+mediapipe",
   "confidence_threshold": 0.5
 }
 ```
@@ -146,14 +158,18 @@ List all analyses.
   {
     "id": 1,
     "video_filename": "tennis_rally.mp4",
-    "analysis_type": "ball_detection",
+    "analysis_type": "ball_detection_and_pose",
     "total_frames": 1356,
     "frames_with_balls": 1200,
     "total_ball_detections": 2400,
     "average_detections_per_frame": 2.0,
     "detection_rate": 0.88,
+    "frames_with_pose": 1200,
+    "pose_detection_rate": 0.88,
+    "pose_detections": "{\"left_shoulder\": [x, y], ...}",
+    "annotated_video_path": "../data/videos/processed/tennis_rally_annotated.mp4",
     "processing_time": 12.5,
-    "model_used": "yolov8n.pt",
+    "model_used": "yolov8n+mediapipe",
     "confidence_threshold": 0.5
   }
 ]
