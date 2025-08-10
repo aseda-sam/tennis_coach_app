@@ -467,10 +467,17 @@ class CVService:
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             cap.release()
 
+            # Validate FPS - use fallback if invalid
+            if fps <= 0 or fps > 120:  # Reasonable FPS range
+                logger.warning(f"Invalid FPS detected: {fps}, using fallback of 30 fps")
+                fps = 30.0
+
             logger.info(f"Video properties: {width}x{height}, {fps} fps")
 
-            # Create output path (use main data directory)
-            output_dir = Path("../data/videos/processed")
+            # Create output path using settings
+            from app.core.config import settings
+
+            output_dir = Path(settings.PROCESSED_DIR)
             output_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"Output directory: {output_dir.absolute()}")
 
