@@ -5,7 +5,7 @@ Handles video processing, ball detection, and player tracking.
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
@@ -23,7 +23,7 @@ class CVService:
         self._initialize_models()
 
     def _initialize_models(self) -> None:
-        """Initialize YOLO and other CV models."""
+        """Initialize YOLO and MediaPipe models."""
         try:
             # Initialize YOLO for ball detection
             from ultralytics import YOLO
@@ -37,8 +37,30 @@ class CVService:
             logger.error(f"Failed to initialize YOLO: {e}")
             self.ball_detector = None
 
+        try:
+            # Initialize MediaPipe for pose estimation
+            import mediapipe as mp
+
+            self.mp_pose = mp.solutions.pose
+            self.pose_detector = self.mp_pose.Pose(
+                static_image_mode=False,
+                model_complexity=1,  # 0, 1, or 2 (1 is good balance)
+                smooth_landmarks=True,
+                enable_segmentation=False,
+                smooth_segmentation=True,
+                min_detection_confidence=0.3,  # Lowered from 0.5
+                min_tracking_confidence=0.3,  # Lowered from 0.5
+            )
+            logger.info("MediaPipe Pose model initialized successfully")
+        except ImportError:
+            logger.warning("MediaPipe not available, pose detection disabled")
+            self.pose_detector = None
+        except (OSError, RuntimeError) as e:
+            logger.error(f"Failed to initialize MediaPipe Pose: {e}")
+            self.pose_detector = None
+
     def extract_frames(
-        self, video_path: Path, max_frames: int = 100
+        self, video_path: Path, max_frames: int = 50
     ) -> List[np.ndarray]:
         """
         Extract frames from video file.
@@ -146,17 +168,151 @@ class CVService:
 
         return detections
 
-    def analyze_video(self, video_path: Path) -> Dict[str, Any]:
+    def detect_pose(self, frame: np.ndarray) -> Optional[Dict[str, List[float]]]:
         """
-        Perform comprehensive video analysis.
+        Detect human pose in a frame using MediaPipe.
+
+        Args:
+            frame: Input frame as numpy array
+
+        Returns:
+            Dictionary of keypoint coordinates if pose detected, None otherwise
+        """
+        if not self.pose_detector:
+            logger.warning("Pose detector not available")
+            return None
+
+        try:
+            # Convert BGR to RGB (MediaPipe expects RGB)
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Process frame
+            results = self.pose_detector.process(rgb_frame)
+
+            if results.pose_landmarks:
+                landmarks = results.pose_landmarks.landmark
+                return self._extract_keypoints(landmarks, frame.shape)
+
+            return None
+
+        except (RuntimeError, ValueError, OSError) as e:
+            logger.error(f"Error in pose detection: {e}")
+            return None
+
+    def _extract_keypoints(
+        self, landmarks: Sequence, frame_shape: Tuple[int, int, int]
+    ) -> Dict[str, List[float]]:
+        """
+        Extract relevant keypoints for tennis analysis.
+
+        Args:
+            landmarks: MediaPipe pose landmarks
+            frame_shape: Shape of the frame (height, width, channels)
+
+        Returns:
+            Dictionary of keypoint coordinates
+        """
+        height, width = frame_shape[:2]
+
+        # Extract keypoints relevant for tennis analysis (back view focus)
+        # Note: Nose removed as it's not visible from behind
+        # Focus on upper body and legs for tennis stroke analysis
+        keypoints = {
+            # Upper body - essential for stroke analysis
+            "left_shoulder": [landmarks[11].x * width, landmarks[11].y * height],
+            "right_shoulder": [landmarks[12].x * width, landmarks[12].y * height],
+            "left_elbow": [landmarks[13].x * width, landmarks[13].y * height],
+            "right_elbow": [landmarks[14].x * width, landmarks[14].y * height],
+            "left_wrist": [landmarks[15].x * width, landmarks[15].y * height],
+            "right_wrist": [landmarks[16].x * width, landmarks[16].y * height],
+            # Core/hip area - important for stance and balance
+            "left_hip": [landmarks[23].x * width, landmarks[23].y * height],
+            "right_hip": [landmarks[24].x * width, landmarks[24].y * height],
+            # Lower body - crucial for footwork and court positioning
+            "left_knee": [landmarks[25].x * width, landmarks[25].y * height],
+            "right_knee": [landmarks[26].x * width, landmarks[26].y * height],
+            "left_ankle": [landmarks[27].x * width, landmarks[27].y * height],
+            "right_ankle": [landmarks[28].x * width, landmarks[28].y * height],
+        }
+
+        return keypoints
+
+    def draw_pose_overlay(
+        self, frame: np.ndarray, keypoints: Dict[str, List[float]]
+    ) -> np.ndarray:
+        """
+        Draw pose keypoints and connections on frame.
+
+        Args:
+            frame: Input frame
+            keypoints: Pose keypoints dictionary
+
+        Returns:
+            Frame with pose overlay
+        """
+        if not keypoints:
+            return frame
+
+        # Define connections between keypoints (tennis-focused back view)
+        # Focus on upper body stroke mechanics and lower body positioning
+        connections = [
+            # Upper body stroke connections
+            ("left_shoulder", "right_shoulder"),  # Shoulder line
+            ("left_shoulder", "left_elbow"),  # Left arm
+            ("right_shoulder", "right_elbow"),  # Right arm
+            ("left_elbow", "left_wrist"),  # Left forearm
+            ("right_elbow", "right_wrist"),  # Right forearm
+            # Core connections
+            ("left_shoulder", "left_hip"),  # Left torso
+            ("right_shoulder", "right_hip"),  # Right torso
+            ("left_hip", "right_hip"),  # Hip line
+            # Lower body positioning
+            ("left_hip", "left_knee"),  # Left thigh
+            ("right_hip", "right_knee"),  # Right thigh
+            ("left_knee", "left_ankle"),  # Left shin
+            ("right_knee", "right_ankle"),  # Right shin
+        ]
+
+        # Draw connections
+        for connection in connections:
+            if connection[0] in keypoints and connection[1] in keypoints:
+                pt1 = tuple(map(int, keypoints[connection[0]]))
+                pt2 = tuple(map(int, keypoints[connection[1]]))
+                cv2.line(frame, pt1, pt2, (0, 255, 0), 2)
+
+        # Draw keypoints
+        for keypoint_name, coords in keypoints.items():
+            if coords:
+                x, y = int(coords[0]), int(coords[1])
+                cv2.circle(frame, (x, y), 5, (255, 0, 0), -1)
+                cv2.putText(
+                    frame,
+                    keypoint_name,
+                    (x + 10, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.3,
+                    (255, 255, 255),
+                    1,
+                )
+
+        return frame
+
+    def analyze_video(
+        self, video_path: Path, include_pose: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Perform comprehensive video analysis with ball detection and pose estimation.
 
         Args:
             video_path: Path to video file
+            include_pose: Whether to include pose detection (default: True)
 
         Returns:
             Analysis results dictionary
         """
-        logger.info(f"Starting analysis of {video_path}")
+        logger.info(
+            f"Starting analysis of {video_path} (pose detection: {include_pose})"
+        )
 
         # Extract frames
         frames = self.extract_frames(video_path)
@@ -165,35 +321,183 @@ class CVService:
                 "error": "Failed to extract frames from video",
                 "frames_processed": 0,
                 "ball_detections": [],
+                "pose_detections": [],
                 "analysis_summary": {},
             }
 
         # Detect balls
         ball_detections = self.detect_balls(frames)
 
+        # Detect poses (if enabled)
+        pose_detections = []
+        annotated_frames = []
+
+        if include_pose and self.pose_detector:
+            logger.info("Starting pose detection...")
+            logger.info(f"Processing {len(frames)} frames for pose detection")
+            for i, frame in enumerate(frames):
+                pose_keypoints = self.detect_pose(frame)
+                pose_detections.append(pose_keypoints)
+
+                # Log every 10th frame for debugging
+                if i % 10 == 0:
+                    frame_shape = frame.shape
+                    logger.info(
+                        f"Frame {i}: shape={frame_shape}, pose_detected={pose_keypoints is not None}"
+                    )
+
+                # Create annotated frame with both ball and pose overlays
+                annotated_frame = frame.copy()
+
+                # Draw ball detections
+                for detection in ball_detections[i]:
+                    bbox = detection["bbox"]
+                    cv2.rectangle(
+                        annotated_frame,
+                        (bbox[0], bbox[1]),
+                        (bbox[2], bbox[3]),
+                        (0, 0, 255),
+                        2,
+                    )
+                    cv2.putText(
+                        annotated_frame,
+                        f"Ball: {detection['confidence']:.2f}",
+                        (bbox[0], bbox[1] - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 0, 255),
+                        1,
+                    )
+
+                # Draw pose overlay
+                if pose_keypoints:
+                    annotated_frame = self.draw_pose_overlay(
+                        annotated_frame, pose_keypoints
+                    )
+
+                annotated_frames.append(annotated_frame)
+        else:
+            logger.info("Skipping pose detection (disabled or model not available)")
+            pose_detections = [None] * len(frames)
+            annotated_frames = frames.copy()
+
         # Calculate analysis summary
-        total_detections = sum(len(d) for d in ball_detections)
+        total_ball_detections = sum(len(d) for d in ball_detections)
         frames_with_balls = sum(1 for d in ball_detections if d)
+        frames_with_pose = sum(1 for p in pose_detections if p is not None)
+
+        # Create annotated video (only for pose detection, skip if no poses found)
+        annotated_video_path = None
+        if frames_with_pose > 0:
+            logger.info(
+                f"Creating annotated video with {frames_with_pose} frames containing poses"
+            )
+            annotated_video_path = self._create_annotated_video(
+                video_path, annotated_frames
+            )
+            if annotated_video_path:
+                logger.info(
+                    f"Successfully created annotated video: {annotated_video_path}"
+                )
+            else:
+                logger.warning("Failed to create annotated video")
+        else:
+            logger.info("No poses detected, skipping annotated video creation")
 
         analysis_summary = {
             "total_frames": len(frames),
             "frames_with_balls": frames_with_balls,
-            "total_ball_detections": total_detections,
-            "average_detections_per_frame": total_detections / len(frames)
+            "total_ball_detections": total_ball_detections,
+            "average_detections_per_frame": total_ball_detections / len(frames)
             if frames
             else 0,
             "detection_rate": frames_with_balls / len(frames) if frames else 0,
+            "frames_with_pose": frames_with_pose,
+            "pose_detection_rate": frames_with_pose / len(frames) if frames else 0,
         }
 
         results = {
             "frames_processed": len(frames),
             "ball_detections": ball_detections,
+            "pose_detections": pose_detections,
             "analysis_summary": analysis_summary,
             "video_path": str(video_path),
+            "annotated_video_path": str(annotated_video_path)
+            if annotated_video_path
+            else None,
         }
 
         logger.info(f"Analysis complete: {analysis_summary}")
         return results
+
+    def _create_annotated_video(
+        self, original_video_path: Path, annotated_frames: List[np.ndarray]
+    ) -> Optional[Path]:
+        """
+        Create annotated video with pose and ball overlays.
+
+        Args:
+            original_video_path: Path to original video
+            annotated_frames: List of frames with overlays
+
+        Returns:
+            Path to annotated video file
+        """
+        if not annotated_frames:
+            return None
+
+        try:
+            # Get video properties from original video
+            cap = cv2.VideoCapture(str(original_video_path))
+            if not cap.isOpened():
+                logger.error(f"Could not open original video: {original_video_path}")
+                return None
+
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            cap.release()
+
+            logger.info(f"Video properties: {width}x{height}, {fps} fps")
+
+            # Create output path (use main data directory)
+            output_dir = Path("../data/videos/processed")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Output directory: {output_dir.absolute()}")
+
+            original_name = original_video_path.stem
+            annotated_path = output_dir / f"{original_name}_annotated.mp4"
+            logger.info(f"Annotated video path: {annotated_path.absolute()}")
+
+            # Create video writer
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
+
+            if not out.isOpened():
+                logger.error(f"Could not create video writer for: {annotated_path}")
+                return None
+
+            # Write frames
+            frames_written = 0
+            for frame in annotated_frames:
+                # Resize frame if needed
+                if frame.shape[:2] != (height, width):
+                    frame = cv2.resize(frame, (width, height))
+                out.write(frame)
+                frames_written += 1
+
+            out.release()
+            logger.info(
+                f"Successfully created annotated video: {annotated_path} ({frames_written} frames)"
+            )
+            return annotated_path
+
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.error(f"Error creating annotated video: {e}")
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return None
 
     def get_video_metadata(self, video_path: Path) -> Dict[str, Any]:
         """

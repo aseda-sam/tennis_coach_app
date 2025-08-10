@@ -26,8 +26,14 @@ class Analysis(Base):
     average_detections_per_frame = Column(Float, default=0.0)
     detection_rate = Column(Float, default=0.0)
 
+    # Pose detection results
+    frames_with_pose = Column(Integer, default=0)
+    pose_detection_rate = Column(Float, default=0.0)
+
     # Raw detection data (JSON)
     ball_detections = Column(Text, nullable=True)  # JSON string of detections
+    pose_detections = Column(Text, nullable=True)  # JSON string of pose keypoints
+    annotated_video_path = Column(String, nullable=True)  # Path to annotated video
 
     # Processing metadata
     processing_time = Column(Float, default=0.0)  # seconds
