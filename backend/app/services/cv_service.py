@@ -478,8 +478,8 @@ class CVService:
             annotated_path = output_dir / f"{original_name}_annotated.mp4"
             logger.info(f"Annotated video path: {annotated_path.absolute()}")
 
-            # Create video writer
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            # Create video writer with H.264 codec for better browser compatibility
+            fourcc = cv2.VideoWriter_fourcc(*"avc1")
             out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
 
             if not out.isOpened():

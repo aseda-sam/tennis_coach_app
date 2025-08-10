@@ -49,10 +49,15 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   // Smart video URL selection: use annotated video if available, otherwise original
   const getVideoUrl = () => {
     if (analysis?.annotated_video_path) {
-      // Convert relative path to full URL
+      // Use the new annotated video endpoint
       const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-      return `${baseUrl.replace('/api', '')}/data/videos/processed/${analysis.annotated_video_path.split('/').pop()}`;
+      const annotatedUrl = `${baseUrl}/videos/${videoFilename}/annotated`;
+      console.log('Using annotated video for:', videoFilename);
+      console.log('Annotated video URL:', annotatedUrl);
+      console.log('Analysis data:', analysis);
+      return annotatedUrl;
     }
+    console.log('Using original video URL:', videoUrl);
     return videoUrl;
   };
 
@@ -72,7 +77,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       </div>
 
       <div className="dashboard-content">
-        {/* Left Panel - Video Player and Analysis Status */}
+        {/* Left Panel - Video Player */}
         <div className="left-panel">
           <div className="video-section">
             <VideoPlayer
@@ -88,38 +93,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             )}
           </div>
 
-          <div className="analysis-status-section">
-            {loading ? (
-              <div className="analysis-loading">
-                <div className="loading-header">
-                  <div className="loading-spinner"></div>
-                  <h3>Analyzing Tennis Video...</h3>
-                </div>
-                <p className="loading-note">
-                  This may take 2-3 minutes for longer videos. You can leave this page and return later.
-                </p>
-              </div>
-            ) : error ? (
-              <div className="analysis-error">
-                <h3>❌ Analysis Error</h3>
-                <p>{error}</p>
-                <button className="retry-btn" onClick={loadAnalysis}>
-                  Try Again
-                </button>
-              </div>
-            ) : analysis ? (
-              <AnalysisResults analysis={analysis} />
-            ) : (
-              <div className="analysis-empty">
-                <h3>📊 Analysis Results</h3>
-                <p>No analysis data available. Start an analysis to see results.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Panel - Video Details and Actions */}
-        <div className="right-panel">
+          {/* Video Details and Actions below video */}
           <div className="video-details-section">
             <div className="section-header" onClick={() => setShowDetails(!showDetails)}>
               <span className="section-icon">📄</span>
@@ -186,6 +160,38 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 Analysis Settings
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Right Panel - Analysis Results */}
+        <div className="right-panel">
+          <div className="analysis-status-section">
+            {loading ? (
+              <div className="analysis-loading">
+                <div className="loading-header">
+                  <div className="loading-spinner"></div>
+                  <h3>Analyzing Tennis Video...</h3>
+                </div>
+                <p className="loading-note">
+                  This may take 2-3 minutes for longer videos. You can leave this page and return later.
+                </p>
+              </div>
+            ) : error ? (
+              <div className="analysis-error">
+                <h3>❌ Analysis Error</h3>
+                <p>{error}</p>
+                <button className="retry-btn" onClick={loadAnalysis}>
+                  Try Again
+                </button>
+              </div>
+            ) : analysis ? (
+              <AnalysisResults analysis={analysis} />
+            ) : (
+              <div className="analysis-empty">
+                <h3>📊 Analysis Results</h3>
+                <p>No analysis data available. Start an analysis to see results.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
