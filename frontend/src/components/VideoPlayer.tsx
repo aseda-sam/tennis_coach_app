@@ -32,10 +32,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('VideoPlayer: videoUrl changed to:', videoUrl);
     const video = videoRef.current;
     if (!video) return;
 
     const handleLoadedMetadata = () => {
+      console.log('Video loaded metadata - duration:', video.duration);
       setDuration(video.duration);
       setError(null);
     };
@@ -54,7 +56,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setShowPlayOverlay(true);
     };
 
-    const handleError = () => {
+    const handleError = (e: Event) => {
+      console.error('Video error event:', e);
+      const video = videoRef.current;
+      if (video) {
+        console.error('Video error code:', video.error?.code);
+        console.error('Video error message:', video.error?.message);
+        console.error('Video ready state:', video.readyState);
+        console.error('Video network state:', video.networkState);
+      }
       setError('Failed to load video. Please check if the video file exists.');
       setShowPlayOverlay(true);
       setIsPlaying(false);
@@ -73,7 +83,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('error', handleError);
     };
-  }, []);
+  }, [videoUrl]);
 
   const togglePlay = async () => {
     const video = videoRef.current;
@@ -86,6 +96,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         await video.play();
       }
     } catch (err) {
+      // Handle AbortError specifically (common when play is interrupted by pause)
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('Play request was interrupted - this is normal behavior');
+        return; // Don't show error for this case
+      }
       console.error('Error playing video:', err);
       setError('Failed to play video. Please try again.');
     }
@@ -132,6 +147,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const handleVideoClick = () => {
     if (showPlayOverlay) {
       togglePlay();
+    }
+  };
+
+  const toggleFullscreen = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (!document.fullscreenElement) {
+      video.requestFullscreen().catch((err) => {
+        console.error('Error attempting to enable fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen().catch((err) => {
+        console.error('Error attempting to exit fullscreen:', err);
+      });
     }
   };
 
@@ -220,7 +250,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
 
               <div className="right-controls">
-                <button className="control-btn fullscreen-btn">
+                <button className="control-btn fullscreen-btn" onClick={toggleFullscreen}>
                   <FullscreenIcon size={20} />
                 </button>
               </div>

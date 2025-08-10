@@ -12,8 +12,12 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 
 - **Video Upload & Playback**: Upload tennis videos and watch them directly in the browser
 - **Video Library Management**: Organize and manage your tennis video collection with easy browsing
-- **Ball Detection Analysis**: Automatically detect and track tennis balls in your videos
-- **Analysis Dashboard**: View detailed statistics about ball detection performance and video processing
+- **Ball Detection Analysis**: Automatically detect and track tennis balls in your videos using YOLO
+- **Pose Estimation**: Advanced player pose detection using MediaPipe for stroke analysis
+- **Annotated Video Creation**: Generate videos with pose and ball detection overlays
+- **Smart Video Player**: Automatically displays annotated videos when analysis is available
+- **Collapsible Analysis Results**: Clean, organized display of detection metrics
+- **Analysis Dashboard**: View detailed statistics about ball and pose detection performance
 - **Real-time Processing**: Get instant feedback on analysis progress and results
 - **Cross-platform Access**: Use the web interface from any device with a modern browser
 - **Secure File Handling**: Your videos are processed locally with no external data sharing
@@ -116,9 +120,11 @@ tennis_coach_app_2/
 - **Backend**: FastAPI (Python)
 - **Frontend**: React with TypeScript
 - **Database**: SQLite with SQLAlchemy ORM
+- **Computer Vision**: YOLO (ball detection) + MediaPipe (pose estimation)
 - **File Storage**: Local file system
 - **Validation**: Pydantic models
 - **Code Quality**: Ruff linting and formatting
+- **Video Processing**: OpenCV with H.264 codec
 
 ## 📊 API Endpoints
 
@@ -133,6 +139,7 @@ tennis_coach_app_2/
 - `GET /api/analysis/{video_filename}` - Get analysis results
 - `GET /api/analysis/` - List all analyses
 - `DELETE /api/analysis/{video_filename}` - Delete analysis results
+- `GET /api/videos/{filename}/annotated` - Stream annotated video with overlays
 
 ### Health & Status
 - `GET /` - API information
@@ -149,16 +156,39 @@ This project demonstrates:
 - **FastAPI Development**: RESTful API with proper error handling
 - **React Frontend**: Modern web interface with TypeScript
 - **Database Design**: SQLAlchemy ORM with comprehensive schema
-- **Computer Vision**: YOLO-based ball detection and analysis
+- **Computer Vision**: YOLO-based ball detection + MediaPipe pose estimation
+- **Video Processing**: Annotated video creation with overlays
+- **Smart UI/UX**: Collapsible results, creative overlays, responsive design
 - **File Management**: Secure file upload with validation
 - **Code Quality**: Type hints, linting, and comprehensive testing
 - **Documentation**: Professional project documentation and guides
+
+## 🧠 Analysis Capabilities
+
+### Ball Detection
+- **YOLO Integration**: Uses YOLOv8n for efficient ball detection
+- **Real-time Processing**: Processes video frames for ball tracking
+- **Detection Metrics**: Tracks total detections, frames with balls, detection rate
+- **Visual Overlays**: Red bounding boxes around detected balls
+
+### Pose Estimation
+- **MediaPipe Integration**: Advanced pose detection with 33 keypoints
+- **Tennis-Focused**: Extracts 11 relevant keypoints (shoulders, elbows, wrists, hips, knees, ankles)
+- **Stroke Analysis**: Tracks upper body mechanics and lower body positioning
+- **Visual Overlays**: Green skeleton lines and blue joint markers
+
+### Annotated Videos
+- **Combined Overlays**: Pose and ball detection on same video
+- **H.264 Codec**: Browser-compatible video format
+- **Smart Playback**: Automatically shows annotated version when available
+- **No Audio**: Silent videos optimized for analysis
 
 ## 📚 Documentation
 
 - [Project Plan](project_docs/project_plan.md)
 - [API Documentation](project_docs/api_documentation.md)
 - [Database Schema](project_docs/database_schema.md)
+- [Pose Estimation Comparison](project_docs/pose_estimation_comparison.md)
 - [Testing Guide](project_docs/testing_guide.md)
 - [React Frontend Guide](project_docs/react_frontend_guide.md)
 - [Deployment Guide](project_docs/deployment_guide.md)

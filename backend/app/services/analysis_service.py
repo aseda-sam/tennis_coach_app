@@ -57,7 +57,15 @@ def create_analysis_record(
         detection_rate=analysis_results.get("analysis_summary", {}).get(
             "detection_rate", 0.0
         ),
+        frames_with_pose=analysis_results.get("analysis_summary", {}).get(
+            "frames_with_pose", 0
+        ),
+        pose_detection_rate=analysis_results.get("analysis_summary", {}).get(
+            "pose_detection_rate", 0.0
+        ),
         ball_detections=json.dumps(analysis_results.get("ball_detections", [])),
+        pose_detections=json.dumps(analysis_results.get("pose_detections", [])),
+        annotated_video_path=analysis_results.get("annotated_video_path"),
         processing_time=processing_time,
         model_used=model_used,
         confidence_threshold=confidence_threshold,
@@ -149,10 +157,14 @@ def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
         analysis_record = create_analysis_record(
             db=db,
             video_filename=video_filename,
-            analysis_type="ball_detection",
+            analysis_type="ball_detection_and_pose",
             analysis_results=analysis_results,
             processing_time=processing_time,
-            model_used="yolov8n" if cv_service.ball_detector else None,
+            model_used="yolov8n+mediapipe"
+            if cv_service.ball_detector and cv_service.pose_detector
+            else "yolov8n"
+            if cv_service.ball_detector
+            else None,
             confidence_threshold=0.5,
         )
 

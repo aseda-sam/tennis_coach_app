@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './AnalysisResults.css';
 
 export interface AnalysisData {
@@ -13,6 +13,10 @@ export interface AnalysisData {
   processing_time: number;
   model_used: string | null;
   confidence_threshold: number;
+  frames_with_pose?: number;
+  pose_detection_rate?: number;
+  pose_detections?: string;
+  annotated_video_path?: string;
 }
 
 interface AnalysisResultsProps {
@@ -26,6 +30,25 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   isLoading = false,
   error = null,
 }) => {
+  const [expandedSections, setExpandedSections] = useState<{
+    pose: boolean;
+    ball: boolean;
+  }>({
+    pose: false,
+    ball: false,
+  });
+
+  const toggleSection = (section: 'pose' | 'ball') => {
+    setExpandedSections((prev: { pose: boolean; ball: boolean }) => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  const formatPercentage = (value: number): string => {
+    return `${(value * 100).toFixed(1)}%`;
+  };
+
   if (isLoading) {
     return (
       <div className="analysis-results">
@@ -59,78 +82,84 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     );
   }
 
-  const formatTime = (seconds: number): string => {
-    return `${seconds.toFixed(2)}s`;
-  };
-
-  const formatPercentage = (value: number): string => {
-    return `${(value * 100).toFixed(1)}%`;
-  };
-
   return (
     <div className="analysis-results">
       <div className="analysis-header">
-        <h3>📊 Analysis Results</h3>
-        <div className="analysis-meta">
-          <span className="model-info">
-            Model: {analysis.model_used || 'Not specified'}
-          </span>
-          <span className="processing-time">
-            Processing: {formatTime(analysis.processing_time)}
-          </span>
-        </div>
+        <h3>🎾 Tennis Analysis Results</h3>
       </div>
 
-      <div className="analysis-metrics">
-        <div className="metric-card">
-          <div className="metric-value">{analysis.total_frames}</div>
-          <div className="metric-label">Total Frames</div>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-value">{analysis.frames_with_balls}</div>
-          <div className="metric-label">Frames with Balls</div>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-value">{analysis.total_ball_detections}</div>
-          <div className="metric-label">Total Detections</div>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-value">
-            {analysis.average_detections_per_frame.toFixed(2)}
+      {/* Pose Detection Results */}
+      {analysis.frames_with_pose !== undefined && (
+        <div className="analysis-section">
+          <div 
+            className="section-header clickable" 
+            onClick={() => toggleSection('pose')}
+          >
+            <span className="section-icon">👤</span>
+            <h4>Pose Detection</h4>
+            <div className="status-badge success">
+              {formatPercentage(analysis.pose_detection_rate || 0)} detected
+            </div>
+            <span className="toggle-icon">
+              {expandedSections.pose ? '▼' : '▶'}
+            </span>
           </div>
-          <div className="metric-label">Avg Detections/Frame</div>
+          
+          {expandedSections.pose && (
+            <div className="analysis-metrics">
+              <div className="metric-card">
+                <div className="metric-value">{analysis.total_frames}</div>
+                <div className="metric-label">Frames Analyzed</div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-value">{analysis.frames_with_pose}</div>
+                <div className="metric-label">Pose Detected</div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-value">
+                  {formatPercentage(analysis.pose_detection_rate || 0)}
+                </div>
+                <div className="metric-label">Detection Rate</div>
+              </div>
+            </div>
+          )}
         </div>
+      )}
 
-        <div className="metric-card">
-          <div className="metric-value">
-            {formatPercentage(analysis.detection_rate)}
+      {/* Ball Detection Results */}
+      <div className="analysis-section">
+        <div 
+          className="section-header clickable" 
+          onClick={() => toggleSection('ball')}
+        >
+          <span className="section-icon">🎾</span>
+          <h4>Ball Detection</h4>
+          <div className="status-badge success">
+            {formatPercentage(analysis.detection_rate)} detected
           </div>
-          <div className="metric-label">Detection Rate</div>
+          <span className="toggle-icon">
+            {expandedSections.ball ? '▼' : '▶'}
+          </span>
         </div>
-
-        <div className="metric-card">
-          <div className="metric-value">
-            {formatPercentage(analysis.confidence_threshold)}
+        
+        {expandedSections.ball && (
+          <div className="analysis-metrics">
+            <div className="metric-card">
+              <div className="metric-value">{analysis.total_ball_detections}</div>
+              <div className="metric-label">Ball Detections</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-value">{analysis.frames_with_balls}</div>
+              <div className="metric-label">Frames with Balls</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-value">
+                {analysis.average_detections_per_frame.toFixed(2)}
+              </div>
+              <div className="metric-label">Avg per Frame</div>
+            </div>
           </div>
-          <div className="metric-label">Confidence Threshold</div>
-        </div>
-      </div>
-
-      <div className="analysis-summary">
-        <h4>Summary</h4>
-        <p>
-          The analysis detected <strong>{analysis.total_ball_detections}</strong> tennis
-          balls across <strong>{analysis.total_frames}</strong> frames. Balls were
-          found in <strong>{analysis.frames_with_balls}</strong> frames, giving a
-          detection rate of <strong>{formatPercentage(analysis.detection_rate)}</strong>.
-        </p>
-        <p>
-          Processing took <strong>{formatTime(analysis.processing_time)}</strong> using
-          the <strong>{analysis.model_used || 'YOLO'}</strong> model.
-        </p>
+        )}
       </div>
     </div>
   );
