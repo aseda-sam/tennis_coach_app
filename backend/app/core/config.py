@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # Database
-    DATABASE_URL: str = "sqlite:///./data/database/tennis_analysis.db"
+    DATABASE_URL: str = "sqlite:///../data/database/tennis_analysis.db"
 
     # File storage
     UPLOAD_DIR: str = "../data/videos/raw"
@@ -45,8 +45,8 @@ def create_directories() -> None:
     directories = [
         Path(settings.UPLOAD_DIR),
         Path(settings.PROCESSED_DIR),
-        Path("./data/database"),
-        Path("./data/analysis_cache"),
+        Path("../data/database"),
+        Path("../data/analysis_cache"),
     ]
 
     for directory in directories:
