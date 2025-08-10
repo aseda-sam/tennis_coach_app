@@ -92,4 +92,10 @@ data/database/*.db
 !data/videos/raw/.gitkeep
 !data/videos/processed/.gitkeep
 !data/analysis_cache/.gitkeep
-!data/database/.gitkeep 
+!data/database/.gitkeep
+
+# Model files
+*.pt
+*.pth
+*.onnx
+*.pb 
