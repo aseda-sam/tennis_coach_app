@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { analysisApi } from '../services/api';
 import './AnalysisDashboard.css';
-import { AnalysisData } from './AnalysisResults';
+import AnalysisResults, { AnalysisData } from './AnalysisResults';
 import VideoPlayer from './VideoPlayer';
 
 interface AnalysisDashboardProps {
@@ -18,6 +18,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   const loadAnalysis = useCallback(async () => {
     try {
@@ -45,14 +46,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
 
 
-  const getAnalysisStatus = () => {
-    if (loading) return { text: 'Loading...', color: 'loading' };
-    if (error) return { text: 'Error', color: 'error' };
-    if (analysis) return { text: 'Completed', color: 'completed' };
-    return { text: 'Not Available', color: 'not-available' };
+  // Smart video URL selection: use annotated video if available, otherwise original
+  const getVideoUrl = () => {
+    if (analysis?.annotated_video_path) {
+      // Convert relative path to full URL
+      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+      return `${baseUrl.replace('/api', '')}/data/videos/processed/${analysis.annotated_video_path.split('/').pop()}`;
+    }
+    return videoUrl;
   };
 
-  const status = getAnalysisStatus();
+
+
+
 
   return (
     <div className="analysis-dashboard">
@@ -70,131 +76,91 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         <div className="left-panel">
           <div className="video-section">
             <VideoPlayer
-              videoUrl={videoUrl}
-              title={videoFilename}
+              videoUrl={getVideoUrl()}
+              title={analysis?.annotated_video_path ? `${videoFilename} (Annotated)` : videoFilename}
               showControls={true}
             />
+            {analysis?.annotated_video_path && (
+              <div className="video-info-badge">
+                <span className="badge-icon">🎯</span>
+                Showing annotated video with pose and ball detection overlays
+              </div>
+            )}
           </div>
 
           <div className="analysis-status-section">
-            <div className="status-header">
-              <h3>Video Analysis</h3>
-              <div className={`status-badge ${status.color}`}>
-                {status.text}
+            {loading ? (
+              <div className="analysis-loading">
+                <div className="loading-header">
+                  <div className="loading-spinner"></div>
+                  <h3>Analyzing Tennis Video...</h3>
+                </div>
+                <p className="loading-note">
+                  This may take 2-3 minutes for longer videos. You can leave this page and return later.
+                </p>
               </div>
-            </div>
-
-            <div className="analysis-cards">
-              <div className="analysis-card">
-                <div className="card-header">
-                  <span className="card-icon">🎾</span>
-                  <h4>Swing Analysis</h4>
-                </div>
-                <div className="card-content">
-                  {loading ? (
-                    <div className="loading-text">Loading...</div>
-                  ) : analysis ? (
-                    <div className="analysis-complete">
-                      <span className="complete-icon">✓</span>
-                      Analysis complete
-                    </div>
-                  ) : (
-                    <div className="analysis-error">
-                      <span className="error-icon">⚠</span>
-                      {error || 'Not available'}
-                    </div>
-                  )}
-                </div>
+            ) : error ? (
+              <div className="analysis-error">
+                <h3>❌ Analysis Error</h3>
+                <p>{error}</p>
+                <button className="retry-btn" onClick={loadAnalysis}>
+                  Try Again
+                </button>
               </div>
-
-              <div className="analysis-card">
-                <div className="card-header">
-                  <span className="card-icon">👤</span>
-                  <h4>Movement Tracking</h4>
-                </div>
-                <div className="card-content">
-                  <div className="coming-soon">
-                    <span className="soon-icon">🔜</span>
-                    Coming soon
-                  </div>
-                </div>
+            ) : analysis ? (
+              <AnalysisResults analysis={analysis} />
+            ) : (
+              <div className="analysis-empty">
+                <h3>📊 Analysis Results</h3>
+                <p>No analysis data available. Start an analysis to see results.</p>
               </div>
-
-              <div className="analysis-card">
-                <div className="card-header">
-                  <span className="card-icon">📊</span>
-                  <h4>Performance Metrics</h4>
-                </div>
-                <div className="card-content">
-                  {loading ? (
-                    <div className="loading-text">Loading...</div>
-                  ) : analysis ? (
-                    <div className="analysis-complete">
-                      <span className="complete-icon">✓</span>
-                      Analysis complete
-                    </div>
-                  ) : (
-                    <div className="analysis-error">
-                      <span className="error-icon">⚠</span>
-                      {error || 'Not available'}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
         {/* Right Panel - Video Details and Actions */}
         <div className="right-panel">
           <div className="video-details-section">
-            <div className="section-header">
+            <div className="section-header" onClick={() => setShowDetails(!showDetails)}>
               <span className="section-icon">📄</span>
               <h3>Video Details</h3>
+              <span className="toggle-icon">{showDetails ? '▼' : '▶'}</span>
             </div>
             
-            <div className="details-list">
-              <div className="detail-item">
-                <span className="detail-label">File Name:</span>
-                <span className="detail-value">{videoFilename}</span>
+            {showDetails && (
+              <div className="details-list">
+                <div className="detail-item">
+                  <span className="detail-label">File Name:</span>
+                  <span className="detail-value">{videoFilename}</span>
+                </div>
+                
+                {analysis && (
+                  <>
+                    <div className="detail-item">
+                      <span className="detail-label">Duration:</span>
+                      <span className="detail-value">
+                        {formatDuration(analysis.processing_time)}
+                      </span>
+                    </div>
+                    
+                    <div className="detail-item">
+                      <span className="detail-label">Resolution:</span>
+                      <span className="detail-value">1920×1080</span>
+                    </div>
+                    
+                    <div className="detail-item">
+                      <span className="detail-label">Frame Rate:</span>
+                      <span className="detail-value">60 fps</span>
+                    </div>
+                    
+                    <div className="detail-item">
+                      <span className="detail-label">Format:</span>
+                      <span className="detail-value">MP4</span>
+                    </div>
+                  </>
+                )}
               </div>
-              
-              {analysis && (
-                <>
-                  <div className="detail-item">
-                    <span className="detail-label">File Size:</span>
-                    <span className="detail-value">42.92 MB</span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Duration:</span>
-                    <span className="detail-value">
-                      {formatDuration(analysis.processing_time)}
-                    </span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Resolution:</span>
-                    <span className="detail-value">1920×1080</span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Frame Rate:</span>
-                    <span className="detail-value">60 fps</span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Format:</span>
-                    <span className="detail-value">MP4</span>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <span className="detail-label">Upload Date:</span>
-                    <span className="detail-value">Jan 15, 2024</span>
-                  </div>
-                </>
-              )}
-            </div>
+            )}
           </div>
 
           <div className="actions-section">
@@ -203,19 +169,21 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             </div>
             
             <div className="action-buttons">
-              <button className="action-btn download-btn">
-                <span className="btn-icon">⬇</span>
-                Download Video
+              {analysis?.annotated_video_path && (
+                <button className="action-btn download-btn">
+                  <span className="btn-icon">⬇</span>
+                  Download Annotated Video
+                </button>
+              )}
+              
+              <button className="action-btn reanalyze-btn">
+                <span className="btn-icon">🔄</span>
+                Re-analyze Video
               </button>
               
-              <button className="action-btn export-btn">
-                <span className="btn-icon">📤</span>
-                Export Analysis
-              </button>
-              
-              <button className="action-btn share-btn">
-                <span className="btn-icon">🔗</span>
-                Share Video
+              <button className="action-btn settings-btn">
+                <span className="btn-icon">⚙️</span>
+                Analysis Settings
               </button>
             </div>
           </div>
