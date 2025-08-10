@@ -60,14 +60,14 @@ class CVService:
             self.pose_detector = None
 
     def extract_frames(
-        self, video_path: Path, max_frames: int = 50
+        self, video_path: Path, max_frames: Optional[int] = None
     ) -> List[np.ndarray]:
         """
         Extract frames from video file.
 
         Args:
             video_path: Path to video file
-            max_frames: Maximum number of frames to extract
+            max_frames: Maximum number of frames to extract (None = extract all frames)
 
         Returns:
             List of frame arrays
@@ -83,15 +83,24 @@ class CVService:
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             fps = cap.get(cv2.CAP_PROP_FPS)
 
-            # Calculate frame interval to get max_frames
-            interval = total_frames // max_frames if total_frames > max_frames else 1
+            # Calculate frame interval to get max_frames (or process all frames if max_frames is None)
+            if max_frames is None:
+                interval = 1  # Process every frame
+            else:
+                interval = (
+                    total_frames // max_frames if total_frames > max_frames else 1
+                )
 
             logger.info(f"Extracting frames from {video_path}")
             logger.info(
                 f"Total frames: {total_frames}, FPS: {fps}, Interval: {interval}"
             )
 
-            while frame_count < max_frames:
+            # Process all frames if max_frames is None, otherwise limit to max_frames
+            max_frames_to_process = (
+                max_frames if max_frames is not None else total_frames
+            )
+            while frame_count < max_frames_to_process:
                 ret, frame = cap.read()
                 if not ret:
                     break
