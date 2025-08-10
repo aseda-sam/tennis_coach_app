@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { AnalysisData } from '../components/AnalysisResults';
 import { VideoListResponse, VideoMetadata, VideoUploadResponse } from '../types/video';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
@@ -7,6 +6,12 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // 30 seconds for video uploads
+});
+
+// Create a separate instance for analysis requests with longer timeout
+const analysisApiInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 300000, // 5 minutes for analysis requests
 });
 
 // Request interceptor for logging
@@ -81,15 +86,35 @@ export interface AnalysisSummary {
     total_ball_detections: number;
     average_detections_per_frame: number;
     detection_rate: number;
+    frames_with_pose?: number;
+    pose_detection_rate?: number;
   };
   frames_processed?: number;
   error?: string;
 }
 
+export interface AnalysisData {
+  id: number;
+  video_filename: string;
+  analysis_type: string;
+  total_frames: number;
+  frames_with_balls: number;
+  total_ball_detections: number;
+  average_detections_per_frame: number;
+  detection_rate: number;
+  processing_time: number;
+  model_used: string;
+  confidence_threshold: number;
+  frames_with_pose?: number;
+  pose_detection_rate?: number;
+  pose_detections?: string;
+  annotated_video_path?: string;
+}
+
 export const analysisApi = {
   // Start analysis for a video
   startAnalysis: async (videoFilename: string): Promise<AnalysisSummary> => {
-    const response = await api.post<AnalysisSummary>(`/analysis/${videoFilename}`);
+    const response = await analysisApiInstance.post<AnalysisSummary>(`/analysis/${videoFilename}`);
     return response.data;
   },
 
@@ -108,6 +133,12 @@ export const analysisApi = {
   // Delete analysis for a video
   deleteAnalysis: async (videoFilename: string): Promise<void> => {
     await api.delete(`/analysis/${videoFilename}`);
+  },
+
+  // Re-analyze video (future endpoint)
+  reanalyzeVideo: async (videoFilename: string): Promise<AnalysisSummary> => {
+    const response = await analysisApiInstance.post<AnalysisSummary>(`/analysis/${videoFilename}/reanalyze`);
+    return response.data;
   },
 };
 
