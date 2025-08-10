@@ -162,6 +162,8 @@ def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
             processing_time=processing_time,
             model_used="yolov8n+mediapipe"
             if cv_service.ball_detector and cv_service.pose_detector
+            else "yolov8n"
+            if cv_service.ball_detector
             else None,
             confidence_threshold=0.5,
         )
