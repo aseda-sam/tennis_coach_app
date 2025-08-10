@@ -78,24 +78,71 @@
   position: relative;
 }
 
-.video-info-badge {
+.video-overlay-indicator {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(0, 0, 0, 0.8);
+  top: 16px;
+  left: 16px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(147, 51, 234, 0.95));
   color: white;
-  padding: 8px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.85rem;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   z-index: 10;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: slideInFromTop 0.3s ease-out;
 }
 
-.badge-icon {
+.overlay-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.overlay-icon {
+  font-size: 1.2rem;
+  animation: pulse 2s infinite;
+}
+
+.overlay-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.overlay-title {
+  font-weight: 600;
   font-size: 0.9rem;
+}
+
+.overlay-subtitle {
+  font-size: 0.75rem;
+  opacity: 0.9;
+  font-weight: 400;
+}
+
+@keyframes slideInFromTop {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 /* Analysis Status Section */

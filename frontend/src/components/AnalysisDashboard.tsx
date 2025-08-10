@@ -86,9 +86,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               showControls={true}
             />
             {analysis?.annotated_video_path && (
-              <div className="video-info-badge">
-                <span className="badge-icon">🎯</span>
-                Showing annotated video with pose and ball detection overlays
+              <div className="video-overlay-indicator">
+                <div className="overlay-content">
+                  <div className="overlay-icon">🎾</div>
+                  <div className="overlay-text">
+                    <div className="overlay-title">AI Analysis Active</div>
+                    <div className="overlay-subtitle">Pose tracking • Ball detection • Real-time insights</div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
