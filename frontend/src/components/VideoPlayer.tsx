@@ -150,6 +150,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
+  const toggleFullscreen = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (!document.fullscreenElement) {
+      video.requestFullscreen().catch((err) => {
+        console.error('Error attempting to enable fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen().catch((err) => {
+        console.error('Error attempting to exit fullscreen:', err);
+      });
+    }
+  };
+
   return (
     <div className="video-player-container">
       {onClose && (
@@ -235,7 +250,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
 
               <div className="right-controls">
-                <button className="control-btn fullscreen-btn">
+                <button className="control-btn fullscreen-btn" onClick={toggleFullscreen}>
                   <FullscreenIcon size={20} />
                 </button>
               </div>

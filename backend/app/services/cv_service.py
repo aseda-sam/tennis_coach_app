@@ -479,6 +479,7 @@ class CVService:
             logger.info(f"Annotated video path: {annotated_path.absolute()}")
 
             # Create video writer with H.264 codec for better browser compatibility
+            # No audio track - we don't need sound for analysis videos
             fourcc = cv2.VideoWriter_fourcc(*"avc1")
             out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
 
