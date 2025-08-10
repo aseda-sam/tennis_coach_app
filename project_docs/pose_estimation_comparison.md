@@ -3,6 +3,17 @@
 ## Overview
 This document compares different pose estimation solutions for the tennis analysis system, focusing on simplicity, accuracy, and ease of integration.
 
+## **DECISION: MediaPipe Pose Selected** ✅
+
+**Rationale:** MediaPipe Pose was chosen for its simplicity, ease of integration, and suitability for the MVP. It provides good accuracy for tennis analysis while maintaining fast performance and minimal complexity.
+
+**Implementation Status:** ✅ **COMPLETED**
+- MediaPipe Pose integration implemented
+- 11 tennis-relevant keypoints extracted (shoulders, elbows, wrists, hips, knees, ankles)
+- Pose detection confidence thresholds optimized (0.3)
+- Annotated video creation with pose overlays
+- Analysis metrics including pose detection rate
+
 ## Options Comparison
 
 ### 1. MediaPipe Pose
