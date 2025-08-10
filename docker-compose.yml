@@ -12,7 +12,7 @@ services:
     working_dir: /app/backend
     environment:
       - DEBUG=True
-      - DATABASE_URL=sqlite:///./data/database/tennis_analysis.db
+      - DATABASE_URL=sqlite:///../data/database/tennis_analysis.db
       - LOG_LEVEL=DEBUG
     depends_on:
       - redis

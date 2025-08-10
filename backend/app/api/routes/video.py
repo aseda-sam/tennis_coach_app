@@ -117,6 +117,33 @@ async def stream_video(filename: str, db: Session = Depends(get_db)) -> FileResp
     )
 
 
+@router.get("/{filename}/annotated")
+async def stream_annotated_video(
+    filename: str, db: Session = Depends(get_db)
+) -> FileResponse:
+    """Stream an annotated video file."""
+    # Check if video exists in database
+    db_video = get_video_by_filename(db, filename)
+    if not db_video:
+        raise HTTPException(status_code=404, detail=f"Video {filename} not found")
+
+    # Look for annotated video
+    annotated_filename = f"{Path(filename).stem}_annotated.mp4"
+    processed_dir = Path(settings.PROCESSED_DIR)
+    annotated_path = processed_dir / annotated_filename
+
+    if not annotated_path.exists():
+        raise HTTPException(
+            status_code=404, detail=f"Annotated video {annotated_filename} not found"
+        )
+
+    return FileResponse(
+        path=str(annotated_path),
+        media_type="video/mp4",
+        filename=annotated_filename,
+    )
+
+
 @router.get("/{filename}", response_model=VideoInfo)
 async def get_video_details(filename: str, db: Session = Depends(get_db)) -> VideoInfo:
     """Get detailed information about a specific video from database."""

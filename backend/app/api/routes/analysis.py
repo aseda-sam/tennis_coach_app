@@ -33,6 +33,10 @@ class AnalysisResponse(BaseModel):
     processing_time: float
     model_used: str | None
     confidence_threshold: float
+    frames_with_pose: int | None = None
+    pose_detection_rate: float | None = None
+    pose_detections: str | None = None
+    annotated_video_path: str | None = None
 
 
 class AnalysisSummary(BaseModel):
@@ -99,6 +103,10 @@ async def get_analysis(
         processing_time=analysis.processing_time,
         model_used=analysis.model_used,
         confidence_threshold=analysis.confidence_threshold,
+        frames_with_pose=analysis.frames_with_pose,
+        pose_detection_rate=analysis.pose_detection_rate,
+        pose_detections=analysis.pose_detections,
+        annotated_video_path=analysis.annotated_video_path,
     )
 
 

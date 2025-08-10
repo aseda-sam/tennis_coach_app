@@ -43,28 +43,47 @@ CREATE INDEX idx_videos_status ON videos(status);
 CREATE INDEX idx_videos_upload_date ON videos(upload_date);
 ```
 
-### 2. Analysis Results Table
-Stores main analysis data with JSON flexibility.
+### 2. Analyses Table
+Stores comprehensive analysis results with pose and ball detection metrics.
 
 ```sql
-CREATE TABLE analysis_results (
+CREATE TABLE analyses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    video_id TEXT NOT NULL,
-    analysis_type TEXT NOT NULL,  -- ball_tracking, pose_estimation, stroke_detection
-    frame_number INTEGER,
-    timestamp REAL,  -- seconds from video start
-    data JSON NOT NULL,  -- Flexible JSON storage
-    confidence REAL,
+    video_filename TEXT NOT NULL,
+    analysis_type TEXT NOT NULL,  -- 'ball_detection_and_pose'
+    
+    -- Ball detection results
+    total_frames INTEGER DEFAULT 0,
+    frames_with_balls INTEGER DEFAULT 0,
+    total_ball_detections INTEGER DEFAULT 0,
+    average_detections_per_frame REAL DEFAULT 0.0,
+    detection_rate REAL DEFAULT 0.0,
+    
+    -- Pose detection results
+    frames_with_pose INTEGER DEFAULT 0,
+    pose_detection_rate REAL DEFAULT 0.0,
+    
+    -- Raw detection data (JSON)
+    ball_detections TEXT,  -- JSON string of ball detections
+    pose_detections TEXT,  -- JSON string of pose keypoints
+    annotated_video_path TEXT,  -- Path to annotated video file
+    
+    -- Processing metadata
+    processing_time REAL DEFAULT 0.0,  -- seconds
+    model_used TEXT,  -- 'yolov8n+mediapipe'
+    confidence_threshold REAL DEFAULT 0.5,
+    
+    -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
 **Indexes:**
 ```sql
-CREATE INDEX idx_analysis_video_id ON analysis_results(video_id);
-CREATE INDEX idx_analysis_type ON analysis_results(analysis_type);
-CREATE INDEX idx_analysis_timestamp ON analysis_results(timestamp);
+CREATE INDEX idx_analyses_video_filename ON analyses(video_filename);
+CREATE INDEX idx_analyses_type ON analyses(analysis_type);
+CREATE INDEX idx_analyses_created_at ON analyses(created_at);
 ```
 
 ### 3. Player Positions Table
