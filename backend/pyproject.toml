@@ -14,6 +14,8 @@ dependencies = [
     "opencv-python>=4.8.0",
     "sqlalchemy>=2.0.0",
     "alembic>=1.12.0",
+    "ultralytics>=8.0.0",
+    "mediapipe>=0.10.0",
 ]
 
 [build-system]

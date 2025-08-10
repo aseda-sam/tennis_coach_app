@@ -13,5 +13,10 @@ Requires-Dist: python-dotenv>=1.0.0
 Requires-Dist: opencv-python>=4.8.0
 Requires-Dist: sqlalchemy>=2.0.0
 Requires-Dist: alembic>=1.12.0
+Requires-Dist: ultralytics>=8.0.0
+Requires-Dist: mediapipe>=0.10.0
 Provides-Extra: dev
 Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: httpx>=0.25.0; extra == "dev"
