@@ -154,30 +154,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             )}
           </div>
 
-          <div className="actions-section">
-            <div className="section-header">
-              <h3>Actions</h3>
-            </div>
-            
-            <div className="action-buttons">
-              {analysis?.annotated_video_path && (
-                <button className="action-btn download-btn">
-                  <span className="btn-icon">⬇</span>
-                  Download Annotated Video
-                </button>
-              )}
-              
-              <button className="action-btn reanalyze-btn">
-                <span className="btn-icon">🔄</span>
-                Re-analyze Video
-              </button>
-              
-              <button className="action-btn settings-btn">
-                <span className="btn-icon">⚙️</span>
-                Analysis Settings
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Right Panel - Analysis Results */}
