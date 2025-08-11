@@ -4,7 +4,6 @@ Handles video processing, ball detection, and player tracking.
 """
 
 import logging
-import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -310,7 +309,7 @@ class CVService:
     def _safe_restore_file(self, temp_path: Path, target_path: Path) -> None:
         """
         Safely restore a file from temporary location to target location.
-        
+
         Args:
             temp_path: Path to temporary file
             target_path: Path to restore file to
@@ -321,7 +320,7 @@ class CVService:
                     f"Temporary file does not exist for restoration: {temp_path}"
                 )
                 return
-                
+
             # Remove target file if it exists to avoid rename conflicts
             if target_path.exists():
                 try:
@@ -337,13 +336,11 @@ class CVService:
                     temp_path.rename(backup_path)
                     logger.info(f"Restored file to backup location: {backup_path}")
                     return
-            
+
             # Restore the file
             temp_path.rename(target_path)
-            logger.info(
-                f"Successfully restored file from {temp_path} to {target_path}"
-            )
-            
+            logger.info(f"Successfully restored file from {temp_path} to {target_path}")
+
         except OSError as e:
             logger.error(
                 f"Failed to restore file from {temp_path} to {target_path}: {e}"
@@ -580,15 +577,15 @@ class CVService:
             # Convert to H.264 for better browser compatibility using FFmpeg
             import subprocess
             import uuid
-            
+
             temp_path = None
             conversion_successful = False
-            
+
             try:
                 # Create a unique temporary filename to avoid conflicts
                 unique_suffix = str(uuid.uuid4())[:8]
                 temp_path = annotated_path.with_suffix(f".temp_{unique_suffix}.mp4")
-                
+
                 # Safely rename original file to temporary name
                 # Remove temp file if it somehow already exists
                 if temp_path.exists():
