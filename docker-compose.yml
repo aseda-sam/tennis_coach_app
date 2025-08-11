@@ -1,5 +1,6 @@
 services:
   backend:
+    container_name: tennis-coach-api
     build:
       context: .
       dockerfile: Dockerfile
@@ -12,13 +13,14 @@ services:
     working_dir: /app/backend
     environment:
       - DEBUG=True
-      - DATABASE_URL=sqlite:///../data/database/tennis_analysis.db
+      - DATABASE_URL=sqlite:///../data/database/tennis_coach.db
       - LOG_LEVEL=DEBUG
     depends_on:
       - redis
     restart: unless-stopped
 
   frontend:
+    container_name: tennis-coach-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -36,6 +38,7 @@ services:
     restart: unless-stopped
 
   redis:
+    container_name: tennis-coach-redis
     image: redis:alpine
     ports:
       - "6379:6379"
