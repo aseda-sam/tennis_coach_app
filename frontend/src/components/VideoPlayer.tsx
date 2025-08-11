@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    CloseIcon,
-    FullscreenIcon,
-    PauseIcon,
-    PlayIcon,
-    VolumeIcon,
-    VolumeOffIcon
+  CloseIcon,
+  FullscreenIcon,
+  PauseIcon,
+  PlayIcon,
+  VolumeIcon,
+  VolumeOffIcon
 } from './Icons';
 import './VideoPlayer.css';
 
@@ -34,6 +34,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Reset aspect ratio when video URL changes
+  useEffect(() => {
+    setVideoAspectRatio(null);
+  }, [videoUrl]);
 
   useEffect(() => {
     console.log('VideoPlayer: videoUrl changed to:', videoUrl);
@@ -50,13 +55,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const aspectRatio = video.videoWidth / video.videoHeight;
         setVideoAspectRatio(aspectRatio);
         console.log('Video aspect ratio:', aspectRatio);
-        
-        // For auto mode, adjust container aspect ratio
-        if (aspectRatioMode === 'auto' && containerRef.current) {
-          const container = containerRef.current;
-          const paddingBottom = (1 / aspectRatio) * 100;
-          container.style.paddingBottom = `${paddingBottom}%`;
-        }
       }
     };
 
@@ -74,19 +72,39 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setShowPlayOverlay(true);
     };
 
-    const handleError = (e: Event) => {
-      console.error('Video error event:', e);
-      const video = videoRef.current;
-      if (video) {
-        console.error('Video error code:', video.error?.code);
-        console.error('Video error message:', video.error?.message);
-        console.error('Video ready state:', video.readyState);
-        console.error('Video network state:', video.networkState);
+      const handleError = (e: Event) => {
+    console.error('Video error event:', e);
+    const video = videoRef.current;
+    if (video) {
+      console.error('Video error code:', video.error?.code);
+      console.error('Video error message:', video.error?.message);
+      console.error('Video ready state:', video.readyState);
+      console.error('Video network state:', video.networkState);
+    }
+    
+    // Provide more specific error messages based on error type
+    let errorMessage = 'Failed to load video. Please check if the video file exists.';
+    if (video?.error) {
+      switch (video.error.code) {
+        case MediaError.MEDIA_ERR_ABORTED:
+          errorMessage = 'Video loading was aborted.';
+          break;
+        case MediaError.MEDIA_ERR_NETWORK:
+          errorMessage = 'Network error occurred while loading video.';
+          break;
+        case MediaError.MEDIA_ERR_DECODE:
+          errorMessage = 'Video format is not supported or corrupted.';
+          break;
+        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMessage = 'Video format is not supported by your browser.';
+          break;
       }
-      setError('Failed to load video. Please check if the video file exists.');
-      setShowPlayOverlay(true);
-      setIsPlaying(false);
-    };
+    }
+    
+    setError(errorMessage);
+    setShowPlayOverlay(true);
+    setIsPlaying(false);
+  };
 
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('timeupdate', handleTimeUpdate);
@@ -101,18 +119,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('error', handleError);
     };
-  }, [videoUrl, aspectRatioMode]);
+  }, [videoUrl]);
 
   // Handle aspect ratio mode changes
   useEffect(() => {
-    if (aspectRatioMode === 'auto' && videoAspectRatio && containerRef.current) {
-      const container = containerRef.current;
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (aspectRatioMode === 'auto' && videoAspectRatio) {
       const paddingBottom = (1 / videoAspectRatio) * 100;
       container.style.paddingBottom = `${paddingBottom}%`;
-    } else if (containerRef.current) {
-      // Reset to default for other modes
-      containerRef.current.style.paddingBottom = '';
+    } else {
+      // Reset to default for other modes (CSS will handle the styling)
+      container.style.paddingBottom = '';
     }
+
+    // Cleanup function to reset styling when component unmounts
+    return () => {
+      if (container) {
+        container.style.paddingBottom = '';
+      }
+    };
   }, [aspectRatioMode, videoAspectRatio]);
 
   const togglePlay = async () => {
@@ -168,11 +195,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  const formatTime = (time: number): string => {
+  const formatTime = useCallback((time: number): string => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
+  }, []);
+
+  // Memoize formatted time strings to prevent unnecessary re-renders
+  const formattedCurrentTime = useMemo(() => formatTime(currentTime), [currentTime, formatTime]);
+  const formattedDuration = useMemo(() => formatTime(duration), [duration, formatTime]);
 
   const handleVideoClick = () => {
     if (showPlayOverlay) {
@@ -250,8 +281,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 step="0.1"
               />
               <div className="time-display">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+                <span>{formattedCurrentTime}</span>
+                <span>{formattedDuration}</span>
               </div>
             </div>
 
