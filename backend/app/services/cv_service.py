@@ -317,7 +317,9 @@ class CVService:
         """
         try:
             if not temp_path.exists():
-                logger.warning(f"Temporary file does not exist for restoration: {temp_path}")
+                logger.warning(
+                    f"Temporary file does not exist for restoration: {temp_path}"
+                )
                 return
                 
             # Remove target file if it exists to avoid rename conflicts
@@ -325,19 +327,27 @@ class CVService:
                 try:
                     target_path.unlink()
                 except OSError as e:
-                    logger.warning(f"Failed to remove existing target file {target_path}: {e}")
+                    logger.warning(
+                        f"Failed to remove existing target file {target_path}: {e}"
+                    )
                     # Try with a backup name if we can't remove the original
-                    backup_path = target_path.with_suffix(f".backup_{target_path.suffix}")
+                    backup_path = target_path.with_suffix(
+                        f".backup_{target_path.suffix}"
+                    )
                     temp_path.rename(backup_path)
                     logger.info(f"Restored file to backup location: {backup_path}")
                     return
             
             # Restore the file
             temp_path.rename(target_path)
-            logger.info(f"Successfully restored file from {temp_path} to {target_path}")
+            logger.info(
+                f"Successfully restored file from {temp_path} to {target_path}"
+            )
             
         except OSError as e:
-            logger.error(f"Failed to restore file from {temp_path} to {target_path}: {e}")
+            logger.error(
+                f"Failed to restore file from {temp_path} to {target_path}: {e}"
+            )
             # File is left at temp_path location for manual cleanup
 
     def analyze_video(
@@ -612,7 +622,9 @@ class CVService:
                         temp_path.unlink()
                         temp_path = None  # Mark as cleaned up
                     except OSError as cleanup_error:
-                        logger.warning(f"Failed to clean up temp file {temp_path}: {cleanup_error}")
+                        logger.warning(
+                            f"Failed to clean up temp file {temp_path}: {cleanup_error}"
+                        )
                         # Don't rollback - conversion was successful
                 else:
                     logger.warning(f"FFmpeg conversion failed: {result.stderr}")
