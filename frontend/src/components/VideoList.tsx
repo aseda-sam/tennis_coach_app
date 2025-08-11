@@ -3,13 +3,13 @@ import { analysisApi, videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import AnalysisModal from './AnalysisModal';
 import { AnalysisData } from './AnalysisResults';
+import VideoThumbnail from './VideoThumbnail';
 import {
     AnalyticsIcon,
     DeleteIcon,
     EyeIcon,
     GridIcon,
     ListIcon,
-    PlayIcon,
     VideoIcon
 } from './Icons';
 import './VideoList.css';
@@ -190,17 +190,16 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
             return (
               <div key={video.filename} className="video-card-enhanced">
                 <div className="video-thumbnail-container">
-                  <div className="video-thumbnail">
-                    <VideoIcon size={48} color="white" />
-                    <div className="play-overlay">
-                      <PlayIcon size={32} color="#3b82f6" />
+                  <VideoThumbnail
+                    videoFilename={video.filename}
+                    className="video-thumbnail"
+                    showPlayIcon={true}
+                  />
+                  {video.duration && (
+                    <div className="duration-badge">
+                      {formatDuration(video.duration)}
                     </div>
-                    {video.duration && (
-                      <div className="duration-badge">
-                        {formatDuration(video.duration)}
-                      </div>
-                    )}
-                  </div>
+                  )}
                   <div className={`status-tag ${status.color}`}>
                     {status.text}
                   </div>
