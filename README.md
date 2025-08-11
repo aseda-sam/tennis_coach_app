@@ -1,6 +1,6 @@
-# Tennis Computer Vision Analysis System
+# Tennis Coach App
 
-A computer vision-based tennis analysis system that demonstrates data engineering and AI evaluation skills. Currently implements a robust backend for video upload and management, with a React frontend for user interaction.
+A computer vision-based tennis coaching platform that demonstrates data engineering and AI evaluation skills. Currently implements a robust backend for video upload and management, with a React frontend for user interaction.
 
 ## CI/CD Status
 
@@ -31,7 +31,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 1. **Clone and Setup**
 ```bash
 git clone <repository-url>
-cd tennis_coach_app_2
+cd tennis_coach_app
 ```
 
 2. **Start All Services**
@@ -52,7 +52,7 @@ docker compose up --build
 1. **Clone and Setup**
 ```bash
 git clone <repository-url>
-cd tennis_coach_app_2
+cd tennis_coach_app
 
 # Create Python virtual environment
 python3 -m venv venv
@@ -94,7 +94,7 @@ npm start
 ## 📁 Project Structure
 
 ```
-tennis_coach_app_2/
+tennis_coach_app/
 ├── backend/                 # FastAPI backend
 │   ├── app/
 │   │   ├── api/            # API routes and models
@@ -275,7 +275,7 @@ npm test
 ### Database Operations
 ```bash
 # Database is automatically created on startup
-# Located at: data/database/tennis_analysis.db
+# Located at: data/database/tennis_coach.db
 ```
 
 ## 🤝 Contributing
