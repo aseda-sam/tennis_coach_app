@@ -19,6 +19,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [aspectRatioMode, setAspectRatioMode] = useState<'cover' | 'contain' | 'auto'>('contain');
 
   const loadAnalysis = useCallback(async () => {
     try {
@@ -80,20 +81,31 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         {/* Left Panel - Video Player */}
         <div className="left-panel">
           <div className="video-section">
+            {/* Aspect Ratio Mode Selector */}
+            <div className="aspect-ratio-controls">
+              <label htmlFor="aspect-ratio-mode">Video Display Mode:</label>
+              <select
+                id="aspect-ratio-mode"
+                value={aspectRatioMode}
+                onChange={(e) => setAspectRatioMode(e.target.value as 'cover' | 'contain' | 'auto')}
+                className="aspect-ratio-select"
+              >
+                <option value="contain">Fit with Black Bars (Default)</option>
+                <option value="cover">Crop to Fit</option>
+                <option value="auto">Auto Adjust</option>
+              </select>
+            </div>
+            
             <VideoPlayer
               videoUrl={getVideoUrl()}
               title={analysis?.annotated_video_path ? `${videoFilename} (Annotated)` : videoFilename}
               showControls={true}
+              aspectRatioMode={aspectRatioMode}
             />
             {analysis?.annotated_video_path && (
-              <div className="video-overlay-indicator">
-                <div className="overlay-content">
-                  <div className="overlay-icon">🎾</div>
-                  <div className="overlay-text">
-                    <div className="overlay-title">AI Analysis Active</div>
-                    <div className="overlay-subtitle">Pose tracking • Ball detection • Real-time insights</div>
-                  </div>
-                </div>
+              <div className="ai-analysis-badge">
+                <span className="ai-icon">⚡</span>
+                AI Analysis Active
               </div>
             )}
           </div>

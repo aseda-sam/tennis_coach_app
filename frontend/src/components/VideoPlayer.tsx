@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    CloseIcon,
-    FullscreenIcon,
-    PauseIcon,
-    PlayIcon,
-    VolumeIcon,
-    VolumeOffIcon
+  CloseIcon,
+  FullscreenIcon,
+  PauseIcon,
+  PlayIcon,
+  VolumeIcon,
+  VolumeOffIcon
 } from './Icons';
 import './VideoPlayer.css';
 
@@ -14,6 +14,7 @@ interface VideoPlayerProps {
   title: string;
   onClose?: () => void;
   showControls?: boolean;
+  aspectRatioMode?: 'cover' | 'contain' | 'auto';
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -21,6 +22,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   title,
   onClose,
   showControls = true,
+  aspectRatioMode = 'contain',
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -30,6 +32,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [showPlayOverlay, setShowPlayOverlay] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Reset aspect ratio when video URL changes
+  useEffect(() => {
+    setVideoAspectRatio(null);
+  }, [videoUrl]);
 
   useEffect(() => {
     console.log('VideoPlayer: videoUrl changed to:', videoUrl);
@@ -40,6 +49,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       console.log('Video loaded metadata - duration:', video.duration);
       setDuration(video.duration);
       setError(null);
+      
+      // Calculate and store the video's natural aspect ratio
+      if (video.videoWidth && video.videoHeight) {
+        const aspectRatio = video.videoWidth / video.videoHeight;
+        setVideoAspectRatio(aspectRatio);
+        console.log('Video aspect ratio:', aspectRatio);
+      }
     };
 
     const handleTimeUpdate = () => {
@@ -56,19 +72,39 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setShowPlayOverlay(true);
     };
 
-    const handleError = (e: Event) => {
-      console.error('Video error event:', e);
-      const video = videoRef.current;
-      if (video) {
-        console.error('Video error code:', video.error?.code);
-        console.error('Video error message:', video.error?.message);
-        console.error('Video ready state:', video.readyState);
-        console.error('Video network state:', video.networkState);
+      const handleError = (e: Event) => {
+    console.error('Video error event:', e);
+    const video = videoRef.current;
+    if (video) {
+      console.error('Video error code:', video.error?.code);
+      console.error('Video error message:', video.error?.message);
+      console.error('Video ready state:', video.readyState);
+      console.error('Video network state:', video.networkState);
+    }
+    
+    // Provide more specific error messages based on error type
+    let errorMessage = 'Failed to load video. Please check if the video file exists.';
+    if (video?.error) {
+      switch (video.error.code) {
+        case MediaError.MEDIA_ERR_ABORTED:
+          errorMessage = 'Video loading was aborted.';
+          break;
+        case MediaError.MEDIA_ERR_NETWORK:
+          errorMessage = 'Network error occurred while loading video.';
+          break;
+        case MediaError.MEDIA_ERR_DECODE:
+          errorMessage = 'Video format is not supported or corrupted.';
+          break;
+        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMessage = 'Video format is not supported by your browser.';
+          break;
       }
-      setError('Failed to load video. Please check if the video file exists.');
-      setShowPlayOverlay(true);
-      setIsPlaying(false);
-    };
+    }
+    
+    setError(errorMessage);
+    setShowPlayOverlay(true);
+    setIsPlaying(false);
+  };
 
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('timeupdate', handleTimeUpdate);
@@ -84,6 +120,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('error', handleError);
     };
   }, [videoUrl]);
+
+  // Handle aspect ratio mode changes
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (aspectRatioMode === 'auto' && videoAspectRatio) {
+      const paddingBottom = (1 / videoAspectRatio) * 100;
+      container.style.paddingBottom = `${paddingBottom}%`;
+    } else {
+      // Reset to default for other modes (CSS will handle the styling)
+      container.style.paddingBottom = '';
+    }
+
+    // Cleanup function to reset styling when component unmounts
+    return () => {
+      if (container) {
+        container.style.paddingBottom = '';
+      }
+    };
+  }, [aspectRatioMode, videoAspectRatio]);
 
   const togglePlay = async () => {
     const video = videoRef.current;
@@ -138,11 +195,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  const formatTime = (time: number): string => {
+  const formatTime = useCallback((time: number): string => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
+  }, []);
+
+  // Memoize formatted time strings to prevent unnecessary re-renders
+  const formattedCurrentTime = useMemo(() => formatTime(currentTime), [currentTime, formatTime]);
+  const formattedDuration = useMemo(() => formatTime(duration), [duration, formatTime]);
 
   const handleVideoClick = () => {
     if (showPlayOverlay) {
@@ -177,11 +238,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
 
       <div className="video-player-wrapper">
-        <div className="video-container" onClick={handleVideoClick}>
+        <div 
+          ref={containerRef}
+          className={`video-container video-container-${aspectRatioMode}`} 
+          onClick={handleVideoClick}
+        >
           <video
             ref={videoRef}
             src={videoUrl}
-            className="video-element"
+            className={`video-element video-element-${aspectRatioMode}`}
             preload="metadata"
           />
           
@@ -216,8 +281,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 step="0.1"
               />
               <div className="time-display">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+                <span>{formattedCurrentTime}</span>
+                <span>{formattedDuration}</span>
               </div>
             </div>
 
