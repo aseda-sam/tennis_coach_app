@@ -47,9 +47,21 @@ docker compose up --build
 
 ### Option 2: Local Development
 
-**Prerequisites**: Python 3.8+, Node.js 16+
+**Prerequisites**: Python 3.8+, Node.js 16+, FFmpeg
 
-1. **Clone and Setup**
+1. **Install FFmpeg** (required for video processing):
+   ```bash
+   # macOS
+   brew install ffmpeg
+   
+   # Ubuntu/Debian
+   sudo apt install ffmpeg
+   
+   # Windows (using chocolatey)
+   choco install ffmpeg
+   ```
+
+2. **Clone and Setup**
 ```bash
 git clone <repository-url>
 cd tennis_coach_app
@@ -59,33 +71,33 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-2. **Install Backend Dependencies**
+3. **Install Backend Dependencies**
 ```bash
 cd backend
 pip install -e .
 cd ..
 ```
 
-3. **Install Frontend Dependencies**
+4. **Install Frontend Dependencies**
 ```bash
 cd frontend
 npm install
 cd ..
 ```
 
-4. **Run Backend Server**
+5. **Run Backend Server**
 ```bash
 cd backend
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-5. **Run Frontend Development Server** (in a new terminal)
+6. **Run Frontend Development Server** (in a new terminal)
 ```bash
 cd frontend
 npm start
 ```
 
-6. **Access the Application**
+7. **Access the Application**
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs

@@ -7,6 +7,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
+    ffmpeg \
     libgl1-mesa-glx \
     libglib2.0-0 \
     libsm6 \
