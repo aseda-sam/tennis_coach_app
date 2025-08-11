@@ -14,6 +14,7 @@ interface VideoPlayerProps {
   title: string;
   onClose?: () => void;
   showControls?: boolean;
+  aspectRatioMode?: 'cover' | 'contain' | 'auto';
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -21,6 +22,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   title,
   onClose,
   showControls = true,
+  aspectRatioMode = 'contain',
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -30,6 +32,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [showPlayOverlay, setShowPlayOverlay] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     console.log('VideoPlayer: videoUrl changed to:', videoUrl);
@@ -40,6 +44,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       console.log('Video loaded metadata - duration:', video.duration);
       setDuration(video.duration);
       setError(null);
+      
+      // Calculate and store the video's natural aspect ratio
+      if (video.videoWidth && video.videoHeight) {
+        const aspectRatio = video.videoWidth / video.videoHeight;
+        setVideoAspectRatio(aspectRatio);
+        console.log('Video aspect ratio:', aspectRatio);
+        
+        // For auto mode, adjust container aspect ratio
+        if (aspectRatioMode === 'auto' && containerRef.current) {
+          const container = containerRef.current;
+          const paddingBottom = (1 / aspectRatio) * 100;
+          container.style.paddingBottom = `${paddingBottom}%`;
+        }
+      }
     };
 
     const handleTimeUpdate = () => {
@@ -83,7 +101,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('error', handleError);
     };
-  }, [videoUrl]);
+  }, [videoUrl, aspectRatioMode]);
+
+  // Handle aspect ratio mode changes
+  useEffect(() => {
+    if (aspectRatioMode === 'auto' && videoAspectRatio && containerRef.current) {
+      const container = containerRef.current;
+      const paddingBottom = (1 / videoAspectRatio) * 100;
+      container.style.paddingBottom = `${paddingBottom}%`;
+    } else if (containerRef.current) {
+      // Reset to default for other modes
+      containerRef.current.style.paddingBottom = '';
+    }
+  }, [aspectRatioMode, videoAspectRatio]);
 
   const togglePlay = async () => {
     const video = videoRef.current;
@@ -177,11 +207,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
 
       <div className="video-player-wrapper">
-        <div className="video-container" onClick={handleVideoClick}>
+        <div 
+          ref={containerRef}
+          className={`video-container video-container-${aspectRatioMode}`} 
+          onClick={handleVideoClick}
+        >
           <video
             ref={videoRef}
             src={videoUrl}
-            className="video-element"
+            className={`video-element video-element-${aspectRatioMode}`}
             preload="metadata"
           />
           
