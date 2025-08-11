@@ -485,13 +485,38 @@ class CVService:
             annotated_path = output_dir / f"{original_name}_annotated.mp4"
             logger.info(f"Annotated video path: {annotated_path.absolute()}")
 
-            # Create video writer with H.264 codec for better browser compatibility
+            # Create video writer with any working codec first, then convert to H.264
             # No audio track - we don't need sound for analysis videos
-            fourcc = cv2.VideoWriter_fourcc(*"avc1")
-            out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
+            # Try different codecs in order of preference
+            codecs_to_try = ["mp4v", "XVID", "MJPG"]  # Use any working codec
+            out = None
 
-            if not out.isOpened():
-                logger.error(f"Could not create video writer for: {annotated_path}")
+            for codec in codecs_to_try:
+                try:
+                    fourcc = cv2.VideoWriter_fourcc(*codec)
+                    out = cv2.VideoWriter(
+                        str(annotated_path), fourcc, fps, (width, height)
+                    )
+                    if out.isOpened():
+                        logger.info(
+                            f"Successfully created video writer with codec: {codec}"
+                        )
+                        break
+                    else:
+                        out.release()
+                        out = None
+                except (OSError, RuntimeError, ValueError) as e:
+                    logger.warning(
+                        f"Failed to create video writer with codec {codec}: {e}"
+                    )
+                    if out:
+                        out.release()
+                        out = None
+
+            if not out or not out.isOpened():
+                logger.error(
+                    f"Could not create video writer for: {annotated_path} with any available codec"
+                )
                 return None
 
             # Write frames
@@ -507,6 +532,47 @@ class CVService:
             logger.info(
                 f"Successfully created annotated video: {annotated_path} ({frames_written} frames)"
             )
+
+            # Convert to H.264 for better browser compatibility using FFmpeg
+            try:
+                import subprocess
+
+                temp_path = annotated_path.with_suffix(".temp.mp4")
+                annotated_path.rename(temp_path)
+
+                # Use FFmpeg to convert to H.264
+                # Note: ffmpeg path is trusted as it's installed in our Docker container
+                cmd = [
+                    "ffmpeg",
+                    "-y",  # Overwrite output
+                    "-i",
+                    str(temp_path),  # Input file
+                    "-c:v",
+                    "libx264",  # Use H.264 codec
+                    "-preset",
+                    "fast",  # Fast encoding
+                    "-crf",
+                    "23",  # Good quality
+                    "-pix_fmt",
+                    "yuv420p",  # Pixel format for browser compatibility
+                    str(annotated_path),  # Output file
+                ]
+
+                result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
+                if result.returncode == 0:
+                    logger.info(f"Successfully converted to H.264: {annotated_path}")
+                    temp_path.unlink()  # Remove temp file
+                else:
+                    logger.warning(f"FFmpeg conversion failed: {result.stderr}")
+                    # Fallback: restore original file
+                    temp_path.rename(annotated_path)
+
+            except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as e:
+                logger.warning(f"Failed to convert to H.264: {e}")
+                # Fallback: restore original file if it was moved
+                if temp_path.exists():
+                    temp_path.rename(annotated_path)
+
             return annotated_path
 
         except (OSError, RuntimeError, ValueError) as e:
