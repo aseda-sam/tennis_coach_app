@@ -149,47 +149,102 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] Display analysis summary in video cards
 - [x] Link to detailed analysis view
 
-### Phase 8: Enhancement & Polish
+### Phase 8: Video Playback & Codec Optimization ✅
 
-#### Step 19: Advanced Features
+#### Step 19: Video Codec Compatibility ✅
+- [x] Fix annotated video playback issues
+- [x] Implement fallback codec system for OpenCV
+- [x] Add FFmpeg post-processing for H.264 conversion
+- [x] Ensure browser compatibility for annotated videos
+- [x] Add proper error handling and fallback mechanisms
+- [x] Test video playback across different browsers
+
+### Phase 9: Enhancement & Polish
+
+#### Step 20: Advanced Features
 - [ ] Stroke type detection (forehand/backhand)
 - [ ] Rally duration analysis
 - [ ] Court coverage heatmaps
 
-#### Step 20: Testing & Documentation
+#### Step 21: Testing & Documentation
 - [ ] End-to-end testing
 - [ ] API documentation
 - [ ] README updates
 
-### Phase 9: Production Readiness
+### Phase 10: Production Readiness
 
-#### Step 21: Basic Production Deployment ✅
+#### Step 22: Basic Production Deployment ✅
 - [x] CI/CD pipeline with GitHub Actions (backend tests, frontend tests, linting)
 - [x] Render backend deployment with automatic GitHub integration
 - [x] GitHub Pages frontend deployment with production builds
 - [x] GitHub Container Registry for Docker image publishing
 - [x] Multi-environment configuration (development vs production)
 
-#### Step 22: Production Docker Optimization
+#### Step 23: Production Docker Optimization
 - [x] Docker multi-stage builds with development and production targets
 - [x] Health checks and proper container lifecycle management
 - [ ] Implement production-grade Docker volume strategy
 - [ ] Replace bind mounts with named volumes for production
 - [ ] Add volume backup and restore procedures
 
-#### Step 23: Production Environment Configuration
+#### Step 24: Production Environment Configuration
 - [x] Production environment variables and secrets management
 - [x] Automatic deployment triggers and branch protection
 - [ ] Database migration strategy (SQLite → PostgreSQL)
 - [ ] Enhanced production logging and monitoring setup
 - [ ] Redis integration for caching and session management
 
-#### Step 24: Advanced Production Features
+#### Step 25: Advanced Production Features
 - [ ] Container orchestration setup (Docker Swarm/Kubernetes)
 - [ ] Blue-green deployment strategy with staging environment
 - [ ] Security hardening (resource limits, vulnerability scanning)
 - [ ] Performance optimization (connection pooling, caching implementation)
 - [ ] Comprehensive backup and disaster recovery procedures
+
+### Phase 11: Production Video Storage & Optimization
+
+#### Step 26: Cloud Storage Integration
+- [ ] **Amazon S3 Integration**: Replace local file storage with S3
+  - [ ] Set up S3 bucket for video storage
+  - [ ] Implement S3 upload/download for original videos
+  - [ ] Store annotated videos in S3
+  - [ ] Add S3 lifecycle policies for cost optimization
+  - [ ] Implement CDN integration for faster video delivery
+
+#### Step 27: Alternative Storage Solutions
+- [ ] **Free Tier Storage Options**: Evaluate cost-effective alternatives
+  - [ ] Cloudflare R2 (S3-compatible, generous free tier)
+  - [ ] Backblaze B2 (S3-compatible, very cost-effective)
+  - [ ] MinIO self-hosted (for complete control)
+  - [ ] Compare pricing and performance for each option
+
+#### Step 28: Video Processing Optimization
+- [ ] **Background Processing**: Move video analysis to background tasks
+  - [ ] Implement FastAPI BackgroundTasks for analysis
+  - [ ] Add job queue system (Redis/Celery)
+  - [ ] Create status polling endpoints
+  - [ ] Add progress indicators in frontend
+
+#### Step 29: Video Encoding Optimization
+- [ ] **Production Encoding Settings**: Optimize for production use
+  - [ ] Implement adaptive quality settings based on video size
+  - [ ] Add encoding presets (fast/balanced/quality)
+  - [ ] Monitor encoding performance and resource usage
+  - [ ] Add video compression for storage optimization
+
+#### Step 30: Video Delivery Optimization
+- [ ] **CDN Integration**: Improve video delivery performance
+  - [ ] Set up Cloudflare CDN for video streaming
+  - [ ] Implement video streaming with range requests
+  - [ ] Add video thumbnail generation
+  - [ ] Implement video caching strategies
+
+#### Step 31: Storage Management
+- [ ] **Automated Cleanup**: Manage storage costs and performance
+  - [ ] Implement automatic deletion of old videos
+  - [ ] Add storage usage monitoring and alerts
+  - [ ] Create video retention policies
+  - [ ] Add bulk video management tools
 
 ## Current Status
 
@@ -219,10 +274,14 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - ✅ Production deployment (Render + GitHub Pages)
 - ✅ CI/CD pipeline with automated testing and deployment
 - ✅ Docker containerization with GitHub Container Registry
+- ✅ **Video codec compatibility fixes**
+- ✅ **FFmpeg H.264 conversion for browser compatibility**
+- ✅ **Fallback codec system for OpenCV video creation**
 
 **Next Step:**
-- Phase 8: Enhancement & Polish (advanced features and testing)
-- Phase 9: Production Readiness (deployment optimization and production hardening)
+- Phase 9: Enhancement & Polish (advanced features and testing)
+- Phase 10: Production Readiness (deployment optimization and production hardening)
+- Phase 11: Production Video Storage & Optimization (cloud storage and performance)
 
 **Completed Phases:**
 - ✅ Phase 1: Basic Video Upload & File Management
@@ -232,10 +291,12 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - ✅ Phase 5: Analysis Pipeline
 - ✅ Phase 6: Frontend Analysis Display
 - ✅ Phase 7: React Analysis Components
+- ✅ Phase 8: Video Playback & Codec Optimization
 
 **Future Phases:**
-- Phase 8: Enhancement & Polish (advanced features and testing)
-- Phase 9: Production Readiness (deployment optimization and production hardening)
+- Phase 9: Enhancement & Polish (advanced features and testing)
+- Phase 10: Production Readiness (deployment optimization and production hardening)
+- Phase 11: Production Video Storage & Optimization (cloud storage and performance)
 
 ## Success Metrics
 
