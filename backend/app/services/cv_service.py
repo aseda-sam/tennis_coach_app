@@ -306,6 +306,47 @@ class CVService:
 
         return frame
 
+    def _safe_restore_file(self, temp_path: Path, target_path: Path) -> None:
+        """
+        Safely restore a file from temporary location to target location.
+
+        Args:
+            temp_path: Path to temporary file
+            target_path: Path to restore file to
+        """
+        try:
+            if not temp_path.exists():
+                logger.warning(
+                    f"Temporary file does not exist for restoration: {temp_path}"
+                )
+                return
+
+            # Remove target file if it exists to avoid rename conflicts
+            if target_path.exists():
+                try:
+                    target_path.unlink()
+                except OSError as e:
+                    logger.warning(
+                        f"Failed to remove existing target file {target_path}: {e}"
+                    )
+                    # Try with a backup name if we can't remove the original
+                    backup_path = target_path.with_suffix(
+                        f".backup_{target_path.suffix}"
+                    )
+                    temp_path.rename(backup_path)
+                    logger.info(f"Restored file to backup location: {backup_path}")
+                    return
+
+            # Restore the file
+            temp_path.rename(target_path)
+            logger.info(f"Successfully restored file from {temp_path} to {target_path}")
+
+        except OSError as e:
+            logger.error(
+                f"Failed to restore file from {temp_path} to {target_path}: {e}"
+            )
+            # File is left at temp_path location for manual cleanup
+
     def analyze_video(
         self, video_path: Path, include_pose: bool = True
     ) -> Dict[str, Any]:
@@ -534,10 +575,21 @@ class CVService:
             )
 
             # Convert to H.264 for better browser compatibility using FFmpeg
-            try:
-                import subprocess
+            import subprocess
+            import uuid
 
-                temp_path = annotated_path.with_suffix(".temp.mp4")
+            temp_path = None
+            conversion_successful = False
+
+            try:
+                # Create a unique temporary filename to avoid conflicts
+                unique_suffix = str(uuid.uuid4())[:8]
+                temp_path = annotated_path.with_suffix(f".temp_{unique_suffix}.mp4")
+
+                # Safely rename original file to temporary name
+                # Remove temp file if it somehow already exists
+                if temp_path.exists():
+                    temp_path.unlink()
                 annotated_path.rename(temp_path)
 
                 # Use FFmpeg to convert to H.264
@@ -561,17 +613,29 @@ class CVService:
                 result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
                 if result.returncode == 0:
                     logger.info(f"Successfully converted to H.264: {annotated_path}")
-                    temp_path.unlink()  # Remove temp file
+                    conversion_successful = True
+                    # Try to remove temp file - if this fails, don't rollback
+                    try:
+                        temp_path.unlink()
+                        temp_path = None  # Mark as cleaned up
+                    except OSError as cleanup_error:
+                        logger.warning(
+                            f"Failed to clean up temp file {temp_path}: {cleanup_error}"
+                        )
+                        # Don't rollback - conversion was successful
                 else:
                     logger.warning(f"FFmpeg conversion failed: {result.stderr}")
                     # Fallback: restore original file
-                    temp_path.rename(annotated_path)
+                    self._safe_restore_file(temp_path, annotated_path)
 
-            except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as e:
+            except subprocess.SubprocessError as e:
+                logger.warning(f"FFmpeg subprocess error: {e}")
+                if temp_path and not conversion_successful:
+                    self._safe_restore_file(temp_path, annotated_path)
+            except (OSError, RuntimeError, ValueError) as e:
                 logger.warning(f"Failed to convert to H.264: {e}")
-                # Fallback: restore original file if it was moved
-                if temp_path.exists():
-                    temp_path.rename(annotated_path)
+                if temp_path and not conversion_successful:
+                    self._safe_restore_file(temp_path, annotated_path)
 
             return annotated_path
 
