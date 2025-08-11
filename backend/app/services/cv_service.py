@@ -505,7 +505,7 @@ class CVService:
                     else:
                         out.release()
                         out = None
-                except Exception as e:
+                except (OSError, RuntimeError, ValueError) as e:
                     logger.warning(
                         f"Failed to create video writer with codec {codec}: {e}"
                     )
@@ -541,6 +541,7 @@ class CVService:
                 annotated_path.rename(temp_path)
 
                 # Use FFmpeg to convert to H.264
+                # Note: ffmpeg path is trusted as it's installed in our Docker container
                 cmd = [
                     "ffmpeg",
                     "-y",  # Overwrite output
@@ -557,7 +558,7 @@ class CVService:
                     str(annotated_path),  # Output file
                 ]
 
-                result = subprocess.run(cmd, capture_output=True, text=True)
+                result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
                 if result.returncode == 0:
                     logger.info(f"Successfully converted to H.264: {annotated_path}")
                     temp_path.unlink()  # Remove temp file
@@ -566,7 +567,7 @@ class CVService:
                     # Fallback: restore original file
                     temp_path.rename(annotated_path)
 
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as e:
                 logger.warning(f"Failed to convert to H.264: {e}")
                 # Fallback: restore original file if it was moved
                 if temp_path.exists():
