@@ -78,6 +78,44 @@
   position: relative;
 }
 
+/* Aspect Ratio Controls */
+.aspect-ratio-controls {
+  padding: 16px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.aspect-ratio-controls label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.aspect-ratio-select {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  font-size: 0.85rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.aspect-ratio-select:hover {
+  border-color: #9ca3af;
+}
+
+.aspect-ratio-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
 .video-overlay-indicator {
   position: absolute;
   top: 16px;
