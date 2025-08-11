@@ -103,14 +103,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               aspectRatioMode={aspectRatioMode}
             />
             {analysis?.annotated_video_path && (
-              <div className="video-overlay-indicator">
-                <div className="overlay-content">
-                  <div className="overlay-icon">🎾</div>
-                  <div className="overlay-text">
-                    <div className="overlay-title">AI Analysis Active</div>
-                    <div className="overlay-subtitle">Pose tracking • Ball detection • Real-time insights</div>
-                  </div>
-                </div>
+              <div className="ai-analysis-badge">
+                <span className="ai-icon">⚡</span>
+                AI Analysis Active
               </div>
             )}
           </div>
