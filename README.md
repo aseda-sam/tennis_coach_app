@@ -1,5 +1,13 @@
 # Tennis Coach App
 
+[![CI](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/ci.yml)
+[![Deploy Frontend](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/deploy-frontend.yml/badge.svg?branch=main)](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/deploy-frontend.yml)
+[![Publish Backend Docker Image](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/docker-publish.yml)
+[![Trivy Security Scan](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/trivy.yml/badge.svg?branch=main)](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/trivy.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-4B8BBE.svg)](https://github.com/astral-sh/ruff)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 A computer vision-based tennis coaching platform that demonstrates data engineering and AI evaluation skills. Currently implements a robust backend for video upload and management, with a React frontend for user interaction.
 
 ## Features
@@ -24,8 +32,8 @@ A computer vision-based tennis coaching platform that demonstrates data engineer
 
 1. **Clone and Setup**
 ```bash
-git clone <repository-url>
-cd tennis_coach_app_2
+git clone https://github.com/aseda-sam/tennis_coach_app.git
+cd tennis_coach_app
 ```
 
 2. **Start All Services**
@@ -96,7 +104,7 @@ npm start
 ## Project Structure
 
 ```
-tennis_coach_app_2/
+tennis_coach_app/
 ├── backend/                 # FastAPI backend
 │   ├── app/
 │   │   ├── api/            # API routes and schemas
@@ -256,4 +264,4 @@ MIT License
 
 ---
 
-**Built with ❤️ for tennis and software engineering** 
+**Built with Aseda's ❤️ for tennis and software engineering**
