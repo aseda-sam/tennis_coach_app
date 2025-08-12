@@ -262,6 +262,7 @@ on:
 - **Python**: 3.8+ (3.11 recommended)
 - **Node.js**: 16+ (18+ recommended)
 - **Git**: Latest version
+- **FFmpeg**: Required for video processing
 - **Docker**: Optional (for containerized deployment)
 
 #### Hardware Requirements
@@ -270,6 +271,21 @@ on:
 - **GPU**: M1 GPU acceleration available (optional)
 
 ### Environment Setup
+
+#### 0. FFmpeg Installation
+```bash
+# macOS
+brew install ffmpeg
+
+# Ubuntu/Debian
+sudo apt install ffmpeg
+
+# CentOS/RHEL
+sudo yum install ffmpeg
+
+# Windows (using chocolatey)
+choco install ffmpeg
+```
 
 #### 1. Python Environment
 ```bash

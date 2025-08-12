@@ -85,7 +85,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   return (
     <div className="analysis-results">
       <div className="analysis-header">
-        <h3>🎾 Tennis Analysis Results</h3>
+        <h3>🎾 Tennis Coach Analysis Results</h3>
       </div>
 
       {/* Pose Detection Results */}

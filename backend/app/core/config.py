@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # Database
-    DATABASE_URL: str = "sqlite:///../data/database/tennis_analysis.db"
+    DATABASE_URL: str = "sqlite:///../data/database/tennis_coach.db"
 
     # File storage
     UPLOAD_DIR: str = "../data/videos/raw"
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # API
     API_V1_STR: str = "/api"
-    PROJECT_NAME: str = "Tennis Analysis API"
+    PROJECT_NAME: str = "Tennis Coach API"
 
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]

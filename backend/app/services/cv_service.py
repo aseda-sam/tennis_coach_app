@@ -593,7 +593,7 @@ class CVService:
                 annotated_path.rename(temp_path)
 
                 # Use FFmpeg to convert to H.264
-                # Note: ffmpeg path is trusted as it's installed in our Docker container
+                # Note: FFmpeg is installed in Docker container and required for local development
                 cmd = [
                     "ffmpeg",
                     "-y",  # Overwrite output

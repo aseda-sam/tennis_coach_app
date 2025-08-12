@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Tennis Analysis API provides endpoints for video upload, processing, and analysis results retrieval. Built with FastAPI for optimal performance and automatic documentation generation.
+The Tennis Coach API provides endpoints for video upload, processing, and analysis results retrieval. Built with FastAPI for optimal performance and automatic documentation generation.
 
 ## Base URL
 ```
@@ -193,7 +193,7 @@ Get API information.
 **Response:**
 ```json
 {
-  "message": "Tennis Analysis API",
+  "message": "Tennis Coach API",
   "version": "1.0.0",
   "docs": "/docs",
   "status": "running"
