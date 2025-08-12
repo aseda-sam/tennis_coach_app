@@ -1,14 +1,16 @@
 # Tennis Coach App
 
+[![CI](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/ci.yml)
+[![Deploy Frontend](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/deploy-frontend.yml/badge.svg?branch=main)](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/deploy-frontend.yml)
+[![Publish Backend Docker Image](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/docker-publish.yml)
+[![Trivy Security Scan](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/trivy.yml/badge.svg?branch=main)](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/trivy.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-4B8BBE.svg)](https://github.com/astral-sh/ruff)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 A computer vision-based tennis coaching platform that demonstrates data engineering and AI evaluation skills. Currently implements a robust backend for video upload and management, with a React frontend for user interaction.
 
-## CI/CD Status
-
-- [![CI](https://github.com/aseda-sam/tennis_coach_app/workflows/CI/badge.svg)](https://github.com/aseda-sam/tennis_coach_app/actions)
-- [![Deploy Frontend](https://github.com/aseda-sam/tennis_coach_app/workflows/Deploy%20Frontend/badge.svg)](https://github.com/aseda-sam/tennis_coach_app/actions)
-- [![Docker](https://github.com/aseda-sam/tennis_coach_app/workflows/Publish%20Backend%20Docker%20Image/badge.svg)](https://github.com/aseda-sam/tennis_coach_app/actions)
-
-## 🎾 Current Features
+## Features
 
 - **Video Upload & Playback**: Upload tennis videos and watch them directly in the browser
 - **Video Library Management**: Organize and manage your tennis video collection with easy browsing
@@ -22,7 +24,7 @@ A computer vision-based tennis coaching platform that demonstrates data engineer
 - **Cross-platform Access**: Use the web interface from any device with a modern browser
 - **Secure File Handling**: Your videos are processed locally with no external data sharing
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Docker Development (Recommended)
 
@@ -30,7 +32,7 @@ A computer vision-based tennis coaching platform that demonstrates data engineer
 
 1. **Clone and Setup**
 ```bash
-git clone <repository-url>
+git clone https://github.com/aseda-sam/tennis_coach_app.git
 cd tennis_coach_app
 ```
 
@@ -43,11 +45,11 @@ docker compose up --build
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
+- **Health Check**: http://localhost:8000/api/videos/
 
 ### Option 2: Local Development
 
-**Prerequisites**: Python 3.8+, Node.js 16+, FFmpeg
+**Prerequisites**: Python 3.11+, Node.js 16+, FFmpeg
 
 1. **Install FFmpeg** (required for video processing):
    ```bash
@@ -61,73 +63,71 @@ docker compose up --build
    choco install ffmpeg
    ```
 
-2. **Clone and Setup**
+2. **Setup Backend**
 ```bash
-git clone <repository-url>
-cd tennis_coach_app
-
 # Create Python virtual environment
 python3 -m venv venv
 source venv/bin/activate
-```
 
-3. **Install Backend Dependencies**
-```bash
+# Install backend dependencies
 cd backend
 pip install -e .
 cd ..
 ```
 
-4. **Install Frontend Dependencies**
+3. **Setup Frontend**
 ```bash
+# Install frontend dependencies
 cd frontend
 npm install
 cd ..
 ```
 
-5. **Run Backend Server**
+4. **Run Backend Server**
 ```bash
 cd backend
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-6. **Run Frontend Development Server** (in a new terminal)
+5. **Run Frontend Development Server** (in a new terminal)
 ```bash
 cd frontend
 npm start
 ```
 
-7. **Access the Application**
+6. **Access the Application**
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
+- **Health Check**: http://localhost:8000/api/videos/
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 tennis_coach_app/
 ├── backend/                 # FastAPI backend
 │   ├── app/
-│   │   ├── api/            # API routes and models
+│   │   ├── api/            # API routes and schemas
 │   │   ├── core/           # Configuration and database
 │   │   ├── services/       # Business logic
 │   │   └── models/         # Database models
 │   ├── pyproject.toml      # Python project configuration
-│   └── tests/              # Backend tests
+│   ├── tests/              # Backend tests
+│   └── README.md           # Backend documentation
 ├── frontend/               # React frontend
 │   ├── src/
 │   │   ├── components/     # React components
 │   │   ├── services/       # API service layer
 │   │   └── types/          # TypeScript type definitions
-│   └── public/             # Static assets
+│   ├── public/             # Static assets
+│   └── README.md           # Frontend documentation
 ├── project_docs/           # Project documentation
 ├── docker-compose.yml      # Docker development setup
 ├── Dockerfile              # Backend container
 └── README.md               # This file
 ```
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Backend**: FastAPI (Python)
 - **Frontend**: React with TypeScript
@@ -138,44 +138,7 @@ tennis_coach_app/
 - **Code Quality**: Ruff linting and formatting
 - **Video Processing**: OpenCV with H.264 codec
 
-## 📊 API Endpoints
-
-### Video Management
-- `GET /api/videos/` - List all uploaded videos
-- `GET /api/videos/{filename}` - Get video details
-- `POST /api/videos/upload` - Upload new video
-- `DELETE /api/videos/{filename}` - Delete video
-
-### Analysis
-- `POST /api/analysis/{video_filename}` - Start analysis for a video
-- `GET /api/analysis/{video_filename}` - Get analysis results
-- `GET /api/analysis/` - List all analyses
-- `DELETE /api/analysis/{video_filename}` - Delete analysis results
-- `GET /api/videos/{filename}/annotated` - Stream annotated video with overlays
-
-### Health & Status
-- `GET /` - API information
-- `GET /health` - Health check
-
-### Documentation & Static Files
-- `GET /docs` - Interactive API documentation (Swagger UI)
-- `GET /redoc` - Alternative API documentation (ReDoc)
-- `GET /processed/{filename}` - Access processed video files
-
-## 🎯 Project Highlights
-
-This project demonstrates:
-- **FastAPI Development**: RESTful API with proper error handling
-- **React Frontend**: Modern web interface with TypeScript
-- **Database Design**: SQLAlchemy ORM with comprehensive schema
-- **Computer Vision**: YOLO-based ball detection + MediaPipe pose estimation
-- **Video Processing**: Annotated video creation with overlays
-- **Smart UI/UX**: Collapsible results, creative overlays, responsive design
-- **File Management**: Secure file upload with validation
-- **Code Quality**: Type hints, linting, and comprehensive testing
-- **Documentation**: Professional project documentation and guides
-
-## 🧠 Analysis Capabilities
+## Analysis Capabilities
 
 ### Ball Detection
 - **YOLO Integration**: Uses YOLOv8n for efficient ball detection
@@ -195,30 +158,19 @@ This project demonstrates:
 - **Smart Playback**: Automatically shows annotated version when available
 - **No Audio**: Silent videos optimized for analysis
 
-## 📚 Documentation
+## Documentation
 
-- [Project Plan](project_docs/project_plan.md)
-- [API Documentation](project_docs/api_documentation.md)
-- [Database Schema](project_docs/database_schema.md)
-- [Pose Estimation Comparison](project_docs/pose_estimation_comparison.md)
-- [Testing Guide](project_docs/testing_guide.md)
-- [React Frontend Guide](project_docs/react_frontend_guide.md)
-- [Deployment Guide](project_docs/deployment_guide.md)
+### Development Guides
+- **[Backend Guide](backend/README.md)** - Setup, API, testing, deployment
+- **[Frontend Guide](frontend/README.md)** - Components, testing, build process
 
-## 🚀 Deployment
+### Project Documentation
+- **[API Reference](project_docs/api_reference.md)** - API endpoints and usage guide
+- **[Deployment Guide](project_docs/deployment_guide.md)** - Production deployment instructions
+- **[Project Roadmap](project_docs/project_plan.md)** - Development phases and future plans
+- **[Pose Estimation Comparison](project_docs/pose_estimation_comparison.md)** - Technology decision record
 
-### Live Applications
-- **Frontend**: [GitHub Pages](https://aseda-sam.github.io/tennis_coach_app/)
-- **Backend API**: Available as Docker image at `ghcr.io/aseda-sam/tennis_coach_app/backend:latest`
-
-### Container Deployment
-```bash
-# Pull and run the backend container
-docker pull ghcr.io/aseda-sam/tennis_coach_app/backend:latest
-docker run -p 8000:8000 ghcr.io/aseda-sam/tennis_coach_app/backend:latest
-```
-
-## 🔧 Development
+## Development
 
 ### Docker Development (Recommended)
 
@@ -266,7 +218,7 @@ ruff format .
 # Run linting
 ruff check .
 
-# Run tests (when implemented)
+# Run tests
 pytest
 ```
 
@@ -287,21 +239,29 @@ npm test
 ### Database Operations
 ```bash
 # Database is automatically created on startup
-# Located at: data/database/tennis_coach.db
+# Located at: data/database/tennis_analysis.db
+
+# Manual database operations (if needed)
+cd backend
+alembic upgrade head  # Apply migrations
+alembic revision --autogenerate -m "Description"  # Create new migration
 ```
 
-## 🤝 Contributing
+## Contributing
 
-1. Fork the repository from main
+1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests if applicable
-5. Submit a pull request
+5. Run code quality checks:
+   - Backend: `ruff check . && ruff format .`
+   - Frontend: `npm run lint && npm test`
+6. Submit a pull request
 
-## 📄 License
+## License
 
 MIT License
 
 ---
 
-**Built with Aseda's ❤️ for tennis and software engineering** 
+**Built with Aseda's ❤️ for tennis and software engineering**

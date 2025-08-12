@@ -1,46 +1,385 @@
-# Getting Started with Create React App
+# Tennis Coach App - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React frontend for the tennis analysis system with video upload, playback, and analysis visualization capabilities.
+
+## Features
+
+- **Video Upload**: Drag-and-drop file upload with validation
+- **Video Library**: Browse and manage uploaded videos
+- **Video Playback**: HTML5 video player with controls and fullscreen
+- **Analysis Results**: Display ball detection and pose estimation metrics
+- **Annotated Videos**: Automatic playback of videos with AI overlays
+- **Responsive Design**: Works on desktop and mobile devices
+- **TypeScript**: Full type safety and IntelliSense support
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 16+ (18+ recommended)
+- npm or yarn
+- Backend server running (see [backend README](../backend/README.md))
+
+### Installation
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm start
+```
+
+The app will open at http://localhost:3000
+
+### Environment Configuration
+
+Create a `.env` file in the `frontend/` directory:
+
+```bash
+# API Configuration
+REACT_APP_API_URL=http://localhost:8000
+
+# File Upload
+REACT_APP_MAX_FILE_SIZE=104857600  # 100MB
+
+# Development
+REACT_APP_DEBUG=true
+```
 
 ## Available Scripts
 
-In the project directory, you can run:
+### Development
+```bash
+# Start development server
+npm start
 
-### `npm start`
+# Run tests
+npm test
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+# Run tests with coverage
+npm run test:coverage
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+# Build for production
+npm run build
 
-### `npm test`
+# Eject from Create React App (not recommended)
+npm run eject
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Code Quality
+```bash
+# Lint code
+npm run lint
 
-### `npm run build`
+# Fix auto-fixable linting issues
+npm run lint:fix
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+# Type check
+npm run type-check
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+# Format code
+npm run format
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Testing
+```bash
+# Run tests in watch mode
+npm test
 
-### `npm run eject`
+# Run tests once
+npm run test:ci
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+# Run tests with coverage
+npm run test:coverage
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+# Run specific test file
+npm test -- VideoPlayer.test.tsx
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+# Run specific test
+npm test -- --testNamePattern="should play video"
+```
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+## Project Structure
 
-## Learn More
+```
+frontend/
+├── public/
+│   ├── index.html          # Main HTML template
+│   ├── favicon.ico         # App icon
+│   └── manifest.json       # PWA manifest
+├── src/
+│   ├── components/         # React components
+│   │   ├── AnalysisDashboard.tsx    # Main analysis view
+│   │   ├── AnalysisModal.tsx        # Analysis results modal
+│   │   ├── AnalysisResults.tsx      # Analysis metrics display
+│   │   ├── Icons.tsx               # SVG icons
+│   │   ├── VideoList.tsx           # Video library
+│   │   ├── VideoPlayer.tsx         # Video playback
+│   │   └── VideoUpload.tsx         # File upload
+│   ├── services/
+│   │   └── api.ts                  # API service layer
+│   ├── types/
+│   │   └── video.ts                # TypeScript type definitions
+│   ├── App.tsx                     # Main app component
+│   ├── App.css                     # App styles
+│   ├── index.tsx                   # App entry point
+│   └── index.css                   # Global styles
+├── package.json                    # Dependencies and scripts
+├── tsconfig.json                   # TypeScript configuration
+└── README.md                      # This file
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Components Overview
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### VideoUpload
+- Drag-and-drop file upload interface
+- File validation (size, format)
+- Upload progress and error handling
+- Supports MP4, MOV, AVI formats
+
+### VideoList
+- Displays uploaded videos in a grid
+- Shows video metadata (size, duration, resolution)
+- Delete functionality with confirmation
+- Analysis status indicators
+
+### VideoPlayer
+- HTML5 video player with custom controls
+- Play/pause, seek, volume, fullscreen
+- Automatic annotated video selection
+- Error handling for playback issues
+
+### AnalysisDashboard
+- Combined video player and analysis results
+- Analysis trigger button
+- Loading states during processing
+- Collapsible video details
+
+### AnalysisResults
+- Displays ball detection metrics
+- Shows pose estimation statistics
+- Processing time and model information
+- Collapsible sections for organization
+
+## API Integration
+
+### Base Configuration
+The frontend communicates with the backend API through the `api.ts` service layer:
+
+```typescript
+// Default API configuration
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+```
+
+### Key Endpoints
+- `POST /api/videos/upload` - Upload video files
+- `GET /api/videos/` - List all videos
+- `GET /api/videos/{filename}/stream` - Stream original video
+- `GET /api/videos/{filename}/annotated` - Stream annotated video
+- `POST /api/analysis/{filename}` - Start analysis
+- `GET /api/analysis/{filename}` - Get analysis results
+
+### Error Handling
+- Network errors with retry logic
+- File upload validation
+- Video playback error recovery
+- User-friendly error messages
+
+## Development Guidelines
+
+### Code Style
+- Use TypeScript for all new code
+- Follow ESLint configuration
+- Use Prettier for formatting
+- Add JSDoc comments for complex functions
+
+### Component Patterns
+```typescript
+// Functional components with hooks
+const MyComponent: React.FC<MyComponentProps> = ({ prop1, prop2 }) => {
+  const [state, setState] = useState<StateType>(initialState);
+  
+  useEffect(() => {
+    // Side effects
+  }, [dependencies]);
+  
+  return (
+    <div className="my-component">
+      {/* JSX content */}
+    </div>
+  );
+};
+```
+
+### State Management
+- Use React hooks (useState, useEffect, useCallback)
+- Keep state as local as possible
+- Lift state up when needed for sharing
+- Consider Context API for global state
+
+### Testing Patterns
+```typescript
+// Component test example
+import { render, screen, fireEvent } from '@testing-library/react';
+import { VideoPlayer } from './VideoPlayer';
+
+describe('VideoPlayer', () => {
+  it('should play video when play button is clicked', () => {
+    render(<VideoPlayer src="test.mp4" />);
+    
+    const playButton = screen.getByRole('button', { name: /play/i });
+    fireEvent.click(playButton);
+    
+    expect(screen.getByRole('video')).toHaveAttribute('src', 'test.mp4');
+  });
+});
+```
+
+## Testing
+
+### Test Structure
+- Unit tests for individual components
+- Integration tests for component interactions
+- API service tests with mocked responses
+- User interaction tests with React Testing Library
+
+### Running Tests
+```bash
+# Run all tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# Run specific test file
+npm test -- VideoPlayer.test.tsx
+
+# Run tests in CI mode
+npm run test:ci
+```
+
+### Coverage Requirements
+- Minimum 70% coverage for new code
+- 100% coverage for critical components
+- Focus on user interactions and business logic
+
+## Build and Deployment
+
+### Development Build
+```bash
+npm start
+```
+
+### Production Build
+```bash
+npm run build
+```
+
+The build output will be in the `build/` directory.
+
+### Environment-Specific Builds
+```bash
+# Development
+REACT_APP_API_URL=http://localhost:8000 npm run build
+
+# Production
+REACT_APP_API_URL=https://api.tennis-coach.com npm run build
+```
+
+### Deployment Options
+
+#### GitHub Pages (Current)
+- Automatic deployment via GitHub Actions
+- Builds on main branch pushes
+- Served from GitHub Pages CDN
+
+#### Docker Deployment
+```bash
+# Build Docker image
+docker build -t tennis-frontend .
+
+# Run container
+docker run -p 80:80 tennis-frontend
+```
+
+#### Static Hosting
+- Upload `build/` contents to any static hosting service
+- Configure environment variables for API URL
+- Ensure CORS is properly configured on backend
+
+## Troubleshooting
+
+### Common Issues
+
+#### API Connection Errors
+- Verify backend server is running
+- Check `REACT_APP_API_URL` environment variable
+- Ensure CORS is configured on backend
+- Check network connectivity
+
+#### Video Playback Issues
+- Verify video format is supported (MP4, MOV, AVI)
+- Check video file integrity
+- Ensure proper CORS headers for video streaming
+- Test with different browsers
+
+#### Build Errors
+```bash
+# Clear cache and reinstall dependencies
+rm -rf node_modules package-lock.json
+npm install
+
+# Clear build cache
+npm run build -- --reset-cache
+```
+
+#### Test Failures
+```bash
+# Clear test cache
+npm test -- --clearCache
+
+# Run tests with verbose output
+npm test -- --verbose
+```
+
+### Debug Mode
+```bash
+# Enable debug logging
+REACT_APP_DEBUG=true npm start
+
+# Open browser dev tools
+# Check Console and Network tabs for errors
+```
+
+## Performance Optimization
+
+### Bundle Size
+- Use dynamic imports for large components
+- Implement code splitting with React.lazy
+- Optimize images and assets
+- Monitor bundle size with webpack-bundle-analyzer
+
+### Runtime Performance
+- Use React.memo for expensive components
+- Implement proper dependency arrays in useEffect
+- Avoid unnecessary re-renders
+- Use React DevTools Profiler for analysis
+
+### Video Performance
+- Implement lazy loading for video thumbnails
+- Use appropriate video quality settings
+- Consider video compression for storage
+- Implement video caching strategies
+
+## Contributing
+
+1. Follow the established code patterns
+2. Write tests for new features
+3. Update documentation for API changes
+4. Use conventional commit messages
+5. Ensure all tests pass before submitting
+
+## License
+
+MIT License
