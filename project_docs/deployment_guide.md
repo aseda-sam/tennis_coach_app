@@ -395,7 +395,7 @@ services:
       - ./data:/app/data  # Bind mount for easy development access
       - ./backend:/app/backend  # Hot reload
     environment:
-      - DATABASE_URL=sqlite:///./data/database/tennis_analysis.db
+      - DATABASE_URL=sqlite:///./data/database/tennis_coach.db
     depends_on:
       - redis
 
@@ -576,7 +576,7 @@ cdk deploy
 #### Backend (.env)
 ```bash
 # Database
-DATABASE_URL=sqlite:///./data/database/tennis_analysis.db
+DATABASE_URL=sqlite:///./data/database/tennis_coach.db
 
 # File Storage
 UPLOAD_DIR=./data/videos/raw
@@ -696,7 +696,7 @@ async def health_check():
 ### Database Backup
 ```bash
 # SQLite backup
-sqlite3 data/database/tennis_analysis.db ".backup backup.db"
+sqlite3 data/database/tennis_coach.db ".backup backup.db"
 
 # PostgreSQL backup (production)
 pg_dump $DATABASE_URL > backup.sql
@@ -727,7 +727,7 @@ kill -9 <PID>
 #### Database Issues
 ```bash
 # Reset database
-rm data/database/tennis_analysis.db
+rm data/database/tennis_coach.db
 alembic upgrade head
 ```
 

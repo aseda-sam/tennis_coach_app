@@ -88,7 +88,7 @@ Create a `.env` file in the `backend/` directory:
 
 ```bash
 # Database
-DATABASE_URL=sqlite:///./data/database/tennis_analysis.db
+DATABASE_URL=sqlite:///./data/database/tennis_coach.db
 
 # File Storage
 UPLOAD_DIR=./data/videos/raw
@@ -252,7 +252,7 @@ kill -9 <PID>
 #### Database Issues
 ```bash
 # Reset database
-rm data/database/tennis_analysis.db
+rm data/database/tennis_coach.db
 alembic upgrade head
 ```
 
@@ -293,7 +293,7 @@ docker build -t tennis-backend:latest .
 
 # Run with environment variables
 docker run -p 8000:8000 \
-  -e DATABASE_URL=sqlite:///./data/database/tennis_analysis.db \
+  -e DATABASE_URL=sqlite:///./data/database/tennis_coach.db \
   -e MAX_FILE_SIZE=104857600 \
   tennis-backend:latest
 ```
