@@ -8,10 +8,10 @@ This guide covers deployment options for the Tennis Analysis System, from local 
 
 The application is currently live and accessible:
 
-- **Frontend**: [GitHub Pages](https://aseda-sam.github.io/tennis_coach_app/) 
+- **Frontend**: [GitHub Pages](https://aseda-sam.github.io/tennis_coach_app_2/) 
 - **Backend API**: [tennis-coach-backend.onrender.com](https://tennis-coach-backend.onrender.com)
 - **API Documentation**: [tennis-coach-backend.onrender.com/docs](https://tennis-coach-backend.onrender.com/docs)
-- **Docker Images**: [GitHub Container Registry](https://github.com/aseda-sam/tennis_coach_app/pkgs/container/tennis_coach_app%2Fbackend)
+- **Docker Images**: [GitHub Container Registry](https://github.com/aseda-sam/tennis_coach_app_2/pkgs/container/tennis_coach_app_2%2Fbackend)
 
 ## CI/CD Pipeline
 
@@ -360,15 +360,15 @@ The application is currently deployed using a hybrid approach:
 - **Automatic publishing** on backend changes
 - **Multi-platform builds** for compatibility
 - **Versioned releases** with automatic tagging
-- **Pull command**: `docker pull ghcr.io/aseda-sam/tennis_coach_app/backend:latest`
+- **Pull command**: `docker pull ghcr.io/aseda-sam/tennis_coach_app_2/backend:latest`
 
 ### Alternative Deployment Options
 
 #### Self-Hosted Docker (Advanced)
 ```bash
 # Pull and run production images
-docker pull ghcr.io/aseda-sam/tennis_coach_app/backend:latest
-docker run -p 8000:8000 ghcr.io/aseda-sam/tennis_coach_app/backend:latest
+docker pull ghcr.io/aseda-sam/tennis_coach_app_2/backend:latest
+docker run -p 8000:8000 ghcr.io/aseda-sam/tennis_coach_app_2/backend:latest
 ```
 
 #### Railway (Alternative Cloud Option)
@@ -427,7 +427,7 @@ version: '3.8'
 
 services:
   backend:
-    image: ghcr.io/aseda-sam/tennis_coach_app/backend:latest
+    image: ghcr.io/aseda-sam/tennis_coach_app_2/backend:latest
     ports:
       - "8000:8000"
     volumes:
