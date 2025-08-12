@@ -324,6 +324,63 @@
   font-weight: 600;
 }
 
+/* Analysis Summary */
+.analysis-summary {
+  margin-top: 16px;
+  padding: 12px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #e0f2fe;
+  border-radius: 8px;
+}
+
+.analysis-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.analysis-icon {
+  font-size: 1rem;
+}
+
+.analysis-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #0369a1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.analysis-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0369a1;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
 /* Enhanced Actions */
 .video-actions-enhanced {
   padding: 0 20px 20px;

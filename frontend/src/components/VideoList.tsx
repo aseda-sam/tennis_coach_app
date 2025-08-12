@@ -228,7 +228,38 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
                         <span className="metadata-value">{video.fps} fps</span>
                       </div>
                     )}
+                    
+                    {video.duration && (
+                      <div className="metadata-row">
+                        <span className="metadata-label">Duration:</span>
+                        <span className="metadata-value">{formatDuration(video.duration)}</span>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Ball Detection Summary */}
+                  {analysis && (
+                    <div className="analysis-summary">
+                      <div className="analysis-header">
+                        <span className="analysis-icon">🎾</span>
+                        <span className="analysis-title">Ball Detection Results</span>
+                      </div>
+                      <div className="analysis-stats">
+                        <div className="stat-item">
+                          <span className="stat-value">{analysis.total_ball_detections}</span>
+                          <span className="stat-label">Total Detections</span>
+                        </div>
+                        <div className="stat-item">
+                          <span className="stat-value">{analysis.frames_with_balls}</span>
+                          <span className="stat-label">Frames with Balls</span>
+                        </div>
+                        <div className="stat-item">
+                          <span className="stat-value">{(analysis.detection_rate * 100).toFixed(1)}%</span>
+                          <span className="stat-label">Detection Rate</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="video-actions-enhanced">
