@@ -41,6 +41,19 @@ jobs:
         
       - name: Run tests
         run: pytest -q
+        
+      - name: Install Bandit
+        run: pip install bandit
+        
+      - name: Run Bandit security scan
+        run: bandit -r . -f json -o bandit-report.json || true
+        
+      - name: Upload Bandit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-report
+          path: bandit-report.json
 
   frontend:
     runs-on: ubuntu-latest
