@@ -1,5 +1,7 @@
 # Pose Estimation Options Comparison
 
+> **Note**: This document serves as an Architecture Decision Record (ADR) for the pose estimation technology choice. The decision to use MediaPipe Pose has been implemented and is working well in production.
+
 ## Overview
 This document compares different pose estimation solutions for the tennis analysis system, focusing on simplicity, accuracy, and ease of integration.
 
