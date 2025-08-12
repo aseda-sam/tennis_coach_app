@@ -235,7 +235,7 @@ npm test
 ### Database Operations
 ```bash
 # Database is automatically created on startup
-# Located at: data/database/tennis_analysis.db
+# Located at: data/database/tennis_coach.db
 
 # Manual database operations (if needed)
 cd backend
