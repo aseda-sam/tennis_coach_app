@@ -8,7 +8,7 @@
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-4B8BBE.svg)](https://github.com/astral-sh/ruff)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A computer vision-based tennis coaching platform that demonstrates data engineering and AI evaluation skills. Currently implements a robust backend for video upload and management, with a React frontend for user interaction.
+A computer vision-based tennis coaching platform. Currently implements a backend for video upload, analysis and management, with a React frontend for user interaction.
 
 ## Features
 
@@ -18,11 +18,7 @@ A computer vision-based tennis coaching platform that demonstrates data engineer
 - **Pose Estimation**: Advanced player pose detection using MediaPipe for stroke analysis
 - **Annotated Video Creation**: Generate videos with pose and ball detection overlays
 - **Smart Video Player**: Automatically displays annotated videos when analysis is available
-- **Collapsible Analysis Results**: Clean, organized display of detection metrics
 - **Analysis Dashboard**: View detailed statistics about ball and pose detection performance
-- **Real-time Processing**: Get instant feedback on analysis progress and results
-- **Cross-platform Access**: Use the web interface from any device with a modern browser
-- **Secure File Handling**: Your videos are processed locally with no external data sharing
 
 ## Quick Start
 
