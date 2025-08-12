@@ -1,10 +1,12 @@
-# Tennis Computer Vision Analysis System
+# Tennis Coach App - Project Roadmap
+
+> **Note**: This document serves as a development roadmap and project status tracker. For current setup instructions, see [backend/README.md](../backend/README.md) and [frontend/README.md](../frontend/README.md).
 
 ## Project Overview
 
 A computer vision-based tennis analysis system that demonstrates data engineering and AI evaluation skills. The system processes tennis videos to extract meaningful insights about player performance, ball trajectory, and court positioning.
 
-### Key Features (MVP)
+### Key Features (MVP) ✅ **COMPLETED**
 - **Video Upload & Processing**: Upload tennis videos and extract basic metadata
 - **Ball Tracking**: YOLO-based ball detection with trajectory analysis
 - **Player Positioning**: MediaPipe pose estimation for court position analysis
@@ -18,79 +20,45 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - **Database**: SQLite (MVP) → PostgreSQL (later)
 - **Storage**: Local file system → S3/MinIO (later)
 
-## Implementation Steps
+## Current Status
 
-### Phase 1: Basic Video Upload & File Management
+### ✅ Completed Features
+- **Phase 1**: Basic Video Upload & File Management
+- **Phase 2**: Database Integration  
+- **Phase 3**: Frontend Development
+- **Phase 4**: Computer Vision Foundation (including MediaPipe)
+- **Phase 5**: Analysis Pipeline
+- **Phase 6**: Frontend Analysis Display
+- **Phase 7**: React Analysis Components
+- **Phase 8**: Video Playback & Codec Optimization
 
-#### Step 1: Basic FastAPI Setup ✅
+### 🚀 Production Ready
+- **CI/CD Pipeline**: GitHub Actions with automated testing and deployment
+- **Backend Deployment**: Render with automatic GitHub integration
+- **Frontend Deployment**: GitHub Pages with production builds
+- **Docker Containerization**: GitHub Container Registry for backend images
+- **Multi-environment Configuration**: Development vs production settings
+
+## Implementation Phases
+
+### Phase 1: Basic Video Upload & File Management ✅
 - [x] Set up FastAPI project structure
-- [x] Create basic configuration
-- [x] Test server startup and health checks
-
-#### Step 2: Simple Video Upload ✅
-- [x] Create video upload endpoint
-- [x] Add file validation (size, format)
-- [x] Test upload functionality
-- [x] Verify file storage
-
-#### Step 3: Video File Information ✅
+- [x] Create video upload endpoint with validation
+- [x] Add file storage system
 - [x] Extract video metadata (duration, resolution, fps)
-- [x] Display video information after upload
-- [x] Test with different video formats
+- [x] Create file management endpoints (list, delete, get details)
+- [x] Integrate with SQLite database
+- [x] Build React frontend with upload interface
 
-#### Step 4: File Management ✅
-- [x] List uploaded videos endpoint
-- [x] Delete video endpoint
-- [x] Get video details endpoint
-
-### Phase 2: Database Integration
-
-#### Step 5: Database Setup ✅
-- [x] Set up SQLite database
-- [x] Create video metadata table
-- [x] Store video information in database
-
-#### Step 6: Video Management with Database ✅
-- [x] Update upload to save to database
-- [x] List videos from database
-- [x] Delete videos from database and file system
-
-### Phase 3: Frontend Development
-
-#### Step 7: Basic React Setup ✅
-- [x] Set up React frontend
-- [x] Create video upload component
-- [x] Display uploaded videos list
-
-#### Step 8: Video Management Interface ✅
-- [x] Add video deletion functionality
-- [x] Show video metadata (size, duration, resolution)
-- [x] Handle upload errors and loading states
-- [x] Test complete upload/list/delete workflow
-
-### Phase 4: Computer Vision Foundation
-
-#### Step 9: Basic Video Processing ✅
+### Phase 2: Computer Vision Foundation ✅
 - [x] Add OpenCV for video frame extraction
-- [x] Extract frames from uploaded videos
-- [x] Test frame processing performance
-
-#### Step 10: YOLO Integration ✅
-- [x] Add YOLO model for object detection
-- [x] Test ball detection on sample frames
-- [x] Optimize detection performance
-
-#### Step 11: MediaPipe Integration ✅
+- [x] Integrate YOLO for ball detection
 - [x] Add MediaPipe for pose estimation
-- [x] Test player detection on sample frames
-- [x] Extract basic pose data
-- [x] Implement pose keypoint extraction for tennis analysis
-- [x] Add pose detection confidence thresholds
+- [x] Extract tennis-relevant keypoints
+- [x] Implement pose detection confidence thresholds
 - [x] Create pose overlay visualization
 
-### Phase 5: Analysis Pipeline
-
-#### Step 12: Basic Analysis Engine ✅
+### Phase 3: Analysis Pipeline ✅
 - [x] Process video frames with CV models
 - [x] Store analysis results in database
 - [x] Calculate basic metrics (ball detections, pose detection rate)
@@ -98,240 +66,130 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] Implement comprehensive analysis pipeline
 - [x] Add pose detection metrics to database schema
 
-#### Step 13: Analysis Results ✅
-- [x] Create analysis results endpoint
-- [x] Display basic tennis metrics
-- [x] Test end-to-end analysis pipeline
-- [x] Add pose detection fields to API response models
-- [x] Implement annotated video streaming endpoint
-- [x] Create comprehensive analysis summary
-
-### Phase 6: Frontend Analysis Display ✅
-
-#### Step 14: Analysis Interface ✅
+### Phase 4: Frontend Analysis Display ✅
 - [x] Show analysis results in frontend
-- [x] Basic charts for metrics
-- [x] Video playback with overlay
-- [x] Display processing status
+- [x] Create AnalysisResults component with collapsible sections
+- [x] Build VideoPlayer component with controls and fullscreen
+- [x] Implement AnalysisDashboard with video player and results
+- [x] Add smart video selection (annotated vs original)
+- [x] Create enhanced video list with analysis status
 
-### Phase 7: React Analysis Components ✅
-
-#### Step 15: Analysis Results Display ✅
-- [x] Create AnalysisResults component
-- [x] Display ball detection metrics (total detections, detection rate)
-- [x] Show processing time and model information
-- [x] Add analysis status indicators
-- [x] Add pose detection metrics display
-- [x] Implement collapsible analysis sections
-- [x] Create clean, organized results layout
-
-#### Step 16: Video Player Component ✅
-- [x] Create VideoPlayer component with HTML5 video
-- [x] Add play/pause/seek controls
-- [x] Display video metadata (duration, resolution, fps)
-- [x] Handle different video formats
-- [x] Implement fullscreen functionality
-- [x] Add error handling for video playback
-- [x] Create smart video selection (annotated vs original)
-
-#### Step 17: Analysis Dashboard ✅
-- [x] Create AnalysisDashboard component
-- [x] Combine video player and analysis results
-- [x] Add analysis trigger button
-- [x] Show loading states during processing
-- [x] Add creative AI analysis overlay indicator
-- [x] Implement collapsible video details section
-- [x] Create modern, responsive layout design
-
-#### Step 18: Enhanced Video List ✅
-- [x] Update VideoList to show analysis status
-- [x] Add "Analyze" button for each video
-- [x] Display analysis summary in video cards
-- [x] Link to detailed analysis view
-
-### Phase 8: Video Playback & Codec Optimization ✅
-
-#### Step 19: Video Codec Compatibility ✅
+### Phase 5: Video Playback & Codec Optimization ✅
 - [x] Fix annotated video playback issues
 - [x] Implement fallback codec system for OpenCV
-- [x] Add FFmpeg post-processing for H.264 conversion
-- [x] Ensure browser compatibility for annotated videos
+- [x] Add FFmpeg H.264 conversion for browser compatibility
+- [x] Ensure cross-browser video compatibility
 - [x] Add proper error handling and fallback mechanisms
-- [x] Test video playback across different browsers
 
-### Phase 9: Enhancement & Polish
-
-#### Step 20: Advanced Features
-- [ ] Stroke type detection (forehand/backhand)
-- [ ] Rally duration analysis
-- [ ] Court coverage heatmaps
-
-#### Step 21: Testing & Documentation
-- [ ] End-to-end testing
-- [ ] API documentation
-- [ ] README updates
-
-### Phase 10: Production Readiness
-
-#### Step 22: Basic Production Deployment ✅
-- [x] CI/CD pipeline with GitHub Actions (backend tests, frontend tests, linting)
+### Phase 6: Production Deployment ✅
+- [x] CI/CD pipeline with GitHub Actions
 - [x] Render backend deployment with automatic GitHub integration
 - [x] GitHub Pages frontend deployment with production builds
 - [x] GitHub Container Registry for Docker image publishing
 - [x] Multi-environment configuration (development vs production)
-
-#### Step 23: Production Docker Optimization
 - [x] Docker multi-stage builds with development and production targets
 - [x] Health checks and proper container lifecycle management
-- [ ] Implement production-grade Docker volume strategy
-- [ ] Replace bind mounts with named volumes for production
-- [ ] Add volume backup and restore procedures
 
-#### Step 24: Production Environment Configuration
-- [x] Production environment variables and secrets management
-- [x] Automatic deployment triggers and branch protection
-- [ ] Database migration strategy (SQLite → PostgreSQL)
-- [ ] Enhanced production logging and monitoring setup
-- [ ] Redis integration for caching and session management
+## Future Roadmap
 
-#### Step 25: Advanced Production Features
-- [ ] Container orchestration setup (Docker Swarm/Kubernetes)
-- [ ] Blue-green deployment strategy with staging environment
-- [ ] Security hardening (resource limits, vulnerability scanning)
-- [ ] Performance optimization (connection pooling, caching implementation)
-- [ ] Comprehensive backup and disaster recovery procedures
+### Phase 7: Enhancement & Polish (Next Priority)
+- [ ] **Advanced Stroke Detection**: Forehand/backhand classification
+- [ ] **Rally Analysis**: Duration and pattern recognition
+- [ ] **Court Coverage Heatmaps**: Player movement visualization
+- [ ] **Performance Metrics**: Advanced tennis-specific analytics
+- [ ] **User Experience Improvements**: Better loading states, error handling
 
-### Phase 11: Production Video Storage & Optimization
+### Phase 8: Production Hardening
+- [ ] **Database Migration**: SQLite → PostgreSQL for production
+- [ ] **Cloud Storage**: S3/MinIO integration for video storage
+- [ ] **Background Processing**: Redis/Celery for long-running tasks
+- [ ] **Monitoring & Logging**: Production-grade observability
+- [ ] **Security Hardening**: Authentication, rate limiting, input validation
 
-#### Step 26: Cloud Storage Integration
-- [ ] **Amazon S3 Integration**: Replace local file storage with S3
-  - [ ] Set up S3 bucket for video storage
-  - [ ] Implement S3 upload/download for original videos
-  - [ ] Store annotated videos in S3
-  - [ ] Add S3 lifecycle policies for cost optimization
-  - [ ] Implement CDN integration for faster video delivery
+### Phase 9: Advanced Features
+- [ ] **Multi-player Tracking**: Support for doubles matches
+- [ ] **Stroke Technique Analysis**: Advanced biomechanical insights
+- [ ] **Match Statistics**: Comprehensive performance analytics
+- [ ] **Export Capabilities**: PDF reports, video highlights
+- [ ] **Mobile Optimization**: Progressive Web App features
 
-#### Step 27: Alternative Storage Solutions
-- [ ] **Free Tier Storage Options**: Evaluate cost-effective alternatives
-  - [ ] Cloudflare R2 (S3-compatible, generous free tier)
-  - [ ] Backblaze B2 (S3-compatible, very cost-effective)
-  - [ ] MinIO self-hosted (for complete control)
-  - [ ] Compare pricing and performance for each option
-
-#### Step 28: Video Processing Optimization
-- [ ] **Background Processing**: Move video analysis to background tasks
-  - [ ] Implement FastAPI BackgroundTasks for analysis
-  - [ ] Add job queue system (Redis/Celery)
-  - [ ] Create status polling endpoints
-  - [ ] Add progress indicators in frontend
-
-#### Step 29: Video Encoding Optimization
-- [ ] **Production Encoding Settings**: Optimize for production use
-  - [ ] Implement adaptive quality settings based on video size
-  - [ ] Add encoding presets (fast/balanced/quality)
-  - [ ] Monitor encoding performance and resource usage
-  - [ ] Add video compression for storage optimization
-
-#### Step 30: Video Delivery Optimization
-- [ ] **CDN Integration**: Improve video delivery performance
-  - [ ] Set up Cloudflare CDN for video streaming
-  - [ ] Implement video streaming with range requests
-  - [ ] Add video thumbnail generation
-  - [ ] Implement video caching strategies
-
-#### Step 31: Storage Management
-- [ ] **Automated Cleanup**: Manage storage costs and performance
-  - [ ] Implement automatic deletion of old videos
-  - [ ] Add storage usage monitoring and alerts
-  - [ ] Create video retention policies
-  - [ ] Add bulk video management tools
-
-## Current Status
-
-**Completed:**
-- ✅ Basic FastAPI server setup
-- ✅ Video upload endpoint with validation
-- ✅ File storage system
-- ✅ Error handling for file size and format
-- ✅ Video metadata extraction (duration, resolution, fps)
-- ✅ File management endpoints (list, delete, get details)
-- ✅ Database integration (SQLite)
-- ✅ Video management with database
-- ✅ Basic React frontend setup
-- ✅ Video upload and management interface
-- ✅ Basic video processing with OpenCV
-- ✅ YOLO integration for ball detection
-- ✅ **MediaPipe pose estimation integration**
-- ✅ **Comprehensive analysis pipeline with pose and ball detection**
-- ✅ **Annotated video creation with overlays**
-- ✅ **Smart video player with fullscreen and error handling**
-- ✅ **Collapsible analysis results with modern UI**
-- ✅ **Creative AI analysis overlay indicators**
-- ✅ Analysis results display in frontend
-- ✅ Video player component with controls
-- ✅ Analysis dashboard with video player and results
-- ✅ Enhanced video list with analysis status
-- ✅ Production deployment (Render + GitHub Pages)
-- ✅ CI/CD pipeline with automated testing and deployment
-- ✅ Docker containerization with GitHub Container Registry
-- ✅ **Video codec compatibility fixes**
-- ✅ **FFmpeg H.264 conversion for browser compatibility**
-- ✅ **Fallback codec system for OpenCV video creation**
-
-**Next Step:**
-- Phase 9: Enhancement & Polish (advanced features and testing)
-- Phase 10: Production Readiness (deployment optimization and production hardening)
-- Phase 11: Production Video Storage & Optimization (cloud storage and performance)
-
-**Completed Phases:**
-- ✅ Phase 1: Basic Video Upload & File Management
-- ✅ Phase 2: Database Integration  
-- ✅ Phase 3: Frontend Development
-- ✅ Phase 4: Computer Vision Foundation (including MediaPipe)
-- ✅ Phase 5: Analysis Pipeline
-- ✅ Phase 6: Frontend Analysis Display
-- ✅ Phase 7: React Analysis Components
-- ✅ Phase 8: Video Playback & Codec Optimization
-
-**Future Phases:**
-- Phase 9: Enhancement & Polish (advanced features and testing)
-- Phase 10: Production Readiness (deployment optimization and production hardening)
-- Phase 11: Production Video Storage & Optimization (cloud storage and performance)
+### Phase 10: Scale & Performance
+- [ ] **Microservices Architecture**: Separate video processing service
+- [ ] **Load Balancing**: Multiple application instances
+- [ ] **CDN Integration**: Global video delivery optimization
+- [ ] **Caching Strategy**: Redis for frequently accessed data
+- [ ] **Performance Monitoring**: Real-time system metrics
 
 ## Success Metrics
 
-### Technical Goals
-- Process tennis videos successfully
-- Detect and track tennis ball with reasonable accuracy
-- Identify player position on court correctly
-- Generate meaningful tennis performance metrics
+### Technical Goals ✅ **ACHIEVED**
+- [x] Process tennis videos successfully
+- [x] Detect and track tennis ball with reasonable accuracy
+- [x] Identify player position on court correctly
+- [x] Generate meaningful tennis performance metrics
 
-### Development Goals
-- Clean, well-documented codebase
-- Demonstrates data engineering best practices
-- Shows computer vision pipeline development
-- Scalable architecture design
+### Development Goals ✅ **ACHIEVED**
+- [x] Clean, well-documented codebase
+- [x] Demonstrates data engineering best practices
+- [x] Shows computer vision pipeline development
+- [x] Scalable architecture design
+
+### Future Goals
+- [ ] **User Adoption**: Active users and engagement metrics
+- [ ] **Performance**: Sub-second video processing times
+- [ ] **Accuracy**: 95%+ detection accuracy for key metrics
+- [ ] **Scalability**: Support for 1000+ concurrent users
+
+## Technology Decisions
+
+### Current Stack
+- **FastAPI**: Chosen for performance, automatic docs, and Python ecosystem
+- **React + TypeScript**: Modern frontend with type safety
+- **SQLite**: Simple, reliable for MVP; PostgreSQL planned for production
+- **YOLO + MediaPipe**: Best balance of accuracy and performance
+- **Docker**: Consistent deployment across environments
+
+### Future Considerations
+- **PostgreSQL**: For production database needs
+- **Redis**: For caching and background task queues
+- **S3/MinIO**: For scalable video storage
+- **Kubernetes**: For container orchestration at scale
 
 ## Getting Started
 
-### Prerequisites
-- Python 3.13+
-- Virtual environment activated
-- Git repository initialized
+### For New Developers
+1. Read the [backend README](../backend/README.md) for setup instructions
+2. Read the [frontend README](../frontend/README.md) for component development
+3. Check the [deployment guide](deployment_guide.md) for production setup
+4. Review the [pose estimation comparison](pose_estimation_comparison.md) for CV decisions
 
 ### Development Commands
 ```bash
-# Activate virtual environment
-source venv/bin/activate
-
-# Install dependencies
-pip install -e .
-
-# Run development server
+# Backend development
 cd backend
 python -m uvicorn app.main:app --reload --port 8000
 
-# Test API
-curl http://localhost:8000/
-curl http://localhost:8000/docs
-``` 
+# Frontend development
+cd frontend
+npm start
+
+# Run tests
+cd backend && pytest
+cd frontend && npm test
+
+# Code quality
+cd backend && ruff check . && ruff format .
+cd frontend && npm run lint
+```
+
+## Contributing
+
+1. **Pick a Phase**: Choose from the roadmap based on priority
+2. **Follow Standards**: Use established patterns and code quality tools
+3. **Test Thoroughly**: Write tests for new features
+4. **Document Changes**: Update relevant documentation
+5. **Submit PR**: Follow conventional commit messages
+
+## License
+
+MIT License 
