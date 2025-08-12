@@ -1,6 +1,6 @@
-# Tennis Computer Vision Analysis System
+# Tennis Coach App
 
-A computer vision-based tennis analysis system that demonstrates data engineering and AI evaluation skills. Currently implements a robust backend for video upload and management, with a React frontend for user interaction.
+A computer vision-based tennis coaching platform that demonstrates data engineering and AI evaluation skills. Currently implements a robust backend for video upload and management, with a React frontend for user interaction.
 
 ## CI/CD Status
 
@@ -31,7 +31,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 1. **Clone and Setup**
 ```bash
 git clone <repository-url>
-cd tennis_coach_app_2
+cd tennis_coach_app
 ```
 
 2. **Start All Services**
@@ -47,45 +47,57 @@ docker compose up --build
 
 ### Option 2: Local Development
 
-**Prerequisites**: Python 3.8+, Node.js 16+
+**Prerequisites**: Python 3.8+, Node.js 16+, FFmpeg
 
-1. **Clone and Setup**
+1. **Install FFmpeg** (required for video processing):
+   ```bash
+   # macOS
+   brew install ffmpeg
+   
+   # Ubuntu/Debian
+   sudo apt install ffmpeg
+   
+   # Windows (using chocolatey)
+   choco install ffmpeg
+   ```
+
+2. **Clone and Setup**
 ```bash
 git clone <repository-url>
-cd tennis_coach_app_2
+cd tennis_coach_app
 
 # Create Python virtual environment
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-2. **Install Backend Dependencies**
+3. **Install Backend Dependencies**
 ```bash
 cd backend
 pip install -e .
 cd ..
 ```
 
-3. **Install Frontend Dependencies**
+4. **Install Frontend Dependencies**
 ```bash
 cd frontend
 npm install
 cd ..
 ```
 
-4. **Run Backend Server**
+5. **Run Backend Server**
 ```bash
 cd backend
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-5. **Run Frontend Development Server** (in a new terminal)
+6. **Run Frontend Development Server** (in a new terminal)
 ```bash
 cd frontend
 npm start
 ```
 
-6. **Access the Application**
+7. **Access the Application**
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
@@ -94,7 +106,7 @@ npm start
 ## 📁 Project Structure
 
 ```
-tennis_coach_app_2/
+tennis_coach_app/
 ├── backend/                 # FastAPI backend
 │   ├── app/
 │   │   ├── api/            # API routes and models
@@ -275,7 +287,7 @@ npm test
 ### Database Operations
 ```bash
 # Database is automatically created on startup
-# Located at: data/database/tennis_analysis.db
+# Located at: data/database/tennis_coach.db
 ```
 
 ## 🤝 Contributing

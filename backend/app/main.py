@@ -9,8 +9,8 @@ from app.core.database import create_tables
 
 # Create FastAPI app
 app = FastAPI(
-    title="Tennis Analysis API",
-    description="Computer vision-based tennis analysis system",
+    title="Tennis Coach API",
+    description="Tennis coaching platform with computer vision analysis",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -44,7 +44,7 @@ if processed_videos_dir.exists():
 async def root() -> dict[str, str]:
     """Root endpoint with API information."""
     return {
-        "message": "Tennis Analysis API",
+        "message": "Tennis Coach API",
         "version": "1.0.0",
         "docs": "/docs",
         "status": "running",

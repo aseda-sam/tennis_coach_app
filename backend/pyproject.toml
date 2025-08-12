@@ -1,7 +1,7 @@
 [project]
-name = "tennis-analysis-system"
+name = "tennis-coach-api"
 version = "0.1.0"
-description = "Computer vision-based tennis analysis system"
+description = "Tennis coaching platform with computer vision analysis"
 authors = [{name = "Aseda Ohene-Adu", email = "aoheneadu23@gmail.com"}]
 requires-python = ">=3.8"
 dependencies = [

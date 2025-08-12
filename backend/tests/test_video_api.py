@@ -28,7 +28,7 @@ class TestVideoAPI:
         response = client.get("/")
         assert response.status_code == 200
         data = response.json()
-        assert data["message"] == "Tennis Analysis API"
+        assert data["message"] == "Tennis Coach API"
         assert data["version"] == "1.0.0"
 
     def test_list_videos_empty(self) -> None:
