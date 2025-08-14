@@ -256,7 +256,7 @@ async def get_analysis_status(analysis_id: int, db: Session = Depends(get_db)) -
         return {
             "analysis_id": analysis_id,
             "status": analysis.status,
-            "progress": analysis.progress if hasattr(analysis, "progress") else None,
+            "progress": analysis.progress,
             "created_at": analysis.created_at,
             "completed_at": analysis.completed_at,
         }

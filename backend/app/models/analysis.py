@@ -45,9 +45,13 @@ class Analysis(Base):
     # Processing status (processing, completed, failed)
     status = Column(String(50), default="completed")
 
+    # Progress tracking (0-100)
+    progress = Column(Integer, default=0)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
         return f"<Analysis(id={self.id}, video={self.video_filename}, type={self.analysis_type})>"
