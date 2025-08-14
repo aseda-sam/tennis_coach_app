@@ -351,3 +351,22 @@ AWS_S3_BUCKET=tennis-analysis-videos
 ## License
 
 MIT License
+
+## Code quality
+
+Run ruff locally before committing:
+
+```bash
+# From backend/
+ruff format .
+ruff check .
+```
+
+Set up pre-commit hooks to enforce ruff automatically on commit:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+This will run ruff (lint + format) on staged files during `git commit`.

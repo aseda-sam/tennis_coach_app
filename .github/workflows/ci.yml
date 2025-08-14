@@ -33,10 +33,10 @@ jobs:
           pip install -e .
           pip install ruff pytest httpx
           
-      - name: Ruff format check
+      - name: Ruff format check (no changes allowed)
         run: ruff format --check .
         
-      - name: Ruff lint
+      - name: Ruff lint (fail on issues)
         run: ruff check .
         
       - name: Run tests
@@ -73,6 +73,9 @@ jobs:
           
       - name: Install dependencies
         run: npm ci
+        
+      - name: Lint
+        run: npm run lint
         
       - name: Build
         run: npm run build
