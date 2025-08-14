@@ -47,6 +47,7 @@ All endpoints are prefixed with the version number (e.g., `/v0/videos/upload`).
 - `POST /v0/analysis/videos/{video_id}` - Start analysis for a video
 - `GET /v0/analysis/{analysis_id}` - Get analysis results by ID
 - `GET /v0/analysis/` - List all analyses
+- `GET /v0/analysis/status/{analysis_id}` - Get analysis processing status
 - `DELETE /v0/analysis/{analysis_id}` - Delete analysis results
 
 ## Authentication
@@ -150,6 +151,24 @@ The API uses standardized error responses with the following structure:
 }
 ```
 
+### Analysis Status Response
+```json
+{
+  "analysis_id": 1,
+  "status": "completed",
+  "progress": 100,
+  "created_at": "2024-01-15T10:30:00",
+  "completed_at": "2024-01-15T10:35:00"
+}
+```
+
+**Status Values:**
+- `processing` - Analysis is currently running
+- `completed` - Analysis finished successfully
+- `failed` - Analysis encountered an error
+
+**Progress:** Integer (0-100) indicating completion percentage
+
 ## Development
 
 ### Testing the API
@@ -201,6 +220,12 @@ curl -X POST "http://localhost:8000/v0/analysis/videos/1" \
 #### Get Analysis Results
 ```bash
 curl -X GET "http://localhost:8000/v0/analysis/1" \
+  -H "accept: application/json"
+```
+
+#### Get Analysis Status
+```bash
+curl -X GET "http://localhost:8000/v0/analysis/status/1" \
   -H "accept: application/json"
 ```
 

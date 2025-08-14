@@ -19,6 +19,7 @@ A computer vision-based tennis coaching platform. Currently implements a backend
 - **Annotated Video Creation**: Generate videos with pose and ball detection overlays
 - **Smart Video Player**: Automatically displays annotated videos when analysis is available
 - **Analysis Dashboard**: View detailed statistics about ball and pose detection performance
+- **Progress Tracking**: Monitor analysis progress and completion status in real-time
 
 ## Quick Start
 
@@ -148,6 +149,12 @@ tennis_coach_app/
 - **Stroke Analysis**: Tracks upper body mechanics and lower body positioning
 - **Visual Overlays**: Green skeleton lines and blue joint markers
 
+### Progress Tracking
+- **Status Monitoring**: Track analysis progress (processing/completed/failed)
+- **Progress Percentage**: Real-time completion percentage (0-100)
+- **Timing Information**: Creation and completion timestamps
+- **API Endpoint**: `GET /v0/analysis/status/{analysis_id}` for status updates
+
 ### Annotated Videos
 - **Combined Overlays**: Pose and ball detection on same video
 - **H.264 Codec**: Browser-compatible video format
@@ -162,6 +169,7 @@ tennis_coach_app/
 
 ### Project Documentation
 - **[API Reference](project_docs/api_reference.md)** - API endpoints and usage guide
+- **[Database Schema](project_docs/database_schema.md)** - Database models and relationships
 - **[Deployment Guide](project_docs/deployment_guide.md)** - Production deployment instructions
 - **[Project Roadmap](project_docs/project_plan.md)** - Development phases and future plans
 - **[Pose Estimation Comparison](project_docs/pose_estimation_comparison.md)** - Technology decision record

@@ -161,10 +161,17 @@ pytest tests/test_integration.py::TestVideoIntegration::test_schema_validation
 ```
 
 #### Test Types
-- **Unit Tests** (`test_video_api.py`): Basic endpoint functionality and error handling
+- **Basic API Tests** (`test_api_basic.py`): Endpoint availability and error handling
 - **Integration Tests** (`test_integration.py`): Complete workflows, schema validation, and CRUD operations
+- **Video Processing Tests** (`test_video_processing.py`): Real video file processing
+- **Video API Tests** (`test_video_api.py`): API versioning and endpoint validation
 - **Schema Validation**: Ensures database models match Pydantic schemas
 - **Error Handling**: Tests standardized error responses and edge cases
+
+#### Test Markers
+- `@pytest.mark.slow` - Long-running tests (real video processing)
+- `@pytest.mark.integration` - Integration tests (complete workflows)
+- `@pytest.mark.unit` - Unit tests (isolated functionality)
 
 ### Database Operations
 
@@ -184,6 +191,42 @@ alembic downgrade -1
 # View migration history
 alembic history
 ```
+
+### Database Schema
+
+#### Analysis Table
+- `id` (Integer, Primary Key) - Unique analysis identifier
+- `video_id` (Integer, Foreign Key) - Reference to videos table
+- `video_filename` (String) - Original video filename
+- `analysis_type` (String) - Type of analysis performed
+- `status` (String) - Processing status (processing/completed/failed)
+- `progress` (Integer) - Analysis completion percentage (0-100)
+- `total_frames` (Integer) - Total frames in video
+- `frames_with_balls` (Integer) - Frames containing ball detections
+- `total_ball_detections` (Integer) - Total ball detections found
+- `detection_rate` (Float) - Percentage of frames with detections
+- `processing_time` (Float) - Analysis duration in seconds
+- `model_used` (String) - YOLO model version used
+- `confidence_threshold` (Float) - Detection confidence threshold
+- `created_at` (DateTime) - Analysis creation timestamp
+- `updated_at` (DateTime) - Last update timestamp
+- `completed_at` (DateTime) - Analysis completion timestamp (nullable)
+
+#### Video Table
+- `id` (Integer, Primary Key) - Unique video identifier
+- `filename` (String) - Original filename
+- `file_path` (String) - Storage path
+- `file_size` (Integer) - File size in bytes
+- `content_type` (String) - MIME type
+- `duration` (Float) - Video duration in seconds
+- `fps` (Float) - Frames per second
+- `width` (Integer) - Video width in pixels
+- `height` (Integer) - Video height in pixels
+- `frame_count` (Integer) - Total number of frames
+- `status` (String) - Processing status
+- `error_message` (Text) - Error details if processing failed
+- `created_at` (DateTime) - Upload timestamp
+- `updated_at` (DateTime) - Last update timestamp
 
 ### Project Structure
 
@@ -236,6 +279,7 @@ The API uses versioned endpoints for stability and backward compatibility:
 - `POST /v0/analysis/videos/{video_id}` - Start analysis
 - `GET /v0/analysis/{analysis_id}` - Get analysis results by ID
 - `GET /v0/analysis/` - List all analyses
+- `GET /v0/analysis/status/{analysis_id}` - Get analysis processing status
 - `DELETE /v0/analysis/{analysis_id}` - Delete analysis
 
 ### Interactive Documentation
@@ -339,6 +383,13 @@ AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_S3_BUCKET=tennis-analysis-videos
 ```
+
+## Documentation
+
+- **[API Reference](../project_docs/api_reference.md)** - Complete API documentation
+- **[Database Schema](../project_docs/database_schema.md)** - Database models and relationships
+- **[Deployment Guide](../project_docs/deployment_guide.md)** - Production deployment
+- **[Project Roadmap](../project_docs/project_plan.md)** - Development phases
 
 ## Contributing
 
