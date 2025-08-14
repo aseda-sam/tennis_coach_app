@@ -37,6 +37,7 @@ class VideoInfo(BaseModel):
 
     id: int = Field(description="Video ID")
     filename: str = Field(description="Video filename")
+    file_path: str = Field(description="File path on disk")
     file_size: int = Field(ge=0, description="File size in bytes")
     content_type: Optional[str] = Field(default=None, description="MIME type")
     duration: Optional[float] = Field(default=None, description="Duration in seconds")
@@ -48,6 +49,8 @@ class VideoInfo(BaseModel):
     updated_at: Optional[datetime] = Field(
         default=None, description="Last update timestamp"
     )
+    status: str = Field(description="Video processing status")
+    error_message: Optional[str] = Field(default=None, description="Error message if processing failed")
 
     class Config:
         from_attributes = True
@@ -63,6 +66,7 @@ class VideoListItem(BaseModel):
     width: Optional[int] = Field(default=None, description="Width in pixels")
     height: Optional[int] = Field(default=None, description="Height in pixels")
     created_at: datetime = Field(description="Upload timestamp")
+    status: str = Field(description="Video processing status")
 
     class Config:
         from_attributes = True
