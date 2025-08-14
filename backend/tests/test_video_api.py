@@ -90,7 +90,9 @@ class TestVideoAPI:
             assert response.status_code == 200
             data = response.json()
             # The filename might be modified by ensure_unique_filename (e.g., test_1.mp4, test_2.mp4)
-            assert data["filename"].startswith("test") and data["filename"].endswith(".mp4")
+            assert data["filename"].startswith("test") and data["filename"].endswith(
+                ".mp4"
+            )
             assert "message" in data
             assert "video_id" in data
         finally:
