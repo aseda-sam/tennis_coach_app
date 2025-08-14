@@ -22,6 +22,7 @@ from app.services.analysis_service import (
     get_all_analyses,
     get_analysis_by_id,
     get_analysis_by_video,
+    get_analysis_by_video_id,
 )
 from app.services.video_service import get_video_by_id
 from app.utils.error_handling import (
@@ -152,7 +153,10 @@ async def get_video_analysis(
             raise handle_not_found_error("video", str(video_id))
 
         # Get analysis
-        analysis = get_analysis_by_video(db, video.filename)
+        # Prefer lookup by strong ID if available
+        analysis = get_analysis_by_video_id(db, video_id)
+        if not analysis:
+            analysis = get_analysis_by_video(db, video.filename)
         if not analysis:
             raise handle_not_found_error("analysis", f"for video {video_id}")
 

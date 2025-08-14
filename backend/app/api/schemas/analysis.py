@@ -58,8 +58,10 @@ class AnalysisInfo(BaseModel):
     """Complete analysis information."""
 
     id: int = Field(description="Analysis ID")
+    video_id: Optional[int] = Field(default=None, description="Associated video ID")
     video_filename: str = Field(description="Video filename")
     analysis_type: str = Field(description="Type of analysis")
+    status: Optional[str] = Field(default=None, description="Analysis status")
     total_frames: int = Field(description="Total frames processed")
     frames_with_balls: int = Field(description="Frames with ball detections")
     total_ball_detections: int = Field(description="Total ball detections")

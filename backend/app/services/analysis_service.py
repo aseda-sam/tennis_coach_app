@@ -19,12 +19,14 @@ logger = logging.getLogger(__name__)
 
 def create_analysis_record(
     db: Session,
+    video_id: int,
     video_filename: str,
     analysis_type: str,
     analysis_results: Dict[str, Any],
     processing_time: float,
     model_used: Optional[str] = None,
     confidence_threshold: float = 0.5,
+    status: str = "completed",
 ) -> Analysis:
     """
     Create a new analysis record in the database.
@@ -42,6 +44,7 @@ def create_analysis_record(
         Created Analysis record
     """
     analysis = Analysis(
+        video_id=video_id,
         video_filename=video_filename,
         analysis_type=analysis_type,
         total_frames=analysis_results.get("frames_processed", 0),
@@ -69,6 +72,7 @@ def create_analysis_record(
         processing_time=processing_time,
         model_used=model_used,
         confidence_threshold=confidence_threshold,
+        status=status,
     )
 
     db.add(analysis)
@@ -105,6 +109,20 @@ def get_analysis_by_video(db: Session, video_filename: str) -> Optional[Analysis
         Analysis record if found, None otherwise
     """
     return db.query(Analysis).filter(Analysis.video_filename == video_filename).first()
+
+
+def get_analysis_by_video_id(db: Session, video_id: int) -> Optional[Analysis]:
+    """
+    Get analysis results for a specific video by ID.
+
+    Args:
+        db: Database session
+        video_id: ID of the video
+
+    Returns:
+        Analysis record if found, None otherwise
+    """
+    return db.query(Analysis).filter(Analysis.video_id == video_id).first()
 
 
 def get_all_analyses(db: Session) -> list[Analysis]:
@@ -151,7 +169,7 @@ def analyze_video(
     logger.info(f"Starting analysis for video: {video_filename}")
 
     # Check if analysis already exists
-    existing_analysis = get_analysis_by_video(db, video_filename)
+        existing_analysis = get_analysis_by_video_id(db, video_id)
     if existing_analysis:
         logger.info(f"Analysis already exists for {video_filename}")
         return {
@@ -190,6 +208,7 @@ def analyze_video(
         # Store results in database
         analysis_record = create_analysis_record(
             db=db,
+            video_id=video_id,
             video_filename=video_filename,
             analysis_type=analysis_type,
             analysis_results=analysis_results,
@@ -200,6 +219,7 @@ def analyze_video(
             if cv_service.ball_detector
             else None,
             confidence_threshold=confidence_threshold,
+            status="completed",
         )
 
         return {
