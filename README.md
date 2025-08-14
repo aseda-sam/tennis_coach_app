@@ -41,7 +41,7 @@ docker compose up --build
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/api/videos/
+- **Health Check**: http://localhost:8000/health
 
 ### Option 2: Local Development
 
@@ -95,7 +95,7 @@ npm start
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/api/videos/
+- **Health Check**: http://localhost:8000/health
 
 ## Project Structure
 
