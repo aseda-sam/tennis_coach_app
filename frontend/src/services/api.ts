@@ -96,6 +96,7 @@ export interface AnalysisSummary {
 
 export interface AnalysisData {
   id: number;
+  video_id: number;  // Required since all records now have video_id
   video_filename: string;
   analysis_type: string;
   total_frames: number;

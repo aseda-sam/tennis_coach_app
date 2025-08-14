@@ -60,7 +60,7 @@ class AnalysisInfo(BaseModel):
     """Complete analysis information."""
 
     id: int = Field(description="Analysis ID")
-    video_id: Optional[int] = Field(default=None, description="Associated video ID")
+    video_id: int = Field(description="Associated video ID")
     video_filename: str = Field(description="Video filename")
     analysis_type: str = Field(description="Type of analysis")
     status: Optional[str] = Field(default=None, description="Analysis status")
@@ -129,6 +129,7 @@ class AnalysisListItem(BaseModel):
     """Simplified analysis information for list endpoints."""
 
     id: int = Field(description="Analysis ID")
+    video_id: int = Field(description="Associated video ID")  # Added to match frontend
     video_filename: str = Field(description="Video filename")
     analysis_type: str = Field(description="Type of analysis")
     detection_rate: float = Field(description="Ball detection rate")

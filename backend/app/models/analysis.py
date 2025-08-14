@@ -14,8 +14,10 @@ class Analysis(Base):
     __tablename__ = "analyses"
 
     id = Column(Integer, primary_key=True, index=True)
-    # New strong linkage to videos table
-    video_id = Column(Integer, ForeignKey("videos.id"), index=True, nullable=True)
+    # Updated foreign key with cascade deletion - now required to match frontend
+    video_id = Column(
+        Integer, ForeignKey("videos.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     video_filename = Column(String, nullable=False, index=True)
     analysis_type = Column(
         String, nullable=False
