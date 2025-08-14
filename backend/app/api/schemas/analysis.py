@@ -1,9 +1,11 @@
 """Analysis-related API schemas."""
 
+import json
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
+from pydantic.functional_validators import field_validator
 
 
 class AnalysisRequest(BaseModel):
@@ -83,11 +85,11 @@ class AnalysisInfo(BaseModel):
     pose_detection_rate: Optional[float] = Field(
         default=None, description="Pose detection rate"
     )
-    ball_detections: Optional[str] = Field(
-        default=None, description="Ball detection data (JSON)"
+    ball_detections: Optional[List[object]] = Field(
+        default=None, description="Ball detection data (parsed from JSON)"
     )
-    pose_detections: Optional[str] = Field(
-        default=None, description="Pose detection data (JSON)"
+    pose_detections: Optional[List[object]] = Field(
+        default=None, description="Pose detection data (parsed from JSON)"
     )
     annotated_video_path: Optional[str] = Field(
         default=None, description="Path to annotated video"
@@ -96,6 +98,28 @@ class AnalysisInfo(BaseModel):
     updated_at: Optional[datetime] = Field(
         default=None, description="Last update timestamp"
     )
+
+    @field_validator("ball_detections", mode="before")
+    @classmethod
+    def _parse_ball_detections(cls, v: object) -> List[object]:
+        """Parse ball_detections from JSON string to array."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v or "[]")
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return v or []
+
+    @field_validator("pose_detections", mode="before")
+    @classmethod
+    def _parse_pose_detections(cls, v: object) -> List[object]:
+        """Parse pose_detections from JSON string to array."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v or "[]")
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return v or []
 
     class Config:
         from_attributes = True
