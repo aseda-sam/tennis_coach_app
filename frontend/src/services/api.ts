@@ -135,6 +135,12 @@ export const analysisApi = {
     return response.data;
   },
 
+  // Get analysis results by video ID
+  getAnalysisByVideo: async (videoId: number): Promise<AnalysisData> => {
+    const response = await api.get<AnalysisData>(`/analysis/videos/${videoId}`);
+    return response.data;
+  },
+
   // Get all analyses
   getAllAnalyses: async (): Promise<AnalysisData[]> => {
     const response = await api.get<AnalysisData[]>('/analysis/');

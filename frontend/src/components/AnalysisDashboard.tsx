@@ -27,12 +27,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     try {
       setLoading(true);
       setError(null);
-      // For now, we'll need to get the analysis ID from the video ID
-      // This might need to be updated based on how we want to handle this relationship
-      const analysisData = await analysisApi.getAnalysis(videoId);
+      const analysisData = await analysisApi.getAnalysisByVideo(videoId);
       setAnalysis(analysisData);
     } catch (err: any) {
-      setError('Failed to load analysis results. Please try again.');
+      const message = err?.response?.data?.error?.message || 'Failed to load analysis results. Please try again.';
+      setError(message);
       console.error('Error loading analysis:', err);
     } finally {
       setLoading(false);

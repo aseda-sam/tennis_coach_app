@@ -117,6 +117,10 @@ async def start_analysis(
             include_pose_detection=request.include_pose_detection,
         )
 
+        # Propagate processing failures with consistent error shape
+        if isinstance(result, dict) and "error" in result:
+            raise handle_processing_error("analysis_start", result["error"])
+
         return AnalysisStartResponse(
             analysis_id=result.get("analysis_id"),
             video_filename=video.filename,
