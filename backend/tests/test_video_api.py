@@ -21,7 +21,10 @@ class TestVideoAPI:
         """Test the health check endpoint."""
         response = client.get("/health")
         assert response.status_code == 200
-        assert response.json() == {"status": "healthy"}
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert data["version"] == "0.1.0"
+        assert "timestamp" in data
 
     def test_root_endpoint(self) -> None:
         """Test the root endpoint."""
@@ -29,11 +32,22 @@ class TestVideoAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "Tennis Coach API"
-        assert data["version"] == "1.0.0"
+        assert data["version"] == "0.1.0"
+        assert data["status"] == "alpha"
+
+    def test_api_info(self) -> None:
+        """Test the API info endpoint."""
+        response = client.get("/v0")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["version"] == "0.1.0"
+        assert data["status"] == "alpha"
+        assert "warning" in data
+        assert "endpoints" in data
 
     def test_list_videos_empty(self) -> None:
         """Test listing videos when database is empty."""
-        response = client.get("/api/videos/")
+        response = client.get("/v0/videos/")
         assert response.status_code == 200
         # Should return empty list
         assert isinstance(response.json(), list)
@@ -48,10 +62,12 @@ class TestVideoAPI:
         try:
             with open(tmp_file_path, "rb") as f:
                 files = {"file": ("test.txt", f, "text/plain")}
-                response = client.post("/api/videos/upload", files=files)
+                response = client.post("/v0/videos/upload", files=files)
 
             assert response.status_code == 400
-            assert "Unsupported format" in response.json()["detail"]
+            error_data = response.json()
+            assert "error" in error_data
+            assert "code" in error_data["error"]
         finally:
             # Clean up
             if os.path.exists(tmp_file_path):
@@ -68,17 +84,40 @@ class TestVideoAPI:
         try:
             with open(tmp_file_path, "rb") as f:
                 files = {"file": ("test.mp4", f, "video/mp4")}
-                response = client.post("/api/videos/upload", files=files)
+                response = client.post("/v0/videos/upload", files=files)
 
             # Should succeed (even though it's not a real video)
             assert response.status_code == 200
             data = response.json()
-            assert data["filename"] == "test.mp4"
+            # The filename might be modified by ensure_unique_filename (e.g., test_1.mp4, test_2.mp4)
+            assert data["filename"].startswith("test") and data["filename"].endswith(".mp4")
             assert "message" in data
+            assert "video_id" in data
         finally:
             # Clean up
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)
+
+    def test_get_video_not_found(self) -> None:
+        """Test getting a video that doesn't exist."""
+        response = client.get("/v0/videos/999")
+        assert response.status_code == 404
+        error_data = response.json()
+        assert "error" in error_data
+        assert "code" in error_data["error"]
+
+    def test_analysis_endpoints_exist(self) -> None:
+        """Test that analysis endpoints exist."""
+        # Test list analyses endpoint
+        response = client.get("/v0/analysis/")
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
+
+        # Test analysis info endpoint
+        response = client.get("/v0/analysis/999")
+        assert response.status_code == 404
+        error_data = response.json()
+        assert "error" in error_data
 
 
 if __name__ == "__main__":
