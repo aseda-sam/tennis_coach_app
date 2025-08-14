@@ -79,6 +79,20 @@ def create_analysis_record(
     return analysis
 
 
+def get_analysis_by_id(db: Session, analysis_id: int) -> Optional[Analysis]:
+    """
+    Get analysis by ID.
+
+    Args:
+        db: Database session
+        analysis_id: Analysis ID
+
+    Returns:
+        Analysis record if found, None otherwise
+    """
+    return db.query(Analysis).filter(Analysis.id == analysis_id).first()
+
+
 def get_analysis_by_video(db: Session, video_filename: str) -> Optional[Analysis]:
     """
     Get analysis results for a specific video.
@@ -103,20 +117,37 @@ def get_all_analyses(db: Session) -> list[Analysis]:
     Returns:
         List of all analysis records
     """
-    return db.query(Analysis).all()
+    return db.query(Analysis).order_by(Analysis.created_at.desc()).all()
 
 
-def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
+def analyze_video(
+    db: Session,
+    video_id: int,
+    analysis_type: str = "ball_tracking",
+    confidence_threshold: float = 0.7,
+    include_pose_detection: bool = False,
+) -> Dict[str, Any]:
     """
     Perform video analysis and store results.
 
     Args:
         db: Database session
-        video_filename: Name of the video file to analyze
+        video_id: Video ID
+        analysis_type: Type of analysis to perform
+        confidence_threshold: Detection confidence threshold
+        include_pose_detection: Whether to include pose detection
 
     Returns:
         Analysis results dictionary
     """
+    from app.services.video_service import get_video_by_id
+
+    # Get video by ID
+    video = get_video_by_id(db, video_id)
+    if not video:
+        return {"error": f"Video with ID {video_id} not found"}
+
+    video_filename = video.filename
     logger.info(f"Starting analysis for video: {video_filename}")
 
     # Check if analysis already exists
@@ -145,7 +176,11 @@ def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
         start_time = time.time()
 
         # Perform analysis
-        analysis_results = cv_service.analyze_video(video_path)
+        analysis_results = cv_service.analyze_video(
+            video_path,
+            confidence_threshold=confidence_threshold,
+            include_pose_detection=include_pose_detection,
+        )
 
         # Calculate processing time
         processing_time = time.time() - start_time
@@ -157,7 +192,7 @@ def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
         analysis_record = create_analysis_record(
             db=db,
             video_filename=video_filename,
-            analysis_type="ball_detection_and_pose",
+            analysis_type=analysis_type,
             analysis_results=analysis_results,
             processing_time=processing_time,
             model_used="yolov8n+mediapipe"
@@ -165,7 +200,7 @@ def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
             else "yolov8n"
             if cv_service.ball_detector
             else None,
-            confidence_threshold=0.5,
+            confidence_threshold=confidence_threshold,
         )
 
         return {
@@ -174,6 +209,8 @@ def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
             "processing_time": processing_time,
             "analysis_summary": analysis_results["analysis_summary"],
             "frames_processed": analysis_results["frames_processed"],
+            "estimated_duration": processing_time
+            * 1.2,  # Rough estimate for future videos
         }
 
     except (OSError, ValueError, RuntimeError) as e:

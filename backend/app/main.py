@@ -1,36 +1,98 @@
-from pathlib import Path
+"""Main FastAPI application."""
 
-from fastapi import FastAPI
+import time
+import uuid
+from pathlib import Path
+from typing import Callable
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import analysis, video
+from app.core.config import settings
 from app.core.database import create_tables
+from app.utils.error_handling import (
+    APIError,
+    api_error_handler,
+    general_error_handler,
+    validation_error_handler,
+)
 
-# Create FastAPI app
+# Create FastAPI app with proper configuration
 app = FastAPI(
     title="Tennis Coach API",
-    description="Tennis coaching platform with computer vision analysis",
-    version="1.0.0",
+    description="Computer vision-based tennis analysis system",
+    version="0.1.0",  # Alpha version
     docs_url="/docs",
     redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Create database tables on startup
-create_tables()
 
-# Include API routes
-app.include_router(video.router, prefix="/api/videos", tags=["videos"])
-app.include_router(analysis.router, prefix="/api/analysis", tags=["analysis"])
+# Request processing time middleware
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next: Callable) -> Request:
+    """Add processing time and request ID headers."""
+    start_time = time.time()
+    request_id = str(uuid.uuid4())
+
+    # Add request ID to request state
+    request.state.request_id = request_id
+
+    response = await call_next(request)
+
+    process_time = time.time() - start_time
+    response.headers["X-Processing-Time"] = f"{process_time:.4f}"
+    response.headers["X-Request-ID"] = request_id
+
+    return response
+
+
+# Register exception handlers
+app.add_exception_handler(APIError, api_error_handler)
+app.add_exception_handler(ValueError, validation_error_handler)
+app.add_exception_handler(Exception, general_error_handler)
+
+
+# Create database tables on startup
+@app.on_event("startup")
+async def startup_event() -> None:
+    """Initialize application on startup."""
+    create_tables()
+
+
+# Include API routes with versioning
+app.include_router(
+    video.router,
+    prefix="/v0/videos",
+    tags=["videos"],
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"},
+    },
+)
+
+app.include_router(
+    analysis.router,
+    prefix="/v0/analysis",
+    tags=["analysis"],
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"},
+    },
+)
 
 # Mount static files for processed videos
 processed_videos_dir = Path("data/videos/processed")
@@ -45,19 +107,41 @@ async def root() -> dict[str, str]:
     """Root endpoint with API information."""
     return {
         "message": "Tennis Coach API",
-        "version": "1.0.0",
+        "version": "0.1.0",
+        "status": "alpha",
         "docs": "/docs",
-        "status": "running",
+        "redoc": "/redoc",
+        "health": "/health",
     }
 
 
 @app.get("/health")
 async def health_check() -> dict[str, str]:
     """Health check endpoint."""
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "version": "0.1.0",
+        "timestamp": str(int(time.time())),
+    }
+
+
+@app.get("/v0")
+async def api_info() -> dict[str, str]:
+    """API version information."""
+    return {
+        "version": "0.1.0",
+        "status": "alpha",
+        "warning": "This API is in alpha stage. Breaking changes may occur without notice.",
+        "endpoints": "videos: /v0/videos, analysis: /v0/analysis",
+    }
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app,
+        host=settings.API_HOST,
+        port=settings.API_PORT,
+        reload=settings.DEBUG,
+    )
