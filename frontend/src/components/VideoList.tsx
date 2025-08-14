@@ -103,7 +103,16 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
   const getAnalysisForVideo = (videoId: number): AnalysisData | null => {
     const video = videos.find(v => v.id === videoId);
     if (!video) return null;
-    return analyses.find(analysis => analysis.video_filename === video.filename) || null;
+    
+    // First try to find by video_id (stronger relationship)
+    let analysis = analyses.find(analysis => analysis.video_id === videoId);
+    
+    // Fallback to filename matching (for backward compatibility)
+    if (!analysis) {
+      analysis = analyses.find(analysis => analysis.video_filename === video.filename);
+    }
+    
+    return analysis || null;
   };
 
   const formatDuration = (seconds: number): string => {
