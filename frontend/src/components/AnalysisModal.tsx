@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { analysisApi } from '../services/api';
+import { analysisApi, AnalysisData } from '../services/api';
 import './AnalysisModal.css';
-import { AnalysisData } from './AnalysisResults';
 
 interface AnalysisModalProps {
   isOpen: boolean;
