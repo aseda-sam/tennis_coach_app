@@ -15,9 +15,14 @@
     "axios": "^1.11.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-scripts": "5.0.1",
+    "react-scripts": "^5.0.1",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
+  },
+  "overrides": {
+    "webpack-dev-server": "^5.2.1",
+    "nth-check": "^2.0.1",
+    "postcss": "^8.4.31"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -34,7 +39,8 @@
   },
   "devDependencies": {
     "eslint": "^8.57.0",
-    "prettier": "^3.0.0"
+    "prettier": "^3.0.0",
+    "webpack-dev-server": "^5.2.1"
   },
   "eslintConfig": {
     "extends": [
