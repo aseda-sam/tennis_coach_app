@@ -248,6 +248,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             src={videoUrl}
             className={`video-element video-element-${aspectRatioMode}`}
             preload="metadata"
+            data-testid="video-element"
           />
           
           {error && (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import App from './App';
 
 // Mock the API service to avoid axios import issues
 jest.mock('./services/api', () => ({
@@ -37,8 +38,6 @@ jest.mock('./components/AnalysisDashboard', () => {
     return <div data-testid="analysis-dashboard">Analysis Dashboard</div>;
   };
 });
-
-import App from './App';
 
 test('renders tennis analysis app title', () => {
   render(<App />);

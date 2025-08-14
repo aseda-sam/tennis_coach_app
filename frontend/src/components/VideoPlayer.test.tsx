@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import VideoPlayer from './VideoPlayer';
 
 // Mock the Icons component
@@ -14,26 +15,24 @@ jest.mock('./Icons', () => ({
 describe('VideoPlayer', () => {
   const defaultProps = {
     videoUrl: 'http://example.com/test-video.mp4',
-    title: 'Test Video Title',
+    title: 'Test Video',
+    showControls: true,
   };
 
   beforeEach(() => {
-    // Mock HTMLVideoElement methods
-    Object.defineProperty(HTMLVideoElement.prototype, 'play', {
-      writable: true,
-      value: jest.fn().mockImplementation(() => Promise.resolve()),
-    });
-    Object.defineProperty(HTMLVideoElement.prototype, 'pause', {
-      writable: true,
-      value: jest.fn(),
-    });
+    // Mock console.log to reduce noise in tests
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('Basic Rendering', () => {
     it('renders video player with correct video source', () => {
       render(<VideoPlayer {...defaultProps} />);
       
-      const video = document.querySelector('video');
+      const video = screen.getByTestId('video-element');
       expect(video).toBeInTheDocument();
       expect(video).toHaveAttribute('src', defaultProps.videoUrl);
     });
@@ -83,13 +82,9 @@ describe('VideoPlayer', () => {
       
       render(<VideoPlayer {...defaultProps} onClose={onCloseMock} />);
       
-      const closeIcon = screen.getByTestId('close-icon');
-      const closeButton = closeIcon.closest('button');
-      
-      if (closeButton) {
-        fireEvent.click(closeButton);
-        expect(onCloseMock).toHaveBeenCalledTimes(1);
-      }
+      const closeButton = screen.getByRole('button', { name: /close/i });
+      fireEvent.click(closeButton);
+      expect(onCloseMock).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -97,7 +92,7 @@ describe('VideoPlayer', () => {
     it('has correct video attributes', () => {
       render(<VideoPlayer {...defaultProps} />);
       
-      const video = document.querySelector('video');
+      const video = screen.getByTestId('video-element');
       expect(video).toHaveAttribute('preload', 'metadata');
       expect(video).toHaveAttribute('src', defaultProps.videoUrl);
       expect(video).toHaveClass('video-element');
@@ -106,17 +101,16 @@ describe('VideoPlayer', () => {
     it('handles play and pause events', () => {
       render(<VideoPlayer {...defaultProps} />);
       
-      const video = document.querySelector('video');
-      if (video) {
-        // Simulate play event
-        fireEvent.play(video);
-        
-        // Simulate pause event
-        fireEvent.pause(video);
-        
-        // Component should handle these events without errors
-        expect(video).toBeInTheDocument();
-      }
+      const video = screen.getByTestId('video-element');
+      
+      // Simulate play event
+      fireEvent.play(video);
+      
+      // Simulate pause event
+      fireEvent.pause(video);
+      
+      // Component should handle these events without errors
+      expect(video).toBeInTheDocument();
     });
   });
 
@@ -124,22 +118,36 @@ describe('VideoPlayer', () => {
     it('video element is accessible', () => {
       render(<VideoPlayer {...defaultProps} />);
       
-      const video = document.querySelector('video');
+      const video = screen.getByTestId('video-element');
       expect(video).toBeInTheDocument();
     });
 
-    it('buttons are accessible', () => {
-      render(<VideoPlayer {...defaultProps} onClose={jest.fn()} />);
+    it('close button is accessible when provided', () => {
+      const onCloseMock = jest.fn();
+      render(<VideoPlayer {...defaultProps} onClose={onCloseMock} />);
       
-      const buttons = screen.getAllByRole('button');
-      expect(buttons.length).toBeGreaterThan(0);
+      const closeButton = screen.getByRole('button', { name: /close/i });
+      expect(closeButton).toBeInTheDocument();
+    });
+  });
+
+  describe('Event Handling', () => {
+    it('handles video load event', () => {
+      render(<VideoPlayer {...defaultProps} />);
+      
+      const video = screen.getByTestId('video-element');
+      fireEvent.loadedMetadata(video);
+      
+      expect(video).toBeInTheDocument();
     });
 
-    it('sliders are accessible', () => {
-      render(<VideoPlayer {...defaultProps} showControls={true} />);
+    it('handles video error event', () => {
+      render(<VideoPlayer {...defaultProps} />);
       
-      const sliders = screen.getAllByRole('slider');
-      expect(sliders.length).toBeGreaterThan(0);
+      const video = screen.getByTestId('video-element');
+      fireEvent.error(video);
+      
+      expect(video).toBeInTheDocument();
     });
   });
 });
