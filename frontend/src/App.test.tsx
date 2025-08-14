@@ -8,6 +8,14 @@ jest.mock('./services/api', () => ({
     getVideos: jest.fn(),
     getVideo: jest.fn(),
     deleteVideo: jest.fn(),
+    streamVideo: jest.fn(),
+    streamAnnotatedVideo: jest.fn(),
+  },
+  analysisApi: {
+    startAnalysis: jest.fn(),
+    getAnalysis: jest.fn(),
+    getAllAnalyses: jest.fn(),
+    deleteAnalysis: jest.fn(),
   },
 }));
 
@@ -21,6 +29,12 @@ jest.mock('./components/VideoUpload', () => {
 jest.mock('./components/VideoList', () => {
   return function MockVideoList() {
     return <div data-testid="video-list">Uploaded Videos</div>;
+  };
+});
+
+jest.mock('./components/AnalysisDashboard', () => {
+  return function MockAnalysisDashboard() {
+    return <div data-testid="analysis-dashboard">Analysis Dashboard</div>;
   };
 });
 
@@ -42,6 +56,12 @@ test('renders view videos button', () => {
   render(<App />);
   const viewVideosButton = screen.getByText(/View My Videos/i);
   expect(viewVideosButton).toBeInTheDocument();
+});
+
+test('renders app subtitle', () => {
+  render(<App />);
+  const subtitleElement = screen.getByText(/Upload your tennis videos for advanced performance analysis/i);
+  expect(subtitleElement).toBeInTheDocument();
 });
 
 

@@ -34,10 +34,33 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
 
     try {
       const response = await videoApi.uploadVideo(file);
-      onUploadSuccess(response.video);
+      
+      // Create a video object from the response data
+      const video: VideoMetadata = {
+        id: response.video_id,
+        filename: response.filename,
+        file_path: '', // This will be filled by the backend
+        file_size: response.file_size,
+        status: response.status,
+        created_at: new Date().toISOString(),
+        // Add metadata if available
+        ...(response.metadata && {
+          duration: response.metadata.duration,
+          fps: response.metadata.fps,
+          width: response.metadata.width,
+          height: response.metadata.height,
+          frame_count: response.metadata.frame_count,
+        })
+      };
+      
+      onUploadSuccess(video);
       setUploadProgress(100);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Upload failed. Please try again.');
+      // Handle new error format
+      const errorMessage = err.response?.data?.error?.message || 
+                          err.response?.data?.detail || 
+                          'Upload failed. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsUploading(false);
     }
