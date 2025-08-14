@@ -58,10 +58,8 @@ class AnalysisInfo(BaseModel):
     """Complete analysis information."""
 
     id: int = Field(description="Analysis ID")
-    video_id: int = Field(description="Associated video ID")
     video_filename: str = Field(description="Video filename")
     analysis_type: str = Field(description="Type of analysis")
-    status: str = Field(description="Analysis status")
     total_frames: int = Field(description="Total frames processed")
     frames_with_balls: int = Field(description="Frames with ball detections")
     total_ball_detections: int = Field(description="Total ball detections")
@@ -71,22 +69,30 @@ class AnalysisInfo(BaseModel):
     detection_rate: float = Field(description="Ball detection rate")
     processing_time: float = Field(description="Processing time in seconds")
     model_used: Optional[str] = Field(default=None, description="ML model used")
-    confidence_threshold: float = Field(description="Detection confidence threshold")
+    confidence_threshold: Optional[float] = Field(
+        default=None, description="Detection confidence threshold"
+    )
+    include_pose_detection: Optional[bool] = Field(
+        default=None, description="Whether pose detection was included"
+    )
     frames_with_pose: Optional[int] = Field(
         default=None, description="Frames with pose detections"
     )
     pose_detection_rate: Optional[float] = Field(
         default=None, description="Pose detection rate"
     )
+    ball_detections: Optional[str] = Field(
+        default=None, description="Ball detection data (JSON)"
+    )
     pose_detections: Optional[str] = Field(
-        default=None, description="Pose detection data"
+        default=None, description="Pose detection data (JSON)"
     )
     annotated_video_path: Optional[str] = Field(
         default=None, description="Path to annotated video"
     )
     created_at: datetime = Field(description="Analysis creation timestamp")
-    completed_at: Optional[datetime] = Field(
-        default=None, description="Analysis completion timestamp"
+    updated_at: Optional[datetime] = Field(
+        default=None, description="Last update timestamp"
     )
 
     class Config:

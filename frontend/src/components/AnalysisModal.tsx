@@ -21,10 +21,11 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const analysisData = await analysisApi.getAnalysis(videoId);
+      const analysisData = await analysisApi.getAnalysisByVideo(videoId);
       setAnalysis(analysisData);
     } catch (err: any) {
-      setError('Failed to load analysis results. Please try again.');
+      const message = err?.response?.data?.error?.message || 'Failed to load analysis results. Please try again.';
+      setError(message);
       console.error('Error loading analysis:', err);
     } finally {
       setLoading(false);
