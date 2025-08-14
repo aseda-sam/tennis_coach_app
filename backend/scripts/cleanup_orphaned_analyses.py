@@ -14,9 +14,15 @@ from pathlib import Path
 backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from app.core.database import get_db
-from app.models.analysis import Analysis
-from app.models.video import Video
+try:
+    from app.core.database import get_db
+    from app.models.analysis import Analysis
+    from app.models.video import Video
+except ImportError:
+    print(
+        "Error: Could not import required modules. Make sure you're running from the backend directory."
+    )
+    sys.exit(1)
 
 
 def cleanup_orphaned_analyses() -> None:
@@ -26,51 +32,37 @@ def cleanup_orphaned_analyses() -> None:
     try:
         print("Starting cleanup of orphaned analysis records...")
 
-        # Find all analysis records
+        # Get all analysis records
         analyses = db.query(Analysis).all()
+        print(f"Found {len(analyses)} total analysis records")
+
+        # Get all video IDs
+        video_ids = {video.id for video in db.query(Video).all()}
+        print(f"Found {len(video_ids)} videos: {sorted(video_ids)}")
+
+        # Find orphaned analyses
         orphaned_count = 0
-
         for analysis in analyses:
-            if analysis.video_id:
-                # Check if the referenced video exists
-                video = db.query(Video).filter(Video.id == analysis.video_id).first()
-                if not video:
-                    print(
-                        f"Deleting orphaned analysis {analysis.id} for video_id {analysis.video_id} "
-                        f"(filename: {analysis.video_filename})"
-                    )
-                    db.delete(analysis)
-                    orphaned_count += 1
+            if analysis.video_id is not None and analysis.video_id not in video_ids:
+                print(
+                    f"Found orphaned analysis ID {analysis.id} for video_id {analysis.video_id}"
+                )
+                db.delete(analysis)
+                orphaned_count += 1
 
-        db.commit()
-        print(f"✅ Cleaned up {orphaned_count} orphaned analysis records")
+        if orphaned_count > 0:
+            db.commit()
+            print(f"Successfully removed {orphaned_count} orphaned analysis records")
+        else:
+            print("No orphaned analysis records found")
 
-        if orphaned_count == 0:
-            print("✅ No orphaned analysis records found")
-
-    except (OSError, ValueError, RuntimeError) as e:
-        print(f"❌ Error during cleanup: {e}")
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
         db.rollback()
-        sys.exit(1)
+        raise
     finally:
         db.close()
 
 
-def main() -> None:
-    """Main function to run the cleanup."""
-    print("🧹 Analysis Records Cleanup Script")
-    print("=" * 40)
-
-    try:
-        cleanup_orphaned_analyses()
-        print("\n✅ Cleanup completed successfully!")
-    except KeyboardInterrupt:
-        print("\n⚠️  Cleanup interrupted by user")
-        sys.exit(1)
-    except (OSError, ValueError, RuntimeError) as e:
-        print(f"\n❌ Unexpected error: {e}")
-        sys.exit(1)
-
-
 if __name__ == "__main__":
-    main()
+    cleanup_orphaned_analyses()
