@@ -1,6 +1,6 @@
 """
-Comprehensive integration tests for API endpoints.
-These tests verify schema alignment and test all CRUD operations.
+Legacy integration tests - being replaced by more focused test files.
+These tests use fake video files and should be updated to use real test data.
 """
 
 import os
@@ -8,15 +8,11 @@ import tempfile
 
 from fastapi.testclient import TestClient
 
-from app.main import app
-
-client = TestClient(app)
-
 
 class TestVideoIntegration:
     """Integration tests for video endpoints."""
 
-    def test_video_upload_and_retrieval(self) -> None:
+    def test_video_upload_and_retrieval(self, client: TestClient) -> None:
         """Test complete video upload and retrieval workflow."""
         # Create a temporary video file
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
@@ -102,7 +98,7 @@ class TestVideoIntegration:
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)
 
-    def test_schema_validation(self) -> None:
+    def test_schema_validation(self, client: TestClient) -> None:
         """Test that all response schemas match database models."""
         # Upload a video first
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
@@ -159,7 +155,7 @@ class TestVideoIntegration:
 class TestAnalysisIntegration:
     """Integration tests for analysis endpoints."""
 
-    def test_analysis_creation_and_retrieval(self) -> None:
+    def test_analysis_creation_and_retrieval(self, client: TestClient) -> None:
         """Test complete analysis creation and retrieval workflow."""
         # Upload a video first
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
