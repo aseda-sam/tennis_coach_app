@@ -36,6 +36,11 @@ def create_video_record(
     return db_video
 
 
+def get_video_by_id(db: Session, video_id: int) -> Optional[Video]:
+    """Get video by ID."""
+    return db.query(Video).filter(Video.id == video_id).first()
+
+
 def get_video_by_filename(db: Session, filename: str) -> Optional[Video]:
     """Get video by filename."""
     return db.query(Video).filter(Video.filename == filename).first()
