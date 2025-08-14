@@ -1,5 +1,9 @@
 """File validation utilities for video uploads."""
 
+import os
+import re
+import secrets
+import unicodedata
 from pathlib import Path
 from typing import Optional
 
@@ -86,24 +90,38 @@ def get_safe_filename(filename: str) -> str:
     """
     Get a safe filename by removing potentially dangerous characters.
 
+    This function prevents header injection attacks by:
+    - Removing all control characters (including CR/LF)
+    - Using only safe ASCII characters
+    - Normalizing Unicode characters
+    - Providing a fallback for empty results
+
     Args:
         filename: Original filename
 
     Returns:
-        Safe filename
+        Safe filename safe for use in HTTP headers
     """
+    # Get just the filename part, removing any path components
+    name = os.path.basename(filename or "")
 
-    # Remove or replace dangerous characters
-    dangerous_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
-    safe_filename = filename
+    # Normalize Unicode characters
+    name = unicodedata.normalize("NFKC", name)
 
-    for char in dangerous_chars:
-        safe_filename = safe_filename.replace(char, "_")
+    # Remove ALL control characters (0x00-0x1f, 0x7f), including CR/LF
+    name = re.sub(r"[\x00-\x1f\x7f]", "", name)
 
-    # Remove leading/trailing whitespace and dots
-    safe_filename = safe_filename.strip(". ")
+    # Allow only safe ASCII characters: letters, numbers, dots, underscores, hyphens
+    name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
 
-    return safe_filename
+    # Collapse repeated dots and trim leading/trailing dots and spaces
+    name = re.sub(r"\.{2,}", ".", name).strip(" .")
+
+    # If the result is empty or just dots, generate a random name
+    if not name or name == ".":
+        name = f"upload_{secrets.token_hex(8)}"
+
+    return name
 
 
 def ensure_unique_filename(filename: str, directory: Path) -> str:
