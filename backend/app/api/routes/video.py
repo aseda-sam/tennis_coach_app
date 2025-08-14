@@ -1,54 +1,50 @@
+"""Video API routes with proper REST patterns and error handling."""
+
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import cv2
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.api.schemas.common import PaginationParams
+from app.api.schemas.video import (
+    VideoDeleteResponse,
+    VideoInfo,
+    VideoListItem,
+    VideoMetadata,
+    VideoUploadResponse,
+)
 from app.core.config import settings
 from app.core.database import get_db
 from app.services.video_service import (
     create_video_record,
     delete_video_record,
     get_all_videos,
-    get_video_by_filename,
+    get_video_by_id,
+)
+from app.utils.error_handling import (
+    handle_file_error,
+    handle_not_found_error,
+    log_and_raise_error,
+)
+from app.utils.file_validation import (
+    ensure_unique_filename,
+    get_safe_filename,
+    validate_file_exists,
+    validate_video_file,
 )
 
 router = APIRouter()
 
 
-class VideoInfo(BaseModel):
-    """Video information including metadata."""
-
-    filename: str
-    file_size: int
-    content_type: Optional[str] = None
-    duration: Optional[float] = None  # seconds
-    fps: Optional[float] = None
-    width: Optional[int] = None
-    height: Optional[int] = None
-    frame_count: Optional[int] = None
-    message: str
-
-
-class VideoListItem(BaseModel):
-    """Video information for list endpoint."""
-
-    filename: str
-    file_size: int
-    duration: Optional[float] = None
-    width: Optional[int] = None
-    height: Optional[int] = None
-
-
-def extract_video_metadata(video_path: Path) -> dict:
+def extract_video_metadata(video_path: Path) -> VideoMetadata:
     """Extract metadata from video file using OpenCV."""
     try:
         cap = cv2.VideoCapture(str(video_path))
         if not cap.isOpened():
-            return {}
+            return VideoMetadata()
 
         # Get video properties
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -61,206 +57,247 @@ def extract_video_metadata(video_path: Path) -> dict:
 
         cap.release()
 
-        return {
-            "fps": fps,
-            "frame_count": frame_count,
-            "width": width,
-            "height": height,
-            "duration": duration,
-        }
+        return VideoMetadata(
+            fps=fps,
+            frame_count=frame_count,
+            width=width,
+            height=height,
+            duration=duration,
+        )
     except (cv2.error, OSError, ValueError):
-        # Return empty dict if metadata extraction fails
-        return {}
+        # Return empty metadata if extraction fails
+        return VideoMetadata()
 
 
 @router.get("/", response_model=List[VideoListItem])
-async def list_videos(db: Session = Depends(get_db)) -> List[VideoListItem]:
-    """List all uploaded videos from database."""
-    db_videos = get_all_videos(db)
-    videos = []
+async def list_videos(
+    pagination: PaginationParams = Depends(), db: Session = Depends(get_db)
+) -> List[VideoListItem]:
+    """
+    List all uploaded videos.
 
-    for db_video in db_videos:
-        videos.append(
-            VideoListItem(
-                filename=db_video.filename,
-                file_size=db_video.file_size,
-                duration=db_video.duration,
-                width=db_video.width,
-                height=db_video.height,
-            )
-        )
-
-    return videos
-
-
-@router.get("/{filename}/stream")
-async def stream_video(filename: str, db: Session = Depends(get_db)) -> FileResponse:
-    """Stream a video file."""
-    # Check if video exists in database
-    db_video = get_video_by_filename(db, filename)
-    if not db_video:
-        raise HTTPException(status_code=404, detail=f"Video {filename} not found")
-
-    # Check if file exists on disk
-    upload_dir = Path(settings.UPLOAD_DIR)
-    file_path = upload_dir / filename
-
-    if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(
-            status_code=404, detail=f"Video file {filename} not found on disk"
-        )
-
-    # Return the video file
-    return FileResponse(
-        path=str(file_path),
-        media_type=db_video.content_type or "video/mp4",
-    )
-
-
-@router.get("/{filename}/annotated")
-async def stream_annotated_video(
-    filename: str, db: Session = Depends(get_db)
-) -> FileResponse:
-    """Stream an annotated video file."""
-    # Check if video exists in database
-    db_video = get_video_by_filename(db, filename)
-    if not db_video:
-        raise HTTPException(status_code=404, detail=f"Video {filename} not found")
-
-    # Look for annotated video
-    annotated_filename = f"{Path(filename).stem}_annotated.mp4"
-    processed_dir = Path(settings.PROCESSED_DIR)
-    annotated_path = processed_dir / annotated_filename
-
-    if not annotated_path.exists():
-        raise HTTPException(
-            status_code=404, detail=f"Annotated video {annotated_filename} not found"
-        )
-
-    return FileResponse(
-        path=str(annotated_path),
-        media_type="video/mp4",
-        filename=annotated_filename,
-    )
-
-
-@router.get("/{filename}", response_model=VideoInfo)
-async def get_video_details(filename: str, db: Session = Depends(get_db)) -> VideoInfo:
-    """Get detailed information about a specific video from database."""
-    db_video = get_video_by_filename(db, filename)
-
-    if not db_video:
-        raise HTTPException(status_code=404, detail=f"Video {filename} not found")
-
-    return VideoInfo(
-        filename=db_video.filename,
-        file_size=db_video.file_size,
-        content_type=db_video.content_type,
-        duration=db_video.duration,
-        fps=db_video.fps,
-        width=db_video.width,
-        height=db_video.height,
-        frame_count=db_video.frame_count,
-        message="Video details retrieved successfully",
-    )
-
-
-@router.delete("/{filename}")
-async def delete_video(filename: str, db: Session = Depends(get_db)) -> dict:
-    """Delete a video file and database record."""
-    # Check if video exists in database
-    db_video = get_video_by_filename(db, filename)
-    if not db_video:
-        raise HTTPException(status_code=404, detail=f"Video {filename} not found")
-
-    # Delete from file system
-    upload_dir = Path(settings.UPLOAD_DIR)
-    file_path = upload_dir / filename
-
-    if file_path.exists() and file_path.is_file():
-        try:
-            file_path.unlink()
-        except OSError as e:
-            raise HTTPException(
-                status_code=500, detail=f"Failed to delete video file: {e}"
-            ) from e
-
-    # Delete from database
-    if not delete_video_record(db, filename):
-        raise HTTPException(status_code=500, detail="Failed to delete video record")
-
-    return {"message": f"Video {filename} deleted successfully"}
-
-
-@router.post("/upload", response_model=VideoInfo)
-async def upload_video(
-    file: UploadFile = File(...), db: Session = Depends(get_db)
-) -> VideoInfo:
-    """Upload a video file and return basic information with metadata."""
-
-    # Validate file
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No file provided")
-
-    # Check file size
-    file.file.seek(0, 2)  # Seek to end
-    file_size = file.file.tell()
-    file.file.seek(0)  # Reset to beginning
-
-    if file_size > settings.MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File size {file_size} exceeds maximum {settings.MAX_FILE_SIZE}",
-        )
-
-    # Check file format
-    file_ext = Path(file.filename).suffix.lower()
-    if file_ext not in settings.SUPPORTED_FORMATS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported format {file_ext}. Supported: {settings.SUPPORTED_FORMATS}",
-        )
-
-    # Create upload directory if it doesn't exist
-    upload_dir = Path(settings.UPLOAD_DIR)
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save file
-    file_path = upload_dir / file.filename
+    Returns a paginated list of videos with basic information.
+    """
     try:
-        with open(file_path, "wb") as buffer:
-            content = file.file.read()
-            buffer.write(content)
-    except OSError as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to save file: {e!s}"
-        ) from e
+        db_videos = get_all_videos(db)
 
-    # Extract video metadata
-    metadata = extract_video_metadata(file_path)
+        # Apply pagination
+        start_idx = (pagination.page - 1) * pagination.size
+        end_idx = start_idx + pagination.size
+        paginated_videos = db_videos[start_idx:end_idx]
 
-    # Save to database
-    db_video = create_video_record(
-        db=db,
-        filename=file.filename,
-        file_path=str(file_path),
-        file_size=file_size,
-        content_type=file.content_type,
-        duration=metadata.get("duration"),
-        fps=metadata.get("fps"),
-        width=metadata.get("width"),
-        height=metadata.get("height"),
-        frame_count=metadata.get("frame_count"),
-    )
+        return [VideoListItem.from_orm(video) for video in paginated_videos]
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "list_videos")
 
-    return VideoInfo(
-        filename=db_video.filename,
-        file_size=db_video.file_size,
-        content_type=db_video.content_type,
-        duration=db_video.duration,
-        fps=db_video.fps,
-        width=db_video.width,
-        height=db_video.height,
-        frame_count=db_video.frame_count,
-        message="Video uploaded successfully",
-    )
+
+@router.get("/{video_id}", response_model=VideoInfo)
+async def get_video(video_id: int, db: Session = Depends(get_db)) -> VideoInfo:
+    """
+    Get detailed information about a specific video.
+
+    Args:
+        video_id: Unique video identifier
+
+    Returns:
+        Complete video information including metadata
+    """
+    try:
+        db_video = get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        return VideoInfo.from_orm(db_video)
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_video", {"video_id": video_id})
+
+
+@router.get("/{video_id}/stream")
+async def stream_video(video_id: int, db: Session = Depends(get_db)) -> FileResponse:
+    """
+    Stream a video file.
+
+    Args:
+        video_id: Unique video identifier
+
+    Returns:
+        Video file stream
+    """
+    try:
+        # Get video from database
+        db_video = get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Check if file exists on disk
+        upload_dir = Path(settings.UPLOAD_DIR)
+        file_path = upload_dir / db_video.filename
+
+        validate_file_exists(file_path, db_video.filename)
+
+        # Return the video file
+        return FileResponse(
+            path=str(file_path),
+            media_type=db_video.content_type or "video/mp4",
+            filename=db_video.filename,
+        )
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "stream_video", {"video_id": video_id})
+
+
+@router.get("/{video_id}/annotated/stream")
+async def stream_annotated_video(
+    video_id: int, db: Session = Depends(get_db)
+) -> FileResponse:
+    """
+    Stream an annotated video file.
+
+    Args:
+        video_id: Unique video identifier
+
+    Returns:
+        Annotated video file stream
+    """
+    try:
+        # Get video from database
+        db_video = get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Look for annotated video
+        annotated_filename = f"{Path(db_video.filename).stem}_annotated.mp4"
+        processed_dir = Path(settings.PROCESSED_DIR)
+        annotated_path = processed_dir / annotated_filename
+
+        validate_file_exists(annotated_path, annotated_filename)
+
+        return FileResponse(
+            path=str(annotated_path),
+            media_type="video/mp4",
+            filename=annotated_filename,
+        )
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "stream_annotated_video", {"video_id": video_id})
+
+
+@router.delete("/{video_id}", response_model=VideoDeleteResponse)
+async def delete_video(
+    video_id: int, db: Session = Depends(get_db)
+) -> VideoDeleteResponse:
+    """
+    Delete a video file and database record.
+
+    Args:
+        video_id: Unique video identifier
+
+    Returns:
+        Deletion confirmation
+    """
+    try:
+        # Get video from database
+        db_video = get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Delete from file system
+        upload_dir = Path(settings.UPLOAD_DIR)
+        file_path = upload_dir / db_video.filename
+
+        if file_path.exists() and file_path.is_file():
+            try:
+                file_path.unlink()
+            except OSError as e:
+                raise handle_file_error(
+                    "delete_failed", db_video.filename, str(e)
+                ) from e
+
+        # Delete from database
+        if not delete_video_record(db, db_video.filename):
+            raise handle_file_error(
+                "delete_failed", db_video.filename, "Database deletion failed"
+            )
+
+        return VideoDeleteResponse(
+            message=f"Video {db_video.filename} deleted successfully",
+            video_id=video_id,
+            filename=db_video.filename,
+        )
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "delete_video", {"video_id": video_id})
+
+
+@router.post("/upload", response_model=VideoUploadResponse)
+async def upload_video(
+    file: UploadFile = File(...),
+    description: str = Form(None),
+    db: Session = Depends(get_db),
+) -> VideoUploadResponse:
+    """
+    Upload a video file.
+
+    Args:
+        file: Video file to upload
+        description: Optional description of the video
+
+    Returns:
+        Upload confirmation with video information
+    """
+    try:
+        # Validate file
+        if not file.filename:
+            raise handle_file_error("invalid", "", "No file provided")
+
+        # Get file size
+        file.file.seek(0, 2)  # Seek to end
+        file_size = file.file.tell()
+        file.file.seek(0)  # Reset to beginning
+
+        # Validate video file
+        validate_video_file(file.filename, file_size, file.content_type)
+
+        # Create upload directory if it doesn't exist
+        upload_dir = Path(settings.UPLOAD_DIR)
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        # Ensure safe and unique filename
+        safe_filename = get_safe_filename(file.filename)
+        unique_filename = ensure_unique_filename(safe_filename, upload_dir)
+
+        # Save file
+        file_path = upload_dir / unique_filename
+        try:
+            with open(file_path, "wb") as buffer:
+                content = file.file.read()
+                buffer.write(content)
+        except OSError as e:
+            raise handle_file_error("upload_failed", unique_filename, str(e)) from e
+
+        # Extract video metadata
+        metadata = extract_video_metadata(file_path)
+
+        # Save to database
+        db_video = create_video_record(
+            db=db,
+            filename=unique_filename,
+            file_path=str(file_path),
+            file_size=file_size,
+            content_type=file.content_type,
+            duration=metadata.duration,
+            fps=metadata.fps,
+            width=metadata.width,
+            height=metadata.height,
+            frame_count=metadata.frame_count,
+        )
+
+        return VideoUploadResponse(
+            video_id=db_video.id,
+            filename=db_video.filename,
+            file_size=db_video.file_size,
+            status="uploaded",
+            message="Video uploaded successfully",
+            metadata=metadata,
+        )
+    except (OSError, ValueError) as e:
+        log_and_raise_error(
+            e, "upload_video", {"filename": file.filename if file else "unknown"}
+        )

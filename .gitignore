@@ -98,4 +98,7 @@ data/database/*.db
 *.pt
 *.pth
 *.onnx
-*.pb 
+*.pb
+
+# Python version management
+.python-version 

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { analysisApi, videoApi } from '../services/api';
+import { analysisApi, AnalysisData, videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import AnalysisModal from './AnalysisModal';
-import { AnalysisData } from './AnalysisResults';
 import {
     AnalyticsIcon,
     DeleteIcon,
@@ -24,10 +23,10 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
   const [analyses, setAnalyses] = useState<AnalysisData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [analyzingId, setAnalyzingId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const loadVideos = async () => {
@@ -52,10 +51,10 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
     loadVideos();
   }, []);
 
-  const handleDelete = async (filename: string) => {
+  const handleDelete = async (videoId: number) => {
     try {
-      setDeletingId(filename);
-      await videoApi.deleteVideo(filename);
+      setDeletingId(videoId);
+      await videoApi.deleteVideo(videoId);
       await loadVideos();
       onVideoDeleted();
     } catch (err: any) {
@@ -66,10 +65,14 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
     }
   };
 
-  const handleAnalyze = async (filename: string) => {
+  const handleAnalyze = async (videoId: number) => {
     try {
-      setAnalyzingId(filename);
-      await analysisApi.startAnalysis(filename);
+      setAnalyzingId(videoId);
+      await analysisApi.startAnalysis(videoId, {
+        analysis_type: 'ball_tracking',
+        confidence_threshold: 0.5,
+        include_pose_detection: true
+      });
       const analysesResponse = await analysisApi.getAllAnalyses();
       setAnalyses(analysesResponse);
     } catch (err: any) {
@@ -80,14 +83,14 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
     }
   };
 
-  const handleViewAnalysis = (filename: string) => {
+  const handleViewAnalysis = (videoId: number) => {
     if (onViewAnalysis) {
-      const video = videos.find(v => v.filename === filename);
+      const video = videos.find(v => v.id === videoId);
       if (video) {
         onViewAnalysis(video);
       }
     } else {
-      setSelectedVideo(filename);
+      setSelectedVideo(videoId);
       setModalOpen(true);
     }
   };
@@ -97,8 +100,10 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
     setSelectedVideo(null);
   };
 
-  const getAnalysisForVideo = (filename: string): AnalysisData | null => {
-    return analyses.find(analysis => analysis.video_filename === filename) || null;
+  const getAnalysisForVideo = (videoId: number): AnalysisData | null => {
+    const video = videos.find(v => v.id === videoId);
+    if (!video) return null;
+    return analyses.find(analysis => analysis.video_filename === video.filename) || null;
   };
 
   const formatDuration = (seconds: number): string => {
@@ -111,8 +116,6 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
     const mb = bytes / (1024 * 1024);
     return `${mb.toFixed(2)} MB`;
   };
-
-
 
   const getStatusTag = (analysis: AnalysisData | null, isAnalyzing: boolean) => {
     if (isAnalyzing) {
@@ -183,12 +186,12 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
       ) : (
         <div className={`video-grid ${viewMode}`}>
           {videos.map((video) => {
-            const analysis = getAnalysisForVideo(video.filename);
-            const isAnalyzing = analyzingId === video.filename;
+            const analysis = getAnalysisForVideo(video.id);
+            const isAnalyzing = analyzingId === video.id;
             const status = getStatusTag(analysis, isAnalyzing);
             
             return (
-              <div key={video.filename} className="video-card-enhanced">
+              <div key={video.id} className="video-card-enhanced">
                 <div className="video-thumbnail-container">
                   <div className="video-thumbnail">
                     <VideoIcon size={48} color="white" />
@@ -228,6 +231,13 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
                         <span className="metadata-value">{video.fps} fps</span>
                       </div>
                     )}
+
+                    {video.status && video.status !== 'uploaded' && (
+                      <div className="metadata-row">
+                        <span className="metadata-label">Status:</span>
+                        <span className="metadata-value">{video.status}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -235,7 +245,7 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
                   {!analysis && !isAnalyzing && (
                     <button
                       className="action-btn analyze-btn"
-                      onClick={() => handleAnalyze(video.filename)}
+                      onClick={() => handleAnalyze(video.id)}
                     >
                       <AnalyticsIcon size={16} />
                       Analyze
@@ -245,7 +255,7 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
                   {analysis && (
                     <button
                       className="action-btn view-btn"
-                      onClick={() => handleViewAnalysis(video.filename)}
+                      onClick={() => handleViewAnalysis(video.id)}
                     >
                       <EyeIcon size={16} />
                       View Analysis
@@ -265,11 +275,11 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
                   
                   <button
                     className="action-btn delete-btn"
-                    onClick={() => handleDelete(video.filename)}
-                    disabled={deletingId === video.filename}
+                    onClick={() => handleDelete(video.id)}
+                    disabled={deletingId === video.id}
                   >
                     <DeleteIcon size={16} />
-                    {deletingId === video.filename ? 'Deleting...' : 'Delete'}
+                    {deletingId === video.id ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </div>
@@ -282,7 +292,7 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
         <AnalysisModal
           isOpen={modalOpen}
           onClose={handleCloseModal}
-          videoFilename={selectedVideo}
+          videoId={selectedVideo}
         />
       )}
     </div>

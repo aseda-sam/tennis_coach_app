@@ -2,390 +2,191 @@
 
 ## Overview
 
-The tennis analysis system uses SQLite for the MVP with a well-structured schema designed for flexibility and performance. The schema supports storing video metadata, analysis results, and time-series data efficiently.
+The Tennis Coach App uses SQLite as its database with SQLAlchemy ORM for data modeling. The database stores video metadata, analysis results, and processing status information.
 
 ## Database Location
-```
-./data/database/tennis_analysis.db
-```
 
-## Schema Design
+- **Development**: `data/database/tennis_coach.db`
+- **Production**: Configured via `DATABASE_URL` environment variable
 
-### 1. Videos Table
-Stores video metadata and processing information.
+## Tables
+
+### Videos Table
+
+Stores metadata for uploaded tennis videos.
 
 ```sql
 CREATE TABLE videos (
-    id TEXT PRIMARY KEY,  -- UUID string
-    filename TEXT NOT NULL,
-    original_filename TEXT NOT NULL,
-    file_path TEXT NOT NULL,
-    file_size INTEGER NOT NULL,  -- bytes
-    duration REAL,  -- seconds
-    format TEXT,
-    resolution_width INTEGER,
-    resolution_height INTEGER,
-    fps REAL,
-    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status TEXT DEFAULT 'uploaded',  -- uploaded, processing, completed, failed
-    processing_start_time TIMESTAMP,
-    processing_end_time TIMESTAMP,
-    processing_duration REAL,  -- seconds
+    id INTEGER PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size INTEGER NOT NULL,
+    content_type VARCHAR(100),
+    duration FLOAT,
+    fps FLOAT,
+    width INTEGER,
+    height INTEGER,
+    frame_count INTEGER,
+    status VARCHAR(50),
     error_message TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME
 );
 ```
 
-**Indexes:**
-```sql
-CREATE INDEX idx_videos_status ON videos(status);
-CREATE INDEX idx_videos_upload_date ON videos(upload_date);
-```
+**Key Fields:**
+- `id` - Unique video identifier (Primary Key)
+- `filename` - Original uploaded filename
+- `file_path` - Storage location on filesystem
+- `file_size` - File size in bytes
+- `content_type` - MIME type (e.g., "video/mp4")
+- `duration` - Video length in seconds
+- `fps` - Frames per second
+- `width` / `height` - Video dimensions in pixels
+- `frame_count` - Total number of frames
+- `status` - Processing status (uploaded, processing, completed, failed)
+- `error_message` - Error details if processing failed
+- `created_at` - Upload timestamp
+- `updated_at` - Last modification timestamp
 
-### 2. Analyses Table
-Stores comprehensive analysis results with pose and ball detection metrics.
+### Analyses Table
+
+Stores analysis results and processing metadata.
 
 ```sql
 CREATE TABLE analyses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    video_filename TEXT NOT NULL,
-    analysis_type TEXT NOT NULL,  -- 'ball_detection_and_pose'
-    
-    -- Ball detection results
-    total_frames INTEGER DEFAULT 0,
-    frames_with_balls INTEGER DEFAULT 0,
-    total_ball_detections INTEGER DEFAULT 0,
-    average_detections_per_frame REAL DEFAULT 0.0,
-    detection_rate REAL DEFAULT 0.0,
-    
-    -- Pose detection results
-    frames_with_pose INTEGER DEFAULT 0,
-    pose_detection_rate REAL DEFAULT 0.0,
-    
-    -- Raw detection data (JSON)
-    ball_detections TEXT,  -- JSON string of ball detections
-    pose_detections TEXT,  -- JSON string of pose keypoints
-    annotated_video_path TEXT,  -- Path to annotated video file
-    
-    -- Processing metadata
-    processing_time REAL DEFAULT 0.0,  -- seconds
-    model_used TEXT,  -- 'yolov8n+mediapipe'
-    confidence_threshold REAL DEFAULT 0.5,
-    
-    -- Timestamps
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id INTEGER PRIMARY KEY,
+    video_id INTEGER,
+    video_filename VARCHAR NOT NULL,
+    analysis_type VARCHAR NOT NULL,
+    total_frames INTEGER,
+    frames_with_balls INTEGER,
+    total_ball_detections INTEGER,
+    average_detections_per_frame FLOAT,
+    detection_rate FLOAT,
+    frames_with_pose INTEGER,
+    pose_detection_rate FLOAT,
+    ball_detections TEXT,
+    pose_detections TEXT,
+    annotated_video_path VARCHAR,
+    processing_time FLOAT,
+    model_used VARCHAR,
+    confidence_threshold FLOAT,
+    status VARCHAR(50),
+    progress INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME,
+    completed_at DATETIME,
+    FOREIGN KEY(video_id) REFERENCES videos (id)
 );
 ```
 
-**Indexes:**
-```sql
-CREATE INDEX idx_analyses_video_filename ON analyses(video_filename);
-CREATE INDEX idx_analyses_type ON analyses(analysis_type);
-CREATE INDEX idx_analyses_created_at ON analyses(created_at);
+**Key Fields:**
+- `id` - Unique analysis identifier (Primary Key)
+- `video_id` - Reference to videos table (Foreign Key)
+- `video_filename` - Original video filename
+- `analysis_type` - Type of analysis (ball_tracking, pose_estimation, comprehensive)
+- `status` - Processing status (processing, completed, failed)
+- `progress` - Completion percentage (0-100)
+- `total_frames` - Total frames in video
+- `frames_with_balls` - Frames containing ball detections
+- `total_ball_detections` - Total ball detections found
+- `detection_rate` - Percentage of frames with detections
+- `frames_with_pose` - Frames with pose detections
+- `pose_detection_rate` - Percentage of frames with pose data
+- `ball_detections` - JSON string of ball detection coordinates
+- `pose_detections` - JSON string of pose keypoint data
+- `annotated_video_path` - Path to annotated video file
+- `processing_time` - Analysis duration in seconds
+- `model_used` - YOLO model version (e.g., "yolov8n")
+- `confidence_threshold` - Detection confidence threshold
+- `created_at` - Analysis creation timestamp
+- `updated_at` - Last modification timestamp
+- `completed_at` - Analysis completion timestamp (nullable)
+
+## Relationships
+
+### One-to-Many: Videos to Analyses
+- One video can have multiple analyses
+- Each analysis belongs to one video
+- Foreign key: `analyses.video_id` → `videos.id`
+
+## Indexes
+
+### Videos Table
+- `ix_videos_id` - Primary key index
+- `ix_videos_filename` - Unique filename index
+
+### Analyses Table
+- `ix_analyses_id` - Primary key index
+- `ix_analyses_video_id` - Foreign key index
+- `ix_analyses_video_filename` - Filename lookup index
+
+## Data Types
+
+### Status Values
+
+**Video Status:**
+- `uploaded` - File uploaded successfully
+- `processing` - Currently being processed
+- `completed` - Processing finished successfully
+- `failed` - Processing encountered an error
+
+**Analysis Status:**
+- `processing` - Analysis is currently running
+- `completed` - Analysis finished successfully
+- `failed` - Analysis encountered an error
+
+### Analysis Types
+- `ball_tracking` - Ball detection only
+- `pose_estimation` - Pose detection only
+- `comprehensive` - Both ball and pose detection
+
+## Migration Management
+
+The database uses Alembic for schema migrations:
+
+```bash
+# Apply all pending migrations
+alembic upgrade head
+
+# Create new migration
+alembic revision --autogenerate -m "Description"
+
+# View migration history
+alembic history
+
+# Downgrade to previous version
+alembic downgrade -1
 ```
-
-### 3. Player Positions Table
-Time-series data for player court positioning.
-
-```sql
-CREATE TABLE player_positions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    video_id TEXT NOT NULL,
-    frame_number INTEGER NOT NULL,
-    timestamp REAL NOT NULL,
-    x_coordinate REAL,
-    y_coordinate REAL,
-    court_position TEXT,  -- baseline, service_line, net, etc.
-    confidence REAL,
-    pose_landmarks JSON,  -- MediaPipe pose data
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
-);
-```
-
-**Indexes:**
-```sql
-CREATE INDEX idx_positions_video_id ON player_positions(video_id);
-CREATE INDEX idx_positions_timestamp ON player_positions(timestamp);
-CREATE INDEX idx_positions_court_position ON player_positions(court_position);
-```
-
-### 4. Stroke Events Table
-Stores detected stroke events with metadata.
-
-```sql
-CREATE TABLE stroke_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    video_id TEXT NOT NULL,
-    frame_number INTEGER NOT NULL,
-    timestamp REAL NOT NULL,
-    stroke_type TEXT NOT NULL,  -- forehand, backhand, serve, volley
-    confidence REAL,
-    x_coordinate REAL,
-    y_coordinate REAL,
-    stroke_speed REAL,  -- estimated speed
-    ball_position JSON,  -- ball location during stroke
-    player_position JSON,  -- player position during stroke
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
-);
-```
-
-**Indexes:**
-```sql
-CREATE INDEX idx_strokes_video_id ON stroke_events(video_id);
-CREATE INDEX idx_strokes_type ON stroke_events(stroke_type);
-CREATE INDEX idx_strokes_timestamp ON stroke_events(timestamp);
-```
-
-### 5. Ball Trajectory Table
-Tracks ball movement throughout the video.
-
-```sql
-CREATE TABLE ball_trajectory (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    video_id TEXT NOT NULL,
-    frame_number INTEGER NOT NULL,
-    timestamp REAL NOT NULL,
-    x_coordinate REAL,
-    y_coordinate REAL,
-    z_coordinate REAL,  -- depth estimation
-    velocity_x REAL,
-    velocity_y REAL,
-    velocity_z REAL,
-    confidence REAL,
-    detected BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
-);
-```
-
-**Indexes:**
-```sql
-CREATE INDEX idx_ball_video_id ON ball_trajectory(video_id);
-CREATE INDEX idx_ball_timestamp ON ball_trajectory(timestamp);
-CREATE INDEX idx_ball_detected ON ball_trajectory(detected);
-```
-
-### 6. Metrics Summary Table
-Aggregated performance metrics per video.
-
-```sql
-CREATE TABLE metrics_summary (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    video_id TEXT UNIQUE NOT NULL,
-    total_strokes INTEGER DEFAULT 0,
-    forehand_count INTEGER DEFAULT 0,
-    backhand_count INTEGER DEFAULT 0,
-    serve_count INTEGER DEFAULT 0,
-    volley_count INTEGER DEFAULT 0,
-    average_rally_duration REAL,
-    total_rally_count INTEGER DEFAULT 0,
-    court_coverage_percentage REAL,
-    baseline_time_percentage REAL,
-    service_line_time_percentage REAL,
-    net_time_percentage REAL,
-    average_stroke_speed REAL,
-    max_stroke_speed REAL,
-    ball_bounce_count INTEGER DEFAULT 0,
-    average_ball_speed REAL,
-    max_ball_height REAL,
-    processing_accuracy REAL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
-);
-```
-
-**Indexes:**
-```sql
-CREATE INDEX idx_metrics_video_id ON metrics_summary(video_id);
-```
-
-### 7. Processing Jobs Table
-Tracks background processing tasks.
-
-```sql
-CREATE TABLE processing_jobs (
-    id TEXT PRIMARY KEY,  -- UUID string
-    video_id TEXT NOT NULL,
-    job_type TEXT NOT NULL,  -- video_analysis, batch_processing
-    status TEXT DEFAULT 'queued',  -- queued, running, completed, failed
-    progress INTEGER DEFAULT 0,  -- 0-100
-    current_step TEXT,
-    error_message TEXT,
-    started_at TIMESTAMP,
-    completed_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
-);
-```
-
-**Indexes:**
-```sql
-CREATE INDEX idx_jobs_video_id ON processing_jobs(video_id);
-CREATE INDEX idx_jobs_status ON processing_jobs(status);
-```
-
-## JSON Data Examples
-
-### Analysis Results JSON Structure
-```json
-{
-  "ball_detection": {
-    "bbox": [x1, y1, x2, y2],
-    "confidence": 0.95,
-    "track_id": 1
-  },
-  "pose_estimation": {
-    "landmarks": [...],
-    "keypoints": {...},
-    "confidence": 0.88
-  },
-  "stroke_detection": {
-    "stroke_type": "forehand",
-    "confidence": 0.92,
-    "motion_data": {...}
-  }
-}
-```
-
-### Player Position JSON Structure
-```json
-{
-  "pose_landmarks": [
-    {"x": 0.5, "y": 0.3, "z": 0.1, "visibility": 0.9},
-    ...
-  ],
-  "keypoints": {
-    "nose": {"x": 0.5, "y": 0.3},
-    "left_shoulder": {"x": 0.4, "y": 0.35},
-    ...
-  },
-  "court_position": "baseline",
-  "confidence": 0.88
-}
-```
-
-## Database Operations
-
-### Common Queries
-
-#### Get Video Analysis Summary
-```sql
-SELECT 
-    v.filename,
-    v.duration,
-    ms.total_strokes,
-    ms.forehand_count,
-    ms.backhand_count,
-    ms.average_rally_duration,
-    ms.court_coverage_percentage
-FROM videos v
-LEFT JOIN metrics_summary ms ON v.id = ms.video_id
-WHERE v.status = 'completed'
-ORDER BY v.upload_date DESC;
-```
-
-#### Get Stroke Events for Video
-```sql
-SELECT 
-    timestamp,
-    stroke_type,
-    confidence,
-    x_coordinate,
-    y_coordinate
-FROM stroke_events
-WHERE video_id = ?
-ORDER BY timestamp;
-```
-
-#### Get Ball Trajectory
-```sql
-SELECT 
-    timestamp,
-    x_coordinate,
-    y_coordinate,
-    confidence
-FROM ball_trajectory
-WHERE video_id = ? AND detected = TRUE
-ORDER BY timestamp;
-```
-
-#### Get Player Position Timeline
-```sql
-SELECT 
-    timestamp,
-    court_position,
-    x_coordinate,
-    y_coordinate,
-    confidence
-FROM player_positions
-WHERE video_id = ?
-ORDER BY timestamp;
-```
-
-## Migration Strategy
-
-### Version 1.0 (MVP)
-- SQLite with all tables above
-- Basic indexing for performance
-- JSON flexibility for analysis data
-
-### Future Migrations
-- PostgreSQL for production
-- Partitioning for large datasets
-- Advanced indexing strategies
-- Data archival policies
-
-## Performance Considerations
-
-### Indexing Strategy
-- Primary keys on all tables
-- Composite indexes for common queries
-- JSON indexes for flexible data
-
-### Query Optimization
-- Use prepared statements
-- Limit result sets
-- Implement pagination
-- Cache frequently accessed data
-
-### Storage Optimization
-- Compress JSON data if needed
-- Archive old analysis results
-- Implement data retention policies
-- Regular VACUUM operations
 
 ## Backup and Recovery
 
-### Backup Strategy
+### Backup
 ```bash
-# Daily backup
-sqlite3 tennis_analysis.db ".backup backup_$(date +%Y%m%d).db"
+# Create backup
+cp data/database/tennis_coach.db data/database/tennis_coach_backup.db
 
-# Weekly full backup
-cp tennis_analysis.db weekly_backup_$(date +%Y%m%d).db
+# With timestamp
+cp data/database/tennis_coach.db "data/database/tennis_coach_$(date +%Y%m%d_%H%M%S).db"
 ```
 
-### Recovery Procedures
-1. Stop application
-2. Restore from backup
-3. Verify data integrity
-4. Restart application
+### Recovery
+```bash
+# Restore from backup
+cp data/database/tennis_coach_backup.db data/database/tennis_coach.db
+```
 
-## Monitoring and Maintenance
+## Performance Considerations
 
-### Database Health Checks
-- Monitor table sizes
-- Check index usage
-- Analyze query performance
-- Monitor disk space
+- **File Storage**: Videos are stored on filesystem, not in database
+- **JSON Fields**: Large detection data stored as JSON strings
+- **Indexes**: Foreign keys and frequently queried fields are indexed
+- **SQLite**: Suitable for development and small to medium deployments
 
-### Maintenance Tasks
-- Weekly VACUUM
-- Monthly ANALYZE
-- Quarterly index rebuild
-- Annual data archival 
+## Future Considerations
+
+- **PostgreSQL Migration**: For production deployments with multiple users
+- **Data Archiving**: Strategy for old analysis data
+- **Compression**: JSON field compression for large datasets
+- **Partitioning**: Time-based partitioning for large datasets
