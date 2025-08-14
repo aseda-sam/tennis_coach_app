@@ -1,45 +1,45 @@
 import axios from 'axios';
 import { VideoListResponse, VideoMetadata, VideoUploadResponse } from '../types/video';
 
+// API configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000, // 30 seconds for video uploads
-});
-
-// Create a separate instance for analysis requests with longer timeout
+// Create axios instance for analysis API
 const analysisApiInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 300000, // 5 minutes for analysis requests
+  timeout: 30000,
 });
 
-// Request interceptor for logging
-api.interceptors.request.use(
-  (config) => {
-    console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`);
-    return config;
-  },
+// Create main API instance
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 30000,
+});
+
+// Add request/response interceptors
+api.interceptors.request.use((config) => {
+  console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`);
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
   (error) => {
-    console.error('Request error:', error);
+    console.error('API Error:', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
 
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    console.error('API Error:', error.response?.data || error.message);
-    // If it's a network error (no backend available), show a user-friendly message
-    if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
-      console.warn('Backend API not available. Running in demo mode.');
-    }
-    return Promise.reject(error);
-  }
-);
+// Normalize analysis data to ensure arrays are always returned
+const normalizeAnalysis = (data: any): AnalysisData => ({
+  ...data,
+  ball_detections: typeof data.ball_detections === 'string' 
+    ? JSON.parse(data.ball_detections || '[]') 
+    : (data.ball_detections ?? []),
+  pose_detections: typeof data.pose_detections === 'string' 
+    ? JSON.parse(data.pose_detections || '[]') 
+    : (data.pose_detections ?? []),
+});
 
 export const videoApi = {
   // Upload a video file
@@ -132,19 +132,19 @@ export const analysisApi = {
   // Get analysis results by analysis ID
   getAnalysis: async (analysisId: number): Promise<AnalysisData> => {
     const response = await api.get<AnalysisData>(`/analysis/${analysisId}`);
-    return response.data;
+    return normalizeAnalysis(response.data);
   },
 
   // Get analysis results by video ID
   getAnalysisByVideo: async (videoId: number): Promise<AnalysisData> => {
     const response = await api.get<AnalysisData>(`/analysis/videos/${videoId}`);
-    return response.data;
+    return normalizeAnalysis(response.data);
   },
 
   // Get all analyses
   getAllAnalyses: async (): Promise<AnalysisData[]> => {
     const response = await api.get<AnalysisData[]>('/analysis/');
-    return response.data;
+    return response.data.map(normalizeAnalysis);
   },
 
   // Delete analysis by analysis ID

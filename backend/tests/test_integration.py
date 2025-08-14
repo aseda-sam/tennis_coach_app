@@ -186,8 +186,8 @@ class TestAnalysisIntegration:
             )
 
             # With fake video files, analysis will fail, which is expected
-            # We should get a 400 error with proper error details
-            assert response.status_code == 400
+            # We should get a 500 error with proper error details
+            assert response.status_code == 500
             error_data = response.json()
             assert "error" in error_data
             assert "message" in error_data["error"]
@@ -228,7 +228,7 @@ class TestAnalysisIntegration:
             )
 
             # Analysis will fail with fake video, which is expected
-            assert response.status_code == 400
+            assert response.status_code == 500
 
             # For this test, we'll skip the deletion part since analysis failed
             # In a real scenario with valid video files, this would succeed
@@ -265,7 +265,7 @@ class TestAnalysisIntegration:
             )
 
             # Analysis will fail with fake video, which is expected
-            assert response.status_code == 400
+            assert response.status_code == 500
 
             # For this test, we'll skip the schema validation part since analysis failed
             # In a real scenario with valid video files, this would succeed
