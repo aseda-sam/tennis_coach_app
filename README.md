@@ -49,16 +49,16 @@ docker compose up --build
 **Prerequisites**: Python 3.11+, Node.js 16+, FFmpeg
 
 1. **Install FFmpeg** (required for video processing):
-   ```bash
-   # macOS
-   brew install ffmpeg
-   
-   # Ubuntu/Debian
-   sudo apt install ffmpeg
-   
-   # Windows (using chocolatey)
-   choco install ffmpeg
-   ```
+```bash
+# macOS
+brew install ffmpeg
+
+# Ubuntu/Debian
+sudo apt install ffmpeg
+
+# Windows (using chocolatey)
+choco install ffmpeg
+```
 
 2. **Setup Backend**
 ```bash
