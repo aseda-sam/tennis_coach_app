@@ -135,11 +135,11 @@ async def stream_video(video_id: int, db: Session = Depends(get_db)) -> FileResp
 
         validate_file_exists(file_path, db_video.filename)
 
-        # Return the video file
+        # Return the video file with safe filename to prevent header injection
         return FileResponse(
             path=str(file_path),
             media_type=db_video.content_type or "video/mp4",
-            filename=db_video.filename,
+            filename=get_safe_filename(db_video.filename),
         )
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "stream_video", {"video_id": video_id})
@@ -174,7 +174,7 @@ async def stream_annotated_video(
         return FileResponse(
             path=str(annotated_path),
             media_type="video/mp4",
-            filename=annotated_filename,
+            filename=get_safe_filename(annotated_filename),
         )
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "stream_annotated_video", {"video_id": video_id})
