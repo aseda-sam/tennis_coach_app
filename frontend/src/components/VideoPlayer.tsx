@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  CloseIcon,
-  FullscreenIcon,
-  PauseIcon,
-  PlayIcon,
-  VolumeIcon,
-  VolumeOffIcon
+    CloseIcon,
+    FullscreenIcon,
+    PauseIcon,
+    PlayIcon,
+    VolumeIcon,
+    VolumeOffIcon
 } from './Icons';
 import './VideoPlayer.css';
 
