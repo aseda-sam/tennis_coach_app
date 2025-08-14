@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { analysisApi, AnalysisData } from '../services/api';
 import './AnalysisModal.css';
 
