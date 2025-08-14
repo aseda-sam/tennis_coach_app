@@ -3,12 +3,11 @@ FROM python:3.11-slim AS base
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (ARM64 compatible)
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
     ffmpeg \
-    libgl1-mesa-glx \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
@@ -54,5 +53,5 @@ USER appuser
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/videos/ || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

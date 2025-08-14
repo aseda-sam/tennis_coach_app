@@ -19,12 +19,14 @@ logger = logging.getLogger(__name__)
 
 def create_analysis_record(
     db: Session,
+    video_id: int,
     video_filename: str,
     analysis_type: str,
     analysis_results: Dict[str, Any],
     processing_time: float,
     model_used: Optional[str] = None,
     confidence_threshold: float = 0.5,
+    status: str = "completed",
 ) -> Analysis:
     """
     Create a new analysis record in the database.
@@ -42,6 +44,7 @@ def create_analysis_record(
         Created Analysis record
     """
     analysis = Analysis(
+        video_id=video_id,
         video_filename=video_filename,
         analysis_type=analysis_type,
         total_frames=analysis_results.get("frames_processed", 0),
@@ -69,6 +72,7 @@ def create_analysis_record(
         processing_time=processing_time,
         model_used=model_used,
         confidence_threshold=confidence_threshold,
+        status=status,
     )
 
     db.add(analysis)
@@ -77,6 +81,20 @@ def create_analysis_record(
 
     logger.info(f"Created analysis record for {video_filename}")
     return analysis
+
+
+def get_analysis_by_id(db: Session, analysis_id: int) -> Optional[Analysis]:
+    """
+    Get analysis by ID.
+
+    Args:
+        db: Database session
+        analysis_id: Analysis ID
+
+    Returns:
+        Analysis record if found, None otherwise
+    """
+    return db.query(Analysis).filter(Analysis.id == analysis_id).first()
 
 
 def get_analysis_by_video(db: Session, video_filename: str) -> Optional[Analysis]:
@@ -93,6 +111,20 @@ def get_analysis_by_video(db: Session, video_filename: str) -> Optional[Analysis
     return db.query(Analysis).filter(Analysis.video_filename == video_filename).first()
 
 
+def get_analysis_by_video_id(db: Session, video_id: int) -> Optional[Analysis]:
+    """
+    Get analysis results for a specific video by ID.
+
+    Args:
+        db: Database session
+        video_id: ID of the video
+
+    Returns:
+        Analysis record if found, None otherwise
+    """
+    return db.query(Analysis).filter(Analysis.video_id == video_id).first()
+
+
 def get_all_analyses(db: Session) -> list[Analysis]:
     """
     Get all analysis records.
@@ -103,24 +135,41 @@ def get_all_analyses(db: Session) -> list[Analysis]:
     Returns:
         List of all analysis records
     """
-    return db.query(Analysis).all()
+    return db.query(Analysis).order_by(Analysis.created_at.desc()).all()
 
 
-def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
+def analyze_video(
+    db: Session,
+    video_id: int,
+    analysis_type: str = "ball_tracking",
+    confidence_threshold: float = 0.7,
+    include_pose_detection: bool = False,
+) -> Dict[str, Any]:
     """
     Perform video analysis and store results.
 
     Args:
         db: Database session
-        video_filename: Name of the video file to analyze
+        video_id: Video ID
+        analysis_type: Type of analysis to perform
+        confidence_threshold: Detection confidence threshold
+        include_pose_detection: Whether to include pose detection
 
     Returns:
         Analysis results dictionary
     """
+    from app.services.video_service import get_video_by_id
+
+    # Get video by ID
+    video = get_video_by_id(db, video_id)
+    if not video:
+        return {"error": f"Video with ID {video_id} not found"}
+
+    video_filename = video.filename
     logger.info(f"Starting analysis for video: {video_filename}")
 
     # Check if analysis already exists
-    existing_analysis = get_analysis_by_video(db, video_filename)
+    existing_analysis = get_analysis_by_video_id(db, video_id)
     if existing_analysis:
         logger.info(f"Analysis already exists for {video_filename}")
         return {
@@ -145,7 +194,10 @@ def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
         start_time = time.time()
 
         # Perform analysis
-        analysis_results = cv_service.analyze_video(video_path)
+        analysis_results = cv_service.analyze_video(
+            video_path,
+            include_pose=include_pose_detection,
+        )
 
         # Calculate processing time
         processing_time = time.time() - start_time
@@ -156,8 +208,9 @@ def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
         # Store results in database
         analysis_record = create_analysis_record(
             db=db,
+            video_id=video_id,
             video_filename=video_filename,
-            analysis_type="ball_detection_and_pose",
+            analysis_type=analysis_type,
             analysis_results=analysis_results,
             processing_time=processing_time,
             model_used="yolov8n+mediapipe"
@@ -165,7 +218,8 @@ def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
             else "yolov8n"
             if cv_service.ball_detector
             else None,
-            confidence_threshold=0.5,
+            confidence_threshold=confidence_threshold,
+            status="completed",
         )
 
         return {
@@ -174,6 +228,8 @@ def analyze_video(db: Session, video_filename: str) -> Dict[str, Any]:
             "processing_time": processing_time,
             "analysis_summary": analysis_results["analysis_summary"],
             "frames_processed": analysis_results["frames_processed"],
+            "estimated_duration": processing_time
+            * 1.2,  # Rough estimate for future videos
         }
 
     except (OSError, ValueError, RuntimeError) as e:
