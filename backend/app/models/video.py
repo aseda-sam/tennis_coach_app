@@ -1,4 +1,5 @@
 from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -31,3 +32,6 @@ class Video(Base):
         String(50), default="uploaded"
     )  # uploaded, processing, completed, failed
     error_message = Column(Text, nullable=True)
+
+    # Relationship to analyses with cascade deletion
+    analyses = relationship("Analysis", backref="video", cascade="all, delete-orphan")
