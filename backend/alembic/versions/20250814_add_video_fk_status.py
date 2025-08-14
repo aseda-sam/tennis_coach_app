@@ -23,13 +23,22 @@ def upgrade() -> None:
     op.add_column("analyses", sa.Column("video_id", sa.Integer(), nullable=True))
     op.add_column(
         "analyses",
-        sa.Column("status", sa.String(length=50), server_default="completed", nullable=False),
+        sa.Column(
+            "status", sa.String(length=50), server_default="completed", nullable=False
+        ),
     )
 
     # Index + FK
-    op.create_index(op.f("ix_analyses_video_id"), "analyses", ["video_id"], unique=False)
+    op.create_index(
+        op.f("ix_analyses_video_id"), "analyses", ["video_id"], unique=False
+    )
     op.create_foreign_key(
-        "analyses_video_id_fkey", "analyses", "videos", ["video_id"], ["id"], ondelete=None
+        "analyses_video_id_fkey",
+        "analyses",
+        "videos",
+        ["video_id"],
+        ["id"],
+        ondelete=None,
     )
 
     # Backfill video_id by filename
@@ -52,5 +61,3 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_analyses_video_id"), table_name="analyses")
     op.drop_column("analyses", "status")
     op.drop_column("analyses", "video_id")
-
-
