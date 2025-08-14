@@ -143,9 +143,7 @@ class TestVideoIntegration:
             for field, expected_type in expected_fields.items():
                 assert field in video_data, f"Missing field: {field}"
                 if isinstance(expected_type, tuple):
-                    assert isinstance(
-                        video_data[field], expected_type[0]
-                    ) or isinstance(video_data[field], expected_type[1]), (
+                    assert isinstance(video_data[field], expected_type), (
                         f"Field {field} has wrong type"
                     )
                 else:
@@ -188,12 +186,12 @@ class TestAnalysisIntegration:
             )
 
             # With fake video files, analysis will fail, which is expected
-            # We should get a 500 error with proper error details
-            assert response.status_code == 500
+            # We should get a 400 error with proper error details
+            assert response.status_code == 400
             error_data = response.json()
             assert "error" in error_data
-            assert "message" in error_data
-            assert "code" in error_data
+            assert "message" in error_data["error"]
+            assert "code" in error_data["error"]
 
             # For this test, we'll skip the analysis retrieval part since analysis failed
             # In a real scenario with valid video files, this would succeed
@@ -230,7 +228,7 @@ class TestAnalysisIntegration:
             )
 
             # Analysis will fail with fake video, which is expected
-            assert response.status_code == 500
+            assert response.status_code == 400
 
             # For this test, we'll skip the deletion part since analysis failed
             # In a real scenario with valid video files, this would succeed
@@ -267,7 +265,7 @@ class TestAnalysisIntegration:
             )
 
             # Analysis will fail with fake video, which is expected
-            assert response.status_code == 500
+            assert response.status_code == 400
 
             # For this test, we'll skip the schema validation part since analysis failed
             # In a real scenario with valid video files, this would succeed
@@ -288,7 +286,7 @@ class TestErrorHandling:
         assert response.status_code == 404
         error_data = response.json()
         assert "error" in error_data
-        assert "message" in error_data
+        assert "message" in error_data["error"]
 
         # Test with invalid video ID format
         response = client.get("/v0/videos/invalid")
@@ -301,7 +299,7 @@ class TestErrorHandling:
         assert response.status_code == 404
         error_data = response.json()
         assert "error" in error_data
-        assert "message" in error_data
+        assert "message" in error_data["error"]
 
     def test_malformed_requests(self) -> None:
         """Test handling of malformed requests."""
