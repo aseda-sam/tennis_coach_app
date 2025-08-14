@@ -3,6 +3,9 @@ Video processing tests that require real video files.
 These tests verify the actual video processing pipeline.
 """
 
+from pathlib import Path
+from typing import Generator
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -11,8 +14,11 @@ class TestVideoProcessing:
     """Tests for real video processing functionality."""
 
     def test_upload_real_video(
-        self, client: TestClient, test_video_path, cleanup_test_files
-    ):
+        self,
+        client: TestClient,
+        test_video_path: Path,
+        cleanup_test_files: Generator[None, None, None],
+    ) -> None:
         """Test uploading and processing a real video file."""
         if not test_video_path.exists():
             pytest.skip("Real test video not available")
@@ -57,8 +63,11 @@ class TestVideoProcessing:
         assert response.status_code == 200
 
     def test_video_analysis_workflow(
-        self, client: TestClient, test_video_path, cleanup_test_files
-    ):
+        self,
+        client: TestClient,
+        test_video_path: Path,
+        cleanup_test_files: Generator[None, None, None],
+    ) -> None:
         """Test complete video analysis workflow with real video."""
         if not test_video_path.exists():
             pytest.skip("Real test video not available")
@@ -111,8 +120,11 @@ class TestVideoProcessing:
         assert response.status_code == 200
 
     def test_video_stream_endpoints(
-        self, client: TestClient, test_video_path, cleanup_test_files
-    ):
+        self,
+        client: TestClient,
+        test_video_path: Path,
+        cleanup_test_files: Generator[None, None, None],
+    ) -> None:
         """Test video streaming endpoints."""
         if not test_video_path.exists():
             pytest.skip("Real test video not available")
