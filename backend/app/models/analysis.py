@@ -2,7 +2,7 @@
 Database model for video analysis results.
 """
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text, ForeignKey
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.sql import func
 
 from app.core.database import Base

@@ -169,7 +169,7 @@ def analyze_video(
     logger.info(f"Starting analysis for video: {video_filename}")
 
     # Check if analysis already exists
-        existing_analysis = get_analysis_by_video_id(db, video_id)
+    existing_analysis = get_analysis_by_video_id(db, video_id)
     if existing_analysis:
         logger.info(f"Analysis already exists for {video_filename}")
         return {
