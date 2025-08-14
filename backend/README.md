@@ -228,6 +228,8 @@ The API uses versioned endpoints for stability and backward compatibility:
 - `POST /v0/videos/upload` - Upload video file
 - `GET /v0/videos/` - List all videos
 - `GET /v0/videos/{video_id}` - Get video details by ID
+- `GET /v0/videos/{video_id}/stream` - Stream original video
+- `GET /v0/videos/{video_id}/annotated/stream` - Stream annotated video
 - `DELETE /v0/videos/{video_id}` - Delete video
 
 ### Analysis

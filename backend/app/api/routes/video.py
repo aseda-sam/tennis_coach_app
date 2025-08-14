@@ -145,7 +145,7 @@ async def stream_video(video_id: int, db: Session = Depends(get_db)) -> FileResp
         log_and_raise_error(e, "stream_video", {"video_id": video_id})
 
 
-@router.get("/{video_id}/annotated")
+@router.get("/{video_id}/annotated/stream")
 async def stream_annotated_video(
     video_id: int, db: Session = Depends(get_db)
 ) -> FileResponse:
