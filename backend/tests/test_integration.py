@@ -197,7 +197,7 @@ class TestAnalysisIntegration:
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)
 
-    def test_analysis_deletion(self) -> None:
+    def test_analysis_deletion(self, client: TestClient) -> None:
         """Test analysis deletion workflow."""
         # Upload a video first
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
@@ -234,7 +234,7 @@ class TestAnalysisIntegration:
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)
 
-    def test_analysis_schema_validation(self) -> None:
+    def test_analysis_schema_validation(self, client: TestClient) -> None:
         """Test that analysis response schemas match database models."""
         # Upload a video first
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
@@ -275,7 +275,7 @@ class TestAnalysisIntegration:
 class TestErrorHandling:
     """Test error handling and edge cases."""
 
-    def test_invalid_video_id(self) -> None:
+    def test_invalid_video_id(self, client: TestClient) -> None:
         """Test handling of invalid video IDs."""
         # Test with non-existent video ID
         response = client.get("/v0/videos/99999")
@@ -288,7 +288,7 @@ class TestErrorHandling:
         response = client.get("/v0/videos/invalid")
         assert response.status_code == 422  # Validation error
 
-    def test_invalid_analysis_id(self) -> None:
+    def test_invalid_analysis_id(self, client: TestClient) -> None:
         """Test handling of invalid analysis IDs."""
         # Test with non-existent analysis ID
         response = client.get("/v0/analysis/99999")
@@ -297,7 +297,7 @@ class TestErrorHandling:
         assert "error" in error_data
         assert "message" in error_data["error"]
 
-    def test_malformed_requests(self) -> None:
+    def test_malformed_requests(self, client: TestClient) -> None:
         """Test handling of malformed requests."""
         # Test upload without file
         response = client.post("/v0/videos/upload")

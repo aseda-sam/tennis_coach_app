@@ -5,6 +5,7 @@ Test configuration and shared fixtures.
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
@@ -23,7 +24,7 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 
 @pytest.fixture(scope="session")
-def test_db():
+def test_db() -> Generator:
     """Create test database."""
     Base.metadata.create_all(bind=engine)
     yield engine
@@ -31,7 +32,7 @@ def test_db():
 
 
 @pytest.fixture
-def db_session(test_db):
+def db_session(test_db: Generator) -> Generator:
     """Create test database session."""
     session = TestingSessionLocal()
     try:
@@ -41,10 +42,10 @@ def db_session(test_db):
 
 
 @pytest.fixture
-def client(db_session):
+def client(db_session: Generator) -> Generator[TestClient, None, None]:
     """Create test client with database override."""
 
-    def override_get_db():
+    def override_get_db() -> Generator:
         try:
             yield db_session
         finally:
@@ -57,7 +58,7 @@ def client(db_session):
 
 
 @pytest.fixture
-def temp_upload_dir():
+def temp_upload_dir() -> Generator[Path, None, None]:
     """Create temporary upload directory."""
     temp_dir = tempfile.mkdtemp()
     yield Path(temp_dir)
@@ -65,7 +66,7 @@ def temp_upload_dir():
 
 
 @pytest.fixture
-def test_video_path():
+def test_video_path() -> Path:
     """Path to test video file."""
     test_data_dir = Path(__file__).parent / "test_data"
     video_path = test_data_dir / "test_tennis_video.mp4"
@@ -79,7 +80,7 @@ def test_video_path():
 
 
 @pytest.fixture
-def sample_video_content():
+def sample_video_content() -> bytes:
     """Create a minimal video file for basic API tests."""
     # This creates a very basic MP4-like file for API testing
     # Not suitable for actual video processing, but good for endpoint testing
@@ -88,7 +89,7 @@ def sample_video_content():
 
 
 @pytest.fixture
-def cleanup_test_files():
+def cleanup_test_files() -> Generator[None, None, None]:
     """Cleanup fixture to remove test-generated files."""
     yield
     # Clean up any test-generated files
