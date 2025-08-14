@@ -6,6 +6,11 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings."""
 
+    # API Configuration
+    API_HOST: str = "0.0.0.0"
+    API_PORT: int = 8000
+    DEBUG: bool = False
+
     # Database
     DATABASE_URL: str = "sqlite:///../data/database/tennis_coach.db"
 
@@ -25,7 +30,7 @@ class Settings(BaseSettings):
     FRAME_SKIP_RATIO: int = 2  # Process every nth frame
 
     # API
-    API_V1_STR: str = "/api"
+    API_V1_STR: str = "/v0"
     PROJECT_NAME: str = "Tennis Coach API"
 
     # CORS

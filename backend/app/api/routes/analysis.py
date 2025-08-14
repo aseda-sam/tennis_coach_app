@@ -1,162 +1,264 @@
-"""
-API routes for video analysis functionality.
-"""
+"""Analysis API routes with proper REST patterns and error handling."""
 
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.api.schemas.analysis import (
+    AnalysisDeleteResponse,
+    AnalysisInfo,
+    AnalysisListItem,
+    AnalysisRequest,
+    AnalysisStartResponse,
+    AnalysisStatus,
+    AnalysisTypes,
+)
+from app.api.schemas.common import PaginationParams
 from app.core.database import get_db
 from app.services.analysis_service import (
     analyze_video,
     delete_analysis,
     get_all_analyses,
+    get_analysis_by_id,
     get_analysis_by_video,
+    get_analysis_by_video_id,
+)
+from app.services.video_service import get_video_by_id
+from app.utils.error_handling import (
+    handle_not_found_error,
+    handle_processing_error,
+    log_and_raise_error,
 )
 
 router = APIRouter()
 
 
-class AnalysisResponse(BaseModel):
-    """Response model for analysis results."""
+@router.get("/", response_model=List[AnalysisListItem])
+async def list_analyses(
+    pagination: PaginationParams = Depends(), db: Session = Depends(get_db)
+) -> List[AnalysisListItem]:
+    """
+    List all analysis results.
 
-    id: int
-    video_filename: str
-    analysis_type: str
-    total_frames: int
-    frames_with_balls: int
-    total_ball_detections: int
-    average_detections_per_frame: float
-    detection_rate: float
-    processing_time: float
-    model_used: str | None
-    confidence_threshold: float
-    frames_with_pose: int | None = None
-    pose_detection_rate: float | None = None
-    pose_detections: str | None = None
-    annotated_video_path: str | None = None
+    Returns a paginated list of analyses with basic information.
+    """
+    try:
+        analyses = get_all_analyses(db)
 
+        # Apply pagination
+        start_idx = (pagination.page - 1) * pagination.size
+        end_idx = start_idx + pagination.size
+        paginated_analyses = analyses[start_idx:end_idx]
 
-class AnalysisSummary(BaseModel):
-    """Summary model for analysis results."""
-
-    message: str
-    analysis_id: int | None = None
-    processing_time: float | None = None
-    analysis_summary: dict | None = None
-    frames_processed: int | None = None
-    error: str | None = None
+        return [AnalysisListItem.from_orm(analysis) for analysis in paginated_analyses]
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "list_analyses")
 
 
-@router.post("/{video_filename}", response_model=AnalysisSummary)
+@router.get("/{analysis_id}", response_model=AnalysisInfo)
+async def get_analysis(analysis_id: int, db: Session = Depends(get_db)) -> AnalysisInfo:
+    """
+    Get detailed analysis results.
+
+    Args:
+        analysis_id: Unique analysis identifier
+
+    Returns:
+        Complete analysis information including results
+    """
+    try:
+        analysis = get_analysis_by_id(db, analysis_id)
+        if not analysis:
+            raise handle_not_found_error("analysis", str(analysis_id))
+
+        return AnalysisInfo.from_orm(analysis)
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_analysis", {"analysis_id": analysis_id})
+
+
+@router.post("/videos/{video_id}", response_model=AnalysisStartResponse)
 async def start_analysis(
-    video_filename: str, db: Session = Depends(get_db)
-) -> AnalysisSummary:
+    video_id: int, request: AnalysisRequest, db: Session = Depends(get_db)
+) -> AnalysisStartResponse:
     """
     Start analysis for a specific video.
 
     Args:
-        video_filename: Name of the video file to analyze
-        db: Database session
+        video_id: Unique video identifier
+        request: Analysis configuration
 
     Returns:
-        Analysis results summary
+        Analysis start confirmation with estimated duration
     """
     try:
-        result = analyze_video(db, video_filename)
-        return AnalysisSummary(**result)
+        # Verify video exists
+        video = get_video_by_id(db, video_id)
+        if not video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Validate analysis type
+        valid_types = [
+            AnalysisTypes.BALL_TRACKING,
+            AnalysisTypes.POSE_DETECTION,
+            AnalysisTypes.COMPREHENSIVE,
+        ]
+        if request.analysis_type not in valid_types:
+            raise handle_processing_error(
+                "analysis_start",
+                f"Invalid analysis type. Valid types: {', '.join(valid_types)}",
+            )
+
+        # Start analysis
+        result = analyze_video(
+            db=db,
+            video_id=video_id,
+            analysis_type=request.analysis_type,
+            confidence_threshold=request.confidence_threshold,
+            include_pose_detection=request.include_pose_detection,
+        )
+
+        # Propagate processing failures with consistent error shape
+        if isinstance(result, dict) and "error" in result:
+            raise handle_processing_error("analysis_start", result["error"])
+
+        return AnalysisStartResponse(
+            analysis_id=result.get("analysis_id"),
+            video_filename=video.filename,
+            status=AnalysisStatus.PROCESSING,
+            message="Analysis started successfully",
+            estimated_duration=result.get("estimated_duration"),
+        )
     except (OSError, ValueError, RuntimeError) as e:
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {e!s}") from e
+        log_and_raise_error(e, "start_analysis", {"video_id": video_id})
 
 
-@router.get("/{video_filename}", response_model=AnalysisResponse)
-async def get_analysis(
-    video_filename: str, db: Session = Depends(get_db)
-) -> AnalysisResponse:
+@router.get("/videos/{video_id}", response_model=AnalysisInfo)
+async def get_video_analysis(
+    video_id: int, db: Session = Depends(get_db)
+) -> AnalysisInfo:
     """
     Get analysis results for a specific video.
 
     Args:
-        video_filename: Name of the video file
-        db: Database session
+        video_id: Unique video identifier
 
     Returns:
-        Analysis results
+        Analysis results for the video
     """
-    analysis = get_analysis_by_video(db, video_filename)
-    if not analysis:
-        raise HTTPException(
-            status_code=404, detail=f"No analysis found for {video_filename}"
-        )
+    try:
+        # Verify video exists
+        video = get_video_by_id(db, video_id)
+        if not video:
+            raise handle_not_found_error("video", str(video_id))
 
-    return AnalysisResponse(
-        id=analysis.id,
-        video_filename=analysis.video_filename,
-        analysis_type=analysis.analysis_type,
-        total_frames=analysis.total_frames,
-        frames_with_balls=analysis.frames_with_balls,
-        total_ball_detections=analysis.total_ball_detections,
-        average_detections_per_frame=analysis.average_detections_per_frame,
-        detection_rate=analysis.detection_rate,
-        processing_time=analysis.processing_time,
-        model_used=analysis.model_used,
-        confidence_threshold=analysis.confidence_threshold,
-        frames_with_pose=analysis.frames_with_pose,
-        pose_detection_rate=analysis.pose_detection_rate,
-        pose_detections=analysis.pose_detections,
-        annotated_video_path=analysis.annotated_video_path,
-    )
+        # Get analysis
+        # Prefer lookup by strong ID if available
+        analysis = get_analysis_by_video_id(db, video_id)
+        if not analysis:
+            analysis = get_analysis_by_video(db, video.filename)
+        if not analysis:
+            raise handle_not_found_error("analysis", f"for video {video_id}")
+
+        return AnalysisInfo.from_orm(analysis)
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_video_analysis", {"video_id": video_id})
 
 
-@router.get("/", response_model=List[AnalysisResponse])
-async def list_analyses(db: Session = Depends(get_db)) -> List[AnalysisResponse]:
-    """
-    Get all analysis results.
-
-    Args:
-        db: Database session
-
-    Returns:
-        List of all analysis results
-    """
-    analyses = get_all_analyses(db)
-    return [
-        AnalysisResponse(
-            id=analysis.id,
-            video_filename=analysis.video_filename,
-            analysis_type=analysis.analysis_type,
-            total_frames=analysis.total_frames,
-            frames_with_balls=analysis.frames_with_balls,
-            total_ball_detections=analysis.total_ball_detections,
-            average_detections_per_frame=analysis.average_detections_per_frame,
-            detection_rate=analysis.detection_rate,
-            processing_time=analysis.processing_time,
-            model_used=analysis.model_used,
-            confidence_threshold=analysis.confidence_threshold,
-        )
-        for analysis in analyses
-    ]
-
-
-@router.delete("/{video_filename}")
+@router.delete("/{analysis_id}", response_model=AnalysisDeleteResponse)
 async def delete_analysis_results(
-    video_filename: str, db: Session = Depends(get_db)
-) -> dict:
+    analysis_id: int, db: Session = Depends(get_db)
+) -> AnalysisDeleteResponse:
     """
-    Delete analysis results for a video.
+    Delete analysis results.
 
     Args:
-        video_filename: Name of the video file
-        db: Database session
+        analysis_id: Unique analysis identifier
 
     Returns:
-        Success message
+        Deletion confirmation
     """
-    if delete_analysis(db, video_filename):
-        return {"message": f"Analysis for {video_filename} deleted successfully"}
-    else:
-        raise HTTPException(
-            status_code=404, detail=f"No analysis found for {video_filename}"
-        )
+    try:
+        # Get analysis to verify it exists
+        analysis = get_analysis_by_id(db, analysis_id)
+        if not analysis:
+            raise handle_not_found_error("analysis", str(analysis_id))
+
+        # Delete analysis
+        if delete_analysis(db, analysis.video_filename):
+            return AnalysisDeleteResponse(
+                message=f"Analysis {analysis_id} deleted successfully",
+                analysis_id=analysis_id,
+                video_filename=analysis.video_filename,
+            )
+        else:
+            raise handle_processing_error("delete_analysis", "Database deletion failed")
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "delete_analysis_results", {"analysis_id": analysis_id})
+
+
+@router.delete("/videos/{video_id}")
+async def delete_video_analysis(
+    video_id: int, db: Session = Depends(get_db)
+) -> AnalysisDeleteResponse:
+    """
+    Delete analysis results for a specific video.
+
+    Args:
+        video_id: Unique video identifier
+
+    Returns:
+        Deletion confirmation
+    """
+    try:
+        # Verify video exists
+        video = get_video_by_id(db, video_id)
+        if not video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Get analysis to retrieve its ID before deletion
+        analysis = get_analysis_by_video_id(db, video_id)
+        if not analysis:
+            raise handle_not_found_error("analysis", f"for video {video_id}")
+
+        analysis_id = analysis.id
+        video_filename = video.filename
+
+        # Delete analysis
+        if delete_analysis(db, video.filename):
+            return AnalysisDeleteResponse(
+                message=f"Analysis for video {video_id} deleted successfully",
+                analysis_id=analysis_id,
+                video_filename=video_filename,
+            )
+        else:
+            raise handle_processing_error("delete_analysis", "Database deletion failed")
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "delete_video_analysis", {"video_id": video_id})
+
+
+@router.get("/status/{analysis_id}")
+async def get_analysis_status(analysis_id: int, db: Session = Depends(get_db)) -> dict:
+    """
+    Get the current status of an analysis.
+
+    Args:
+        analysis_id: Unique analysis identifier
+
+    Returns:
+        Analysis status information
+    """
+    try:
+        analysis = get_analysis_by_id(db, analysis_id)
+        if not analysis:
+            raise handle_not_found_error("analysis", str(analysis_id))
+
+        return {
+            "analysis_id": analysis_id,
+            "status": analysis.status,
+            "progress": analysis.progress,
+            "created_at": analysis.created_at,
+            "completed_at": analysis.completed_at,
+        }
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_analysis_status", {"analysis_id": analysis_id})
