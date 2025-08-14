@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { VideoListResponse, VideoMetadata, VideoUploadResponse } from '../types/video';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -57,7 +57,7 @@ export const videoApi = {
 
   // Get list of uploaded videos
   getVideos: async (): Promise<VideoListResponse> => {
-    const response = await api.get<VideoMetadata[]>('/videos');
+    const response = await api.get<VideoMetadata[]>('/videos/');
     return {
       videos: response.data,
       total: response.data.length
@@ -65,32 +65,33 @@ export const videoApi = {
   },
 
   // Get video details by ID
-  getVideo: async (id: string): Promise<VideoMetadata> => {
-    const response = await api.get<VideoMetadata>(`/videos/${id}`);
+  getVideo: async (videoId: number): Promise<VideoMetadata> => {
+    const response = await api.get<VideoMetadata>(`/videos/${videoId}`);
     return response.data;
   },
 
   // Delete a video
-  deleteVideo: async (filename: string): Promise<void> => {
-    await api.delete(`/videos/${filename}`);
+  deleteVideo: async (videoId: number): Promise<void> => {
+    await api.delete(`/videos/${videoId}`);
+  },
+
+  // Stream original video
+  streamVideo: async (videoId: number): Promise<string> => {
+    return `${API_BASE_URL}/videos/${videoId}/stream`;
+  },
+
+  // Stream annotated video
+  streamAnnotatedVideo: async (videoId: number): Promise<string> => {
+    return `${API_BASE_URL}/videos/${videoId}/annotated/stream`;
   },
 };
 
 export interface AnalysisSummary {
+  analysis_id: number;
+  video_filename: string;
+  status: string;
   message: string;
-  analysis_id?: number;
-  processing_time?: number;
-  analysis_summary?: {
-    total_frames: number;
-    frames_with_balls: number;
-    total_ball_detections: number;
-    average_detections_per_frame: number;
-    detection_rate: number;
-    frames_with_pose?: number;
-    pose_detection_rate?: number;
-  };
-  frames_processed?: number;
-  error?: string;
+  estimated_duration?: number;
 }
 
 export interface AnalysisData {
@@ -103,24 +104,34 @@ export interface AnalysisData {
   average_detections_per_frame: number;
   detection_rate: number;
   processing_time: number;
-  model_used: string;
-  confidence_threshold: number;
+  model_used?: string;
+  confidence_threshold?: number;
+  include_pose_detection?: boolean;
   frames_with_pose?: number;
   pose_detection_rate?: number;
-  pose_detections?: string;
-  annotated_video_path?: string;
+  ball_detections: any[];
+  pose_detections: any[];
+  created_at: string;
+  updated_at?: string;
 }
 
 export const analysisApi = {
   // Start analysis for a video
-  startAnalysis: async (videoFilename: string): Promise<AnalysisSummary> => {
-    const response = await analysisApiInstance.post<AnalysisSummary>(`/analysis/${videoFilename}`);
+  startAnalysis: async (videoId: number, analysisRequest: {
+    analysis_type: string;
+    confidence_threshold?: number;
+    include_pose_detection?: boolean;
+  }): Promise<AnalysisSummary> => {
+    const response = await analysisApiInstance.post<AnalysisSummary>(
+      `/analysis/videos/${videoId}`, 
+      analysisRequest
+    );
     return response.data;
   },
 
-  // Get analysis results for a video
-  getAnalysis: async (videoFilename: string): Promise<AnalysisData> => {
-    const response = await api.get<AnalysisData>(`/analysis/${videoFilename}`);
+  // Get analysis results by analysis ID
+  getAnalysis: async (analysisId: number): Promise<AnalysisData> => {
+    const response = await api.get<AnalysisData>(`/analysis/${analysisId}`);
     return response.data;
   },
 
@@ -130,15 +141,9 @@ export const analysisApi = {
     return response.data;
   },
 
-  // Delete analysis for a video
-  deleteAnalysis: async (videoFilename: string): Promise<void> => {
-    await api.delete(`/analysis/${videoFilename}`);
-  },
-
-  // Re-analyze video (future endpoint)
-  reanalyzeVideo: async (videoFilename: string): Promise<AnalysisSummary> => {
-    const response = await analysisApiInstance.post<AnalysisSummary>(`/analysis/${videoFilename}/reanalyze`);
-    return response.data;
+  // Delete analysis by analysis ID
+  deleteAnalysis: async (analysisId: number): Promise<void> => {
+    await api.delete(`/analysis/${analysisId}`);
   },
 };
 
