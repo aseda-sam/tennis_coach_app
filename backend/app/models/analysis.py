@@ -2,7 +2,7 @@
 Database model for video analysis results.
 """
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text, ForeignKey
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -14,6 +14,8 @@ class Analysis(Base):
     __tablename__ = "analyses"
 
     id = Column(Integer, primary_key=True, index=True)
+    # New strong linkage to videos table
+    video_id = Column(Integer, ForeignKey("videos.id"), index=True, nullable=True)
     video_filename = Column(String, nullable=False, index=True)
     analysis_type = Column(
         String, nullable=False
@@ -39,6 +41,9 @@ class Analysis(Base):
     processing_time = Column(Float, default=0.0)  # seconds
     model_used = Column(String, nullable=True)  # 'yolov8n', etc.
     confidence_threshold = Column(Float, default=0.5)
+
+    # Processing status (processing, completed, failed)
+    status = Column(String(50), default="completed")
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
