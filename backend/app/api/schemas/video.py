@@ -50,7 +50,9 @@ class VideoInfo(BaseModel):
         default=None, description="Last update timestamp"
     )
     status: str = Field(description="Video processing status")
-    error_message: Optional[str] = Field(default=None, description="Error message if processing failed")
+    error_message: Optional[str] = Field(
+        default=None, description="Error message if processing failed"
+    )
 
     class Config:
         from_attributes = True
