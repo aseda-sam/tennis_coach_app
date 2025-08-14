@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { analysisApi, videoApi, AnalysisData } from '../services/api';
+import { analysisApi, AnalysisData, videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import AnalysisModal from './AnalysisModal';
 import {
