@@ -178,8 +178,7 @@ def analyze_video(
         # Perform analysis
         analysis_results = cv_service.analyze_video(
             video_path,
-            confidence_threshold=confidence_threshold,
-            include_pose_detection=include_pose_detection,
+            include_pose=include_pose_detection,
         )
 
         # Calculate processing time
