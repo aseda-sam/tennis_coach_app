@@ -216,15 +216,23 @@ async def delete_video_analysis(
         if not video:
             raise handle_not_found_error("video", str(video_id))
 
+        # Get analysis to retrieve its ID before deletion
+        analysis = get_analysis_by_video_id(db, video_id)
+        if not analysis:
+            raise handle_not_found_error("analysis", f"for video {video_id}")
+
+        analysis_id = analysis.id
+        video_filename = video.filename
+
         # Delete analysis
         if delete_analysis(db, video.filename):
             return AnalysisDeleteResponse(
                 message=f"Analysis for video {video_id} deleted successfully",
-                analysis_id=None,  # We don't know the specific analysis ID
-                video_filename=video.filename,
+                analysis_id=analysis_id,
+                video_filename=video_filename,
             )
         else:
-            raise handle_not_found_error("analysis", f"for video {video_id}")
+            raise handle_processing_error("delete_analysis", "Database deletion failed")
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "delete_video_analysis", {"video_id": video_id})
 
