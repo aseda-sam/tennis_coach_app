@@ -39,6 +39,8 @@ All endpoints are prefixed with the version number (e.g., `/v0/videos/upload`).
 - `POST /v0/videos/upload` - Upload a tennis video for analysis
 - `GET /v0/videos/` - List all uploaded videos
 - `GET /v0/videos/{video_id}` - Get video details by ID
+- `GET /v0/videos/{video_id}/stream` - Stream original video
+- `GET /v0/videos/{video_id}/annotated/stream` - Stream annotated video with overlays
 - `DELETE /v0/videos/{video_id}` - Delete video and associated data
 
 ### Analysis
