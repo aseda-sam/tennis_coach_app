@@ -8,10 +8,10 @@ This guide covers deployment options for the Tennis Analysis System, from local 
 
 The application is currently live and accessible:
 
-- **Frontend**: [GitHub Pages](https://aseda-sam.github.io/tennis_coach_app/) 
+- **Frontend**: [GitHub Pages](https://aseda-sam.github.io/tennis_coach_app_2/) 
 - **Backend API**: [tennis-coach-backend.onrender.com](https://tennis-coach-backend.onrender.com)
 - **API Documentation**: [tennis-coach-backend.onrender.com/docs](https://tennis-coach-backend.onrender.com/docs)
-- **Docker Images**: [GitHub Container Registry](https://github.com/aseda-sam/tennis_coach_app/pkgs/container/tennis_coach_app%2Fbackend)
+- **Docker Images**: [GitHub Container Registry](https://github.com/aseda-sam/tennis_coach_app_2/pkgs/container/tennis_coach_app_2%2Fbackend)
 
 ## CI/CD Pipeline
 
@@ -64,7 +64,7 @@ Builds and publishes Docker images to GitHub Container Registry:
 - **Fixed casing issues** - All `FROM ... AS` statements use consistent uppercase
 - **Improved layer caching** - Better organization for faster builds
 - **Added `.dockerignore` files** - Reduced build context size
-- **Updated health checks** - Now uses existing `/api/videos/` endpoint
+- **Updated health checks** - Now uses dedicated `/health` endpoint
 - **Enhanced error handling** - Better build process reliability
 
 #### Backend Container
@@ -360,15 +360,15 @@ The application is currently deployed using a hybrid approach:
 - **Automatic publishing** on backend changes
 - **Multi-platform builds** for compatibility
 - **Versioned releases** with automatic tagging
-- **Pull command**: `docker pull ghcr.io/aseda-sam/tennis_coach_app/backend:latest`
+- **Pull command**: `docker pull ghcr.io/aseda-sam/tennis_coach_app_2/backend:latest`
 
 ### Alternative Deployment Options
 
 #### Self-Hosted Docker (Advanced)
 ```bash
 # Pull and run production images
-docker pull ghcr.io/aseda-sam/tennis_coach_app/backend:latest
-docker run -p 8000:8000 ghcr.io/aseda-sam/tennis_coach_app/backend:latest
+docker pull ghcr.io/aseda-sam/tennis_coach_app_2/backend:latest
+docker run -p 8000:8000 ghcr.io/aseda-sam/tennis_coach_app_2/backend:latest
 ```
 
 #### Railway (Alternative Cloud Option)
@@ -395,7 +395,7 @@ services:
       - ./data:/app/data  # Bind mount for easy development access
       - ./backend:/app/backend  # Hot reload
     environment:
-      - DATABASE_URL=sqlite:///./data/database/tennis_analysis.db
+      - DATABASE_URL=sqlite:///./data/database/tennis_coach.db
     depends_on:
       - redis
 
@@ -427,7 +427,7 @@ version: '3.8'
 
 services:
   backend:
-    image: ghcr.io/aseda-sam/tennis_coach_app/backend:latest
+    image: ghcr.io/aseda-sam/tennis_coach_app_2/backend:latest
     ports:
       - "8000:8000"
     volumes:
@@ -576,7 +576,7 @@ cdk deploy
 #### Backend (.env)
 ```bash
 # Database
-DATABASE_URL=sqlite:///./data/database/tennis_analysis.db
+DATABASE_URL=sqlite:///./data/database/tennis_coach.db
 
 # File Storage
 UPLOAD_DIR=./data/videos/raw
@@ -696,7 +696,7 @@ async def health_check():
 ### Database Backup
 ```bash
 # SQLite backup
-sqlite3 data/database/tennis_analysis.db ".backup backup.db"
+sqlite3 data/database/tennis_coach.db ".backup backup.db"
 
 # PostgreSQL backup (production)
 pg_dump $DATABASE_URL > backup.sql
@@ -727,7 +727,7 @@ kill -9 <PID>
 #### Database Issues
 ```bash
 # Reset database
-rm data/database/tennis_analysis.db
+rm data/database/tennis_coach.db
 alembic upgrade head
 ```
 

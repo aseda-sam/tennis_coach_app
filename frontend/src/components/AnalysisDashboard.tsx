@@ -1,16 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { analysisApi } from '../services/api';
+import { analysisApi, AnalysisData } from '../services/api';
 import './AnalysisDashboard.css';
-import AnalysisResults, { AnalysisData } from './AnalysisResults';
+import AnalysisResults from './AnalysisResults';
 import VideoPlayer from './VideoPlayer';
 
 interface AnalysisDashboardProps {
+  videoId: number;
   videoFilename: string;
   videoUrl: string;
   onClose: () => void;
 }
 
 const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
+  videoId,
   videoFilename,
   videoUrl,
   onClose,
@@ -25,15 +27,16 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const analysisData = await analysisApi.getAnalysis(videoFilename);
+      const analysisData = await analysisApi.getAnalysisByVideo(videoId);
       setAnalysis(analysisData);
     } catch (err: any) {
-      setError('Failed to load analysis results. Please try again.');
+      const message = err?.response?.data?.error?.message || 'Failed to load analysis results. Please try again.';
+      setError(message);
       console.error('Error loading analysis:', err);
     } finally {
       setLoading(false);
     }
-  }, [videoFilename]);
+  }, [videoId]);
 
   useEffect(() => {
     loadAnalysis();
@@ -45,14 +48,12 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-
-
   // Smart video URL selection: use annotated video if available, otherwise original
   const getVideoUrl = () => {
-    if (analysis?.annotated_video_path) {
+    if (analysis?.pose_detections && analysis.pose_detections.length > 0) {
       // Use the new annotated video endpoint
-      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
-      const annotatedUrl = `${baseUrl}/videos/${videoFilename}/annotated`;
+      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
+      const annotatedUrl = `${baseUrl}/videos/${videoId}/annotated/stream`;
       console.log('Using annotated video for:', videoFilename);
       console.log('Annotated video URL:', annotatedUrl);
       console.log('Analysis data:', analysis);
@@ -61,10 +62,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     console.log('Using original video URL:', videoUrl);
     return videoUrl;
   };
-
-
-
-
 
   return (
     <div className="analysis-dashboard">
@@ -98,11 +95,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             
             <VideoPlayer
               videoUrl={getVideoUrl()}
-              title={analysis?.annotated_video_path ? `${videoFilename} (Annotated)` : videoFilename}
+              title={analysis?.pose_detections && analysis.pose_detections.length > 0 ? `${videoFilename} (Annotated)` : videoFilename}
               showControls={true}
               aspectRatioMode={aspectRatioMode}
             />
-            {analysis?.annotated_video_path && (
+            {analysis?.pose_detections && analysis.pose_detections.length > 0 && (
               <div className="ai-analysis-badge">
                 <span className="ai-icon">⚡</span>
                 AI Analysis Active
@@ -128,26 +125,28 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 {analysis && (
                   <>
                     <div className="detail-item">
-                      <span className="detail-label">Duration:</span>
+                      <span className="detail-label">Processing Time:</span>
                       <span className="detail-value">
                         {formatDuration(analysis.processing_time)}
                       </span>
                     </div>
                     
                     <div className="detail-item">
-                      <span className="detail-label">Resolution:</span>
-                      <span className="detail-value">1920×1080</span>
+                      <span className="detail-label">Total Frames:</span>
+                      <span className="detail-value">{analysis.total_frames}</span>
                     </div>
                     
                     <div className="detail-item">
-                      <span className="detail-label">Frame Rate:</span>
-                      <span className="detail-value">60 fps</span>
+                      <span className="detail-label">Analysis Type:</span>
+                      <span className="detail-value">{analysis.analysis_type}</span>
                     </div>
                     
-                    <div className="detail-item">
-                      <span className="detail-label">Format:</span>
-                      <span className="detail-value">MP4</span>
-                    </div>
+                    {analysis.model_used && (
+                      <div className="detail-item">
+                        <span className="detail-label">Model Used:</span>
+                        <span className="detail-value">{analysis.model_used}</span>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
