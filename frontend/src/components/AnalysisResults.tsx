@@ -1,23 +1,6 @@
 import React, { useState } from 'react';
+import { AnalysisData } from '../services/api';
 import './AnalysisResults.css';
-
-export interface AnalysisData {
-  id: number;
-  video_filename: string;
-  analysis_type: string;
-  total_frames: number;
-  frames_with_balls: number;
-  total_ball_detections: number;
-  average_detections_per_frame: number;
-  detection_rate: number;
-  processing_time: number;
-  model_used: string | null;
-  confidence_threshold: number;
-  frames_with_pose?: number;
-  pose_detection_rate?: number;
-  pose_detections?: string;
-  annotated_video_path?: string;
-}
 
 interface AnalysisResultsProps {
   analysis: AnalysisData | null;

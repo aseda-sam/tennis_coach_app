@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { analysisApi } from '../services/api';
+import { analysisApi, AnalysisData } from '../services/api';
 import './AnalysisDashboard.css';
-import AnalysisResults, { AnalysisData } from './AnalysisResults';
+import AnalysisResults from './AnalysisResults';
 import VideoPlayer from './VideoPlayer';
 
 interface AnalysisDashboardProps {

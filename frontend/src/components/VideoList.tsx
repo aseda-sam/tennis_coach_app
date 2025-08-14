@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { analysisApi, videoApi } from '../services/api';
+import { analysisApi, videoApi, AnalysisData } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import AnalysisModal from './AnalysisModal';
-import { AnalysisData } from './AnalysisResults';
 import {
     AnalyticsIcon,
     DeleteIcon,
