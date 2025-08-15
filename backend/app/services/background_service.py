@@ -5,10 +5,13 @@ Background task service for video analysis.
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from app.core.database import get_db
+from sqlalchemy.orm import Session
+
+from app.core.database import SessionLocal
 from app.services.analysis_service import analyze_video, update_analysis_status
 from app.services.video_service import get_video_by_id
 
@@ -18,6 +21,16 @@ logger = logging.getLogger(__name__)
 _active_tasks: Dict[int, Dict[str, Any]] = {}
 _task_counter = 0
 _task_lock = threading.Lock()
+
+
+@contextmanager
+def get_background_db_session() -> Session:
+    """Get a database session for background tasks with proper cleanup."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 class BackgroundTaskService:
@@ -99,42 +112,43 @@ class BackgroundTaskService:
             _active_tasks[task_id]["status"] = "processing"
             _active_tasks[task_id]["progress"] = 5
 
-            # Get database session
-            db = next(get_db())
+            # Use proper database session management
+            with get_background_db_session() as db:
+                # Get video info
+                video = get_video_by_id(db, video_id)
+                if not video:
+                    raise ValueError(f"Video {video_id} not found")
 
-            # Get video info
-            video = get_video_by_id(db, video_id)
-            if not video:
-                raise ValueError(f"Video {video_id} not found")
+                logger.info(
+                    f"Task {task_id}: Starting analysis for video {video.filename}"
+                )
 
-            logger.info(f"Task {task_id}: Starting analysis for video {video.filename}")
+                # Update progress - frame extraction
+                _active_tasks[task_id]["progress"] = 15
 
-            # Update progress - frame extraction
-            _active_tasks[task_id]["progress"] = 15
+                # Run analysis (this is the CPU-intensive part)
+                result = analyze_video(
+                    db=db,
+                    video_id=video_id,
+                    analysis_type=analysis_type,
+                    confidence_threshold=confidence_threshold,
+                    include_pose_detection=include_pose_detection,
+                )
 
-            # Run analysis (this is the CPU-intensive part)
-            result = analyze_video(
-                db=db,
-                video_id=video_id,
-                analysis_type=analysis_type,
-                confidence_threshold=confidence_threshold,
-                include_pose_detection=include_pose_detection,
-            )
+                # Update progress
+                _active_tasks[task_id]["progress"] = 95
 
-            # Update progress
-            _active_tasks[task_id]["progress"] = 95
+                # Check for errors
+                if isinstance(result, dict) and "error" in result:
+                    raise RuntimeError(result["error"])
 
-            # Check for errors
-            if isinstance(result, dict) and "error" in result:
-                raise RuntimeError(result["error"])
+                # Update task status
+                _active_tasks[task_id]["status"] = "completed"
+                _active_tasks[task_id]["progress"] = 100
+                _active_tasks[task_id]["result"] = result
+                _active_tasks[task_id]["completed_at"] = datetime.now()
 
-            # Update task status
-            _active_tasks[task_id]["status"] = "completed"
-            _active_tasks[task_id]["progress"] = 100
-            _active_tasks[task_id]["result"] = result
-            _active_tasks[task_id]["completed_at"] = datetime.now()
-
-            logger.info(f"Task {task_id}: Analysis completed successfully")
+                logger.info(f"Task {task_id}: Analysis completed successfully")
 
         except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Task {task_id}: Analysis failed: {e}")
@@ -142,10 +156,10 @@ class BackgroundTaskService:
             _active_tasks[task_id]["error"] = str(e)
             _active_tasks[task_id]["completed_at"] = datetime.now()
 
-            # Update database status
+            # Update database status with proper session management
             try:
-                db = next(get_db())
-                update_analysis_status(db, video_id, "failed", str(e))
+                with get_background_db_session() as db:
+                    update_analysis_status(db, video_id, "failed", str(e))
             except (OSError, ValueError, RuntimeError) as db_error:
                 logger.error(f"Failed to update database status: {db_error}")
 
