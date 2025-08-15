@@ -5,6 +5,7 @@ Analysis service for handling video analysis operations.
 import json
 import logging
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -235,6 +236,34 @@ def analyze_video(
     except (OSError, ValueError, RuntimeError) as e:
         logger.error(f"Error analyzing video {video_filename}: {e}")
         return {"error": f"Analysis failed: {e!s}"}
+
+
+def update_analysis_status(
+    db: Session, video_id: int, status: str, error_message: Optional[str] = None
+) -> bool:
+    """
+    Update analysis status for a video.
+
+    Args:
+        db: Database session
+        video_id: Video ID
+        status: New status (processing, completed, failed)
+        error_message: Error message if status is failed
+
+    Returns:
+        True if updated, False otherwise
+    """
+    analysis = get_analysis_by_video_id(db, video_id)
+    if analysis:
+        analysis.status = status
+        if error_message:
+            analysis.error_message = error_message
+        if status in ["completed", "failed"]:
+            analysis.completed_at = datetime.now()
+        db.commit()
+        logger.info(f"Updated analysis status for video {video_id} to {status}")
+        return True
+    return False
 
 
 def delete_analysis(db: Session, video_filename: str) -> bool:
