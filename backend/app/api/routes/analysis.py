@@ -20,7 +20,6 @@ from app.api.schemas.analysis import (
 from app.api.schemas.common import PaginationParams
 from app.core.database import get_db
 from app.services.analysis_service import (
-    create_analysis_record,
     delete_analysis,
     get_all_analyses,
     get_analysis_by_id,
@@ -115,9 +114,9 @@ async def start_analysis(
                 f"Invalid analysis type. Valid types: {', '.join(valid_types)}",
             )
 
-        # Check if analysis already exists
+        # Check if analysis already exists and is completed
         existing_analysis = get_analysis_by_video_id(db, video_id)
-        if existing_analysis:
+        if existing_analysis and existing_analysis.status == "completed":
             return AnalysisStartResponse(
                 analysis_id=existing_analysis.id,
                 video_filename=video.filename,
@@ -127,20 +126,13 @@ async def start_analysis(
                 task_id=None,
             )
 
-        # Create analysis record in database with processing status
-        analysis_record = create_analysis_record(
-            db=db,
-            video_id=video_id,
-            video_filename=video.filename,
-            analysis_type=request.analysis_type,
-            analysis_results={},  # Empty for now
-            processing_time=0.0,
-            model_used="yolov8n+mediapipe"
-            if request.include_pose_detection
-            else "yolov8n",
-            confidence_threshold=request.confidence_threshold,
-            status="processing",  # Start as processing
-        )
+        # If analysis exists but failed/processing, delete it and start fresh
+        if existing_analysis:
+            db.delete(existing_analysis)
+            db.commit()
+
+        # Don't create analysis record yet - let background task do it
+        # This prevents the background task from finding an empty record
 
         # Check if synchronous mode is requested
         if request.synchronous:
@@ -159,13 +151,12 @@ async def start_analysis(
             if isinstance(analysis_result, dict) and "error" in analysis_result:
                 raise handle_processing_error("analysis", analysis_result["error"])
 
-            # Update analysis record with results
-            analysis_record.status = "completed"
-            analysis_record.total_frames = analysis_result.get("frames_processed", 0)
-            analysis_record.processing_time = analysis_result.get(
-                "processing_time", 0.0
-            )
-            db.commit()
+            # Get the analysis record created by analyze_video
+            analysis_record = get_analysis_by_video_id(db, video_id)
+            if not analysis_record:
+                raise handle_processing_error(
+                    "analysis", "Failed to create analysis record"
+                )
 
             return AnalysisStartResponse(
                 analysis_id=analysis_record.id,
@@ -185,7 +176,7 @@ async def start_analysis(
             )
 
             return AnalysisStartResponse(
-                analysis_id=analysis_record.id,
+                analysis_id=None,  # Will be created by background task
                 video_filename=video.filename,
                 status=AnalysisStatus.PROCESSING,
                 message="Analysis started in background",

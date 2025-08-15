@@ -123,6 +123,23 @@ class BackgroundTaskService:
                     f"Task {task_id}: Starting analysis for video {video.filename}"
                 )
 
+                # Create initial analysis record with processing status
+                from app.services.analysis_service import create_analysis_record
+
+                create_analysis_record(
+                    db=db,
+                    video_id=video_id,
+                    video_filename=video.filename,
+                    analysis_type=analysis_type,
+                    analysis_results={},  # Empty for now
+                    processing_time=0.0,
+                    model_used="yolov8n+mediapipe"
+                    if include_pose_detection
+                    else "yolov8n",
+                    confidence_threshold=confidence_threshold,
+                    status="processing",
+                )
+
                 # Update progress - frame extraction
                 _active_tasks[task_id]["progress"] = 15
 
@@ -170,6 +187,8 @@ class BackgroundTaskService:
             # Remove future object from response (not serializable)
             response = task.copy()
             response.pop("future", None)
+            # Add task_id to response
+            response["task_id"] = task_id
             return response
         return None
 
@@ -180,6 +199,8 @@ class BackgroundTaskService:
             # Remove future object from response
             response = task.copy()
             response.pop("future", None)
+            # Add task_id to response
+            response["task_id"] = task_id
             tasks[task_id] = response
         return tasks
 
@@ -226,11 +247,12 @@ class BackgroundTaskService:
             status = task["status"]
             status_counts[status] = status_counts.get(status, 0) + 1
 
+        # Note: Avoid accessing private ThreadPoolExecutor attributes
+        # They are internal implementation details and may change
         return {
             "total_tasks": total_tasks,
             "status_counts": status_counts,
-            "active_workers": len(self.executor._threads),
-            "max_workers": self.executor._max_workers,
+            "max_workers": self.max_workers,  # Use our stored value
         }
 
 
