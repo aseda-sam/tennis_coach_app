@@ -5,14 +5,17 @@ import re
 import secrets
 import unicodedata
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
-from app.core.config import settings
+from app.core.config import env_limits, settings
 from app.utils.error_handling import handle_file_error
 
 
 def validate_video_file(
-    filename: str, file_size: int, content_type: Optional[str] = None
+    filename: str,
+    file_size: int,
+    content_type: Optional[str] = None,
+    metadata: Optional[Dict[str, any]] = None,
 ) -> None:
     """
     Validate video file for upload.
@@ -64,6 +67,42 @@ def validate_video_file(
                 "unsupported_format",
                 filename,
                 f"Content type {content_type} not supported",
+            )
+
+    # Validate video metadata (optional)
+    if metadata:
+        # Resolution validation
+        if (
+            metadata.get("width")
+            and metadata.get("height")
+            and (
+                metadata["width"] > env_limits["max_resolution"][0]
+                or metadata["height"] > env_limits["max_resolution"][1]
+            )
+        ):
+            raise handle_file_error(
+                "resolution_too_high",
+                filename,
+                f"Maximum resolution is {env_limits['max_resolution'][0]}x{env_limits['max_resolution'][1]} ({env_limits['environment']} environment)",
+            )
+
+        # FPS validation
+        if metadata.get("fps") and metadata["fps"] > env_limits["max_fps"]:
+            raise handle_file_error(
+                "fps_too_high",
+                filename,
+                f"Maximum frame rate is {env_limits['max_fps']}fps ({env_limits['environment']} environment)",
+            )
+
+        # Duration validation
+        if (
+            metadata.get("duration")
+            and metadata["duration"] > settings.MAX_VIDEO_DURATION
+        ):
+            raise handle_file_error(
+                "duration_too_long",
+                filename,
+                f"Maximum duration is {settings.MAX_VIDEO_DURATION} seconds",
             )
 
 

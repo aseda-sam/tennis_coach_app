@@ -101,4 +101,4 @@ data/database/*.db
 *.pb
 
 # Python version management
-.python-version 
+.python-version backend/test_videos/
