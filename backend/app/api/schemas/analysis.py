@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import field_validator
 
 
@@ -124,8 +124,7 @@ class AnalysisInfo(BaseModel):
                 return []
         return v or []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AnalysisListItem(BaseModel):
@@ -139,8 +138,7 @@ class AnalysisListItem(BaseModel):
     processing_time: float = Field(description="Processing time in seconds")
     created_at: datetime = Field(description="Analysis creation timestamp")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AnalysisStartResponse(BaseModel):

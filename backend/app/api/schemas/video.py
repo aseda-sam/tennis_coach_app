@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class VideoUploadRequest(BaseModel):
@@ -54,8 +54,7 @@ class VideoInfo(BaseModel):
         default=None, description="Error message if processing failed"
     )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VideoListItem(BaseModel):
@@ -70,8 +69,7 @@ class VideoListItem(BaseModel):
     created_at: datetime = Field(description="Upload timestamp")
     status: str = Field(description="Video processing status")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VideoUploadResponse(BaseModel):
