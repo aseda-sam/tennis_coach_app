@@ -218,7 +218,7 @@ async def delete_video(
                         )
 
         # Always check for orphaned annotated files by naming pattern (outside the loop)
-        processed_dir = Path(settings.UPLOAD_DIR).parent / "processed"
+        processed_dir = Path(settings.PROCESSED_DIR)
         base_name = Path(db_video.filename).stem
         potential_annotated = processed_dir / f"{base_name}_annotated.mp4"
         if potential_annotated.exists():

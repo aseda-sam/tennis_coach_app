@@ -356,7 +356,7 @@ def delete_analysis(db: Session, video_filename: str) -> bool:
                     )
 
         # Also check for standard annotated file naming pattern
-        processed_dir = Path(settings.UPLOAD_DIR).parent / "processed"
+        processed_dir = Path(settings.PROCESSED_DIR)
         base_name = Path(video_filename).stem
         potential_annotated = processed_dir / f"{base_name}_annotated.mp4"
         if potential_annotated.exists():
