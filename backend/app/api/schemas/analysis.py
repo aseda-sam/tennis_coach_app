@@ -2,9 +2,9 @@
 
 import json
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import field_validator
 
 
@@ -21,6 +21,9 @@ class AnalysisRequest(BaseModel):
     )
     include_pose_detection: bool = Field(
         default=False, description="Whether to include pose detection in analysis"
+    )
+    synchronous: bool = Field(
+        default=False, description="Whether to run analysis synchronously (for testing)"
     )
 
 
@@ -121,8 +124,7 @@ class AnalysisInfo(BaseModel):
                 return []
         return v or []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AnalysisListItem(BaseModel):
@@ -136,19 +138,21 @@ class AnalysisListItem(BaseModel):
     processing_time: float = Field(description="Processing time in seconds")
     created_at: datetime = Field(description="Analysis creation timestamp")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AnalysisStartResponse(BaseModel):
     """Response model for starting analysis."""
 
-    analysis_id: int = Field(description="Created analysis ID")
+    analysis_id: Optional[int] = Field(default=None, description="Created analysis ID")
     video_filename: str = Field(description="Video filename")
     status: str = Field(description="Analysis status")
     message: str = Field(description="Status message")
     estimated_duration: Optional[float] = Field(
         default=None, description="Estimated processing time"
+    )
+    task_id: Optional[int] = Field(
+        default=None, description="Background task ID for tracking"
     )
 
 
@@ -178,3 +182,40 @@ class AnalysisTypes:
     BALL_TRACKING = "ball_tracking"
     POSE_DETECTION = "pose_detection"
     COMPREHENSIVE = "comprehensive"
+
+
+# Background task schemas
+class TaskStatus(BaseModel):
+    """Background task status information."""
+
+    task_id: int = Field(description="Task ID")
+    video_id: int = Field(description="Video ID being processed")
+    analysis_type: str = Field(description="Type of analysis")
+    status: str = Field(
+        description="Task status (queued, processing, completed, failed, cancelled)"
+    )
+    progress: int = Field(ge=0, le=100, description="Progress percentage")
+    error: Optional[str] = Field(default=None, description="Error message if failed")
+    result: Optional[Dict[str, Any]] = Field(
+        default=None, description="Analysis result if completed"
+    )
+    started_at: datetime = Field(description="Task start timestamp")
+    completed_at: Optional[datetime] = Field(
+        default=None, description="Task completion timestamp"
+    )
+
+
+class TaskListResponse(BaseModel):
+    """Response model for listing background tasks."""
+
+    tasks: Dict[int, TaskStatus] = Field(description="All active tasks")
+    total: int = Field(description="Total number of tasks")
+
+
+class TaskStatsResponse(BaseModel):
+    """Response model for task statistics."""
+
+    total_tasks: int = Field(description="Total number of tasks")
+    status_counts: Dict[str, int] = Field(description="Count of tasks by status")
+    active_workers: int = Field(description="Number of active worker threads")
+    max_workers: int = Field(description="Maximum number of worker threads")

@@ -1,5 +1,6 @@
 """Video API routes with proper REST patterns and error handling."""
 
+import logging
 from pathlib import Path
 from typing import List
 
@@ -18,6 +19,7 @@ from app.api.schemas.video import (
 )
 from app.core.config import settings
 from app.core.database import get_db
+from app.models.analysis import Analysis
 from app.services.video_service import (
     create_video_record,
     delete_video_record,
@@ -37,6 +39,7 @@ from app.utils.file_validation import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def extract_video_metadata(video_path: Path) -> VideoMetadata:
@@ -86,7 +89,7 @@ async def list_videos(
         end_idx = start_idx + pagination.size
         paginated_videos = db_videos[start_idx:end_idx]
 
-        return [VideoListItem.from_orm(video) for video in paginated_videos]
+        return [VideoListItem.model_validate(video) for video in paginated_videos]
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "list_videos")
 
@@ -107,7 +110,7 @@ async def get_video(video_id: int, db: Session = Depends(get_db)) -> VideoInfo:
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        return VideoInfo.from_orm(db_video)
+        return VideoInfo.model_validate(db_video)
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "get_video", {"video_id": video_id})
 
@@ -199,19 +202,48 @@ async def delete_video(
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Delete from file system
+        # Delete associated analysis files first (before cascade deletion)
+        analyses = db.query(Analysis).filter(Analysis.video_id == video_id).all()
+        for analysis in analyses:
+            # Delete annotated video files
+            if analysis.annotated_video_path:
+                annotated_path = Path(analysis.annotated_video_path)
+                if annotated_path.exists():
+                    try:
+                        annotated_path.unlink()
+                        logger.info(f"Deleted annotated video: {annotated_path}")
+                    except OSError as e:
+                        logger.warning(
+                            f"Failed to delete annotated video {annotated_path}: {e}"
+                        )
+
+        # Always check for orphaned annotated files by naming pattern (outside the loop)
+        processed_dir = Path(settings.PROCESSED_DIR)
+        base_name = Path(db_video.filename).stem
+        potential_annotated = processed_dir / f"{base_name}_annotated.mp4"
+        if potential_annotated.exists():
+            try:
+                potential_annotated.unlink()
+                logger.info(f"Deleted orphaned annotated video: {potential_annotated}")
+            except OSError as e:
+                logger.warning(
+                    f"Failed to delete annotated video {potential_annotated}: {e}"
+                )
+
+        # Delete original video file from file system
         upload_dir = Path(settings.UPLOAD_DIR)
         file_path = upload_dir / db_video.filename
 
         if file_path.exists() and file_path.is_file():
             try:
                 file_path.unlink()
+                logger.info(f"Deleted original video: {file_path}")
             except OSError as e:
                 raise handle_file_error(
                     "delete_failed", db_video.filename, str(e)
                 ) from e
 
-        # Delete from database
+        # Delete from database (this will cascade delete analyses)
         if not delete_video_record(db, db_video.filename):
             raise handle_file_error(
                 "delete_failed", db_video.filename, "Database deletion failed"
