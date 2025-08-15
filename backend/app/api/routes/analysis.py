@@ -55,7 +55,9 @@ async def list_analyses(
         end_idx = start_idx + pagination.size
         paginated_analyses = analyses[start_idx:end_idx]
 
-        return [AnalysisListItem.from_orm(analysis) for analysis in paginated_analyses]
+        return [
+            AnalysisListItem.model_validate(analysis) for analysis in paginated_analyses
+        ]
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "list_analyses")
 
@@ -76,7 +78,7 @@ async def get_analysis(analysis_id: int, db: Session = Depends(get_db)) -> Analy
         if not analysis:
             raise handle_not_found_error("analysis", str(analysis_id))
 
-        return AnalysisInfo.from_orm(analysis)
+        return AnalysisInfo.model_validate(analysis)
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "get_analysis", {"analysis_id": analysis_id})
 
@@ -140,22 +142,56 @@ async def start_analysis(
             status="processing",  # Start as processing
         )
 
-        # Start background task
-        task_id = background_service.start_analysis_task(
-            video_id=video_id,
-            analysis_type=request.analysis_type,
-            confidence_threshold=request.confidence_threshold,
-            include_pose_detection=request.include_pose_detection,
-        )
+        # Check if synchronous mode is requested
+        if request.synchronous:
+            # Run analysis synchronously (for testing)
+            from app.services.analysis_service import analyze_video
 
-        return AnalysisStartResponse(
-            analysis_id=analysis_record.id,
-            video_filename=video.filename,
-            status=AnalysisStatus.PROCESSING,
-            message="Analysis started in background",
-            estimated_duration=300,  # 5 minutes estimate
-            task_id=task_id,
-        )
+            analysis_result = analyze_video(
+                db=db,
+                video_id=video_id,
+                analysis_type=request.analysis_type,
+                confidence_threshold=request.confidence_threshold,
+                include_pose_detection=request.include_pose_detection,
+            )
+
+            # Check for errors in synchronous mode
+            if isinstance(analysis_result, dict) and "error" in analysis_result:
+                raise handle_processing_error("analysis", analysis_result["error"])
+
+            # Update analysis record with results
+            analysis_record.status = "completed"
+            analysis_record.total_frames = analysis_result.get("frames_processed", 0)
+            analysis_record.processing_time = analysis_result.get(
+                "processing_time", 0.0
+            )
+            db.commit()
+
+            return AnalysisStartResponse(
+                analysis_id=analysis_record.id,
+                video_filename=video.filename,
+                status=AnalysisStatus.COMPLETED,
+                message="Analysis completed synchronously",
+                estimated_duration=analysis_result.get("processing_time", 0.0),
+                task_id=None,
+            )
+        else:
+            # Start background task
+            task_id = background_service.start_analysis_task(
+                video_id=video_id,
+                analysis_type=request.analysis_type,
+                confidence_threshold=request.confidence_threshold,
+                include_pose_detection=request.include_pose_detection,
+            )
+
+            return AnalysisStartResponse(
+                analysis_id=analysis_record.id,
+                video_filename=video.filename,
+                status=AnalysisStatus.PROCESSING,
+                message="Analysis started in background",
+                estimated_duration=300,  # 5 minutes estimate
+                task_id=task_id,
+            )
     except (OSError, ValueError, RuntimeError) as e:
         log_and_raise_error(e, "start_analysis", {"video_id": video_id})
 
@@ -187,7 +223,7 @@ async def get_video_analysis(
         if not analysis:
             raise handle_not_found_error("analysis", f"for video {video_id}")
 
-        return AnalysisInfo.from_orm(analysis)
+        return AnalysisInfo.model_validate(analysis)
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "get_video_analysis", {"video_id": video_id})
 

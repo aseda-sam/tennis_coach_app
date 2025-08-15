@@ -86,7 +86,7 @@ async def list_videos(
         end_idx = start_idx + pagination.size
         paginated_videos = db_videos[start_idx:end_idx]
 
-        return [VideoListItem.from_orm(video) for video in paginated_videos]
+        return [VideoListItem.model_validate(video) for video in paginated_videos]
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "list_videos")
 
@@ -107,7 +107,7 @@ async def get_video(video_id: int, db: Session = Depends(get_db)) -> VideoInfo:
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        return VideoInfo.from_orm(db_video)
+        return VideoInfo.model_validate(db_video)
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "get_video", {"video_id": video_id})
 

@@ -190,6 +190,16 @@ def analyze_video(
     if not video_path.exists():
         return {"error": f"Video file not found: {video_filename}"}
 
+    # Quick validation: try to extract a few frames to check if video is valid
+    try:
+        test_frames = cv_service.extract_frames(video_path, max_frames=5)
+        if not test_frames:
+            return {
+                "error": f"Invalid video file: {video_filename} - cannot extract frames"
+            }
+    except (OSError, ValueError, RuntimeError) as e:
+        return {"error": f"Video validation failed: {video_filename} - {e!s}"}
+
     try:
         # Start timing
         start_time = time.time()

@@ -22,6 +22,9 @@ class AnalysisRequest(BaseModel):
     include_pose_detection: bool = Field(
         default=False, description="Whether to include pose detection in analysis"
     )
+    synchronous: bool = Field(
+        default=False, description="Whether to run analysis synchronously (for testing)"
+    )
 
 
 class AnalysisMetadata(BaseModel):
