@@ -1,20 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { analysisApi, AnalysisData, videoApi } from '../services/api';
+import React, { useCallback, useEffect, useState } from 'react';
+import { analysisApi, AnalysisData, AnalysisStartResponse, videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
+import { AnalyticsIcon, DeleteIcon, EyeIcon, GridIcon, ListIcon, PlayIcon, VideoIcon } from './Icons';
 import AnalysisModal from './AnalysisModal';
-import {
-    AnalyticsIcon,
-    DeleteIcon,
-    EyeIcon,
-    GridIcon,
-    ListIcon,
-    PlayIcon,
-    VideoIcon
-} from './Icons';
 import './VideoList.css';
 
 interface VideoListProps {
-  onVideoDeleted: () => void;
+  onVideoDeleted?: () => void;
   onViewAnalysis?: (video: VideoMetadata) => void;
 }
 
@@ -24,10 +16,12 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [analyzingId, setAnalyzingId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Track active analysis tasks
+  const [activeTasks, setActiveTasks] = useState<Map<number, { taskId: number; progress: number; status: string }>>(new Map());
 
   const loadVideos = async () => {
     try {
@@ -56,7 +50,7 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
       setDeletingId(videoId);
       await videoApi.deleteVideo(videoId);
       await loadVideos();
-      onVideoDeleted();
+      onVideoDeleted?.();
     } catch (err: any) {
       setError('Failed to delete video. Please try again.');
       console.error('Error deleting video:', err);
@@ -67,21 +61,99 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
 
   const handleAnalyze = async (videoId: number) => {
     try {
-      setAnalyzingId(videoId);
-      await analysisApi.startAnalysis(videoId, {
+      // Add task to active tasks map
+      setActiveTasks(prev => new Map(prev.set(videoId, { taskId: 0, progress: 0, status: 'starting' })));
+      
+      const response: AnalysisStartResponse = await analysisApi.startAnalysis(videoId, {
         analysis_type: 'ball_tracking',
         confidence_threshold: 0.5,
         include_pose_detection: true
       });
-      const analysesResponse = await analysisApi.getAllAnalyses();
-      setAnalyses(analysesResponse);
+
+      if (response.status === 'completed' && response.analysis_id) {
+        // Analysis completed immediately
+        setActiveTasks(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(videoId);
+          return newMap;
+        });
+        await loadVideos(); // Refresh to get the new analysis
+      } else if (response.status === 'processing' && response.task_id) {
+        // Analysis started in background - track the task
+        setActiveTasks(prev => new Map(prev.set(videoId, { 
+          taskId: response.task_id || 0, 
+          progress: 0, 
+          status: 'processing' 
+        })));
+        
+        // Start polling for this task
+        pollTaskStatus(response.task_id, videoId);
+      } else {
+        throw new Error(response.message || 'Failed to start analysis');
+      }
     } catch (err: any) {
-      setError('Failed to start analysis. Please try again.');
+      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to start analysis';
+      setError(errorMessage);
       console.error('Error starting analysis:', err);
-    } finally {
-      setAnalyzingId(null);
+      
+      // Remove from active tasks on error
+      setActiveTasks(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(videoId);
+        return newMap;
+      });
     }
   };
+
+  // Function to poll task status
+  const pollTaskStatus = useCallback(async (taskId: number, videoId: number) => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const taskStatus = await analysisApi.getTaskStatus(taskId);
+        
+        // Update active tasks with new progress
+        setActiveTasks(prev => {
+          const newMap = new Map(prev);
+          newMap.set(videoId, { 
+            taskId, 
+            progress: taskStatus.progress, 
+            status: taskStatus.status 
+          });
+          return newMap;
+        });
+
+        // If task is completed, stop polling and refresh data
+        if (taskStatus.status === 'completed' || taskStatus.status === 'failed' || taskStatus.status === 'cancelled') {
+          clearInterval(pollInterval);
+          
+          // Remove from active tasks
+          setActiveTasks(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(videoId);
+            return newMap;
+          });
+
+          // Refresh analyses if completed
+          if (taskStatus.status === 'completed') {
+            await loadVideos();
+          }
+        }
+      } catch (err) {
+        console.error('Error polling task status:', err);
+        clearInterval(pollInterval);
+        
+        // Remove from active tasks on error
+        setActiveTasks(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(videoId);
+          return newMap;
+        });
+      }
+    }, 2000); // Poll every 2 seconds
+
+    // Cleanup function
+    return () => clearInterval(pollInterval);
+  }, []);
 
   const handleViewAnalysis = (videoId: number) => {
     if (onViewAnalysis) {
@@ -126,14 +198,31 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
     return `${mb.toFixed(2)} MB`;
   };
 
-  const getStatusTag = (analysis: AnalysisData | null, isAnalyzing: boolean) => {
-    if (isAnalyzing) {
-      return { text: 'Processing', color: 'processing' };
+  const getStatusTag = (analysis: AnalysisData | null, videoId: number) => {
+    const activeTask = activeTasks.get(videoId);
+    
+    if (activeTask) {
+      if (activeTask.status === 'processing') {
+        return { text: `Processing (${activeTask.progress}%)`, color: 'processing' };
+      } else if (activeTask.status === 'starting') {
+        return { text: 'Starting...', color: 'processing' };
+      } else if (activeTask.status === 'failed') {
+        return { text: 'Failed', color: 'error' };
+      } else if (activeTask.status === 'cancelled') {
+        return { text: 'Cancelled', color: 'error' };
+      }
     }
+    
     if (analysis) {
       return { text: 'Completed', color: 'completed' };
     }
+    
     return { text: 'Not Analyzed', color: 'not-analyzed' };
+  };
+
+  const isVideoAnalyzing = (videoId: number): boolean => {
+    const activeTask = activeTasks.get(videoId);
+    return activeTask !== undefined && (activeTask.status === 'starting' || activeTask.status === 'processing');
   };
 
   if (loading) {
@@ -196,8 +285,8 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
         <div className={`video-grid ${viewMode}`}>
           {videos.map((video) => {
             const analysis = getAnalysisForVideo(video.id);
-            const isAnalyzing = analyzingId === video.id;
-            const status = getStatusTag(analysis, isAnalyzing);
+            const isAnalyzing = isVideoAnalyzing(video.id);
+            const status = getStatusTag(analysis, video.id);
             
             return (
               <div key={video.id} className="video-card-enhanced">
