@@ -126,7 +126,20 @@ async def start_analysis(
                 task_id=None,
             )
 
-        # If analysis exists but failed/processing, delete it and start fresh
+        # Check if there's an active background task processing this video
+        if existing_analysis and existing_analysis.status == "processing":
+            active_task = background_service.get_active_task_for_video(video_id)
+            if active_task:
+                return AnalysisStartResponse(
+                    analysis_id=existing_analysis.id,
+                    video_filename=video.filename,
+                    status=AnalysisStatus.PROCESSING,
+                    message="Analysis already in progress",
+                    estimated_duration=300,  # 5 minutes estimate
+                    task_id=active_task["task_id"],
+                )
+
+        # If analysis exists but failed or processing without active task, delete it and start fresh
         if existing_analysis:
             db.delete(existing_analysis)
             db.commit()
