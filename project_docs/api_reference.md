@@ -60,6 +60,28 @@ Currently, no authentication is required for MVP. Future versions will implement
 - **Supported formats**: MP4, MOV, AVI, MKV, WMV
 - **Processing time**: Varies based on video length and resolution
 
+### Video Processing Limits (Environment-Specific)
+
+#### Local Environment (M1 MacBook Pro)
+- **Maximum resolution**: 4K (3840x2160)
+- **Maximum frame rate**: 60fps
+- **Maximum duration**: 5 minutes (300 seconds)
+- **Frame skip ratio**: 2 (process every 2nd frame)
+
+#### Docker Environment
+- **Maximum resolution**: 1080p (1920x1080)
+- **Maximum frame rate**: 60fps
+- **Maximum duration**: 5 minutes (300 seconds)
+- **Frame skip ratio**: 3 (process every 3rd frame)
+
+#### Production Environment (Render)
+- **Maximum resolution**: 1080p (1920x1080)
+- **Maximum frame rate**: 30fps
+- **Maximum duration**: 5 minutes (300 seconds)
+- **Frame skip ratio**: 4 (process every 4th frame)
+
+> **Note**: These limits are automatically detected and applied based on the environment. Videos exceeding these limits will be rejected with appropriate error messages.
+
 ## CORS Configuration
 
 The API is configured to allow requests from:
@@ -95,6 +117,9 @@ The API uses standardized error responses with the following structure:
 - `VALIDATION_ERROR` - Input validation failed
 - `FILE_TOO_LARGE` - File exceeds size limit
 - `UNSUPPORTED_FORMAT` - File format not supported
+- `RESOLUTION_TOO_HIGH` - Video resolution exceeds environment limits
+- `FPS_TOO_HIGH` - Video frame rate exceeds environment limits
+- `DURATION_TOO_LONG` - Video duration exceeds maximum allowed
 - `VIDEO_NOT_FOUND` - Video ID not found
 - `ANALYSIS_NOT_FOUND` - Analysis ID not found
 - `PROCESSING_FAILED` - Video processing failed
