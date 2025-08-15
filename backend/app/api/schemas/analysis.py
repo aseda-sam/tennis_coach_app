@@ -2,7 +2,7 @@
 
 import json
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 from pydantic.functional_validators import field_validator
@@ -150,6 +150,9 @@ class AnalysisStartResponse(BaseModel):
     estimated_duration: Optional[float] = Field(
         default=None, description="Estimated processing time"
     )
+    task_id: Optional[int] = Field(
+        default=None, description="Background task ID for tracking"
+    )
 
 
 class AnalysisDeleteResponse(BaseModel):
@@ -178,3 +181,40 @@ class AnalysisTypes:
     BALL_TRACKING = "ball_tracking"
     POSE_DETECTION = "pose_detection"
     COMPREHENSIVE = "comprehensive"
+
+
+# Background task schemas
+class TaskStatus(BaseModel):
+    """Background task status information."""
+
+    task_id: int = Field(description="Task ID")
+    video_id: int = Field(description="Video ID being processed")
+    analysis_type: str = Field(description="Type of analysis")
+    status: str = Field(
+        description="Task status (queued, processing, completed, failed, cancelled)"
+    )
+    progress: int = Field(ge=0, le=100, description="Progress percentage")
+    error: Optional[str] = Field(default=None, description="Error message if failed")
+    result: Optional[Dict[str, Any]] = Field(
+        default=None, description="Analysis result if completed"
+    )
+    started_at: datetime = Field(description="Task start timestamp")
+    completed_at: Optional[datetime] = Field(
+        default=None, description="Task completion timestamp"
+    )
+
+
+class TaskListResponse(BaseModel):
+    """Response model for listing background tasks."""
+
+    tasks: Dict[int, TaskStatus] = Field(description="All active tasks")
+    total: int = Field(description="Total number of tasks")
+
+
+class TaskStatsResponse(BaseModel):
+    """Response model for task statistics."""
+
+    total_tasks: int = Field(description="Total number of tasks")
+    status_counts: Dict[str, int] = Field(description="Count of tasks by status")
+    active_workers: int = Field(description="Number of active worker threads")
+    max_workers: int = Field(description="Maximum number of worker threads")

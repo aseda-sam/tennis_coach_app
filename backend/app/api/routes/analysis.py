@@ -1,6 +1,6 @@
 """Analysis API routes with proper REST patterns and error handling."""
 
-from typing import List
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -13,17 +13,21 @@ from app.api.schemas.analysis import (
     AnalysisStartResponse,
     AnalysisStatus,
     AnalysisTypes,
+    TaskListResponse,
+    TaskStatsResponse,
+    TaskStatus,
 )
 from app.api.schemas.common import PaginationParams
 from app.core.database import get_db
 from app.services.analysis_service import (
-    analyze_video,
+    create_analysis_record,
     delete_analysis,
     get_all_analyses,
     get_analysis_by_id,
     get_analysis_by_video,
     get_analysis_by_video_id,
 )
+from app.services.background_service import background_service
 from app.services.video_service import get_video_by_id
 from app.utils.error_handling import (
     handle_not_found_error,
@@ -82,14 +86,14 @@ async def start_analysis(
     video_id: int, request: AnalysisRequest, db: Session = Depends(get_db)
 ) -> AnalysisStartResponse:
     """
-    Start analysis for a specific video.
+    Start analysis for a specific video in the background.
 
     Args:
         video_id: Unique video identifier
         request: Analysis configuration
 
     Returns:
-        Analysis start confirmation with estimated duration
+        Analysis start confirmation with task ID for tracking
     """
     try:
         # Verify video exists
@@ -109,25 +113,48 @@ async def start_analysis(
                 f"Invalid analysis type. Valid types: {', '.join(valid_types)}",
             )
 
-        # Start analysis
-        result = analyze_video(
+        # Check if analysis already exists
+        existing_analysis = get_analysis_by_video_id(db, video_id)
+        if existing_analysis:
+            return AnalysisStartResponse(
+                analysis_id=existing_analysis.id,
+                video_filename=video.filename,
+                status=AnalysisStatus.COMPLETED,
+                message="Analysis already exists",
+                estimated_duration=0,
+                task_id=None,
+            )
+
+        # Create analysis record in database with processing status
+        analysis_record = create_analysis_record(
             db=db,
+            video_id=video_id,
+            video_filename=video.filename,
+            analysis_type=request.analysis_type,
+            analysis_results={},  # Empty for now
+            processing_time=0.0,
+            model_used="yolov8n+mediapipe"
+            if request.include_pose_detection
+            else "yolov8n",
+            confidence_threshold=request.confidence_threshold,
+            status="processing",  # Start as processing
+        )
+
+        # Start background task
+        task_id = background_service.start_analysis_task(
             video_id=video_id,
             analysis_type=request.analysis_type,
             confidence_threshold=request.confidence_threshold,
             include_pose_detection=request.include_pose_detection,
         )
 
-        # Propagate processing failures with consistent error shape
-        if isinstance(result, dict) and "error" in result:
-            raise handle_processing_error("analysis_start", result["error"])
-
         return AnalysisStartResponse(
-            analysis_id=result.get("analysis_id"),
+            analysis_id=analysis_record.id,
             video_filename=video.filename,
             status=AnalysisStatus.PROCESSING,
-            message="Analysis started successfully",
-            estimated_duration=result.get("estimated_duration"),
+            message="Analysis started in background",
+            estimated_duration=300,  # 5 minutes estimate
+            task_id=task_id,
         )
     except (OSError, ValueError, RuntimeError) as e:
         log_and_raise_error(e, "start_analysis", {"video_id": video_id})
@@ -262,3 +289,82 @@ async def get_analysis_status(analysis_id: int, db: Session = Depends(get_db)) -
         }
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "get_analysis_status", {"analysis_id": analysis_id})
+
+
+# Background task management endpoints
+@router.get("/tasks/{task_id}/status", response_model=TaskStatus)
+async def get_task_status(task_id: int) -> TaskStatus:
+    """
+    Get the status of a background analysis task.
+
+    Args:
+        task_id: Background task ID
+
+    Returns:
+        Task status and progress information
+    """
+    try:
+        task_status = background_service.get_task_status(task_id)
+        if not task_status:
+            raise handle_not_found_error("task", str(task_id))
+
+        return TaskStatus(**task_status)
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_task_status", {"task_id": task_id})
+
+
+@router.get("/tasks/", response_model=TaskListResponse)
+async def list_tasks() -> TaskListResponse:
+    """
+    List all background tasks.
+
+    Returns:
+        All active background tasks with their status
+    """
+    try:
+        tasks = background_service.get_all_tasks()
+        return TaskListResponse(
+            tasks={task_id: TaskStatus(**task) for task_id, task in tasks.items()},
+            total=len(tasks),
+        )
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "list_tasks")
+
+
+@router.get("/tasks/stats", response_model=TaskStatsResponse)
+async def get_task_stats() -> TaskStatsResponse:
+    """
+    Get background task statistics.
+
+    Returns:
+        Task statistics including counts and worker information
+    """
+    try:
+        stats = background_service.get_task_stats()
+        return TaskStatsResponse(**stats)
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_task_stats")
+
+
+@router.delete("/tasks/{task_id}")
+async def cancel_task(task_id: int) -> Dict[str, Any]:
+    """
+    Cancel a background analysis task.
+
+    Args:
+        task_id: Background task ID
+
+    Returns:
+        Cancellation confirmation
+    """
+    try:
+        success = background_service.cancel_task(task_id)
+        if not success:
+            raise handle_not_found_error("task", str(task_id))
+
+        return {
+            "message": "Task cancelled successfully",
+            "task_id": task_id,
+        }
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "cancel_task", {"task_id": task_id})

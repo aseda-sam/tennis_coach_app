@@ -101,6 +101,12 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
   - [x] **Frame Rate Limits**: Add 30fps maximum to prevent high-fps processing issues
   - [x] **Environment Detection**: Dynamic configuration based on local/Docker/production
   - [x] **Performance Testing**: Comprehensive testing scripts for different environments
+- [ ] **Background Tasks**: Non-blocking video analysis with progress tracking
+  - [ ] **FastAPI Background Tasks**: ThreadPoolExecutor for concurrent processing
+  - [ ] **Progress Tracking**: Real-time status updates and progress monitoring
+  - [ ] **Task Management**: Start, cancel, and monitor background tasks
+  - [ ] **Frontend Integration**: Polling and progress indicators
+  - [ ] **Redis Queue Migration**: Upgrade to RQ for production-grade task management
 - [ ] **Advanced Stroke Detection**: Forehand/backhand classification
 - [ ] **Rally Analysis**: Duration and pattern recognition
 - [ ] **Court Coverage Heatmaps**: Player movement visualization
