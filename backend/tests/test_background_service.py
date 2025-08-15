@@ -142,8 +142,14 @@ class TestBackgroundTaskService:
 
         stats = self.service.get_task_stats()
         assert stats["total_tasks"] == 2
-        assert "processing" in stats["status_counts"]
-        assert stats["status_counts"]["processing"] == 2
+        # Tasks start as "queued" now, not "processing"
+        assert (
+            "queued" in stats["status_counts"] or "processing" in stats["status_counts"]
+        )
+        # The total of queued + processing should be 2
+        queued_count = stats["status_counts"].get("queued", 0)
+        processing_count = stats["status_counts"].get("processing", 0)
+        assert (queued_count + processing_count) == 2
         assert stats["max_workers"] == 1
         assert stats["active_workers"] >= 0
 
@@ -217,15 +223,20 @@ class TestBackgroundTaskService:
             analysis_type="ball_tracking",
         )
 
-        # Check that task was started properly
+        # Wait a moment for the task to process and fail
+        import time
+
+        time.sleep(0.1)
+
+        # Check that task was started and failed due to video not found
         task = _active_tasks[task_id]
-        assert task["status"] == "processing"
+        assert task["status"] == "failed"  # Should fail when video not found
         assert task["video_id"] == 999
         assert task["analysis_type"] == "ball_tracking"
         assert task["future"] is not None
+        assert "Video 999 not found" in task["error"]
 
-        # Cancel the task to clean up
-        self.service.cancel_task(task_id)
+        # No need to cancel since task already failed
 
     @patch("app.services.background_service.analyze_video")
     @patch("app.services.background_service.get_video_by_id")
@@ -280,10 +291,10 @@ class TestBackgroundTaskService:
             assert len(task_ids) == 3
             assert all(task_id in _active_tasks for task_id in task_ids)
 
-            # Check that tasks are in processing state (or failed/completed due to missing video)
+            # Check that tasks are in valid states (queued, processing, failed, or completed)
             for task_id in task_ids:
                 task = _active_tasks[task_id]
-                assert task["status"] in ["processing", "failed", "completed"]
+                assert task["status"] in ["queued", "processing", "failed", "completed"]
 
         finally:
             service.executor.shutdown(wait=True)
