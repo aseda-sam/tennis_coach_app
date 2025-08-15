@@ -2,9 +2,11 @@
 
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Callable
 
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -19,14 +21,23 @@ from app.utils.error_handling import (
     validation_error_handler,
 )
 
-# Create FastAPI app with proper configuration
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> None:
+    """Application lifespan manager."""
+    # Startup
+    create_tables()
+    yield
+    # Shutdown
+    pass
+
+
+# Create FastAPI app with lifespan
 app = FastAPI(
     title="Tennis Coach API",
-    description="Computer vision-based tennis analysis system",
-    version="0.1.0",  # Alpha version
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    description="AI-powered tennis video analysis API",
+    version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -62,13 +73,6 @@ async def add_process_time_header(request: Request, call_next: Callable) -> Requ
 app.add_exception_handler(APIError, api_error_handler)
 app.add_exception_handler(ValueError, validation_error_handler)
 app.add_exception_handler(Exception, general_error_handler)
-
-
-# Create database tables on startup
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Initialize application on startup."""
-    create_tables()
 
 
 # Include API routes with versioning
@@ -137,8 +141,6 @@ async def api_info() -> dict[str, str]:
 
 
 if __name__ == "__main__":
-    import uvicorn
-
     uvicorn.run(
         app,
         host=settings.API_HOST,
