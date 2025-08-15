@@ -37,6 +37,7 @@ class BackgroundTaskService:
     """Service for managing background video analysis tasks."""
 
     def __init__(self, max_workers: int = 2) -> None:
+        self.max_workers = max_workers
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         self._task_counter = 0
         logger.info(f"BackgroundTaskService initialized with {max_workers} workers")
@@ -247,12 +248,16 @@ class BackgroundTaskService:
             status = task["status"]
             status_counts[status] = status_counts.get(status, 0) + 1
 
+        # Count active workers (tasks currently processing)
+        active_workers = status_counts.get("processing", 0)
+
         # Note: Avoid accessing private ThreadPoolExecutor attributes
         # They are internal implementation details and may change
         return {
             "total_tasks": total_tasks,
             "status_counts": status_counts,
             "max_workers": self.max_workers,  # Use our stored value
+            "active_workers": active_workers,
         }
 
 
