@@ -275,6 +275,15 @@ async def upload_video(
         # Extract video metadata
         metadata = extract_video_metadata(file_path)
 
+        # Validate video metadata
+        metadata_dict = {
+            "width": metadata.width,
+            "height": metadata.height,
+            "fps": metadata.fps,
+            "duration": metadata.duration,
+        }
+        validate_video_file(file.filename, file_size, file.content_type, metadata_dict)
+
         # Save to database
         db_video = create_video_record(
             db=db,
