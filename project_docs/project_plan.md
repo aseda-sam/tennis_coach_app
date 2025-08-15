@@ -31,6 +31,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - **Phase 6**: Frontend Analysis Display
 - **Phase 7**: React Analysis Components
 - **Phase 8**: Video Playback & Codec Optimization
+- **Phase 9**: Video Resolution Handling & Performance Optimization
 
 ### 🚀 Production Ready
 - **CI/CD Pipeline**: GitHub Actions with automated testing and deployment
@@ -93,6 +94,13 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 ## Future Roadmap
 
 ### Phase 7: Enhancement & Polish (Next Priority)
+- [x] **Video Resolution Handling**: Add resolution and frame rate limits to prevent processing crashes ✅ **COMPLETED**
+  - [x] **Quick Fix**: Add 1080p resolution validation to prevent 4K uploads
+  - [x] **Video Downscaling**: Automatically downscale 4K videos to 1080p before processing
+  - [x] **Dynamic Frame Skip**: Adjust frame skip ratio based on video resolution
+  - [x] **Frame Rate Limits**: Add 30fps maximum to prevent high-fps processing issues
+  - [x] **Environment Detection**: Dynamic configuration based on local/Docker/production
+  - [x] **Performance Testing**: Comprehensive testing scripts for different environments
 - [ ] **Advanced Stroke Detection**: Forehand/backhand classification
 - [ ] **Rally Analysis**: Duration and pattern recognition
 - [ ] **Court Coverage Heatmaps**: Player movement visualization
@@ -113,7 +121,16 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [ ] **Export Capabilities**: PDF reports, video highlights
 - [ ] **Mobile Optimization**: Progressive Web App features
 
-### Phase 10: Scale & Performance
+### Phase 10: Performance & Testing Tools ✅ **COMPLETED**
+- [x] **Performance Testing Scripts**: Comprehensive testing for different environments
+  - [x] `performance_test.py` - Local environment testing with full video processing
+  - [x] `docker_performance_test.py` - Docker-optimized testing with memory limits
+  - [x] `run_performance_test.py` - Simple runner script for easy execution
+- [x] **Environment Detection**: Automatic detection of local/Docker/production
+- [x] **Dynamic Configuration**: Environment-specific processing limits
+- [x] **Validation Framework**: Comprehensive video metadata validation
+
+### Phase 11: Scale & Performance
 - [ ] **Microservices Architecture**: Separate video processing service
 - [ ] **Load Balancing**: Multiple application instances
 - [ ] **CDN Integration**: Global video delivery optimization
@@ -180,6 +197,10 @@ cd frontend && npm test
 # Code quality
 cd backend && ruff check . && ruff format .
 cd frontend && npm run lint
+
+# Performance testing
+cd backend && python scripts/run_performance_test.py
+cd backend && python scripts/docker_performance_test.py
 ```
 
 ## Contributing

@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     # Processing
     MAX_VIDEO_DURATION: int = 300  # 5 minutes
     FRAME_SKIP_RATIO: int = 2  # Process every nth frame
+    MAX_VIDEO_RESOLUTION: tuple[int, int] = (3840, 2160)  # 4K support (local)
+    MAX_FPS: int = 60  # 60fps support (local)
+
+    # Docker-specific limits (will be overridden in Docker)
+    DOCKER_MAX_VIDEO_RESOLUTION: tuple[int, int] = (1920, 1080)  # 1080p for Docker
+    DOCKER_MAX_FPS: int = 60  # 60fps for Docker
+    DOCKER_FRAME_SKIP_RATIO: int = 3  # Process every 3rd frame in Docker
 
     # API
     API_V1_STR: str = "/v0"
@@ -43,6 +50,32 @@ class Settings(BaseSettings):
 
 # Create settings instance
 settings = Settings()
+
+
+# Environment detection and dynamic configuration
+def get_environment_limits() -> dict:
+    """Get video processing limits based on environment."""
+    import os
+
+    # Check if running in Docker
+    if os.path.exists("/.dockerenv"):
+        return {
+            "max_resolution": settings.DOCKER_MAX_VIDEO_RESOLUTION,
+            "max_fps": settings.DOCKER_MAX_FPS,
+            "frame_skip_ratio": settings.DOCKER_FRAME_SKIP_RATIO,
+            "environment": "docker",
+        }
+    else:
+        return {
+            "max_resolution": settings.MAX_VIDEO_RESOLUTION,
+            "max_fps": settings.MAX_FPS,
+            "frame_skip_ratio": settings.FRAME_SKIP_RATIO,
+            "environment": "local",
+        }
+
+
+# Get current environment limits
+env_limits = get_environment_limits()
 
 
 def create_directories() -> None:
