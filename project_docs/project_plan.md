@@ -93,6 +93,11 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 ## Future Roadmap
 
 ### Phase 7: Enhancement & Polish (Next Priority)
+- [ ] **Video Resolution Handling**: Add resolution and frame rate limits to prevent processing crashes
+  - [ ] **Quick Fix**: Add 1080p resolution validation to prevent 4K uploads
+  - [ ] **Video Downscaling**: Automatically downscale 4K videos to 1080p before processing
+  - [ ] **Dynamic Frame Skip**: Adjust frame skip ratio based on video resolution
+  - [ ] **Frame Rate Limits**: Add 30fps maximum to prevent high-fps processing issues
 - [ ] **Advanced Stroke Detection**: Forehand/backhand classification
 - [ ] **Rally Analysis**: Duration and pattern recognition
 - [ ] **Court Coverage Heatmaps**: Player movement visualization
