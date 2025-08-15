@@ -5,6 +5,7 @@ Analysis service for handling video analysis operations.
 import json
 import logging
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -168,10 +169,10 @@ def analyze_video(
     video_filename = video.filename
     logger.info(f"Starting analysis for video: {video_filename}")
 
-    # Check if analysis already exists
+    # Check if analysis already exists and is completed
     existing_analysis = get_analysis_by_video_id(db, video_id)
-    if existing_analysis:
-        logger.info(f"Analysis already exists for {video_filename}")
+    if existing_analysis and existing_analysis.status == "completed":
+        logger.info(f"Analysis already exists and completed for {video_filename}")
         return {
             "message": "Analysis already exists",
             "analysis_id": existing_analysis.id,
@@ -184,10 +185,24 @@ def analyze_video(
             },
         }
 
+    # If analysis exists but is still processing, continue with analysis
+    if existing_analysis and existing_analysis.status == "processing":
+        logger.info(f"Analysis in progress for {video_filename}, continuing...")
+
     # Find video file
     video_path = Path(settings.UPLOAD_DIR) / video_filename
     if not video_path.exists():
         return {"error": f"Video file not found: {video_filename}"}
+
+    # Quick validation: try to extract a few frames to check if video is valid
+    try:
+        test_frames = cv_service.extract_frames(video_path, max_frames=5)
+        if not test_frames:
+            return {
+                "error": f"Invalid video file: {video_filename} - cannot extract frames"
+            }
+    except (OSError, ValueError, RuntimeError) as e:
+        return {"error": f"Video validation failed: {video_filename} - {e!s}"}
 
     try:
         # Start timing
@@ -205,22 +220,68 @@ def analyze_video(
         if "error" in analysis_results:
             return analysis_results
 
-        # Store results in database
-        analysis_record = create_analysis_record(
-            db=db,
-            video_id=video_id,
-            video_filename=video_filename,
-            analysis_type=analysis_type,
-            analysis_results=analysis_results,
-            processing_time=processing_time,
-            model_used="yolov8n+mediapipe"
-            if cv_service.ball_detector and cv_service.pose_detector
-            else "yolov8n"
-            if cv_service.ball_detector
-            else None,
-            confidence_threshold=confidence_threshold,
-            status="completed",
-        )
+        # Update existing analysis record or create new one
+        if existing_analysis and existing_analysis.status == "processing":
+            # Update existing processing record
+            analysis_record = existing_analysis
+            analysis_record.total_frames = analysis_results.get("frames_processed", 0)
+            analysis_record.frames_with_balls = analysis_results.get(
+                "analysis_summary", {}
+            ).get("frames_with_balls", 0)
+            analysis_record.total_ball_detections = analysis_results.get(
+                "analysis_summary", {}
+            ).get("total_ball_detections", 0)
+            analysis_record.average_detections_per_frame = analysis_results.get(
+                "analysis_summary", {}
+            ).get("average_detections_per_frame", 0.0)
+            analysis_record.detection_rate = analysis_results.get(
+                "analysis_summary", {}
+            ).get("detection_rate", 0.0)
+            analysis_record.frames_with_pose = analysis_results.get(
+                "analysis_summary", {}
+            ).get("frames_with_pose", 0)
+            analysis_record.pose_detection_rate = analysis_results.get(
+                "analysis_summary", {}
+            ).get("pose_detection_rate", 0.0)
+            analysis_record.ball_detections = json.dumps(
+                analysis_results.get("ball_detections", [])
+            )
+            analysis_record.pose_detections = json.dumps(
+                analysis_results.get("pose_detections", [])
+            )
+            analysis_record.annotated_video_path = analysis_results.get(
+                "annotated_video_path"
+            )
+            analysis_record.processing_time = processing_time
+            analysis_record.model_used = (
+                "yolov8n+mediapipe"
+                if cv_service.ball_detector and cv_service.pose_detector
+                else "yolov8n"
+                if cv_service.ball_detector
+                else None
+            )
+            analysis_record.confidence_threshold = confidence_threshold
+            analysis_record.status = "completed"
+            analysis_record.completed_at = datetime.now()
+            db.commit()
+            db.refresh(analysis_record)
+        else:
+            # Create new analysis record
+            analysis_record = create_analysis_record(
+                db=db,
+                video_id=video_id,
+                video_filename=video_filename,
+                analysis_type=analysis_type,
+                analysis_results=analysis_results,
+                processing_time=processing_time,
+                model_used="yolov8n+mediapipe"
+                if cv_service.ball_detector and cv_service.pose_detector
+                else "yolov8n"
+                if cv_service.ball_detector
+                else None,
+                confidence_threshold=confidence_threshold,
+                status="completed",
+            )
 
         return {
             "message": "Analysis completed successfully",
@@ -237,9 +298,37 @@ def analyze_video(
         return {"error": f"Analysis failed: {e!s}"}
 
 
+def update_analysis_status(
+    db: Session, video_id: int, status: str, error_message: Optional[str] = None
+) -> bool:
+    """
+    Update analysis status for a video.
+
+    Args:
+        db: Database session
+        video_id: Video ID
+        status: New status (processing, completed, failed)
+        error_message: Error message if status is failed
+
+    Returns:
+        True if updated, False otherwise
+    """
+    analysis = get_analysis_by_video_id(db, video_id)
+    if analysis:
+        analysis.status = status
+        if error_message:
+            analysis.error_message = error_message
+        if status in ["completed", "failed"]:
+            analysis.completed_at = datetime.now()
+        db.commit()
+        logger.info(f"Updated analysis status for video {video_id} to {status}")
+        return True
+    return False
+
+
 def delete_analysis(db: Session, video_filename: str) -> bool:
     """
-    Delete analysis results for a video.
+    Delete analysis results for a video, including any annotated video files.
 
     Args:
         db: Database session
@@ -248,8 +337,38 @@ def delete_analysis(db: Session, video_filename: str) -> bool:
     Returns:
         True if deleted, False otherwise
     """
+    from pathlib import Path
+
+    from app.core.config import settings
+
     analysis = get_analysis_by_video(db, video_filename)
     if analysis:
+        # Delete annotated video file if it exists
+        if analysis.annotated_video_path:
+            annotated_path = Path(analysis.annotated_video_path)
+            if annotated_path.exists():
+                try:
+                    annotated_path.unlink()
+                    logger.info(f"Deleted annotated video: {annotated_path}")
+                except OSError as e:
+                    logger.warning(
+                        f"Failed to delete annotated video {annotated_path}: {e}"
+                    )
+
+        # Also check for standard annotated file naming pattern
+        processed_dir = Path(settings.PROCESSED_DIR)
+        base_name = Path(video_filename).stem
+        potential_annotated = processed_dir / f"{base_name}_annotated.mp4"
+        if potential_annotated.exists():
+            try:
+                potential_annotated.unlink()
+                logger.info(f"Deleted annotated video: {potential_annotated}")
+            except OSError as e:
+                logger.warning(
+                    f"Failed to delete annotated video {potential_annotated}: {e}"
+                )
+
+        # Delete analysis record from database
         db.delete(analysis)
         db.commit()
         logger.info(f"Deleted analysis for {video_filename}")

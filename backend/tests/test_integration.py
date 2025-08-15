@@ -1,11 +1,13 @@
 """
 Legacy integration tests - being replaced by more focused test files.
-These tests use fake video files and should be updated to use real test data.
+These tests use real test video files for comprehensive testing.
 """
 
 import os
 import tempfile
+from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -157,119 +159,152 @@ class TestAnalysisIntegration:
 
     def test_analysis_creation_and_retrieval(self, client: TestClient) -> None:
         """Test complete analysis creation and retrieval workflow."""
-        # Upload a video first
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 1000)
-            tmp_file_path = tmp_file.name
+        # Use the real test video file
+        test_video_path = Path(__file__).parent / "test_data" / "test_tennis_video.mp4"
+        if not test_video_path.exists():
+            pytest.skip("Test video file not found")
 
-        try:
-            with open(tmp_file_path, "rb") as f:
-                files = {"file": ("test_analysis.mp4", f, "video/mp4")}
-                response = client.post("/v0/videos/upload", files=files)
+        # Upload the test video
+        with open(test_video_path, "rb") as f:
+            files = {"file": ("test_tennis_video.mp4", f, "video/mp4")}
+            response = client.post("/v0/videos/upload", files=files)
 
-            assert response.status_code == 200
-            video_id = response.json()["video_id"]
+        assert response.status_code == 200
+        video_id = response.json()["video_id"]
 
-            # Start analysis
-            analysis_request = {
-                "analysis_type": "ball_tracking",
-                "confidence_threshold": 0.5,
-                "include_pose_detection": False,
-            }
+        # Start analysis (synchronous mode for testing)
+        analysis_request = {
+            "analysis_type": "ball_tracking",
+            "confidence_threshold": 0.5,
+            "include_pose_detection": False,
+            "synchronous": True,
+        }
 
-            response = client.post(
-                f"/v0/analysis/videos/{video_id}", json=analysis_request
-            )
+        response = client.post(f"/v0/analysis/videos/{video_id}", json=analysis_request)
 
-            # With fake video files, analysis will fail, which is expected
-            # We should get a 500 error with proper error details
-            assert response.status_code == 500
-            error_data = response.json()
-            assert "error" in error_data
-            assert "message" in error_data["error"]
-            assert "code" in error_data["error"]
+        # With real video file, analysis should succeed
+        assert response.status_code == 200
+        analysis_data = response.json()
+        assert "analysis_id" in analysis_data
+        assert "status" in analysis_data
+        assert analysis_data["status"] == "completed"
 
-            # For this test, we'll skip the analysis retrieval part since analysis failed
-            # In a real scenario with valid video files, this would succeed
-            return
+        # Get analysis results
+        response = client.get(f"/v0/analysis/{analysis_data['analysis_id']}")
+        assert response.status_code == 200
+        analysis_info = response.json()
 
-        finally:
-            if os.path.exists(tmp_file_path):
-                os.unlink(tmp_file_path)
+        # Verify analysis results
+        assert analysis_info["video_id"] == video_id
+        assert analysis_info["analysis_type"] == "ball_tracking"
+        assert analysis_info["status"] == "completed"
+        assert "detection_rate" in analysis_info
 
     def test_analysis_deletion(self, client: TestClient) -> None:
         """Test analysis deletion workflow."""
-        # Upload a video first
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 1000)
-            tmp_file_path = tmp_file.name
+        # Use the real test video file
+        test_video_path = Path(__file__).parent / "test_data" / "test_tennis_video.mp4"
+        if not test_video_path.exists():
+            pytest.skip("Test video file not found")
 
-        try:
-            with open(tmp_file_path, "rb") as f:
-                files = {"file": ("test_delete.mp4", f, "video/mp4")}
-                response = client.post("/v0/videos/upload", files=files)
+        # Upload the test video
+        with open(test_video_path, "rb") as f:
+            files = {"file": ("test_tennis_video.mp4", f, "video/mp4")}
+            response = client.post("/v0/videos/upload", files=files)
 
-            assert response.status_code == 200
-            video_id = response.json()["video_id"]
+        assert response.status_code == 200
+        video_id = response.json()["video_id"]
 
-            # Try to start analysis (will fail with fake video)
-            analysis_request = {
-                "analysis_type": "ball_tracking",
-                "confidence_threshold": 0.5,
-                "include_pose_detection": False,
-            }
+        # Start analysis (synchronous mode for testing)
+        analysis_request = {
+            "analysis_type": "ball_tracking",
+            "confidence_threshold": 0.5,
+            "include_pose_detection": False,
+            "synchronous": True,
+        }
 
-            response = client.post(
-                f"/v0/analysis/videos/{video_id}", json=analysis_request
-            )
+        response = client.post(f"/v0/analysis/videos/{video_id}", json=analysis_request)
 
-            # Analysis will fail with fake video, which is expected
-            assert response.status_code == 500
+        # Analysis should succeed with real video
+        assert response.status_code == 200
+        analysis_data = response.json()
+        analysis_id = analysis_data["analysis_id"]
 
-            # For this test, we'll skip the deletion part since analysis failed
-            # In a real scenario with valid video files, this would succeed
-            return
+        # Delete the analysis
+        response = client.delete(f"/v0/analysis/{analysis_id}")
+        assert response.status_code == 200
+        delete_data = response.json()
+        assert "message" in delete_data
+        assert delete_data["analysis_id"] == analysis_id
 
-        finally:
-            if os.path.exists(tmp_file_path):
-                os.unlink(tmp_file_path)
+        # Verify analysis is deleted
+        response = client.get(f"/v0/analysis/{analysis_id}")
+        assert response.status_code == 404
 
     def test_analysis_schema_validation(self, client: TestClient) -> None:
         """Test that analysis response schemas match database models."""
-        # Upload a video first
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 1000)
-            tmp_file_path = tmp_file.name
+        # Use the real test video file
+        test_video_path = Path(__file__).parent / "test_data" / "test_tennis_video.mp4"
+        if not test_video_path.exists():
+            pytest.skip("Test video file not found")
 
-        try:
-            with open(tmp_file_path, "rb") as f:
-                files = {"file": ("test_analysis_schema.mp4", f, "video/mp4")}
-                response = client.post("/v0/videos/upload", files=files)
+        # Upload the test video
+        with open(test_video_path, "rb") as f:
+            files = {"file": ("test_tennis_video.mp4", f, "video/mp4")}
+            response = client.post("/v0/videos/upload", files=files)
 
-            assert response.status_code == 200
-            video_id = response.json()["video_id"]
+        assert response.status_code == 200
+        video_id = response.json()["video_id"]
 
-            # Try to start analysis (will fail with fake video)
-            analysis_request = {
-                "analysis_type": "ball_tracking",
-                "confidence_threshold": 0.5,
-                "include_pose_detection": False,
-            }
+        # Start analysis (synchronous mode for testing)
+        analysis_request = {
+            "analysis_type": "ball_tracking",
+            "confidence_threshold": 0.5,
+            "include_pose_detection": False,
+            "synchronous": True,
+        }
 
-            response = client.post(
-                f"/v0/analysis/videos/{video_id}", json=analysis_request
-            )
+        response = client.post(f"/v0/analysis/videos/{video_id}", json=analysis_request)
 
-            # Analysis will fail with fake video, which is expected
-            assert response.status_code == 500
+        # Analysis should succeed with real video
+        assert response.status_code == 200
+        analysis_data = response.json()
+        analysis_id = analysis_data["analysis_id"]
 
-            # For this test, we'll skip the schema validation part since analysis failed
-            # In a real scenario with valid video files, this would succeed
-            return
+        # Get analysis results and verify schema
+        response = client.get(f"/v0/analysis/{analysis_id}")
+        assert response.status_code == 200
+        analysis_info = response.json()
 
-        finally:
-            if os.path.exists(tmp_file_path):
-                os.unlink(tmp_file_path)
+        # Verify all required fields are present
+        required_fields = [
+            "id",
+            "video_id",
+            "video_filename",
+            "analysis_type",
+            "status",
+            "total_frames",
+            "frames_with_balls",
+            "total_ball_detections",
+            "average_detections_per_frame",
+            "detection_rate",
+            "processing_time",
+            "model_used",
+            "confidence_threshold",
+            "created_at",
+        ]
+
+        for field in required_fields:
+            assert field in analysis_info, f"Missing field: {field}"
+
+        # Verify data types
+        assert isinstance(analysis_info["id"], int)
+        assert isinstance(analysis_info["video_id"], int)
+        assert isinstance(analysis_info["video_filename"], str)
+        assert isinstance(analysis_info["analysis_type"], str)
+        assert isinstance(analysis_info["total_frames"], int)
+        assert isinstance(analysis_info["detection_rate"], float)
+        assert isinstance(analysis_info["processing_time"], float)
 
 
 class TestErrorHandling:

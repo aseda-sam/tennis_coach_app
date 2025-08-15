@@ -34,4 +34,6 @@ class Video(Base):
     error_message = Column(Text, nullable=True)
 
     # Relationship to analyses with cascade deletion
-    analyses = relationship("Analysis", backref="video", cascade="all, delete-orphan")
+    analyses = relationship(
+        "Analysis", backref="video", cascade="all, delete-orphan", lazy="dynamic"
+    )
