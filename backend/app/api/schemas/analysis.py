@@ -146,7 +146,7 @@ class AnalysisListItem(BaseModel):
 class AnalysisStartResponse(BaseModel):
     """Response model for starting analysis."""
 
-    analysis_id: int = Field(description="Created analysis ID")
+    analysis_id: Optional[int] = Field(default=None, description="Created analysis ID")
     video_filename: str = Field(description="Video filename")
     status: str = Field(description="Analysis status")
     message: str = Field(description="Status message")
