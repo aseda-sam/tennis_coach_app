@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.analysis import Analysis
 from app.services.cv_service import cv_service
+from app.utils.progress_utils import update_task_progress
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +146,7 @@ def analyze_video(
     analysis_type: str = "ball_tracking",
     confidence_threshold: float = 0.7,
     include_pose_detection: bool = False,
+    task_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Perform video analysis and store results.
@@ -208,10 +210,24 @@ def analyze_video(
         # Start timing
         start_time = time.time()
 
+        # Update progress - starting ball detection
+        update_task_progress(
+            task_id, "ball_detection", 0, "Starting ball detection analysis", 20
+        )
+
         # Perform analysis
         analysis_results = cv_service.analyze_video(
             video_path,
             include_pose=include_pose_detection,
+        )
+
+        # Update progress - analysis complete, starting video annotation
+        update_task_progress(
+            task_id,
+            "video_annotation",
+            0,
+            "Creating annotated video with detections",
+            70,
         )
 
         # Calculate processing time
