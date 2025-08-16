@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { analysisApi, AnalysisData, AnalysisStartResponse, videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import { AnalyticsIcon, DeleteIcon, EyeIcon, GridIcon, ListIcon, PlayIcon, VideoIcon } from './Icons';
@@ -22,8 +22,11 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
   
   // Track active analysis tasks
   const [activeTasks, setActiveTasks] = useState<Map<number, { taskId: number; progress: number; status: string }>>(new Map());
+  
+  // Ref to store verifyAnalysisData function to avoid circular dependency
+  const verifyAnalysisDataRef = useRef<((videoId: number) => Promise<void>) | null>(null);
 
-  const loadVideos = async () => {
+  const loadVideos = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -39,11 +42,11 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadVideos();
-  }, []);
+  }, [loadVideos]);
 
   const handleDelete = async (videoId: number) => {
     try {
@@ -122,8 +125,27 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
           return newMap;
         });
 
-        // If task is completed, stop polling and refresh data
-        if (taskStatus.status === 'completed' || taskStatus.status === 'failed' || taskStatus.status === 'cancelled') {
+        // If task is completed, start verification process
+        if (taskStatus.status === 'completed') {
+          clearInterval(pollInterval);
+          
+          // Keep task in "finalizing" state while verifying analysis data
+          setActiveTasks(prev => {
+            const newMap = new Map(prev);
+            newMap.set(videoId, { 
+              taskId, 
+              progress: 100, 
+              status: 'finalizing' 
+            });
+            return newMap;
+          });
+
+          // Verify analysis data is available with retries
+          if (verifyAnalysisDataRef.current) {
+            await verifyAnalysisDataRef.current(videoId);
+          }
+          
+        } else if (taskStatus.status === 'failed' || taskStatus.status === 'cancelled') {
           clearInterval(pollInterval);
           
           // Remove from active tasks
@@ -132,11 +154,6 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
             newMap.delete(videoId);
             return newMap;
           });
-
-          // Refresh analyses if completed
-          if (taskStatus.status === 'completed') {
-            await loadVideos();
-          }
         }
       } catch (err) {
         console.error('Error polling task status:', err);
@@ -154,6 +171,67 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
     // Cleanup function
     return () => clearInterval(pollInterval);
   }, []);
+
+  // Function to verify analysis data is available
+  const verifyAnalysisData = useCallback(async (videoId: number) => {
+    const maxRetries = 5;
+    const retryDelay = 2000; // 2 seconds
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Try to get analysis data
+        const analysis = await analysisApi.getAnalysisByVideo(videoId);
+        
+        // Check if analysis has the required data for annotated video
+        if (analysis && analysis.pose_detections && analysis.pose_detections.length > 0) {
+          // Analysis data is complete, remove from active tasks
+          setActiveTasks(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(videoId);
+            return newMap;
+          });
+          
+          // Refresh the analyses list
+          await loadVideos();
+          return;
+        }
+        
+        // If we're on the last attempt, still remove from active tasks
+        if (attempt === maxRetries) {
+          setActiveTasks(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(videoId);
+            return newMap;
+          });
+          await loadVideos();
+          return;
+        }
+        
+        // Wait before next retry
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        
+      } catch (err) {
+        console.error(`Error verifying analysis data (attempt ${attempt}):`, err);
+        
+        // If we're on the last attempt, remove from active tasks
+        if (attempt === maxRetries) {
+          setActiveTasks(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(videoId);
+            return newMap;
+          });
+          await loadVideos();
+          return;
+        }
+        
+        // Wait before next retry
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
+  }, [loadVideos]);
+
+  // Store the function in ref to avoid circular dependency
+  verifyAnalysisDataRef.current = verifyAnalysisData;
 
   const handleViewAnalysis = (videoId: number) => {
     if (onViewAnalysis) {
@@ -206,6 +284,8 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
         return { text: `Processing (${activeTask.progress}%)`, color: 'processing' };
       } else if (activeTask.status === 'starting') {
         return { text: 'Starting...', color: 'processing' };
+      } else if (activeTask.status === 'finalizing') {
+        return { text: 'Finalizing...', color: 'processing' };
       } else if (activeTask.status === 'failed') {
         return { text: 'Failed', color: 'error' };
       } else if (activeTask.status === 'cancelled') {
@@ -222,7 +302,7 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
 
   const isVideoAnalyzing = (videoId: number): boolean => {
     const activeTask = activeTasks.get(videoId);
-    return activeTask !== undefined && (activeTask.status === 'starting' || activeTask.status === 'processing');
+    return activeTask !== undefined && (activeTask.status === 'starting' || activeTask.status === 'processing' || activeTask.status === 'finalizing');
   };
 
   if (loading) {
