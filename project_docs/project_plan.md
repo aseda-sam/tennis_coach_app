@@ -162,6 +162,16 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] **Race Condition Fix**: Resolve timing issues between task completion and data availability ✅ **COMPLETED**
 - [x] **Enhanced UX**: Visual feedback with animations and status indicators ✅ **COMPLETED**
 
+### Phase 10.7: Granular Progress Tracking with Stage-Specific Feedback
+- [ ] **Backend Stage Configuration**: Add analysis stage definitions and progress ranges
+- [ ] **Enhanced Task Status Schema**: Extend TaskStatus with stage information and detailed progress
+- [ ] **CV Service Progress Callbacks**: Implement stage-specific progress tracking in analysis pipeline
+- [ ] **Background Service Integration**: Update background service with granular progress updates
+- [ ] **Frontend Stage Icons**: Add custom SVG icons for each analysis stage
+- [ ] **Enhanced Progress Components**: Create stage-specific progress indicators and messages
+- [ ] **Stage Information Display**: Show current stage, sub-progress, and estimated time remaining
+- [ ] **Testing & Validation**: Comprehensive testing with various video lengths and scenarios
+
 ### Phase 11: Scale & Performance
 - [ ] **Microservices Architecture**: Separate video processing service
 - [ ] **Load Balancing**: Multiple application instances
