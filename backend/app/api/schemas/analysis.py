@@ -194,7 +194,25 @@ class TaskStatus(BaseModel):
     status: str = Field(
         description="Task status (queued, processing, completed, failed, cancelled)"
     )
-    progress: int = Field(ge=0, le=100, description="Progress percentage")
+    progress: int = Field(ge=0, le=100, description="Overall progress percentage")
+    current_stage: Optional[str] = Field(
+        default=None, description="Current analysis stage"
+    )
+    stage_progress: Optional[int] = Field(
+        default=None, ge=0, le=100, description="Progress within current stage"
+    )
+    stage_message: Optional[str] = Field(
+        default=None, description="Human-readable stage description"
+    )
+    estimated_time_remaining: Optional[int] = Field(
+        default=None, description="Estimated time remaining in seconds"
+    )
+    frames_processed: Optional[int] = Field(
+        default=None, description="Number of frames processed"
+    )
+    total_frames: Optional[int] = Field(
+        default=None, description="Total number of frames to process"
+    )
     error: Optional[str] = Field(default=None, description="Error message if failed")
     result: Optional[Dict[str, Any]] = Field(
         default=None, description="Analysis result if completed"

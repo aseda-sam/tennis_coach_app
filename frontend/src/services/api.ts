@@ -125,6 +125,12 @@ export interface TaskStatus {
   analysis_type: string;
   status: string;
   progress: number;
+  current_stage: string | null;
+  stage_progress: number | null;
+  stage_message: string | null;
+  estimated_time_remaining: number | null;
+  frames_processed: number | null;
+  total_frames: number | null;
   error: string | null;
   result: any | null;
   started_at: string;

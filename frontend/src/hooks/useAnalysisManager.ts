@@ -8,6 +8,9 @@ interface AnalysisState {
   taskId: number | null;
   status: 'idle' | 'starting' | 'processing' | 'finalizing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
+  currentStage?: string;
+  stageProgress?: number;
+  stageMessage?: string;
   error: string | null;
 }
 
@@ -96,6 +99,19 @@ export const useAnalysisManager = ({
       setIsLoading(false);
     }
   }, [videoId]);
+
+  // Update analysis state when task status changes
+  useEffect(() => {
+    if (taskStatus && analysisState.taskId) {
+      setAnalysisState(prev => ({
+        ...prev,
+        progress: taskStatus.progress,
+        currentStage: taskStatus.current_stage || undefined,
+        stageProgress: taskStatus.stage_progress || undefined,
+        stageMessage: taskStatus.stage_message || undefined,
+      }));
+    }
+  }, [taskStatus, analysisState.taskId]);
 
   // Function to refresh analysis data
   const refreshAnalysis = useCallback(async () => {
