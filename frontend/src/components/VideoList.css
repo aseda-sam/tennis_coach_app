@@ -428,6 +428,27 @@
   box-shadow: 0 4px 6px rgba(239, 68, 68, 0.25);
 }
 
+/* Analysis Progress Container */
+.analysis-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.cancel-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.25);
+  font-size: 0.8rem;
+  padding: 8px 12px;
+}
+
+.cancel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(239, 68, 68, 0.4);
+}
+
 .delete-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 15px rgba(239, 68, 68, 0.4);

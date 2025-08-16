@@ -86,12 +86,14 @@ export const videoApi = {
   },
 };
 
-export interface AnalysisSummary {
-  analysis_id: number;
+// Updated to match backend AnalysisStartResponse
+export interface AnalysisStartResponse {
+  analysis_id: number | null;
   video_filename: string;
   status: string;
   message: string;
-  estimated_duration?: number;
+  estimated_duration: number | null;
+  task_id: number | null;
 }
 
 export interface AnalysisData {
@@ -116,14 +118,39 @@ export interface AnalysisData {
   updated_at?: string;
 }
 
+// New interfaces for task status tracking
+export interface TaskStatus {
+  task_id: number;
+  video_id: number;
+  analysis_type: string;
+  status: string;
+  progress: number;
+  error: string | null;
+  result: any | null;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export interface TaskListResponse {
+  tasks: Record<number, TaskStatus>;
+  total: number;
+}
+
+export interface TaskStatsResponse {
+  total_tasks: number;
+  status_counts: Record<string, number>;
+  active_workers: number;
+  max_workers: number;
+}
+
 export const analysisApi = {
-  // Start analysis for a video
+  // Start analysis for a video - now returns AnalysisStartResponse with task_id
   startAnalysis: async (videoId: number, analysisRequest: {
     analysis_type: string;
     confidence_threshold?: number;
     include_pose_detection?: boolean;
-  }): Promise<AnalysisSummary> => {
-    const response = await analysisApiInstance.post<AnalysisSummary>(
+  }): Promise<AnalysisStartResponse> => {
+    const response = await analysisApiInstance.post<AnalysisStartResponse>(
       `/analysis/videos/${videoId}`, 
       analysisRequest
     );
@@ -151,6 +178,31 @@ export const analysisApi = {
   // Delete analysis by analysis ID
   deleteAnalysis: async (analysisId: number): Promise<void> => {
     await api.delete(`/analysis/${analysisId}`);
+  },
+
+  // New methods for task status tracking
+  // Get task status by task ID
+  getTaskStatus: async (taskId: number): Promise<TaskStatus> => {
+    const response = await api.get<TaskStatus>(`/analysis/tasks/${taskId}/status`);
+    return response.data;
+  },
+
+  // Get all active tasks
+  getAllTasks: async (): Promise<TaskListResponse> => {
+    const response = await api.get<TaskListResponse>('/analysis/tasks/');
+    return response.data;
+  },
+
+  // Get task statistics
+  getTaskStats: async (): Promise<TaskStatsResponse> => {
+    const response = await api.get<TaskStatsResponse>('/analysis/tasks/stats');
+    return response.data;
+  },
+
+  // Cancel a task
+  cancelTask: async (taskId: number): Promise<{ message: string; task_id: number }> => {
+    const response = await api.delete<{ message: string; task_id: number }>(`/analysis/tasks/${taskId}`);
+    return response.data;
   },
 };
 

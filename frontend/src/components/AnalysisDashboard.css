@@ -397,6 +397,30 @@
   line-height: 1.5;
 }
 
+.progress-section {
+  margin: 20px 0;
+  padding: 0 20px;
+}
+
+.cancel-analysis-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 16px;
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.25);
+}
+
+.cancel-analysis-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(239, 68, 68, 0.4);
+}
+
 .retry-btn {
   background: #dc3545;
   color: white;
