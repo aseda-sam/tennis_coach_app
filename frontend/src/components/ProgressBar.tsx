@@ -75,6 +75,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         <div 
           className="progress-fill"
           style={{ width: `${progress}%` }}
+          data-testid="progress-fill"
         />
         {status === 'processing' && animated && (
           <div className="progress-shimmer" />
