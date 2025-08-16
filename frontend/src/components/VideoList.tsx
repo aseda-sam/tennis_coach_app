@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { analysisApi, AnalysisData, AnalysisStartResponse, videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
-import { AnalyticsIcon, DeleteIcon, EyeIcon, GridIcon, ListIcon, PlayIcon, VideoIcon } from './Icons';
 import AnalysisModal from './AnalysisModal';
+import { AnalyticsIcon, DeleteIcon, EyeIcon, GridIcon, ListIcon, PlayIcon, VideoIcon } from './Icons';
+import ProgressBar from './ProgressBar';
 import './VideoList.css';
 
 interface VideoListProps {
@@ -250,6 +251,28 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
     setSelectedVideo(null);
   };
 
+  const handleCancelAnalysis = async (videoId: number) => {
+    const activeTask = activeTasks.get(videoId);
+    if (!activeTask || !activeTask.taskId) return;
+
+    try {
+      await analysisApi.cancelTask(activeTask.taskId);
+      
+      // Remove from active tasks
+      setActiveTasks(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(videoId);
+        return newMap;
+      });
+      
+      setError('Analysis cancelled successfully');
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to cancel analysis';
+      setError(errorMessage);
+      console.error('Error cancelling analysis:', err);
+    }
+  };
+
   const getAnalysisForVideo = (videoId: number): AnalysisData | null => {
     const video = videos.find(v => v.id === videoId);
     if (!video) return null;
@@ -441,14 +464,18 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
                   )}
                   
                   {isAnalyzing && (
-                    <button className="action-btn processing-btn" disabled>
-                      <div className="loading-dots">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                      </div>
-                      Analyzing...
-                    </button>
+                    <div className="analysis-progress-container">
+                      <ProgressBar
+                        progress={activeTasks.get(video.id)?.progress || 0}
+                        status={activeTasks.get(video.id)?.status as any || 'processing'}
+                        size="small"
+                        showPercentage={false}
+                        showStatus={false}
+                      />
+                      <button className="action-btn cancel-btn" onClick={() => handleCancelAnalysis(video.id)}>
+                        Cancel
+                      </button>
+                    </div>
                   )}
                   
                   <button

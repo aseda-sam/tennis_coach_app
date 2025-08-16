@@ -1,0 +1,190 @@
+.progress-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.progress-bar-container.small {
+  gap: 4px;
+}
+
+.progress-bar-container.large {
+  gap: 12px;
+}
+
+/* Progress Status */
+.progress-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.status-text.processing {
+  color: #f59e0b;
+}
+
+.status-text.completed {
+  color: #10b981;
+}
+
+.status-text.error {
+  color: #ef4444;
+}
+
+/* Progress Bar */
+.progress-bar {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.progress-bar.small {
+  height: 6px;
+}
+
+.progress-bar.large {
+  height: 12px;
+}
+
+.progress-bar.processing {
+  background: #fef3c7;
+}
+
+.progress-bar.completed {
+  background: #d1fae5;
+}
+
+.progress-bar.error {
+  background: #fee2e2;
+}
+
+/* Progress Fill */
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+.progress-bar.processing .progress-fill {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.progress-bar.completed .progress-fill {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.progress-bar.error .progress-fill {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+/* Shimmer Animation */
+.progress-shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Progress Percentage */
+.progress-percentage {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.percentage-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  transition: color 0.3s ease;
+}
+
+.progress-bar-container.small .percentage-text {
+  font-size: 0.7rem;
+}
+
+.progress-bar-container.large .percentage-text {
+  font-size: 0.875rem;
+}
+
+/* Animated Progress Bar */
+.progress-bar.animated .progress-fill {
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover Effects */
+.progress-bar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .progress-bar-container {
+    gap: 6px;
+  }
+  
+  .progress-bar {
+    height: 6px;
+  }
+  
+  .status-text {
+    font-size: 0.8rem;
+  }
+  
+  .percentage-text {
+    font-size: 0.7rem;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .progress-bar {
+    background: #374151;
+  }
+  
+  .progress-bar.processing {
+    background: #451a03;
+  }
+  
+  .progress-bar.completed {
+    background: #064e3b;
+  }
+  
+  .progress-bar.error {
+    background: #450a0a;
+  }
+  
+  .percentage-text {
+    color: #9ca3af;
+  }
+}

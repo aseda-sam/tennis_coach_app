@@ -6,7 +6,7 @@ interface AnalysisState {
   videoId: number;
   analysis: AnalysisData | null;
   taskId: number | null;
-  status: 'idle' | 'starting' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  status: 'idle' | 'starting' | 'processing' | 'finalizing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   error: string | null;
 }
@@ -47,12 +47,10 @@ export const useAnalysisManager = ({
   const [isLoading, setIsLoading] = useState(false);
 
   // Task status polling hook
-  const {
-    taskStatus,
-    loading: taskLoading,
-    error: taskError,
-    isPolling,
-  } = useTaskStatus({
+           const {
+           taskStatus,
+           loading: taskLoading,
+         } = useTaskStatus({
     taskId: analysisState.taskId,
     pollInterval: 2000,
     autoStop: true,
