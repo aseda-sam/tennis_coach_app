@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { analysisApi, AnalysisData } from '../services/api';
+import React, { useState } from 'react';
+import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import './AnalysisDashboard.css';
 import AnalysisResults from './AnalysisResults';
+import ProgressBar from './ProgressBar';
 import VideoPlayer from './VideoPlayer';
 
 interface AnalysisDashboardProps {
@@ -17,30 +18,22 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   videoUrl,
   onClose,
 }) => {
-  const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [aspectRatioMode, setAspectRatioMode] = useState<'cover' | 'contain' | 'auto'>('contain');
 
-  const loadAnalysis = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const analysisData = await analysisApi.getAnalysisByVideo(videoId);
-      setAnalysis(analysisData);
-    } catch (err: any) {
-      const message = err?.response?.data?.error?.message || 'Failed to load analysis results. Please try again.';
-      setError(message);
-      console.error('Error loading analysis:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [videoId]);
+  // Use the analysis manager hook for better state management
+  const { analysisState, refreshAnalysis, cancelAnalysis, isLoading } = useAnalysisManager({
+    videoId,
+    autoRefresh: true,
+    onAnalysisComplete: (analysis) => {
+      console.log('Analysis completed:', analysis);
+    },
+    onAnalysisError: (error) => {
+      console.error('Analysis error:', error);
+    },
+  });
 
-  useEffect(() => {
-    loadAnalysis();
-  }, [loadAnalysis]);
+  const { analysis, status, progress, error } = analysisState;
 
   const formatDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -158,21 +151,38 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         {/* Right Panel - Analysis Results */}
         <div className="right-panel">
           <div className="analysis-status-section">
-            {loading ? (
+            {isLoading || status === 'starting' || status === 'processing' || status === 'finalizing' ? (
               <div className="analysis-loading">
                 <div className="loading-header">
                   <div className="loading-spinner"></div>
                   <h3>Analyzing Tennis Video...</h3>
                 </div>
+                
+                <div className="progress-section">
+                  <ProgressBar
+                    progress={progress}
+                    status={status as any}
+                    size="large"
+                    showPercentage={true}
+                    showStatus={true}
+                  />
+                </div>
+                
                 <p className="loading-note">
                   This may take 2-3 minutes for longer videos. You can leave this page and return later.
                 </p>
+                
+                {(status === 'processing' || status === 'starting') && (
+                  <button className="cancel-analysis-btn" onClick={cancelAnalysis}>
+                    Cancel Analysis
+                  </button>
+                )}
               </div>
             ) : error ? (
               <div className="analysis-error">
                 <h3>❌ Analysis Error</h3>
                 <p>{error}</p>
-                <button className="retry-btn" onClick={loadAnalysis}>
+                <button className="retry-btn" onClick={refreshAnalysis}>
                   Try Again
                 </button>
               </div>
