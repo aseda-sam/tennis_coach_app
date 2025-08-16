@@ -135,25 +135,25 @@ describe('ProgressBar', () => {
   describe('Progress Bar Fill', () => {
     it('sets correct width based on progress', () => {
       render(<ProgressBar progress={75} status="processing" />);
-      const progressFill = screen.getByRole('progressbar').querySelector('.progress-fill');
+      const progressFill = screen.getByTestId('progress-fill');
       expect(progressFill).toHaveStyle({ width: '75%' });
     });
 
     it('handles edge cases', () => {
       const { rerender } = render(<ProgressBar progress={0} status="processing" />);
-      let progressFill = screen.getByRole('progressbar').querySelector('.progress-fill');
+      let progressFill = screen.getByTestId('progress-fill');
       expect(progressFill).toHaveStyle({ width: '0%' });
 
       rerender(<ProgressBar progress={100} status="processing" />);
-      progressFill = screen.getByRole('progressbar').querySelector('.progress-fill');
+      progressFill = screen.getByTestId('progress-fill');
       expect(progressFill).toHaveStyle({ width: '100%' });
 
       rerender(<ProgressBar progress={-10} status="processing" />);
-      progressFill = screen.getByRole('progressbar').querySelector('.progress-fill');
+      progressFill = screen.getByTestId('progress-fill');
       expect(progressFill).toHaveStyle({ width: '-10%' });
 
       rerender(<ProgressBar progress={150} status="processing" />);
-      progressFill = screen.getByRole('progressbar').querySelector('.progress-fill');
+      progressFill = screen.getByTestId('progress-fill');
       expect(progressFill).toHaveStyle({ width: '150%' });
     });
   });
