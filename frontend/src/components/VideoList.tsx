@@ -4,6 +4,7 @@ import { VideoMetadata } from '../types/video';
 import AnalysisModal from './AnalysisModal';
 import { AnalyticsIcon, DeleteIcon, EyeIcon, GridIcon, ListIcon, PlayIcon, VideoIcon } from './Icons';
 import ProgressBar from './ProgressBar';
+import StageProgress from './StageProgress';
 import './VideoList.css';
 
 interface VideoListProps {
@@ -22,7 +23,14 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   // Track active analysis tasks
-  const [activeTasks, setActiveTasks] = useState<Map<number, { taskId: number; progress: number; status: string }>>(new Map());
+  const [activeTasks, setActiveTasks] = useState<Map<number, { 
+    taskId: number; 
+    progress: number; 
+    status: string;
+    currentStage?: string;
+    stageProgress?: number;
+    stageMessage?: string;
+  }>>(new Map());
   
   // Ref to store verifyAnalysisData function to avoid circular dependency
   const verifyAnalysisDataRef = useRef<((videoId: number) => Promise<void>) | null>(null);
@@ -115,13 +123,16 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
       try {
         const taskStatus = await analysisApi.getTaskStatus(taskId);
         
-        // Update active tasks with new progress
+        // Update active tasks with new progress and stage information
         setActiveTasks(prev => {
           const newMap = new Map(prev);
           newMap.set(videoId, { 
             taskId, 
             progress: taskStatus.progress, 
-            status: taskStatus.status 
+            status: taskStatus.status,
+            currentStage: taskStatus.current_stage || undefined,
+            stageProgress: taskStatus.stage_progress || undefined,
+            stageMessage: taskStatus.stage_message || undefined
           });
           return newMap;
         });
@@ -465,13 +476,23 @@ const VideoList: React.FC<VideoListProps> = ({ onVideoDeleted, onViewAnalysis })
                   
                   {isAnalyzing && (
                     <div className="analysis-progress-container">
-                      <ProgressBar
-                        progress={activeTasks.get(video.id)?.progress || 0}
-                        status={activeTasks.get(video.id)?.status as any || 'processing'}
-                        size="small"
-                        showPercentage={false}
-                        showStatus={false}
-                      />
+                      {activeTasks.get(video.id)?.currentStage ? (
+                        <StageProgress
+                          currentStage={activeTasks.get(video.id)?.currentStage || 'processing'}
+                          stageProgress={activeTasks.get(video.id)?.stageProgress || 0}
+                          stageMessage={activeTasks.get(video.id)?.stageMessage || 'Processing...'}
+                          overallProgress={activeTasks.get(video.id)?.progress || 0}
+                          size="small"
+                        />
+                      ) : (
+                        <ProgressBar
+                          progress={activeTasks.get(video.id)?.progress || 0}
+                          status={activeTasks.get(video.id)?.status as any || 'processing'}
+                          size="small"
+                          showPercentage={false}
+                          showStatus={false}
+                        />
+                      )}
                       <button className="action-btn cancel-btn" onClick={() => handleCancelAnalysis(video.id)}>
                         Cancel
                       </button>

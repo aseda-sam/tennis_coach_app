@@ -3,6 +3,7 @@ import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import './AnalysisDashboard.css';
 import AnalysisResults from './AnalysisResults';
 import ProgressBar from './ProgressBar';
+import StageProgress from './StageProgress';
 import VideoPlayer from './VideoPlayer';
 
 interface AnalysisDashboardProps {
@@ -159,13 +160,23 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 </div>
                 
                 <div className="progress-section">
-                  <ProgressBar
-                    progress={progress}
-                    status={status as any}
-                    size="large"
-                    showPercentage={true}
-                    showStatus={true}
-                  />
+                  {analysisState.currentStage ? (
+                    <StageProgress
+                      currentStage={analysisState.currentStage}
+                      stageProgress={analysisState.stageProgress || 0}
+                      stageMessage={analysisState.stageMessage || 'Processing...'}
+                      overallProgress={progress}
+                      size="large"
+                    />
+                  ) : (
+                    <ProgressBar
+                      progress={progress}
+                      status={status as any}
+                      size="large"
+                      showPercentage={true}
+                      showStatus={true}
+                    />
+                  )}
                 </div>
                 
                 <p className="loading-note">

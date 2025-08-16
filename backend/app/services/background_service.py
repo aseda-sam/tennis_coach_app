@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.services.analysis_service import analyze_video, update_analysis_status
 from app.services.video_service import get_video_by_id
+from app.utils.progress_utils import set_task_storage
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,9 @@ logger = logging.getLogger(__name__)
 _active_tasks: Dict[int, Dict[str, Any]] = {}
 _task_counter = 0
 _task_lock = threading.Lock()
+
+# Initialize progress utility
+set_task_storage(_active_tasks, _task_lock)
 
 
 @contextmanager
@@ -116,6 +120,11 @@ class BackgroundTaskService:
                 if task_id in _active_tasks:
                     _active_tasks[task_id]["status"] = "processing"
                     _active_tasks[task_id]["progress"] = 5
+                    _active_tasks[task_id]["current_stage"] = "initializing"
+                    _active_tasks[task_id]["stage_progress"] = 100
+                    _active_tasks[task_id]["stage_message"] = (
+                        "Setting up analysis environment"
+                    )
 
             # Use proper database session management
             with get_background_db_session() as db:
@@ -155,6 +164,11 @@ class BackgroundTaskService:
                 with _task_lock:
                     if task_id in _active_tasks:
                         _active_tasks[task_id]["progress"] = 15
+                        _active_tasks[task_id]["current_stage"] = "frame_extraction"
+                        _active_tasks[task_id]["stage_progress"] = 100
+                        _active_tasks[task_id]["stage_message"] = (
+                            "Extracting video frames for analysis"
+                        )
 
                 # Run analysis (this is the CPU-intensive part)
                 result = analyze_video(
@@ -163,12 +177,18 @@ class BackgroundTaskService:
                     analysis_type=analysis_type,
                     confidence_threshold=confidence_threshold,
                     include_pose_detection=include_pose_detection,
+                    task_id=task_id,
                 )
 
-                # Update progress
+                # Update progress - finalizing
                 with _task_lock:
                     if task_id in _active_tasks:
                         _active_tasks[task_id]["progress"] = 95
+                        _active_tasks[task_id]["current_stage"] = "finalizing"
+                        _active_tasks[task_id]["stage_progress"] = 100
+                        _active_tasks[task_id]["stage_message"] = (
+                            "Completing analysis and saving results"
+                        )
 
                 # Check for errors
                 if isinstance(result, dict) and "error" in result:
