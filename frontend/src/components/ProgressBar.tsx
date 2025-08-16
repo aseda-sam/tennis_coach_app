@@ -62,7 +62,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   };
 
   return (
-    <div className={`progress-bar-container ${size}`}>
+    <div className={`progress-bar-container ${size}`} role="progressbar">
       {showStatus && (
         <div className="progress-status">
           <span className={`status-text ${getStatusColor()}`}>
