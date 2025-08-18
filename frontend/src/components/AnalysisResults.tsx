@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AnalysisData } from '../services/api';
 import './AnalysisResults.css';
+import TimingPerformance from './TimingPerformance';
 
 interface AnalysisResultsProps {
   analysis: AnalysisData | null;
@@ -16,13 +17,15 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [expandedSections, setExpandedSections] = useState<{
     pose: boolean;
     ball: boolean;
+    timing: boolean;
   }>({
     pose: false,
     ball: false,
+    timing: false,
   });
 
-  const toggleSection = (section: 'pose' | 'ball') => {
-    setExpandedSections((prev: { pose: boolean; ball: boolean }) => ({
+  const toggleSection = (section: 'pose' | 'ball' | 'timing') => {
+    setExpandedSections((prev) => ({
       ...prev,
       [section]: !prev[section]
     }));
@@ -70,6 +73,32 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       <div className="analysis-header">
         <h3>🎾 Tennis Coach Analysis Results</h3>
       </div>
+
+      {/* Performance Timing Section */}
+      {(analysis.timing || analysis.processing_time) && (
+        <div className="analysis-section">
+          <div 
+            className="section-header clickable" 
+            onClick={() => toggleSection('timing')}
+          >
+            <span className="section-icon">⚡</span>
+            <h4>Performance Metrics</h4>
+            <div className="status-badge info">
+              {analysis.timing ? 'Detailed' : 'Basic'} timing
+            </div>
+            <span className="toggle-icon">
+              {expandedSections.timing ? '▼' : '▶'}
+            </span>
+          </div>
+          
+          {expandedSections.timing && (
+            <TimingPerformance 
+              timing={analysis.timing}
+              processingTime={analysis.processing_time}
+            />
+          )}
+        </div>
+      )}
 
       {/* Pose Detection Results */}
       {analysis.frames_with_pose !== undefined && (
