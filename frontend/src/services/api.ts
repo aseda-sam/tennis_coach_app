@@ -116,6 +116,15 @@ export interface AnalysisData {
   pose_detections: any[];
   created_at: string;
   updated_at?: string;
+  // New timing information
+  timing?: {
+    frame_extraction?: number;
+    ball_detection?: number;
+    pose_detection?: number;
+    frame_annotation?: number;
+    video_creation?: number;
+    total_analysis?: number;
+  };
 }
 
 // New interfaces for task status tracking

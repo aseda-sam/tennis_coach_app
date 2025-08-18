@@ -110,6 +110,11 @@
   color: #856404;
 }
 
+.status-badge.info {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
 .analysis-metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

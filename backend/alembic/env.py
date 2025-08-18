@@ -8,6 +8,11 @@ from app.core.config import settings
 # Import models for autogenerate support
 from app.core.database import Base
 
+# IMPORTANT: Import model modules so their tables are registered on Base.metadata
+# Without these imports, autogenerate will see no tables and create empty migrations
+from app.models import analysis as _analysis_model  # noqa: F401
+from app.models import video as _video_model  # noqa: F401
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -40,7 +45,7 @@ def run_migrations_offline() -> None:
 
     """
     # Override the URL from settings to ensure consistency
-    url = settings.DATABASE_URL
+    url = settings.database_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -61,7 +66,7 @@ def run_migrations_online() -> None:
     """
     # Override the database URL from settings to ensure consistency
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = settings.DATABASE_URL
+    configuration["sqlalchemy.url"] = settings.database_url
 
     connectable = engine_from_config(
         configuration,

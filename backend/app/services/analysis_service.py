@@ -157,9 +157,10 @@ def analyze_video(
         analysis_type: Type of analysis to perform
         confidence_threshold: Detection confidence threshold
         include_pose_detection: Whether to include pose detection
+        task_id: Optional task ID for progress updates
 
     Returns:
-        Analysis results dictionary
+        Analysis results dictionary with timing information
     """
     from app.services.video_service import get_video_by_id
 
@@ -236,6 +237,20 @@ def analyze_video(
         if "error" in analysis_results:
             return analysis_results
 
+        # Extract timing information
+        timing_info = analysis_results.get("timing", {})
+
+        # Log detailed timing information
+        if timing_info:
+            logger.info("📊 Analysis Performance Summary:")
+            for stage, duration in timing_info.items():
+                if stage != "total_analysis":
+                    percentage = (
+                        (duration / processing_time) * 100 if processing_time > 0 else 0
+                    )
+                    logger.info(f"  {stage}: {duration:.3f}s ({percentage:.1f}%)")
+            logger.info(f"  Total processing time: {processing_time:.3f}s")
+
         # Update existing analysis record or create new one
         if existing_analysis and existing_analysis.status == "processing":
             # Update existing processing record
@@ -307,6 +322,7 @@ def analyze_video(
             "frames_processed": analysis_results["frames_processed"],
             "estimated_duration": processing_time
             * 1.2,  # Rough estimate for future videos
+            "timing": timing_info,
         }
 
     except (OSError, ValueError, RuntimeError) as e:
