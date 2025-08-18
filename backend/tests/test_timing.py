@@ -13,7 +13,7 @@ API_BASE = "http://localhost:8000"
 TEST_VIDEO = "test_tennis_video.mp4"  # Use dedicated test video
 
 
-def test_timing_functionality():
+def test_timing_functionality() -> None:
     """Test the timing functionality by analyzing an existing video."""
 
     print("🎾 Testing Timing Functionality")
@@ -22,7 +22,7 @@ def test_timing_functionality():
     # Step 1: Check if video exists in database
     print(f"1. Checking if video '{TEST_VIDEO}' exists...")
     try:
-        response = requests.get(f"{API_BASE}/api/videos/")
+        response = requests.get(f"{API_BASE}/v0/videos/", timeout=10)
         if response.status_code == 200:
             videos = response.json()
             video_id = None
@@ -49,8 +49,9 @@ def test_timing_functionality():
     print(f"\n2. Starting analysis for video ID {video_id}...")
     try:
         response = requests.post(
-            f"{API_BASE}/api/videos/{video_id}/analyze",
+            f"{API_BASE}/v0/videos/{video_id}/analyze",
             json={"analysis_type": "comprehensive", "include_pose_detection": True},
+            timeout=30,
         )
 
         if response.status_code == 200:
@@ -62,7 +63,7 @@ def test_timing_functionality():
             print(f"   ❌ Failed to start analysis: {response.status_code}")
             print(f"   Response: {response.text}")
             return
-    except Exception as e:
+    except (requests.RequestException, ValueError) as e:
         print(f"   ❌ Error starting analysis: {e}")
         return
 
@@ -77,9 +78,9 @@ def test_timing_functionality():
 
     # Poll for status
     max_attempts = 30  # 30 seconds
-    for attempt in range(max_attempts):
+    for _attempt in range(max_attempts):
         try:
-            response = requests.get(f"{API_BASE}/api/analysis/task/{task_id}")
+            response = requests.get(f"{API_BASE}/v0/analysis/task/{task_id}", timeout=5)
             if response.status_code == 200:
                 status = response.json()
                 progress = status.get("progress", 0)
@@ -100,7 +101,7 @@ def test_timing_functionality():
                     break
             else:
                 print(f"   ⚠️  Failed to get status: {response.status_code}")
-        except Exception as e:
+        except (requests.RequestException, ValueError) as e:
             print(f"   ⚠️  Error checking status: {e}")
 
         time.sleep(1)
