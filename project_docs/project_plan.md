@@ -132,12 +132,14 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 
 ### Phase 8: Production Infrastructure Migration (Current Priority) 🚧 **IN PROGRESS**
 
-- [ ] **Supabase Database Migration**: Replace SQLite with PostgreSQL for production
-  - [ ] **Environment-based Configuration**: Support both SQLite (dev) and Supabase (prod)
-  - [ ] **Database Connection Setup**: Direct PostgreSQL connection to Supabase
-  - [ ] **Migration Strategy**: Fresh migration approach for clean schema
-  - [ ] **Environment Variables**: Production vs development database URLs
-  - [ ] **Testing**: Verify database connectivity and migration success
+- [x] **Supabase Database Migration**: Replace SQLite with PostgreSQL for production ✅ **COMPLETED**
+  - [x] **Environment-based Configuration**: Support both SQLite (dev) and Supabase (prod)
+  - [x] **Database Connection Setup**: Direct PostgreSQL connection to Supabase
+  - [x] **Migration Strategy**: Fresh migration approach for clean schema
+  - [x] **Environment Variables**: Production vs development database URLs
+  - [x] **Testing**: Verify database connectivity and migration success
+  - [x] **Local Development Setup**: Environment variable management for local Supabase testing
+  - [x] **Security Considerations**: RLS warnings addressed (optional for single-user app)
 - [ ] **Cloud Storage Integration**: Replace local file storage with cloud solution
   - [ ] **Storage Provider Selection**: S3 vs Cloudinary vs Backblaze B2 evaluation
   - [ ] **Environment-based Storage**: Local storage (dev) vs cloud storage (prod)
@@ -248,6 +250,64 @@ cd frontend && npm run lint
 # Performance testing
 cd backend && python scripts/run_performance_test.py
 cd backend && python scripts/docker_performance_test.py
+```
+
+## Local Development with Supabase
+
+### Running Backend with Supabase Locally
+
+To use Supabase instead of SQLite for local development:
+
+```bash
+# Option 1: Use .env.production (Recommended)
+cd backend
+set -a && source .env.production && set +a
+python -m uvicorn app.main:app --reload
+
+# Option 2: Set environment variables directly
+cd backend
+ENVIRONMENT=production SUPABASE_DB_URL='your_connection_string' python -m uvicorn app.main:app --reload
+
+# Option 3: Create startup script
+# Create backend/start-supabase.sh:
+#!/bin/bash
+set -a
+source .env.production
+set +a
+python -m uvicorn app.main:app --reload
+```
+
+### Environment Variable Management
+
+- **Session-specific**: Environment variables set with `set -a` only persist for current terminal session
+- **Restart required**: Need to re-run environment setup for each new terminal session
+- **Security**: `.env.production` contains database credentials and is gitignored
+
+### Supabase Security Warnings (RLS)
+
+When using Supabase, you may see Row Level Security (RLS) warnings:
+
+```
+Table 'public.videos' is public, but RLS has not been enabled.
+Table 'public.analyses' is public, but RLS has not been enabled.
+```
+
+**For single-user applications:**
+
+- These warnings can be safely ignored
+- RLS is not critical until you implement user authentication
+- Your app will function normally without RLS enabled
+
+**To enable RLS (optional):**
+
+```sql
+-- Enable RLS on tables
+ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE analyses ENABLE ROW LEVEL SECURITY;
+
+-- Create permissive policies (for single-user app)
+CREATE POLICY "Allow all operations on videos" ON videos FOR ALL USING (true);
+CREATE POLICY "Allow all operations on analyses" ON analyses FOR ALL USING (true);
 ```
 
 ## Contributing
