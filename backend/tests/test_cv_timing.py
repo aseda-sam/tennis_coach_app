@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.services.cv_service import cv_service
 
 
-def test_cv_timing_direct():
+def test_cv_timing_direct() -> None:
     """Test CV service timing functionality directly."""
 
     print("🎾 Direct CV Service Timing Test")
