@@ -7,12 +7,16 @@ interface AnalysisResultsProps {
   analysis: AnalysisData | null;
   isLoading?: boolean;
   error?: string | null;
+  onReanalyze?: (analysisId: number) => void;
+  isReanalyzing?: boolean;
 }
 
 const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   analysis,
   isLoading = false,
   error = null,
+  onReanalyze,
+  isReanalyzing = false,
 }) => {
   const [expandedSections, setExpandedSections] = useState<{
     pose: boolean;
@@ -71,7 +75,18 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   return (
     <div className="analysis-results">
       <div className="analysis-header">
-        <h3>🎾 Tennis Coach Analysis Results</h3>
+        <div className="header-content">
+          <h3>🎾 Tennis Coach Analysis Results</h3>
+          {analysis && onReanalyze && (
+            <button
+              className="reanalyze-button"
+              onClick={() => onReanalyze(analysis.id)}
+              disabled={isReanalyzing}
+            >
+              {isReanalyzing ? '🔄 Reanalyzing...' : '🔄 Reanalyze'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Performance Timing Section */}

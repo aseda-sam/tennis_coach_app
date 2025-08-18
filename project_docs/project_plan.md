@@ -130,7 +130,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
   - [x] **Enhanced Progress Components**: Stage-specific progress indicators
   - [x] **Stage Information Display**: Current stage, sub-progress, and time estimates
 
-### Phase 8: Production Infrastructure Migration (Current Priority) 🚧 **IN PROGRESS**
+### Phase 8: Production Infrastructure Migration ✅ **COMPLETED**
 
 - [x] **Supabase Database Migration**: Replace SQLite with PostgreSQL for production ✅ **COMPLETED**
   - [x] **Environment-based Configuration**: Support both SQLite (dev) and Supabase (prod)
@@ -140,19 +140,125 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
   - [x] **Testing**: Verify database connectivity and migration success
   - [x] **Local Development Setup**: Environment variable management for local Supabase testing
   - [x] **Security Considerations**: RLS warnings addressed (optional for single-user app)
-- [ ] **Cloud Storage Integration**: Replace local file storage with cloud solution
+- [ ] **Cloud Storage Integration**: Replace local file storage with cloud solution (Future)
   - [ ] **Storage Provider Selection**: S3 vs Cloudinary vs Backblaze B2 evaluation
   - [ ] **Environment-based Storage**: Local storage (dev) vs cloud storage (prod)
   - [ ] **File Upload/Download**: Cloud storage integration for video files
   - [ ] **Storage Configuration**: Environment variables for cloud credentials
   - [ ] **Fallback Strategy**: Local storage fallback for development
-- [ ] **Multi-environment Setup**: Complete development vs production configuration
+- [ ] **Multi-environment Setup**: Complete development vs production configuration (Future)
   - [ ] **Environment Detection**: Automatic environment detection and configuration
   - [ ] **Configuration Management**: Centralized settings for all environments
   - [ ] **Deployment Updates**: Update deployment scripts for new infrastructure
   - [ ] **Testing Strategy**: Comprehensive testing across environments
 
-### Phase 9: Advanced Features (Future)
+### Phase 9: Ball Detection Improvements & Contact Posture Analysis 🚧 **IN PROGRESS**
+
+#### Phase 9A: Ball Detection Foundation Improvements (Current Priority)
+
+**Goal**: Improve ball detection reliability and accuracy as foundation for contact posture analysis.
+
+- [x] **Step 1: Fix Configuration Usage** (Low-hanging fruit) ✅ **COMPLETED**
+
+  - [x] Use `BALL_CONFIDENCE_THRESHOLD` from config instead of hard-coded 0.5
+  - [x] Implement proper `FRAME_SKIP_RATIO` usage in frame extraction
+  - [x] Disable frame skipping by default (set ratio to 1) for smoother video playback
+  - [x] Test with existing videos to verify improvements
+  - [x] **User Testing**: Verify ball detection quality improvement
+
+- [ ] **Step 2: Adaptive Confidence Thresholds** (Medium complexity)
+
+  - [ ] Implement video quality assessment (blur, lighting, resolution)
+  - [ ] Adjust confidence thresholds based on video quality
+  - [ ] Add quality metrics to analysis results
+  - [ ] **User Testing**: Test with poor vs good quality videos
+
+- [ ] **Step 3: YOLO Model Optimization** (Medium complexity)
+
+  - [ ] Test `yolov8s.pt` (small) vs `yolov8n.pt` (nano) for accuracy/speed trade-off
+  - [ ] Implement model selection based on video quality
+  - [ ] Add model performance metrics to analysis
+  - [ ] **User Testing**: Compare detection accuracy between models
+
+- [ ] **Step 4: Temporal Smoothing** (Advanced)
+  - [ ] Implement ball trajectory prediction between frames
+  - [ ] Filter false positives using motion patterns
+  - [ ] Add trajectory confidence scoring
+  - [ ] **User Testing**: Verify smoother ball tracking
+
+#### Phase 9B: Contact Posture Analysis MVP
+
+**Goal**: Implement minimal viable contact posture analysis using improved ball detection.
+
+- [ ] **Step 1: Contact Frame Detection** (Foundation)
+
+  - [ ] Implement ball deceleration detection algorithm
+  - [ ] Add wrist proximity filtering for contact candidates
+  - [ ] Create contact event detection service
+  - [ ] **User Testing**: Verify contact frame detection accuracy
+
+- [ ] **Step 2: Basic Posture Metrics** (Core functionality)
+
+  - [ ] Calculate contact height (normalized to player torso)
+  - [ ] Calculate lateral offset (ball position relative to body midline)
+  - [ ] Calculate elbow angle at contact
+  - [ ] **User Testing**: Verify metric calculations are reasonable
+
+- [ ] **Step 3: Contact Analysis API** (Backend integration)
+
+  - [ ] Create `ContactPostureAnalysis` Pydantic schemas
+  - [ ] Implement compute-on-read endpoint (`GET /v0/analysis/{id}/contact`)
+  - [ ] Add JSON caching with invalidation (algo_version + inputs_hash)
+  - [ ] **User Testing**: Test API endpoint with existing analyses
+
+- [ ] **Step 4: Frontend Contact Display** (UI integration)
+  - [ ] Add contact events list to `AnalysisResults` component
+  - [ ] Implement timeline markers on video player
+  - [ ] Display contact metrics with tooltips
+  - [ ] **User Testing**: Verify UI displays contact data correctly
+
+#### Phase 9C: Enhanced Contact Analysis
+
+**Goal**: Expand contact posture analysis with more sophisticated metrics.
+
+- [ ] **Step 1: Advanced Posture Metrics**
+
+  - [ ] Shoulder line angle and rotation
+  - [ ] Hip-shoulder separation (stance width)
+  - [ ] Weight distribution indicators
+  - [ ] **User Testing**: Verify advanced metrics provide useful insights
+
+- [ ] **Step 2: Contact Classification**
+
+  - [ ] Classify contact types (forehand, backhand, serve)
+  - [ ] Add stroke-specific posture analysis
+  - [ ] Implement contact confidence scoring
+  - [ ] **User Testing**: Verify stroke classification accuracy
+
+- [ ] **Step 3: Database Integration**
+  - [ ] Create `ContactPostureAnalysis` database model
+  - [ ] Migrate from JSON cache to persistent storage
+  - [ ] Add contact analysis to background task pipeline
+  - [ ] **User Testing**: Verify database storage and retrieval
+
+#### Phase 9D: Coaching Insights
+
+**Goal**: Transform contact posture data into actionable coaching feedback.
+
+- [ ] **Step 1: Posture Assessment**
+
+  - [ ] Define "good" vs "needs improvement" thresholds for each metric
+  - [ ] Implement posture scoring system
+  - [ ] Add posture improvement suggestions
+  - [ ] **User Testing**: Verify assessment provides useful feedback
+
+- [ ] **Step 2: Trend Analysis**
+  - [ ] Compare contact posture across multiple videos
+  - [ ] Track improvement over time
+  - [ ] Generate progress reports
+  - [ ] **User Testing**: Verify trend analysis works across sessions
+
+### Phase 10: Advanced Features (Future)
 
 - [ ] **Redis Queue Migration**: Upgrade to RQ for production-grade task management
 - [ ] **Advanced Stroke Detection**: Forehand/backhand classification

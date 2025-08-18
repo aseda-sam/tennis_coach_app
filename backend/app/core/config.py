@@ -38,14 +38,16 @@ class Settings(BaseSettings):
 
     # Processing
     MAX_VIDEO_DURATION: int = 300  # 5 minutes
-    FRAME_SKIP_RATIO: int = 2  # Process every nth frame
+    FRAME_SKIP_RATIO: int = 1  # Process every frame (no skipping by default)
     MAX_VIDEO_RESOLUTION: tuple[int, int] = (3840, 2160)  # 4K support (local)
     MAX_FPS: int = 60  # 60fps support (local)
 
     # Docker-specific limits (will be overridden in Docker)
     DOCKER_MAX_VIDEO_RESOLUTION: tuple[int, int] = (1920, 1080)  # 1080p for Docker
     DOCKER_MAX_FPS: int = 60  # 60fps for Docker
-    DOCKER_FRAME_SKIP_RATIO: int = 3  # Process every 3rd frame in Docker
+    DOCKER_FRAME_SKIP_RATIO: int = (
+        1  # Process every frame in Docker (no skipping by default)
+    )
 
     # API
     API_V1_STR: str = "/v0"

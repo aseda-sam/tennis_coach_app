@@ -1,5 +1,6 @@
 """Analysis API routes with proper REST patterns and error handling."""
 
+import logging
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends
@@ -33,6 +34,8 @@ from app.utils.error_handling import (
     handle_processing_error,
     log_and_raise_error,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -329,6 +332,120 @@ async def get_analysis_status(analysis_id: int, db: Session = Depends(get_db)) -
         }
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "get_analysis_status", {"analysis_id": analysis_id})
+
+
+@router.post("/{analysis_id}/reanalyze", response_model=AnalysisStartResponse)
+async def reanalyze_video(
+    analysis_id: int, request: AnalysisRequest, db: Session = Depends(get_db)
+) -> AnalysisStartResponse:
+    """
+    Reanalyze a video by deleting existing analysis and starting fresh.
+
+    Args:
+        analysis_id: Unique analysis identifier
+        request: Analysis configuration
+
+    Returns:
+        Analysis start confirmation with task ID for tracking
+    """
+    try:
+        # Get existing analysis to verify it exists and get video info
+        analysis = get_analysis_by_id(db, analysis_id)
+        if not analysis:
+            raise handle_not_found_error("analysis", str(analysis_id))
+
+        video_id = analysis.video_id
+        video_filename = analysis.video_filename
+
+        # Verify video still exists
+        video = get_video_by_id(db, video_id)
+        if not video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Validate analysis type
+        valid_types = [
+            AnalysisTypes.BALL_TRACKING,
+            AnalysisTypes.POSE_DETECTION,
+            AnalysisTypes.COMPREHENSIVE,
+        ]
+        if request.analysis_type not in valid_types:
+            raise handle_processing_error(
+                "analysis_start",
+                f"Invalid analysis type. Valid types: {', '.join(valid_types)}",
+            )
+
+        # Check if there's an active background task processing this video
+        active_task = background_service.get_active_task_for_video(video_id)
+        if active_task:
+            return AnalysisStartResponse(
+                analysis_id=analysis_id,
+                video_filename=video_filename,
+                status=AnalysisStatus.PROCESSING,
+                message="Analysis already in progress",
+                estimated_duration=300,  # 5 minutes estimate
+                task_id=active_task["task_id"],
+            )
+
+        # Delete existing analysis and related files
+        from app.services.analysis_service import delete_analysis
+
+        if delete_analysis(db, video_filename):
+            logger.info(f"Deleted existing analysis {analysis_id} for reanalysis")
+        else:
+            logger.warning(f"Failed to delete existing analysis {analysis_id}")
+
+        # Start fresh analysis
+        # Check if synchronous mode is requested
+        if request.synchronous:
+            # Run analysis synchronously (for testing)
+            from app.services.analysis_service import analyze_video
+
+            analysis_result = analyze_video(
+                db=db,
+                video_id=video_id,
+                analysis_type=request.analysis_type,
+                confidence_threshold=request.confidence_threshold,
+                include_pose_detection=request.include_pose_detection,
+            )
+
+            # Check for errors in synchronous mode
+            if isinstance(analysis_result, dict) and "error" in analysis_result:
+                raise handle_processing_error("analysis", analysis_result["error"])
+
+            # Get the new analysis record created by analyze_video
+            new_analysis = get_analysis_by_video_id(db, video_id)
+            if not new_analysis:
+                raise handle_processing_error(
+                    "analysis", "Failed to create new analysis record"
+                )
+
+            return AnalysisStartResponse(
+                analysis_id=new_analysis.id,
+                video_filename=video_filename,
+                status=AnalysisStatus.COMPLETED,
+                message="Reanalysis completed synchronously",
+                estimated_duration=analysis_result.get("processing_time", 0.0),
+                task_id=None,
+            )
+        else:
+            # Start background task
+            task_id = background_service.start_analysis_task(
+                video_id=video_id,
+                analysis_type=request.analysis_type,
+                confidence_threshold=request.confidence_threshold,
+                include_pose_detection=request.include_pose_detection,
+            )
+
+            return AnalysisStartResponse(
+                analysis_id=None,  # Will be created by background task
+                video_filename=video_filename,
+                status=AnalysisStatus.PROCESSING,
+                message="Reanalysis started in background",
+                estimated_duration=300,  # 5 minutes estimate
+                task_id=task_id,
+            )
+    except (OSError, ValueError, RuntimeError) as e:
+        log_and_raise_error(e, "reanalyze_video", {"analysis_id": analysis_id})
 
 
 # Background task management endpoints

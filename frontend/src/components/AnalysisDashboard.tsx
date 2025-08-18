@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
+import { analysisApi } from '../services/api';
 import './AnalysisDashboard.css';
 import AnalysisResults from './AnalysisResults';
 import ProgressBar from './ProgressBar';
@@ -35,6 +36,35 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   });
 
   const { analysis, status, progress, error } = analysisState;
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
+
+  // Handle reanalyze functionality
+  const handleReanalyze = async (analysisId: number) => {
+    if (!analysis) return;
+    
+    try {
+      setIsReanalyzing(true);
+      console.log('Starting reanalysis for analysis ID:', analysisId);
+      
+      // Start reanalysis with same parameters as original analysis
+      const reanalysisResponse = await analysisApi.reanalyzeVideo(analysisId, {
+        analysis_type: analysis.analysis_type,
+        confidence_threshold: analysis.confidence_threshold,
+        include_pose_detection: analysis.include_pose_detection || false,
+      });
+      
+      console.log('Reanalysis started:', reanalysisResponse);
+      
+      // Refresh the analysis to get updated status
+      await refreshAnalysis();
+      
+    } catch (error) {
+      console.error('Failed to start reanalysis:', error);
+      alert('Failed to start reanalysis. Please try again.');
+    } finally {
+      setIsReanalyzing(false);
+    }
+  };
 
   const formatDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -198,7 +228,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 </button>
               </div>
             ) : analysis ? (
-              <AnalysisResults analysis={analysis} />
+              <AnalysisResults 
+                analysis={analysis} 
+                onReanalyze={handleReanalyze}
+                isReanalyzing={isReanalyzing}
+              />
             ) : (
               <div className="analysis-empty">
                 <h3>📊 Analysis Results</h3>

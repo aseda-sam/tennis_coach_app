@@ -172,6 +172,19 @@ export const analysisApi = {
     return response.data;
   },
 
+  // Reanalyze a video by deleting existing analysis and starting fresh
+  reanalyzeVideo: async (analysisId: number, analysisRequest: {
+    analysis_type: string;
+    confidence_threshold?: number;
+    include_pose_detection?: boolean;
+  }): Promise<AnalysisStartResponse> => {
+    const response = await analysisApiInstance.post<AnalysisStartResponse>(
+      `/analysis/${analysisId}/reanalyze`, 
+      analysisRequest
+    );
+    return response.data;
+  },
+
   // Get analysis results by analysis ID
   getAnalysis: async (analysisId: number): Promise<AnalysisData> => {
     const response = await api.get<AnalysisData>(`/analysis/${analysisId}`);
