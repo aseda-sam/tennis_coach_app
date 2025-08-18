@@ -7,6 +7,7 @@
 A computer vision-based tennis analysis system that demonstrates data engineering and AI evaluation skills. The system processes tennis videos to extract meaningful insights about player performance, ball trajectory, and court positioning.
 
 ### Key Features (MVP) ✅ **COMPLETED**
+
 - **Video Upload & Processing**: Upload tennis videos and extract basic metadata
 - **Ball Tracking**: YOLO-based ball detection with trajectory analysis
 - **Player Positioning**: MediaPipe pose estimation for court position analysis
@@ -14,17 +15,19 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - **Metrics Dashboard**: Visualization of key tennis performance metrics
 
 ### Tech Stack
+
 - **Backend**: FastAPI (Python)
 - **Frontend**: React (Simple, portfolio-focused)
 - **Computer Vision**: YOLO + MediaPipe
-- **Database**: SQLite (MVP) → PostgreSQL (later)
-- **Storage**: Local file system → S3/MinIO (later)
+- **Database**: SQLite (Development) → PostgreSQL/Supabase (Production)
+- **Storage**: Local file system → Cloud Storage (S3/Cloudinary)
 
 ## Current Status
 
 ### ✅ Completed Features
+
 - **Phase 1**: Basic Video Upload & File Management
-- **Phase 2**: Database Integration  
+- **Phase 2**: Database Integration
 - **Phase 3**: Frontend Development
 - **Phase 4**: Computer Vision Foundation (including MediaPipe)
 - **Phase 5**: Analysis Pipeline
@@ -34,6 +37,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - **Phase 9**: Video Resolution Handling & Performance Optimization
 
 ### 🚀 Production Ready
+
 - **CI/CD Pipeline**: GitHub Actions with automated testing and deployment
 - **Backend Deployment**: Render with automatic GitHub integration
 - **Frontend Deployment**: GitHub Pages with production builds
@@ -43,6 +47,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 ## Implementation Phases
 
 ### Phase 1: Basic Video Upload & File Management ✅
+
 - [x] Set up FastAPI project structure
 - [x] Create video upload endpoint with validation
 - [x] Add file storage system
@@ -52,6 +57,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] Build React frontend with upload interface
 
 ### Phase 2: Computer Vision Foundation ✅
+
 - [x] Add OpenCV for video frame extraction
 - [x] Integrate YOLO for ball detection
 - [x] Add MediaPipe for pose estimation
@@ -60,6 +66,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] Create pose overlay visualization
 
 ### Phase 3: Analysis Pipeline ✅
+
 - [x] Process video frames with CV models
 - [x] Store analysis results in database
 - [x] Calculate basic metrics (ball detections, pose detection rate)
@@ -68,6 +75,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] Add pose detection metrics to database schema
 
 ### Phase 4: Frontend Analysis Display ✅
+
 - [x] Show analysis results in frontend
 - [x] Create AnalysisResults component with collapsible sections
 - [x] Build VideoPlayer component with controls and fullscreen
@@ -76,6 +84,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] Create enhanced video list with analysis status
 
 ### Phase 5: Video Playback & Codec Optimization ✅
+
 - [x] Fix annotated video playback issues
 - [x] Implement fallback codec system for OpenCV
 - [x] Add FFmpeg H.264 conversion for browser compatibility
@@ -83,6 +92,7 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] Add proper error handling and fallback mechanisms
 
 ### Phase 6: Production Deployment ✅
+
 - [x] CI/CD pipeline with GitHub Actions
 - [x] Render backend deployment with automatic GitHub integration
 - [x] GitHub Pages frontend deployment with production builds
@@ -91,9 +101,8 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] Docker multi-stage builds with development and production targets
 - [x] Health checks and proper container lifecycle management
 
-## Future Roadmap
+### Phase 7: Enhancement & Polish ✅
 
-### Phase 7: Enhancement & Polish (Next Priority)
 - [x] **Video Resolution Handling**: Add resolution and frame rate limits to prevent processing crashes ✅ **COMPLETED**
   - [x] **Quick Fix**: Add 1080p resolution validation to prevent 4K uploads
   - [x] **Video Downscaling**: Automatically downscale 4K videos to 1080p before processing
@@ -113,6 +122,36 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
   - [x] **Progress Indicators**: Visual feedback for ongoing analyses
   - [x] **Cancel Functionality**: Cancel ongoing analysis with proper cleanup
   - [x] **Error Recovery**: Graceful error handling and retry mechanisms
+- [x] **Granular Progress Tracking**: Stage-specific feedback and detailed progress ✅ **COMPLETED**
+  - [x] **Backend Stage Configuration**: Analysis stage definitions and progress ranges
+  - [x] **Enhanced Task Status Schema**: Stage information and detailed progress
+  - [x] **CV Service Progress Callbacks**: Stage-specific progress tracking
+  - [x] **Frontend Stage Icons**: Custom SVG icons for each analysis stage
+  - [x] **Enhanced Progress Components**: Stage-specific progress indicators
+  - [x] **Stage Information Display**: Current stage, sub-progress, and time estimates
+
+### Phase 8: Production Infrastructure Migration (Current Priority) 🚧 **IN PROGRESS**
+
+- [ ] **Supabase Database Migration**: Replace SQLite with PostgreSQL for production
+  - [ ] **Environment-based Configuration**: Support both SQLite (dev) and Supabase (prod)
+  - [ ] **Database Connection Setup**: Direct PostgreSQL connection to Supabase
+  - [ ] **Migration Strategy**: Fresh migration approach for clean schema
+  - [ ] **Environment Variables**: Production vs development database URLs
+  - [ ] **Testing**: Verify database connectivity and migration success
+- [ ] **Cloud Storage Integration**: Replace local file storage with cloud solution
+  - [ ] **Storage Provider Selection**: S3 vs Cloudinary vs Backblaze B2 evaluation
+  - [ ] **Environment-based Storage**: Local storage (dev) vs cloud storage (prod)
+  - [ ] **File Upload/Download**: Cloud storage integration for video files
+  - [ ] **Storage Configuration**: Environment variables for cloud credentials
+  - [ ] **Fallback Strategy**: Local storage fallback for development
+- [ ] **Multi-environment Setup**: Complete development vs production configuration
+  - [ ] **Environment Detection**: Automatic environment detection and configuration
+  - [ ] **Configuration Management**: Centralized settings for all environments
+  - [ ] **Deployment Updates**: Update deployment scripts for new infrastructure
+  - [ ] **Testing Strategy**: Comprehensive testing across environments
+
+### Phase 9: Advanced Features (Future)
+
 - [ ] **Redis Queue Migration**: Upgrade to RQ for production-grade task management
 - [ ] **Advanced Stroke Detection**: Forehand/backhand classification
 - [ ] **Rally Analysis**: Duration and pattern recognition
@@ -120,21 +159,8 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [ ] **Performance Metrics**: Advanced tennis-specific analytics
 - [ ] **User Experience Improvements**: Better loading states, error handling
 
-### Phase 8: Production Hardening
-- [ ] **Database Migration**: SQLite → PostgreSQL for production
-- [ ] **Cloud Storage**: S3/MinIO integration for video storage
-- [x] **Background Processing**: ThreadPoolExecutor-based task management ✅ **COMPLETED**
-- [ ] **Monitoring & Logging**: Production-grade observability
-- [ ] **Security Hardening**: Authentication, rate limiting, input validation
-
-### Phase 9: Advanced Features
-- [ ] **Multi-player Tracking**: Support for doubles matches
-- [ ] **Stroke Technique Analysis**: Advanced biomechanical insights
-- [ ] **Match Statistics**: Comprehensive performance analytics
-- [ ] **Export Capabilities**: PDF reports, video highlights
-- [ ] **Mobile Optimization**: Progressive Web App features
-
 ### Phase 10: Performance & Testing Tools ✅ **COMPLETED**
+
 - [x] **Performance Testing Scripts**: Comprehensive testing for different environments
   - [x] `performance_test.py` - Local environment testing with full video processing
   - [x] `docker_performance_test.py` - Docker-optimized testing with memory limits
@@ -143,36 +169,8 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 - [x] **Dynamic Configuration**: Environment-specific processing limits
 - [x] **Validation Framework**: Comprehensive video metadata validation
 
-### Phase 10.5: Background Task System ✅ **COMPLETED**
-- [x] **ThreadPoolExecutor Implementation**: Robust background task processing
-- [x] **Task Lifecycle Management**: Proper queued → processing → completed/failed states
-- [x] **Thread Safety**: Synchronized access to shared data structures
-- [x] **Race Condition Prevention**: Active task checking before record deletion
-- [x] **Error Handling**: Comprehensive error tracking and status reporting
-- [x] **Task Monitoring**: Real-time status and progress tracking
-- [x] **Concurrent Processing**: Support for multiple simultaneous analyses
+### Phase 11: Scale & Performance (Future)
 
-### Phase 10.6: Frontend Background Task Integration ✅ **COMPLETED**
-- [x] **Enhanced API Service**: Update frontend API to capture task IDs and status ✅ **COMPLETED**
-- [x] **Task Status Polling**: Create custom hook for real-time task progress monitoring ✅ **COMPLETED**
-- [x] **Analysis Status Management**: Coordinate task polling with analysis results ✅ **COMPLETED**
-- [x] **UI State Updates**: Update components to show proper analysis states ✅ **COMPLETED**
-- [x] **Progress Indicators**: Add progress bars and real-time status updates ✅ **COMPLETED**
-- [x] **Cancel Functionality**: Implement cancel analysis with proper error handling ✅ **COMPLETED**
-- [x] **Race Condition Fix**: Resolve timing issues between task completion and data availability ✅ **COMPLETED**
-- [x] **Enhanced UX**: Visual feedback with animations and status indicators ✅ **COMPLETED**
-
-### Phase 10.7: Granular Progress Tracking with Stage-Specific Feedback
-- [ ] **Backend Stage Configuration**: Add analysis stage definitions and progress ranges
-- [ ] **Enhanced Task Status Schema**: Extend TaskStatus with stage information and detailed progress
-- [ ] **CV Service Progress Callbacks**: Implement stage-specific progress tracking in analysis pipeline
-- [ ] **Background Service Integration**: Update background service with granular progress updates
-- [ ] **Frontend Stage Icons**: Add custom SVG icons for each analysis stage
-- [ ] **Enhanced Progress Components**: Create stage-specific progress indicators and messages
-- [ ] **Stage Information Display**: Show current stage, sub-progress, and estimated time remaining
-- [ ] **Testing & Validation**: Comprehensive testing with various video lengths and scenarios
-
-### Phase 11: Scale & Performance
 - [ ] **Microservices Architecture**: Separate video processing service
 - [ ] **Load Balancing**: Multiple application instances
 - [ ] **CDN Integration**: Global video delivery optimization
@@ -182,18 +180,21 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 ## Success Metrics
 
 ### Technical Goals ✅ **ACHIEVED**
+
 - [x] Process tennis videos successfully
 - [x] Detect and track tennis ball with reasonable accuracy
 - [x] Identify player position on court correctly
 - [x] Generate meaningful tennis performance metrics
 
 ### Development Goals ✅ **ACHIEVED**
+
 - [x] Clean, well-documented codebase
 - [x] Demonstrates data engineering best practices
 - [x] Shows computer vision pipeline development
 - [x] Scalable architecture design
 
 ### Future Goals
+
 - [ ] **User Adoption**: Active users and engagement metrics
 - [ ] **Performance**: Sub-second video processing times
 - [ ] **Accuracy**: 95%+ detection accuracy for key metrics
@@ -202,27 +203,31 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
 ## Technology Decisions
 
 ### Current Stack
+
 - **FastAPI**: Chosen for performance, automatic docs, and Python ecosystem
 - **React + TypeScript**: Modern frontend with type safety
-- **SQLite**: Simple, reliable for MVP; PostgreSQL planned for production
+- **SQLite**: Simple, reliable for development; Supabase PostgreSQL planned for production
 - **YOLO + MediaPipe**: Best balance of accuracy and performance
 - **Docker**: Consistent deployment across environments
 
 ### Future Considerations
-- **PostgreSQL**: For production database needs
+
+- **Supabase PostgreSQL**: For production database needs
+- **Cloud Storage**: S3/Cloudinary for scalable video storage
 - **Redis**: For caching and background task queues
-- **S3/MinIO**: For scalable video storage
 - **Kubernetes**: For container orchestration at scale
 
 ## Getting Started
 
 ### For New Developers
+
 1. Read the [backend README](../backend/README.md) for setup instructions
 2. Read the [frontend README](../frontend/README.md) for component development
 3. Check the [deployment guide](deployment_guide.md) for production setup
 4. Review the [pose estimation comparison](pose_estimation_comparison.md) for CV decisions
 
 ### Development Commands
+
 ```bash
 # Backend development
 cd backend
@@ -255,4 +260,4 @@ cd backend && python scripts/docker_performance_test.py
 
 ## License
 
-MIT License 
+MIT License

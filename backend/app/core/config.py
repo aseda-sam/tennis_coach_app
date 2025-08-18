@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 from pydantic_settings import BaseSettings
 
@@ -6,15 +7,25 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings."""
 
+    # Environment
+    ENVIRONMENT: str = "development"  # development, production
+
     # API Configuration
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
     DEBUG: bool = False
 
-    # Database
-    DATABASE_URL: str = "sqlite:///../data/database/tennis_coach.db"
+    # Database - Environment-based configuration
+    # DATABASE_URL: str = "sqlite:///../data/database/tennis_coach.db"
+    DATABASE_URL: Optional[str] = None
 
-    # File storage
+    # Supabase - Production database
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_KEY: Optional[str] = None
+    SUPABASE_DB_URL: Optional[str] = None  # Direct connection to Supabase database
+
+    # File storage - Environment-based configuration
+    STORAGE_TYPE: str = "local"  # local, cloudinary, s3
     UPLOAD_DIR: str = "../data/videos/raw"
     PROCESSED_DIR: str = "../data/videos/processed"
     MAX_FILE_SIZE: int = 104857600  # 100MB
@@ -42,6 +53,21 @@ class Settings(BaseSettings):
 
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+    @property
+    def database_url(self) -> str:
+        """Get database URL based on environment."""
+        if self.is_production and self.SUPABASE_DB_URL:
+            return self.SUPABASE_DB_URL
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+        else:
+            return "sqlite:///../data/database/tennis_coach.db"
+
+    @property
+    def is_production(self) -> bool:
+        """Check if the environment is production."""
+        return self.ENVIRONMENT == "production"
 
     class Config:
         env_file = ".env"
