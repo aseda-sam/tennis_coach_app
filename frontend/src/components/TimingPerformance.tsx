@@ -64,8 +64,8 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
   // If no detailed timing, show simple processing time
   if (!timing || timingStages.length === 0) {
     return (
-      <div className="timing-performance">
-        <div className="timing-header">
+      <div className="timing-performance" data-testid="timing-performance">
+        <div className="timing-header" data-testid="timing-header">
           <h4>Processing Time</h4>
           <div className="total-time">{formatTime(totalTime)}</div>
         </div>
@@ -86,13 +86,13 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
   }
 
   return (
-    <div className="timing-performance">
-      <div className="timing-header">
+    <div className="timing-performance" data-testid="timing-performance">
+      <div className="timing-header" data-testid="timing-header">
         <h4>Performance Breakdown</h4>
         <div className="total-time">{formatTime(totalTime)}</div>
       </div>
 
-      <div className="timing-breakdown">
+      <div className="timing-breakdown" data-testid="timing-breakdown">
         {timingStages.map(([stageKey, stageTime]) => {
           const percentage = totalTime > 0 ? (stageTime / totalTime) * 100 : 0;
 
@@ -121,7 +121,7 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
         })}
       </div>
 
-      <div className="timing-insights">
+      <div className="timing-insights" data-testid="timing-insights">
         <div className="insight-item">
           <span className="insight-icon">💡</span>
           <span className="insight-text">

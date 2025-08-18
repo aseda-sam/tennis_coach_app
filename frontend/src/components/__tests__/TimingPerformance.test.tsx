@@ -1,6 +1,5 @@
-import React from 'react';
-import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { render, screen } from '@testing-library/react';
 import TimingPerformance from '../TimingPerformance';
 
 describe('TimingPerformance', () => {
@@ -50,9 +49,15 @@ describe('TimingPerformance', () => {
     it('displays performance insights', () => {
       render(<TimingPerformance timing={mockTimingData} />);
 
-      expect(screen.getByText(/Analysis completed in a reasonable time/)).toBeInTheDocument();
-      expect(screen.getByText(/Ball detection took 29.7% of total time/)).toBeInTheDocument();
-      expect(screen.getByText(/Pose detection took 43.4% of total time/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Analysis completed in a reasonable time/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Ball detection took 29.7% of total time/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Pose detection took 43.4% of total time/)
+      ).toBeInTheDocument();
     });
 
     it('renders stage icons correctly', () => {
@@ -80,8 +85,12 @@ describe('TimingPerformance', () => {
     it('does not show insights in simple mode', () => {
       render(<TimingPerformance processingTime={5.2} />);
 
-      expect(screen.queryByText('Fast analysis processing')).not.toBeInTheDocument();
-      expect(screen.queryByText('Analysis completed in a reasonable time')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Fast analysis processing')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Analysis completed in a reasonable time')
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -164,16 +173,17 @@ describe('TimingPerformance', () => {
     it('renders with correct CSS classes', () => {
       render(<TimingPerformance timing={mockTimingData} />);
 
-      const container = screen.getByText('Performance Breakdown').closest('.timing-performance');
+      // Use data-testid attributes or semantic queries instead of direct DOM access
+      const container = screen.getByTestId('timing-performance');
       expect(container).toBeInTheDocument();
-      
-      const header = screen.getByText('Performance Breakdown').closest('.timing-header');
+
+      const header = screen.getByTestId('timing-header');
       expect(header).toBeInTheDocument();
-      
-      const breakdown = container?.querySelector('.timing-breakdown');
+
+      const breakdown = screen.getByTestId('timing-breakdown');
       expect(breakdown).toBeInTheDocument();
-      
-      const insights = container?.querySelector('.timing-insights');
+
+      const insights = screen.getByTestId('timing-insights');
       expect(insights).toBeInTheDocument();
     });
   });
