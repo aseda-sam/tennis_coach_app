@@ -17,6 +17,7 @@ dependencies = [
     "ultralytics>=8.0.0",
     "mediapipe>=0.10.0",
     "psutil>=5.9.0",
+    "psycopg2-binary>=2.9.9",
 ]
 
 [build-system]

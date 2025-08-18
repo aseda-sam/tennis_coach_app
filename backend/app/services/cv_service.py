@@ -4,6 +4,7 @@ Handles video processing, ball detection, and player tracking.
 """
 
 import logging
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -11,6 +12,31 @@ import cv2
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+def log_timing(operation_name: str, start_time: float) -> None:
+    """
+    Log timing information for an operation.
+
+    Args:
+        operation_name: Name of the operation being timed
+        start_time: Start time from time.time()
+    """
+    elapsed_time = time.time() - start_time
+    logger.info(f"⏱️ {operation_name} completed in {elapsed_time:.3f}s")
+
+
+def log_timing_error(operation_name: str, start_time: float, error: Exception) -> None:
+    """
+    Log timing information for a failed operation.
+
+    Args:
+        operation_name: Name of the operation being timed
+        start_time: Start time from time.time()
+        error: The exception that occurred
+    """
+    elapsed_time = time.time() - start_time
+    logger.error(f"❌ {operation_name} failed after {elapsed_time:.3f}s: {error}")
 
 
 class CVService:
@@ -24,6 +50,7 @@ class CVService:
 
     def _initialize_models(self) -> None:
         """Initialize YOLO and MediaPipe models."""
+        start_time = time.time()
         try:
             # Initialize YOLO for ball detection
             from ultralytics import YOLO
@@ -59,6 +86,9 @@ class CVService:
             logger.error(f"Failed to initialize MediaPipe Pose: {e}")
             self.pose_detector = None
 
+        elapsed_time = time.time() - start_time
+        logger.info(f"⏱️ Model initialization completed in {elapsed_time:.3f}s")
+
     def extract_frames(
         self, video_path: Path, max_frames: Optional[int] = None
     ) -> List[np.ndarray]:
@@ -72,6 +102,7 @@ class CVService:
         Returns:
             List of frame arrays
         """
+        start_time = time.time()
         frames = []
         try:
             cap = cv2.VideoCapture(str(video_path))
@@ -122,6 +153,7 @@ class CVService:
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error extracting frames: {e}")
 
+        log_timing("Frame Extraction", start_time)
         return frames
 
     def detect_balls(self, frames: List[np.ndarray]) -> List[List[Dict[str, Any]]]:
@@ -134,13 +166,18 @@ class CVService:
         Returns:
             List of detections per frame
         """
+        start_time = time.time()
         if not self.ball_detector:
             logger.warning("Ball detector not available")
             return [[] for _ in frames]
 
         detections = []
+        frame_timings = []
+
         try:
             for i, frame in enumerate(frames):
+                frame_start = time.time()
+
                 # Run YOLO detection
                 results = self.ball_detector(frame, verbose=False)
 
@@ -166,15 +203,31 @@ class CVService:
                                 )
 
                 detections.append(frame_detections)
-                logger.debug(f"Frame {i}: {len(frame_detections)} ball detections")
+                frame_time = time.time() - frame_start
+                frame_timings.append(frame_time)
+
+                # Log every 10th frame for performance monitoring
+                if i % 10 == 0:
+                    logger.debug(
+                        f"Frame {i}: {len(frame_detections)} detections in {frame_time:.3f}s"
+                    )
 
             total_detections = sum(len(d) for d in detections)
-            logger.info(f"Total ball detections: {total_detections}")
+            avg_frame_time = (
+                sum(frame_timings) / len(frame_timings) if frame_timings else 0
+            )
+            total_time = sum(frame_timings)
+
+            logger.info(f"Ball detection complete: {total_detections} total detections")
+            logger.info(
+                f"⏱️ Average frame time: {avg_frame_time:.3f}s, Total time: {total_time:.3f}s"
+            )
 
         except (RuntimeError, ValueError, OSError) as e:
             logger.error(f"Error in ball detection: {e}")
             detections = [[] for _ in frames]
 
+        log_timing("Ball Detection", start_time)
         return detections
 
     def detect_pose(self, frame: np.ndarray) -> Optional[Dict[str, List[float]]]:
@@ -207,6 +260,62 @@ class CVService:
         except (RuntimeError, ValueError, OSError) as e:
             logger.error(f"Error in pose detection: {e}")
             return None
+
+    def detect_poses_batch(
+        self, frames: List[np.ndarray]
+    ) -> List[Optional[Dict[str, List[float]]]]:
+        """
+        Detect poses in a batch of frames with timing information.
+
+        Args:
+            frames: List of frame arrays
+
+        Returns:
+            List of pose detections per frame
+        """
+        start_time = time.time()
+        if not self.pose_detector:
+            logger.warning("Pose detector not available")
+            return [None] * len(frames)
+
+        pose_detections = []
+        frame_timings = []
+
+        try:
+            for i, frame in enumerate(frames):
+                frame_start = time.time()
+                pose_keypoints = self.detect_pose(frame)
+                pose_detections.append(pose_keypoints)
+
+                frame_time = time.time() - frame_start
+                frame_timings.append(frame_time)
+
+                # Log every 10th frame for performance monitoring
+                if i % 10 == 0:
+                    frame_shape = frame.shape
+                    logger.debug(
+                        f"Frame {i}: shape={frame_shape}, pose_detected={pose_keypoints is not None}, time={frame_time:.3f}s"
+                    )
+
+            total_poses = sum(1 for p in pose_detections if p is not None)
+            avg_frame_time = (
+                sum(frame_timings) / len(frame_timings) if frame_timings else 0
+            )
+            total_time = sum(frame_timings)
+
+            logger.info(
+                f"Pose detection complete: {total_poses} poses detected out of {len(frames)} frames"
+            )
+            logger.info(
+                f"⏱️ Average frame time: {avg_frame_time:.3f}s, Total time: {total_time:.3f}s"
+            )
+
+        except (RuntimeError, ValueError, OSError) as e:
+            logger.error(f"Error in batch pose detection: {e}")
+            pose_detections = [None] * len(frames)
+
+        log_timing("Pose Detection", start_time)
+        return pose_detections
 
     def _extract_keypoints(
         self, landmarks: Sequence, frame_shape: Tuple[int, int, int]
@@ -358,14 +467,22 @@ class CVService:
             include_pose: Whether to include pose detection (default: True)
 
         Returns:
-            Analysis results dictionary
+            Analysis results dictionary with timing information
         """
+        start_time = time.time()
         logger.info(
             f"Starting analysis of {video_path} (pose detection: {include_pose})"
         )
 
+        # Track overall timing
+        analysis_start = time.time()
+        stage_timings = {}
+
         # Extract frames
+        frame_extraction_start = time.time()
         frames = self.extract_frames(video_path)
+        stage_timings["frame_extraction"] = time.time() - frame_extraction_start
+
         if not frames:
             return {
                 "error": "Failed to extract frames from video",
@@ -373,10 +490,13 @@ class CVService:
                 "ball_detections": [],
                 "pose_detections": [],
                 "analysis_summary": {},
+                "timing": stage_timings,
             }
 
         # Detect balls
+        ball_detection_start = time.time()
         ball_detections = self.detect_balls(frames)
+        stage_timings["ball_detection"] = time.time() - ball_detection_start
 
         # Detect poses (if enabled)
         pose_detections = []
@@ -385,16 +505,15 @@ class CVService:
         if include_pose and self.pose_detector:
             logger.info("Starting pose detection...")
             logger.info(f"Processing {len(frames)} frames for pose detection")
-            for i, frame in enumerate(frames):
-                pose_keypoints = self.detect_pose(frame)
-                pose_detections.append(pose_keypoints)
 
-                # Log every 10th frame for debugging
-                if i % 10 == 0:
-                    frame_shape = frame.shape
-                    logger.info(
-                        f"Frame {i}: shape={frame_shape}, pose_detected={pose_keypoints is not None}"
-                    )
+            pose_detection_start = time.time()
+            pose_detections = self.detect_poses_batch(frames)
+            stage_timings["pose_detection"] = time.time() - pose_detection_start
+
+            # Create annotated frames
+            annotation_start = time.time()
+            for i, frame in enumerate(frames):
+                pose_keypoints = pose_detections[i]
 
                 # Create annotated frame with both ball and pose overlays
                 annotated_frame = frame.copy()
@@ -426,6 +545,8 @@ class CVService:
                     )
 
                 annotated_frames.append(annotated_frame)
+
+            stage_timings["frame_annotation"] = time.time() - annotation_start
         else:
             logger.info("Skipping pose detection (disabled or model not available)")
             pose_detections = [None] * len(frames)
@@ -442,9 +563,12 @@ class CVService:
             logger.info(
                 f"Creating annotated video with {frames_with_pose} frames containing poses"
             )
+            video_creation_start = time.time()
             annotated_video_path = self._create_annotated_video(
                 video_path, annotated_frames
             )
+            stage_timings["video_creation"] = time.time() - video_creation_start
+
             if annotated_video_path:
                 logger.info(
                     f"Successfully created annotated video: {annotated_video_path}"
@@ -453,6 +577,10 @@ class CVService:
                 logger.warning("Failed to create annotated video")
         else:
             logger.info("No poses detected, skipping annotated video creation")
+
+        # Calculate total analysis time
+        total_analysis_time = time.time() - analysis_start
+        stage_timings["total_analysis"] = total_analysis_time
 
         analysis_summary = {
             "total_frames": len(frames),
@@ -466,6 +594,14 @@ class CVService:
             "pose_detection_rate": frames_with_pose / len(frames) if frames else 0,
         }
 
+        # Log detailed timing breakdown
+        logger.info("📊 Analysis Timing Breakdown:")
+        for stage, duration in stage_timings.items():
+            percentage = (
+                (duration / total_analysis_time) * 100 if total_analysis_time > 0 else 0
+            )
+            logger.info(f"  {stage}: {duration:.3f}s ({percentage:.1f}%)")
+
         results = {
             "frames_processed": len(frames),
             "ball_detections": ball_detections,
@@ -475,9 +611,11 @@ class CVService:
             "annotated_video_path": str(annotated_video_path)
             if annotated_video_path
             else None,
+            "timing": stage_timings,
         }
 
         logger.info(f"Analysis complete: {analysis_summary}")
+        log_timing("Video Analysis", start_time)
         return results
 
     def _create_annotated_video(
@@ -493,6 +631,7 @@ class CVService:
         Returns:
             Path to annotated video file
         """
+        start_time = time.time()
         if not annotated_frames:
             return None
 
@@ -637,6 +776,7 @@ class CVService:
                 if temp_path and not conversion_successful:
                     self._safe_restore_file(temp_path, annotated_path)
 
+            log_timing("Video Creation", start_time)
             return annotated_path
 
         except (OSError, RuntimeError, ValueError) as e:
