@@ -114,24 +114,38 @@ class CVService:
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             fps = cap.get(cv2.CAP_PROP_FPS)
 
-            # Calculate frame interval to get max_frames (or process all frames if max_frames is None)
+            # Use FRAME_SKIP_RATIO from config for proper frame skipping
+            from app.core.config import env_limits
+
+            frame_skip_ratio = env_limits["frame_skip_ratio"]
+
+            # Calculate frame interval based on max_frames and frame_skip_ratio
             if max_frames is None:
-                interval = 1  # Process every frame
+                # If no max_frames specified, use frame_skip_ratio directly
+                interval = frame_skip_ratio
             else:
-                interval = (
+                # If max_frames specified, calculate interval to get max_frames
+                # but respect the minimum frame_skip_ratio
+                calculated_interval = (
                     total_frames // max_frames if total_frames > max_frames else 1
                 )
+                interval = max(calculated_interval, frame_skip_ratio)
+
+            # Log frame skipping status
+            if frame_skip_ratio > 1:
+                logger.info(
+                    f"Frame skipping enabled: processing every {frame_skip_ratio} frames"
+                )
+            else:
+                logger.info("Frame skipping disabled: processing all frames")
 
             logger.info(f"Extracting frames from {video_path}")
             logger.info(
-                f"Total frames: {total_frames}, FPS: {fps}, Interval: {interval}"
+                f"Total frames: {total_frames}, FPS: {fps}, Frame skip ratio: {frame_skip_ratio}, Interval: {interval}"
             )
 
-            # Process all frames if max_frames is None, otherwise limit to max_frames
-            max_frames_to_process = (
-                max_frames if max_frames is not None else total_frames
-            )
-            while frame_count < max_frames_to_process:
+            # Process frames with proper skipping
+            while frame_count < total_frames:
                 ret, frame = cap.read()
                 if not ret:
                     break
@@ -139,6 +153,10 @@ class CVService:
                 # Only keep frames at interval
                 if frame_count % interval == 0:
                     frames.append(frame)
+
+                    # Stop if we've reached max_frames
+                    if max_frames is not None and len(frames) >= max_frames:
+                        break
 
                 frame_count += 1
 
@@ -148,7 +166,7 @@ class CVService:
                         cap.read()
 
             cap.release()
-            logger.info(f"Extracted {len(frames)} frames")
+            logger.info(f"Extracted {len(frames)} frames using interval {interval}")
 
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error extracting frames: {e}")
@@ -192,7 +210,13 @@ class CVService:
                             class_id = int(box.cls[0].cpu().numpy())
 
                             # Filter for sports balls (class 32 in COCO dataset)
-                            if class_id == 32 and confidence > 0.5:
+                            # Use BALL_CONFIDENCE_THRESHOLD from config
+                            from app.core.config import settings
+
+                            if (
+                                class_id == 32
+                                and confidence > settings.BALL_CONFIDENCE_THRESHOLD
+                            ):
                                 frame_detections.append(
                                     {
                                         "bbox": [int(x1), int(y1), int(x2), int(y2)],

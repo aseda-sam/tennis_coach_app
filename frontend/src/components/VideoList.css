@@ -387,6 +387,24 @@
   box-shadow: 0 8px 15px rgba(16, 185, 129, 0.4);
 }
 
+.reanalyze-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  box-shadow: 0 4px 6px rgba(139, 92, 246, 0.25);
+}
+
+.reanalyze-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(139, 92, 246, 0.4);
+}
+
+.reanalyze-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 4px 6px rgba(139, 92, 246, 0.25);
+}
+
 .processing-btn {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: white;
