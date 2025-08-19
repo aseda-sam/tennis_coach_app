@@ -44,6 +44,18 @@ class Analysis(Base):
     model_used = Column(String, nullable=True)  # 'yolov8n', etc.
     confidence_threshold = Column(Float, default=0.5)
 
+    # Video quality metrics
+    quality_score = Column(Float, nullable=True)
+    blur_score = Column(Float, nullable=True)
+    lighting_score = Column(Float, nullable=True)
+    resolution_score = Column(Float, nullable=True)
+    quality_level = Column(
+        String(20), nullable=True
+    )  # 'excellent', 'good', 'fair', 'poor'
+    confidence_threshold_used = Column(
+        Float, nullable=True
+    )  # Actual threshold used after adaptation
+
     # Processing status (processing, completed, failed)
     status = Column(String(50), default="completed")
 

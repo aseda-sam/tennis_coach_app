@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -174,7 +176,9 @@ class CVService:
         log_timing("Frame Extraction", start_time)
         return frames
 
-    def detect_balls(self, frames: List[np.ndarray]) -> List[List[Dict[str, Any]]]:
+    def detect_balls(
+        self, frames: List[np.ndarray], confidence_threshold: Optional[float] = None
+    ) -> List[List[Dict[str, Any]]]:
         """
         Detect tennis balls in frames using YOLO.
 
@@ -210,13 +214,12 @@ class CVService:
                             class_id = int(box.cls[0].cpu().numpy())
 
                             # Filter for sports balls (class 32 in COCO dataset)
-                            # Use BALL_CONFIDENCE_THRESHOLD from config
-                            from app.core.config import settings
-
-                            if (
-                                class_id == 32
-                                and confidence > settings.BALL_CONFIDENCE_THRESHOLD
-                            ):
+                            # Use adaptive confidence threshold or fallback to config default
+                            threshold = (
+                                confidence_threshold
+                                or settings.BALL_CONFIDENCE_THRESHOLD
+                            )
+                            if class_id == 32 and confidence > threshold:
                                 frame_detections.append(
                                     {
                                         "bbox": [int(x1), int(y1), int(x2), int(y2)],
@@ -517,9 +520,24 @@ class CVService:
                 "timing": stage_timings,
             }
 
-        # Detect balls
+        # Assess video quality and determine adaptive confidence threshold
+        quality_assessment_start = time.time()
+        quality_metrics = assess_video_quality(frames)
+        stage_timings["quality_assessment"] = time.time() - quality_assessment_start
+
+        # Use adaptive confidence threshold if not explicitly provided
+        adaptive_confidence_threshold = quality_metrics[
+            "recommended_confidence_threshold"
+        ]
+        logger.info(
+            f"Using adaptive confidence threshold: {adaptive_confidence_threshold:.3f}"
+        )
+
+        # Detect balls with adaptive confidence threshold
         ball_detection_start = time.time()
-        ball_detections = self.detect_balls(frames)
+        ball_detections = self.detect_balls(
+            frames, confidence_threshold=adaptive_confidence_threshold
+        )
         stage_timings["ball_detection"] = time.time() - ball_detection_start
 
         # Detect poses (if enabled)
@@ -616,6 +634,8 @@ class CVService:
             "detection_rate": frames_with_balls / len(frames) if frames else 0,
             "frames_with_pose": frames_with_pose,
             "pose_detection_rate": frames_with_pose / len(frames) if frames else 0,
+            "video_quality": quality_metrics,
+            "confidence_threshold_used": adaptive_confidence_threshold,
         }
 
         # Log detailed timing breakdown
@@ -841,6 +861,110 @@ class CVService:
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error extracting video metadata: {e}")
             return {"error": str(e)}
+
+
+def assess_video_quality(frames: List[np.ndarray]) -> Dict[str, Any]:
+    """
+    Assess video quality and return quality metrics and recommended confidence thresholds.
+
+    Args:
+        frames: List of video frames to analyze
+
+    Returns:
+        Dictionary containing quality metrics and recommended thresholds
+    """
+    if not frames:
+        return {
+            "quality_score": 0.0,
+            "blur_score": 0.0,
+            "lighting_score": 0.0,
+            "resolution_score": 0.0,
+            "recommended_confidence_threshold": settings.BALL_CONFIDENCE_THRESHOLD,
+            "quality_level": "unknown",
+        }
+
+    # Sample frames for analysis (use every 10th frame to avoid performance issues)
+    sample_frames = frames[::10] if len(frames) > 10 else frames
+
+    # Calculate blur score using Laplacian variance
+    blur_scores = []
+    for frame in sample_frames:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
+        blur_scores.append(blur_score)
+
+    avg_blur_score = np.mean(blur_scores)
+    # Normalize blur score (higher variance = less blur)
+    blur_quality = min(
+        1.0, avg_blur_score / 500.0
+    )  # Threshold based on typical tennis video blur
+
+    # Calculate lighting score using brightness and contrast
+    lighting_scores = []
+    for frame in sample_frames:
+        # Convert to LAB color space for better lighting analysis
+        lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        l_channel = lab[:, :, 0]
+
+        # Calculate brightness (mean of L channel)
+        brightness = np.mean(l_channel)
+        # Calculate contrast (standard deviation of L channel)
+        contrast = np.std(l_channel)
+
+        # Normalize brightness (good range: 50-200)
+        brightness_score = 1.0 - abs(brightness - 125) / 125
+        brightness_score = max(0.0, min(1.0, brightness_score))
+
+        # Normalize contrast (good range: >20)
+        contrast_score = min(1.0, contrast / 50.0)
+
+        # Combined lighting score
+        lighting_score = (brightness_score + contrast_score) / 2
+        lighting_scores.append(lighting_score)
+
+    lighting_quality = np.mean(lighting_scores)
+
+    # Calculate resolution score
+    first_frame = frames[0]
+    height, width = first_frame.shape[:2]
+
+    # Normalize resolution score (4K = 1.0, 720p = 0.5, 480p = 0.25)
+    resolution_score = min(1.0, (width * height) / (1920 * 1080))
+
+    # Calculate overall quality score
+    quality_score = blur_quality * 0.4 + lighting_quality * 0.4 + resolution_score * 0.2
+
+    # Determine quality level
+    if quality_score >= 0.8:
+        quality_level = "excellent"
+        recommended_threshold = settings.BALL_CONFIDENCE_THRESHOLD
+    elif quality_score >= 0.6:
+        quality_level = "good"
+        recommended_threshold = settings.BALL_CONFIDENCE_THRESHOLD * 0.9
+    elif quality_score >= 0.4:
+        quality_level = "fair"
+        recommended_threshold = settings.BALL_CONFIDENCE_THRESHOLD * 0.8
+    else:
+        quality_level = "poor"
+        recommended_threshold = settings.BALL_CONFIDENCE_THRESHOLD * 0.7
+
+    logger.info(
+        f"Video quality assessment: {quality_level} (score: {quality_score:.2f})"
+    )
+    logger.info(
+        f"  Blur: {blur_quality:.2f}, Lighting: {lighting_quality:.2f}, Resolution: {resolution_score:.2f}"
+    )
+    logger.info(f"  Recommended confidence threshold: {recommended_threshold:.2f}")
+
+    return {
+        "quality_score": float(quality_score),
+        "blur_score": float(blur_quality),
+        "lighting_score": float(lighting_quality),
+        "resolution_score": float(resolution_score),
+        "recommended_confidence_threshold": float(recommended_threshold),
+        "quality_level": quality_level,
+        "frame_count_analyzed": len(sample_frames),
+    }
 
 
 # Global CV service instance

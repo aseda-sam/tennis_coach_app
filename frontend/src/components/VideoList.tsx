@@ -37,7 +37,6 @@ const VideoList: React.FC<VideoListProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [isReanalyzing, setIsReanalyzing] = useState<number | null>(null);
 
   // Track active analysis tasks
   const [activeTasks, setActiveTasks] = useState<
@@ -58,54 +57,6 @@ const VideoList: React.FC<VideoListProps> = ({
   const verifyAnalysisDataRef = useRef<
     ((videoId: number) => Promise<void>) | null
   >(null);
-
-  // Handle reanalyze functionality
-  const handleReanalyze = async (videoId: number, analysisId: number) => {
-    try {
-      setIsReanalyzing(videoId);
-      console.log(
-        'Starting reanalysis for video ID:',
-        videoId,
-        'analysis ID:',
-        analysisId
-      );
-
-      // Get the existing analysis to use same parameters
-      const existingAnalysis = getAnalysisForVideo(videoId);
-      if (!existingAnalysis) {
-        throw new Error('No existing analysis found');
-      }
-
-      // Start reanalysis with same parameters as original analysis
-      const reanalysisResponse = await analysisApi.reanalyzeVideo(analysisId, {
-        analysis_type: existingAnalysis.analysis_type,
-        confidence_threshold: existingAnalysis.confidence_threshold,
-        include_pose_detection:
-          existingAnalysis.include_pose_detection || false,
-      });
-
-      console.log('Reanalysis started:', reanalysisResponse);
-
-      // Add to active tasks to show progress
-      if (reanalysisResponse.task_id) {
-        setActiveTasks(
-          (prev) =>
-            new Map(
-              prev.set(videoId, {
-                taskId: reanalysisResponse.task_id || 0,
-                progress: 0,
-                status: 'processing',
-              })
-            )
-        );
-      }
-    } catch (error) {
-      console.error('Failed to start reanalysis:', error);
-      alert('Failed to start reanalysis. Please try again.');
-    } finally {
-      setIsReanalyzing(null);
-    }
-  };
 
   const loadVideos = useCallback(async () => {
     try {
@@ -593,16 +544,6 @@ const VideoList: React.FC<VideoListProps> = ({
                       >
                         <EyeIcon size={16} />
                         View Analysis
-                      </button>
-                      <button
-                        className="action-btn reanalyze-btn"
-                        onClick={() => handleReanalyze(video.id, analysis.id)}
-                        disabled={isReanalyzing === video.id}
-                      >
-                        <AnalyticsIcon size={16} />
-                        {isReanalyzing === video.id
-                          ? 'Reanalyzing...'
-                          : 'Reanalyze'}
                       </button>
                     </>
                   )}

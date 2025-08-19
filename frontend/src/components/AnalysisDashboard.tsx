@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
-import { analysisApi } from '../services/api';
 import './AnalysisDashboard.css';
 import AnalysisResults from './AnalysisResults';
 import ProgressBar from './ProgressBar';
@@ -21,50 +20,24 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   onClose,
 }) => {
   const [showDetails, setShowDetails] = useState(false);
-  const [aspectRatioMode, setAspectRatioMode] = useState<'cover' | 'contain' | 'auto'>('contain');
+  const [aspectRatioMode, setAspectRatioMode] = useState<
+    'cover' | 'contain' | 'auto'
+  >('contain');
 
   // Use the analysis manager hook for better state management
-  const { analysisState, refreshAnalysis, cancelAnalysis, isLoading } = useAnalysisManager({
-    videoId,
-    autoRefresh: true,
-    onAnalysisComplete: (analysis) => {
-      console.log('Analysis completed:', analysis);
-    },
-    onAnalysisError: (error) => {
-      console.error('Analysis error:', error);
-    },
-  });
+  const { analysisState, refreshAnalysis, cancelAnalysis, isLoading } =
+    useAnalysisManager({
+      videoId,
+      autoRefresh: true,
+      onAnalysisComplete: (analysis) => {
+        console.log('Analysis completed:', analysis);
+      },
+      onAnalysisError: (error) => {
+        console.error('Analysis error:', error);
+      },
+    });
 
   const { analysis, status, progress, error } = analysisState;
-  const [isReanalyzing, setIsReanalyzing] = useState(false);
-
-  // Handle reanalyze functionality
-  const handleReanalyze = async (analysisId: number) => {
-    if (!analysis) return;
-    
-    try {
-      setIsReanalyzing(true);
-      console.log('Starting reanalysis for analysis ID:', analysisId);
-      
-      // Start reanalysis with same parameters as original analysis
-      const reanalysisResponse = await analysisApi.reanalyzeVideo(analysisId, {
-        analysis_type: analysis.analysis_type,
-        confidence_threshold: analysis.confidence_threshold,
-        include_pose_detection: analysis.include_pose_detection || false,
-      });
-      
-      console.log('Reanalysis started:', reanalysisResponse);
-      
-      // Refresh the analysis to get updated status
-      await refreshAnalysis();
-      
-    } catch (error) {
-      console.error('Failed to start reanalysis:', error);
-      alert('Failed to start reanalysis. Please try again.');
-    } finally {
-      setIsReanalyzing(false);
-    }
-  };
 
   const formatDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -76,7 +49,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const getVideoUrl = () => {
     if (analysis?.pose_detections && analysis.pose_detections.length > 0) {
       // Use the new annotated video endpoint
-      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
+      const baseUrl =
+        process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
       const annotatedUrl = `${baseUrl}/videos/${videoId}/annotated/stream`;
       console.log('Using annotated video for:', videoFilename);
       console.log('Annotated video URL:', annotatedUrl);
@@ -108,7 +82,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               <select
                 id="aspect-ratio-mode"
                 value={aspectRatioMode}
-                onChange={(e) => setAspectRatioMode(e.target.value as 'cover' | 'contain' | 'auto')}
+                onChange={(e) =>
+                  setAspectRatioMode(
+                    e.target.value as 'cover' | 'contain' | 'auto'
+                  )
+                }
                 className="aspect-ratio-select"
               >
                 <option value="contain">Fit with Black Bars (Default)</option>
@@ -116,36 +94,44 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 <option value="auto">Auto Adjust</option>
               </select>
             </div>
-            
+
             <VideoPlayer
               videoUrl={getVideoUrl()}
-              title={analysis?.pose_detections && analysis.pose_detections.length > 0 ? `${videoFilename} (Annotated)` : videoFilename}
+              title={
+                analysis?.pose_detections && analysis.pose_detections.length > 0
+                  ? `${videoFilename} (Annotated)`
+                  : videoFilename
+              }
               showControls={true}
               aspectRatioMode={aspectRatioMode}
             />
-            {analysis?.pose_detections && analysis.pose_detections.length > 0 && (
-              <div className="ai-analysis-badge">
-                <span className="ai-icon">⚡</span>
-                AI Analysis Active
-              </div>
-            )}
+            {analysis?.pose_detections &&
+              analysis.pose_detections.length > 0 && (
+                <div className="ai-analysis-badge">
+                  <span className="ai-icon">⚡</span>
+                  AI Analysis Active
+                </div>
+              )}
           </div>
 
           {/* Video Details and Actions below video */}
           <div className="video-details-section">
-            <div className="section-header" onClick={() => setShowDetails(!showDetails)}>
+            <div
+              className="section-header"
+              onClick={() => setShowDetails(!showDetails)}
+            >
               <span className="section-icon">📄</span>
               <h3>Video Details</h3>
               <span className="toggle-icon">{showDetails ? '▼' : '▶'}</span>
             </div>
-            
+
             {showDetails && (
               <div className="details-list">
                 <div className="detail-item">
                   <span className="detail-label">File Name:</span>
                   <span className="detail-value">{videoFilename}</span>
                 </div>
-                
+
                 {analysis && (
                   <>
                     <div className="detail-item">
@@ -154,21 +140,27 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                         {formatDuration(analysis.processing_time)}
                       </span>
                     </div>
-                    
+
                     <div className="detail-item">
                       <span className="detail-label">Total Frames:</span>
-                      <span className="detail-value">{analysis.total_frames}</span>
+                      <span className="detail-value">
+                        {analysis.total_frames}
+                      </span>
                     </div>
-                    
+
                     <div className="detail-item">
                       <span className="detail-label">Analysis Type:</span>
-                      <span className="detail-value">{analysis.analysis_type}</span>
+                      <span className="detail-value">
+                        {analysis.analysis_type}
+                      </span>
                     </div>
-                    
+
                     {analysis.model_used && (
                       <div className="detail-item">
                         <span className="detail-label">Model Used:</span>
-                        <span className="detail-value">{analysis.model_used}</span>
+                        <span className="detail-value">
+                          {analysis.model_used}
+                        </span>
                       </div>
                     )}
                   </>
@@ -176,25 +168,29 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               </div>
             )}
           </div>
-
         </div>
 
         {/* Right Panel - Analysis Results */}
         <div className="right-panel">
           <div className="analysis-status-section">
-            {isLoading || status === 'starting' || status === 'processing' || status === 'finalizing' ? (
+            {isLoading ||
+            status === 'starting' ||
+            status === 'processing' ||
+            status === 'finalizing' ? (
               <div className="analysis-loading">
                 <div className="loading-header">
                   <div className="loading-spinner"></div>
                   <h3>Analyzing Tennis Video...</h3>
                 </div>
-                
+
                 <div className="progress-section">
                   {analysisState.currentStage ? (
                     <StageProgress
                       currentStage={analysisState.currentStage}
                       stageProgress={analysisState.stageProgress || 0}
-                      stageMessage={analysisState.stageMessage || 'Processing...'}
+                      stageMessage={
+                        analysisState.stageMessage || 'Processing...'
+                      }
                       overallProgress={progress}
                       size="large"
                     />
@@ -208,13 +204,17 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     />
                   )}
                 </div>
-                
+
                 <p className="loading-note">
-                  This may take 2-3 minutes for longer videos. You can leave this page and return later.
+                  This may take 2-3 minutes for longer videos. You can leave
+                  this page and return later.
                 </p>
-                
+
                 {(status === 'processing' || status === 'starting') && (
-                  <button className="cancel-analysis-btn" onClick={cancelAnalysis}>
+                  <button
+                    className="cancel-analysis-btn"
+                    onClick={cancelAnalysis}
+                  >
                     Cancel Analysis
                   </button>
                 )}
@@ -228,15 +228,13 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 </button>
               </div>
             ) : analysis ? (
-              <AnalysisResults 
-                analysis={analysis} 
-                onReanalyze={handleReanalyze}
-                isReanalyzing={isReanalyzing}
-              />
+              <AnalysisResults analysis={analysis} />
             ) : (
               <div className="analysis-empty">
                 <h3>📊 Analysis Results</h3>
-                <p>No analysis data available. Start an analysis to see results.</p>
+                <p>
+                  No analysis data available. Start an analysis to see results.
+                </p>
               </div>
             )}
           </div>

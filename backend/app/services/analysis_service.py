@@ -74,6 +74,25 @@ def create_analysis_record(
         processing_time=processing_time,
         model_used=model_used,
         confidence_threshold=confidence_threshold,
+        # Quality metrics
+        quality_score=analysis_results.get("analysis_summary", {})
+        .get("video_quality", {})
+        .get("quality_score"),
+        blur_score=analysis_results.get("analysis_summary", {})
+        .get("video_quality", {})
+        .get("blur_score"),
+        lighting_score=analysis_results.get("analysis_summary", {})
+        .get("video_quality", {})
+        .get("lighting_score"),
+        resolution_score=analysis_results.get("analysis_summary", {})
+        .get("video_quality", {})
+        .get("resolution_score"),
+        quality_level=analysis_results.get("analysis_summary", {})
+        .get("video_quality", {})
+        .get("quality_level"),
+        confidence_threshold_used=analysis_results.get("analysis_summary", {}).get(
+            "confidence_threshold_used"
+        ),
         status=status,
     )
 

@@ -166,11 +166,11 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
   - [x] Test with existing videos to verify improvements
   - [x] **User Testing**: Verify ball detection quality improvement
 
-- [ ] **Step 2: Adaptive Confidence Thresholds** (Medium complexity)
+- [x] **Step 2: Adaptive Confidence Thresholds** (Medium complexity) ✅ **COMPLETED**
 
-  - [ ] Implement video quality assessment (blur, lighting, resolution)
-  - [ ] Adjust confidence thresholds based on video quality
-  - [ ] Add quality metrics to analysis results
+  - [x] Implement video quality assessment (blur, lighting, resolution)
+  - [x] Adjust confidence thresholds based on video quality
+  - [x] Add quality metrics to analysis results
   - [ ] **User Testing**: Test with poor vs good quality videos
 
 - [ ] **Step 3: YOLO Model Optimization** (Medium complexity)
