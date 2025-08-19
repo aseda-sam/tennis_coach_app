@@ -1,11 +1,12 @@
 """Video API routes with proper REST patterns and error handling."""
 
 import logging
+import time
 from pathlib import Path
 from typing import List
 
 import cv2
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -15,16 +16,20 @@ from app.api.schemas.video import (
     VideoInfo,
     VideoListItem,
     VideoMetadata,
+    VideoQualityAssessmentResponse,
+    VideoQualityMetrics,
     VideoUploadResponse,
 )
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.analysis import Analysis
+from app.services.quality_service import quick_assess_video_quality
 from app.services.video_service import (
     create_video_record,
     delete_video_record,
     get_all_videos,
     get_video_by_id,
+    update_video_quality,
 )
 from app.utils.error_handling import (
     handle_file_error,
@@ -330,6 +335,46 @@ async def upload_video(
             frame_count=metadata.frame_count,
         )
 
+        # Perform quick quality assessment
+        quality_metrics = None
+        try:
+            logger.info(f"Starting quality assessment for {unique_filename}")
+            quality_metrics = quick_assess_video_quality(file_path)
+
+            # Update video record with quality metrics
+            update_video_quality(
+                db=db,
+                video_id=db_video.id,
+                quality_score=quality_metrics["quality_score"],
+                blur_score=quality_metrics["blur_score"],
+                lighting_score=quality_metrics["lighting_score"],
+                resolution_score=quality_metrics["resolution_score"],
+                quality_level=quality_metrics["quality_level"],
+            )
+
+            logger.info(
+                f"Quality assessment completed: {quality_metrics['quality_level']} quality"
+            )
+
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.warning(f"Quality assessment failed for {unique_filename}: {e}")
+            # Continue with upload even if quality assessment fails
+
+        # Create quality metrics response if available
+        quality_metrics_response = None
+        if quality_metrics:
+            quality_metrics_response = VideoQualityMetrics(
+                quality_score=quality_metrics["quality_score"],
+                blur_score=quality_metrics["blur_score"],
+                lighting_score=quality_metrics["lighting_score"],
+                resolution_score=quality_metrics["resolution_score"],
+                quality_level=quality_metrics["quality_level"],
+                recommended_confidence_threshold=quality_metrics[
+                    "recommended_confidence_threshold"
+                ],
+                frame_count_analyzed=quality_metrics["frame_count_analyzed"],
+            )
+
         return VideoUploadResponse(
             video_id=db_video.id,
             filename=db_video.filename,
@@ -337,8 +382,79 @@ async def upload_video(
             status="uploaded",
             message="Video uploaded successfully",
             metadata=metadata,
+            quality_metrics=quality_metrics_response,
         )
     except (OSError, ValueError) as e:
         log_and_raise_error(
             e, "upload_video", {"filename": file.filename if file else "unknown"}
         )
+
+
+@router.post("/{video_id}/quality-check", response_model=VideoQualityAssessmentResponse)
+async def assess_video_quality(
+    video_id: int, db: Session = Depends(get_db)
+) -> VideoQualityAssessmentResponse:
+    """
+    Perform quick quality assessment on a video.
+
+    Args:
+        video_id: ID of the video to assess
+        db: Database session
+
+    Returns:
+        Quality assessment results with metrics and recommendations
+    """
+    try:
+        # Get video from database
+        db_video = get_video_by_id(db, video_id)
+        if not db_video:
+            raise HTTPException(status_code=404, detail=f"Video {video_id} not found")
+
+        # Check if video file exists
+        video_path = Path(db_video.file_path)
+        if not video_path.exists():
+            raise HTTPException(
+                status_code=404, detail=f"Video file not found: {db_video.filename}"
+            )
+
+        # Perform quality assessment
+        assessment_start = time.time()
+        quality_metrics = quick_assess_video_quality(video_path)
+        assessment_time = time.time() - assessment_start
+
+        # Update video record with quality metrics
+        update_video_quality(
+            db=db,
+            video_id=video_id,
+            quality_score=quality_metrics["quality_score"],
+            blur_score=quality_metrics["blur_score"],
+            lighting_score=quality_metrics["lighting_score"],
+            resolution_score=quality_metrics["resolution_score"],
+            quality_level=quality_metrics["quality_level"],
+        )
+
+        # Create response
+        quality_metrics_response = VideoQualityMetrics(
+            quality_score=quality_metrics["quality_score"],
+            blur_score=quality_metrics["blur_score"],
+            lighting_score=quality_metrics["lighting_score"],
+            resolution_score=quality_metrics["resolution_score"],
+            quality_level=quality_metrics["quality_level"],
+            recommended_confidence_threshold=quality_metrics[
+                "recommended_confidence_threshold"
+            ],
+            frame_count_analyzed=quality_metrics["frame_count_analyzed"],
+        )
+
+        return VideoQualityAssessmentResponse(
+            video_id=video_id,
+            filename=db_video.filename,
+            quality_metrics=quality_metrics_response,
+            assessment_time=assessment_time,
+            message=f"Quality assessment completed: {quality_metrics['quality_level']} quality",
+        )
+
+    except HTTPException:
+        raise
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "assess_video_quality", {"video_id": video_id})
