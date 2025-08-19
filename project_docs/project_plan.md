@@ -171,16 +171,25 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
   - [x] Implement video quality assessment (blur, lighting, resolution)
   - [x] Adjust confidence thresholds based on video quality
   - [x] Add quality metrics to analysis results
-  - [ ] **User Testing**: Test with poor vs good quality videos
+  - [x] **User Testing**: Test with poor vs good quality videos
 
-- [ ] **Step 3: YOLO Model Optimization** (Medium complexity)
+- [x] **Step 3: Performance Optimization** (Medium complexity) ✅ **COMPLETED**
+
+  - [x] Remove duplicate quality assessment from analysis pipeline
+  - [x] Implement two-stage quality assessment (upload + analysis)
+  - [x] Move quality metrics from Analysis to Video model for better data integrity
+  - [x] Add adaptive confidence thresholds based on stored quality metrics
+  - [x] Update frontend to display quality status immediately after upload
+  - [x] **User Testing**: Verify performance improvement (5-10 seconds faster analysis)
+
+- [ ] **Step 4: YOLO Model Optimization** (Medium complexity)
 
   - [ ] Test `yolov8s.pt` (small) vs `yolov8n.pt` (nano) for accuracy/speed trade-off
   - [ ] Implement model selection based on video quality
   - [ ] Add model performance metrics to analysis
   - [ ] **User Testing**: Compare detection accuracy between models
 
-- [ ] **Step 4: Temporal Smoothing** (Advanced)
+- [ ] **Step 5: Temporal Smoothing** (Advanced)
   - [ ] Implement ball trajectory prediction between frames
   - [ ] Filter false positives using motion patterns
   - [ ] Add trajectory confidence scoring
