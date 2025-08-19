@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
+import { videoApi } from '../services/api';
+import { VideoMetadata } from '../types/video';
 import './AnalysisDashboard.css';
 import AnalysisResults from './AnalysisResults';
 import ProgressBar from './ProgressBar';
@@ -23,6 +25,23 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [aspectRatioMode, setAspectRatioMode] = useState<
     'cover' | 'contain' | 'auto'
   >('contain');
+  const [video, setVideo] = useState<VideoMetadata | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  // Fetch video data for quality metrics
+  useEffect(() => {
+    const fetchVideo = async () => {
+      try {
+        const videoData = await videoApi.getVideo(videoId);
+        setVideo(videoData);
+      } catch (error) {
+        console.error('Error fetching video data:', error);
+        setVideoError('Failed to load video data');
+      }
+    };
+
+    fetchVideo();
+  }, [videoId]);
 
   // Use the analysis manager hook for better state management
   const { analysisState, refreshAnalysis, cancelAnalysis, isLoading } =
@@ -227,8 +246,16 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   Try Again
                 </button>
               </div>
+            ) : videoError ? (
+              <div className="analysis-error">
+                <h3>❌ Video Data Error</h3>
+                <p>{videoError}</p>
+                <button className="retry-btn" onClick={() => window.location.reload()}>
+                  Reload Page
+                </button>
+              </div>
             ) : analysis ? (
-              <AnalysisResults analysis={analysis} />
+              <AnalysisResults analysis={analysis} video={video} />
             ) : (
               <div className="analysis-empty">
                 <h3>📊 Analysis Results</h3>

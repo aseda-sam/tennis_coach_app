@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { AnalysisData } from '../services/api';
+import { VideoMetadata } from '../types/video';
 import './AnalysisResults.css';
 import TimingPerformance from './TimingPerformance';
 
 interface AnalysisResultsProps {
   analysis: AnalysisData | null;
+  video: VideoMetadata | null;
   isLoading?: boolean;
   error?: string | null;
 }
 
 const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   analysis,
+  video,
   isLoading = false,
   error = null,
 }) => {
@@ -94,7 +97,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       </div>
 
       {/* Video Quality Section */}
-      {analysis.quality_score !== undefined && (
+      {video && video.quality_score !== undefined && (
         <div className="analysis-section">
           <div
             className="section-header clickable"
@@ -103,9 +106,9 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
             <span className="section-icon">📊</span>
             <h4>Video Quality Assessment</h4>
             <div
-              className={`status-badge ${getQualityBadgeClass(analysis.quality_level)}`}
+              className={`status-badge ${getQualityBadgeClass(video.quality_level)}`}
             >
-              {analysis.quality_level || 'Unknown'}
+              {video.quality_level || 'Unknown'}
             </div>
             <span className="toggle-icon">
               {expandedSections.quality ? '▼' : '▶'}
@@ -116,29 +119,29 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
             <div className="analysis-metrics">
               <div className="metric-card">
                 <div className="metric-value">
-                  {(analysis.quality_score * 100).toFixed(1)}%
+                  {(video.quality_score * 100).toFixed(1)}%
                 </div>
                 <div className="metric-label">Overall Quality</div>
               </div>
               <div className="metric-card">
                 <div className="metric-value">
-                  {((analysis.blur_score || 0) * 100).toFixed(1)}%
+                  {((video.blur_score || 0) * 100).toFixed(1)}%
                 </div>
                 <div className="metric-label">Sharpness</div>
               </div>
               <div className="metric-card">
                 <div className="metric-value">
-                  {((analysis.lighting_score || 0) * 100).toFixed(1)}%
+                  {((video.lighting_score || 0) * 100).toFixed(1)}%
                 </div>
                 <div className="metric-label">Lighting</div>
               </div>
               <div className="metric-card">
                 <div className="metric-value">
-                  {((analysis.resolution_score || 0) * 100).toFixed(1)}%
+                  {((video.resolution_score || 0) * 100).toFixed(1)}%
                 </div>
                 <div className="metric-label">Resolution</div>
               </div>
-              {analysis.confidence_threshold_used && (
+              {analysis && analysis.confidence_threshold_used && (
                 <div className="metric-card">
                   <div className="metric-value">
                     {(analysis.confidence_threshold_used * 100).toFixed(1)}%

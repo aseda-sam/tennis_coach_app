@@ -138,12 +138,6 @@ export interface AnalysisData {
     video_creation?: number;
     total_analysis?: number;
   };
-  // Quality metrics
-  quality_score?: number;
-  blur_score?: number;
-  lighting_score?: number;
-  resolution_score?: number;
-  quality_level?: string;
   confidence_threshold_used?: number;
 }
 
