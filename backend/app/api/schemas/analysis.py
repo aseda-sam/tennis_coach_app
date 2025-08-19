@@ -97,6 +97,25 @@ class AnalysisInfo(BaseModel):
     annotated_video_path: Optional[str] = Field(
         default=None, description="Path to annotated video"
     )
+    # Quality metrics
+    quality_score: Optional[float] = Field(
+        default=None, description="Overall video quality score (0-1)"
+    )
+    blur_score: Optional[float] = Field(
+        default=None, description="Blur quality score (0-1)"
+    )
+    lighting_score: Optional[float] = Field(
+        default=None, description="Lighting quality score (0-1)"
+    )
+    resolution_score: Optional[float] = Field(
+        default=None, description="Resolution quality score (0-1)"
+    )
+    quality_level: Optional[str] = Field(
+        default=None, description="Quality level (excellent, good, fair, poor)"
+    )
+    confidence_threshold_used: Optional[float] = Field(
+        default=None, description="Actual confidence threshold used after adaptation"
+    )
     created_at: datetime = Field(description="Analysis creation timestamp")
     updated_at: Optional[datetime] = Field(
         default=None, description="Last update timestamp"

@@ -1,8 +1,13 @@
 import axios from 'axios';
-import { VideoListResponse, VideoMetadata, VideoUploadResponse } from '../types/video';
+import {
+  VideoListResponse,
+  VideoMetadata,
+  VideoUploadResponse,
+} from '../types/video';
 
 // API configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
 
 // Create axios instance for analysis API
 const analysisApiInstance = axios.create({
@@ -18,7 +23,9 @@ const api = axios.create({
 
 // Add request/response interceptors
 api.interceptors.request.use((config) => {
-  console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`);
+  console.log(
+    `Making ${config.method?.toUpperCase()} request to ${config.url}`
+  );
   return config;
 });
 
@@ -33,12 +40,14 @@ api.interceptors.response.use(
 // Normalize analysis data to ensure arrays are always returned
 const normalizeAnalysis = (data: any): AnalysisData => ({
   ...data,
-  ball_detections: typeof data.ball_detections === 'string' 
-    ? JSON.parse(data.ball_detections || '[]') 
-    : (data.ball_detections ?? []),
-  pose_detections: typeof data.pose_detections === 'string' 
-    ? JSON.parse(data.pose_detections || '[]') 
-    : (data.pose_detections ?? []),
+  ball_detections:
+    typeof data.ball_detections === 'string'
+      ? JSON.parse(data.ball_detections || '[]')
+      : (data.ball_detections ?? []),
+  pose_detections:
+    typeof data.pose_detections === 'string'
+      ? JSON.parse(data.pose_detections || '[]')
+      : (data.pose_detections ?? []),
 });
 
 export const videoApi = {
@@ -46,12 +55,16 @@ export const videoApi = {
   uploadVideo: async (file: File): Promise<VideoUploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
-    
-    const response = await api.post<VideoUploadResponse>('/videos/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+
+    const response = await api.post<VideoUploadResponse>(
+      '/videos/upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
     return response.data;
   },
 
@@ -60,7 +73,7 @@ export const videoApi = {
     const response = await api.get<VideoMetadata[]>('/videos/');
     return {
       videos: response.data,
-      total: response.data.length
+      total: response.data.length,
     };
   },
 
@@ -98,7 +111,7 @@ export interface AnalysisStartResponse {
 
 export interface AnalysisData {
   id: number;
-  video_id: number;  // Required since all records now have video_id
+  video_id: number; // Required since all records now have video_id
   video_filename: string;
   analysis_type: string;
   total_frames: number;
@@ -125,6 +138,13 @@ export interface AnalysisData {
     video_creation?: number;
     total_analysis?: number;
   };
+  // Quality metrics
+  quality_score?: number;
+  blur_score?: number;
+  lighting_score?: number;
+  resolution_score?: number;
+  quality_level?: string;
+  confidence_threshold_used?: number;
 }
 
 // New interfaces for task status tracking
@@ -160,26 +180,16 @@ export interface TaskStatsResponse {
 
 export const analysisApi = {
   // Start analysis for a video - now returns AnalysisStartResponse with task_id
-  startAnalysis: async (videoId: number, analysisRequest: {
-    analysis_type: string;
-    confidence_threshold?: number;
-    include_pose_detection?: boolean;
-  }): Promise<AnalysisStartResponse> => {
+  startAnalysis: async (
+    videoId: number,
+    analysisRequest: {
+      analysis_type: string;
+      confidence_threshold?: number;
+      include_pose_detection?: boolean;
+    }
+  ): Promise<AnalysisStartResponse> => {
     const response = await analysisApiInstance.post<AnalysisStartResponse>(
-      `/analysis/videos/${videoId}`, 
-      analysisRequest
-    );
-    return response.data;
-  },
-
-  // Reanalyze a video by deleting existing analysis and starting fresh
-  reanalyzeVideo: async (analysisId: number, analysisRequest: {
-    analysis_type: string;
-    confidence_threshold?: number;
-    include_pose_detection?: boolean;
-  }): Promise<AnalysisStartResponse> => {
-    const response = await analysisApiInstance.post<AnalysisStartResponse>(
-      `/analysis/${analysisId}/reanalyze`, 
+      `/analysis/videos/${videoId}`,
       analysisRequest
     );
     return response.data;
@@ -211,7 +221,9 @@ export const analysisApi = {
   // New methods for task status tracking
   // Get task status by task ID
   getTaskStatus: async (taskId: number): Promise<TaskStatus> => {
-    const response = await api.get<TaskStatus>(`/analysis/tasks/${taskId}/status`);
+    const response = await api.get<TaskStatus>(
+      `/analysis/tasks/${taskId}/status`
+    );
     return response.data;
   },
 
@@ -228,8 +240,12 @@ export const analysisApi = {
   },
 
   // Cancel a task
-  cancelTask: async (taskId: number): Promise<{ message: string; task_id: number }> => {
-    const response = await api.delete<{ message: string; task_id: number }>(`/analysis/tasks/${taskId}`);
+  cancelTask: async (
+    taskId: number
+  ): Promise<{ message: string; task_id: number }> => {
+    const response = await api.delete<{ message: string; task_id: number }>(
+      `/analysis/tasks/${taskId}`
+    );
     return response.data;
   },
 };
