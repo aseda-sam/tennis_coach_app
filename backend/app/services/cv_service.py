@@ -484,7 +484,10 @@ class CVService:
             # File is left at temp_path location for manual cleanup
 
     def analyze_video(
-        self, video_path: Path, include_pose: bool = True
+        self,
+        video_path: Path,
+        include_pose: bool = True,
+        confidence_threshold: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
         Perform comprehensive video analysis with ball detection and pose estimation.
@@ -492,6 +495,7 @@ class CVService:
         Args:
             video_path: Path to video file
             include_pose: Whether to include pose detection (default: True)
+            confidence_threshold: Optional confidence threshold (if not provided, uses default)
 
         Returns:
             Analysis results dictionary with timing information
@@ -520,20 +524,13 @@ class CVService:
                 "timing": stage_timings,
             }
 
-        # Assess video quality and determine adaptive confidence threshold
-        quality_assessment_start = time.time()
-        quality_metrics = assess_video_quality(frames)
-        stage_timings["quality_assessment"] = time.time() - quality_assessment_start
-
-        # Use adaptive confidence threshold if not explicitly provided
-        adaptive_confidence_threshold = quality_metrics[
-            "recommended_confidence_threshold"
-        ]
-        logger.info(
-            f"Using adaptive confidence threshold: {adaptive_confidence_threshold:.3f}"
+        # Use provided confidence threshold or default
+        adaptive_confidence_threshold = (
+            confidence_threshold or settings.BALL_CONFIDENCE_THRESHOLD
         )
+        logger.info(f"Using confidence threshold: {adaptive_confidence_threshold:.3f}")
 
-        # Detect balls with adaptive confidence threshold
+        # Detect balls with confidence threshold
         ball_detection_start = time.time()
         ball_detections = self.detect_balls(
             frames, confidence_threshold=adaptive_confidence_threshold
@@ -634,7 +631,7 @@ class CVService:
             "detection_rate": frames_with_balls / len(frames) if frames else 0,
             "frames_with_pose": frames_with_pose,
             "pose_detection_rate": frames_with_pose / len(frames) if frames else 0,
-            "video_quality": quality_metrics,
+            "video_quality": {},  # Quality assessment is now done during upload
             "confidence_threshold_used": adaptive_confidence_threshold,
         }
 

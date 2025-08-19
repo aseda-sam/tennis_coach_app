@@ -395,6 +395,44 @@ const VideoList: React.FC<VideoListProps> = ({
     return { text: 'Not Analyzed', color: 'not-analyzed' };
   };
 
+  const getQualityStatus = (video: VideoMetadata) => {
+    if (!video.quality_level || video.quality_level === 'unknown') {
+      return { text: 'Quality Unknown', color: 'unknown' };
+    }
+
+    switch (video.quality_level) {
+      case 'excellent':
+        return { text: 'Excellent Quality', color: 'excellent' };
+      case 'good':
+        return { text: 'Good Quality', color: 'good' };
+      case 'fair':
+        return { text: 'Fair Quality', color: 'fair' };
+      case 'poor':
+        return { text: 'Poor Quality', color: 'poor' };
+      default:
+        return { text: 'Quality Unknown', color: 'unknown' };
+    }
+  };
+
+  const getQualityMessage = (video: VideoMetadata): string => {
+    if (!video.quality_level || video.quality_level === 'unknown') {
+      return 'Quality not assessed yet';
+    }
+
+    switch (video.quality_level) {
+      case 'excellent':
+        return 'Great video quality! Ready for analysis.';
+      case 'good':
+        return 'Good quality. Analysis should work well.';
+      case 'fair':
+        return 'Fair quality. Analysis may have reduced accuracy.';
+      case 'poor':
+        return 'Poor quality detected. Consider re-recording with better lighting/steadier camera.';
+      default:
+        return 'Quality not assessed yet';
+    }
+  };
+
   const isVideoAnalyzing = (videoId: number): boolean => {
     const activeTask = activeTasks.get(videoId);
     return (
@@ -469,6 +507,7 @@ const VideoList: React.FC<VideoListProps> = ({
             const analysis = getAnalysisForVideo(video.id);
             const isAnalyzing = isVideoAnalyzing(video.id);
             const status = getStatusTag(analysis, video.id);
+            const qualityStatus = getQualityStatus(video);
 
             return (
               <div key={video.id} className="video-card-enhanced">
@@ -487,10 +526,21 @@ const VideoList: React.FC<VideoListProps> = ({
                   <div className={`status-tag ${status.color}`}>
                     {status.text}
                   </div>
+                  {/* Quality status tag */}
+                  <div className={`quality-tag ${qualityStatus.color}`}>
+                    {qualityStatus.text}
+                  </div>
                 </div>
 
                 <div className="video-content">
                   <h3 className="video-title">{video.filename}</h3>
+
+                  {/* Quality message */}
+                  {video.quality_level && video.quality_level !== 'unknown' && (
+                    <div className="quality-message">
+                      {getQualityMessage(video)}
+                    </div>
+                  )}
 
                   <div className="video-metadata-enhanced">
                     <div className="metadata-row">
