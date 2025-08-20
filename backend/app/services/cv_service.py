@@ -63,8 +63,8 @@ class CVService:
             # Try to initialize models one by one to handle partial failures
             # YOLO will automatically download models if they don't exist locally
             models_to_try = [
-                ("nano", "ml_models/yolov8n.pt"),
-                ("small", "ml_models/yolov8s.pt"),
+                (model_name, model_path)
+                for model_name, model_path in settings.YOLO_MODELS.items()
             ]
 
             for model_name, model_path in models_to_try:
@@ -77,8 +77,8 @@ class CVService:
                     continue
 
             if self.yolo_models:
-                # Set default model to the first available one
-                default_model = next(iter(self.yolo_models.keys()))
+                # Set default model to the configured default or first available one
+                default_model = settings.YOLO_DEFAULT_MODEL if settings.YOLO_DEFAULT_MODEL in self.yolo_models else next(iter(self.yolo_models.keys()))
                 self.ball_detector = self.yolo_models[default_model]
                 logger.info("YOLO models initialized successfully")
                 logger.info(f"Available models: {list(self.yolo_models.keys())}")

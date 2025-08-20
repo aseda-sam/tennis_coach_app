@@ -33,7 +33,11 @@ class Settings(BaseSettings):
 
     # Computer Vision
     ML_MODELS_DIR: str = "ml_models"
-    YOLO_MODEL_PATH: str = "ml_models/yolov8n.pt"
+    YOLO_MODELS: dict[str, str] = {
+        "nano": "ml_models/yolov8n.pt",
+        "small": "ml_models/yolov8s.pt"
+    }
+    YOLO_DEFAULT_MODEL: str = "nano"  # Default model to use when quality-based selection fails
     CONFIDENCE_THRESHOLD: float = 0.5
     BALL_CONFIDENCE_THRESHOLD: float = 0.7
 
