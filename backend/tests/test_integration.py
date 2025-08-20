@@ -153,6 +153,81 @@ class TestVideoIntegration:
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)
 
+    def test_video_deletion_cascade_behavior(self, client: TestClient) -> None:
+        """Test that video deletion correctly cascades to analyses without affecting other videos."""
+        # Use the real test video file
+        test_video_path = Path(__file__).parent / "test_data" / "test_tennis_video.mp4"
+        if not test_video_path.exists():
+            pytest.skip("Test video file not found")
+
+        # Upload first video
+        with open(test_video_path, "rb") as f:
+            files = {"file": ("test_video_1.mp4", f, "video/mp4")}
+            response = client.post("/v0/videos/upload", files=files)
+
+        assert response.status_code == 200
+        video_1_id = response.json()["video_id"]
+
+        # Upload second video
+        with open(test_video_path, "rb") as f:
+            files = {"file": ("test_video_2.mp4", f, "video/mp4")}
+            response = client.post("/v0/videos/upload", files=files)
+
+        assert response.status_code == 200
+        video_2_id = response.json()["video_id"]
+
+        # Create analysis for first video
+        analysis_request = {
+            "analysis_type": "ball_tracking",
+            "confidence_threshold": 0.5,
+            "include_pose_detection": False,
+            "synchronous": True,
+        }
+
+        response = client.post(
+            f"/v0/analysis/videos/{video_1_id}", json=analysis_request
+        )
+        assert response.status_code == 200
+        analysis_1_data = response.json()
+        analysis_1_id = analysis_1_data["analysis_id"]
+
+        # Create analysis for second video
+        response = client.post(
+            f"/v0/analysis/videos/{video_2_id}", json=analysis_request
+        )
+        assert response.status_code == 200
+        analysis_2_data = response.json()
+        analysis_2_id = analysis_2_data["analysis_id"]
+
+        # Verify both analyses exist
+        response = client.get(f"/v0/analysis/{analysis_1_id}")
+        assert response.status_code == 200
+
+        response = client.get(f"/v0/analysis/{analysis_2_id}")
+        assert response.status_code == 200
+
+        # Delete first video
+        response = client.delete(f"/v0/videos/{video_1_id}")
+        assert response.status_code == 200
+
+        # Verify first video and its analysis are deleted
+        response = client.get(f"/v0/videos/{video_1_id}")
+        assert response.status_code == 404
+
+        response = client.get(f"/v0/analysis/{analysis_1_id}")
+        assert response.status_code == 404
+
+        # Verify second video and its analysis still exist
+        response = client.get(f"/v0/videos/{video_2_id}")
+        assert response.status_code == 200
+
+        response = client.get(f"/v0/analysis/{analysis_2_id}")
+        assert response.status_code == 200
+
+        # Clean up second video
+        response = client.delete(f"/v0/videos/{video_2_id}")
+        assert response.status_code == 200
+
 
 class TestAnalysisIntegration:
     """Integration tests for analysis endpoints."""
