@@ -233,7 +233,7 @@ class CVService:
                     if max_frames is not None and len(frames) >= max_frames:
                         break
 
-                frame_count += 1
+                frame_count += interval
 
                 # Skip frames to maintain interval
                 if interval > 1:
