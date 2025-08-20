@@ -28,7 +28,7 @@ def get_database_videos() -> List[str]:
         db = next(get_db())
         videos = db.query(Video).all()
         return [video.filename for video in videos]
-    except Exception as e:
+    except (ImportError, RuntimeError, OSError) as e:
         logger.error(f"Failed to get database videos: {e}")
         return []
 
@@ -184,12 +184,12 @@ def purge_orphaned_videos(dry_run: bool = True, include_tests: bool = False) -> 
                 f"\nSuccessfully deleted {deleted_count} files ({format_size(deleted_size)})"
             )
 
-    except Exception as e:
+    except (ImportError, RuntimeError, OSError) as e:
         logger.error(f"Error during purge: {e}")
         sys.exit(1)
 
 
-def main():
+def main() -> None:
     """Main function."""
     import argparse
 

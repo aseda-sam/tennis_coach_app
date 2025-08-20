@@ -78,7 +78,11 @@ class CVService:
 
             if self.yolo_models:
                 # Set default model to the configured default or first available one
-                default_model = settings.YOLO_DEFAULT_MODEL if settings.YOLO_DEFAULT_MODEL in self.yolo_models else next(iter(self.yolo_models.keys()))
+                default_model = (
+                    settings.YOLO_DEFAULT_MODEL
+                    if settings.YOLO_DEFAULT_MODEL in self.yolo_models
+                    else next(iter(self.yolo_models.keys()))
+                )
                 self.ball_detector = self.yolo_models[default_model]
                 logger.info("YOLO models initialized successfully")
                 logger.info(f"Available models: {list(self.yolo_models.keys())}")
@@ -833,10 +837,14 @@ class CVService:
             if annotated_path.exists():
                 file_size = annotated_path.stat().st_size
                 if file_size > 0:
-                    logger.info(f"Annotated video already exists: {annotated_path} ({file_size} bytes)")
+                    logger.info(
+                        f"Annotated video already exists: {annotated_path} ({file_size} bytes)"
+                    )
                     return annotated_path
                 else:
-                    logger.warning(f"Existing annotated video is empty, recreating: {annotated_path}")
+                    logger.warning(
+                        f"Existing annotated video is empty, recreating: {annotated_path}"
+                    )
                     annotated_path.unlink()
 
             # Create video writer with any working codec first, then convert to H.264
@@ -898,7 +906,9 @@ class CVService:
                 annotated_path.unlink()
                 return None
 
-            logger.info(f"Annotated video file created successfully: {annotated_path} ({file_size} bytes)")
+            logger.info(
+                f"Annotated video file created successfully: {annotated_path} ({file_size} bytes)"
+            )
 
             # Convert to H.264 for better browser compatibility using FFmpeg
             import subprocess
@@ -969,7 +979,9 @@ class CVService:
             # Final verification
             if annotated_path.exists():
                 final_size = annotated_path.stat().st_size
-                logger.info(f"Final annotated video: {annotated_path} ({final_size} bytes)")
+                logger.info(
+                    f"Final annotated video: {annotated_path} ({final_size} bytes)"
+                )
                 if final_size > 0:
                     log_timing("Video Creation", start_time)
                     return annotated_path

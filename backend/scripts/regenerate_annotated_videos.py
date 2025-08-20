@@ -9,7 +9,11 @@ and regenerates them.
 import logging
 import sys
 from pathlib import Path
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
+
+if TYPE_CHECKING:
+    from app.models.analysis import Analysis
+    from app.models.video import Video
 
 # Add the app directory to the path so we can import from it
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -50,12 +54,12 @@ def get_analyses_with_missing_videos() -> List[Tuple]:
 
         return missing_videos
 
-    except Exception as e:
+    except (ImportError, RuntimeError, OSError) as e:
         logger.error(f"Failed to get analyses: {e}")
         return []
 
 
-def regenerate_annotated_video(analysis, video) -> bool:
+def regenerate_annotated_video(analysis: "Analysis", video: "Video") -> bool:
     """Regenerate annotated video for a specific analysis."""
     try:
         from app.core.config import settings
@@ -127,12 +131,12 @@ def regenerate_annotated_video(analysis, video) -> bool:
             logger.warning("No annotated video path in analysis result")
             return False
 
-    except Exception as e:
+    except (ImportError, RuntimeError, OSError) as e:
         logger.error(f"Error regenerating annotated video: {e}")
         return False
 
 
-def main():
+def main() -> None:
     """Main function."""
     import argparse
 
