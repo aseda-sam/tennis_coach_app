@@ -171,12 +171,30 @@ async def stream_annotated_video(
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Look for annotated video
-        annotated_filename = f"{Path(db_video.filename).stem}_annotated.mp4"
-        processed_dir = Path(settings.PROCESSED_DIR)
-        annotated_path = processed_dir / annotated_filename
+        # Get the latest analysis for this video that has an annotated video
+        from app.models.analysis import Analysis
 
-        validate_file_exists(annotated_path, annotated_filename)
+        analysis = (
+            db.query(Analysis)
+            .filter(Analysis.video_id == video_id)
+            .filter(Analysis.annotated_video_path.isnot(None))
+            .order_by(Analysis.created_at.desc())
+            .first()
+        )
+
+        if not analysis or not analysis.annotated_video_path:
+            raise handle_not_found_error("annotated video", f"for video {video_id}")
+
+        # Use the actual annotated video path from the analysis
+        annotated_path = Path(analysis.annotated_video_path)
+
+        if not annotated_path.exists():
+            raise handle_file_error(
+                "not_found", str(annotated_path), "Annotated video file not found"
+            )
+
+        # Get filename from the path
+        annotated_filename = annotated_path.name
 
         return FileResponse(
             path=str(annotated_path),

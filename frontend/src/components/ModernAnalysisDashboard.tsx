@@ -68,7 +68,7 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
   // Start analysis function
   const startAnalysis = async () => {
     if (!video) return;
-    
+
     try {
       setIsStartingAnalysis(true);
       await analysisApi.startAnalysis(videoId, {
@@ -131,8 +131,8 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
 
   const getVideoUrl = () => {
     const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
-    if (analysis?.pose_detections && analysis.pose_detections.length > 0) {
-      return `${baseUrl}/videos/${videoId}/annotated`;
+    if (analysis?.annotated_video_path) {
+      return `${baseUrl}/videos/${videoId}/annotated/stream`;
     }
     return videoUrl;
   };
@@ -250,8 +250,7 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
                 <VideoPlayer
                   videoUrl={getVideoUrl()}
                   title={
-                    analysis?.pose_detections &&
-                    analysis.pose_detections.length > 0
+                    analysis?.annotated_video_path
                       ? `${videoFilename} (Annotated)`
                       : videoFilename
                   }
@@ -260,15 +259,14 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
                 />
 
                 {/* AI Analysis Badge */}
-                {analysis?.pose_detections &&
-                  analysis.pose_detections.length > 0 && (
-                    <div className="absolute top-4 left-4">
-                      <Badge className="bg-blue-600 text-white hover:bg-blue-600">
-                        <Activity className="h-3 w-3 mr-1" />
-                        AI Analysis Active
-                      </Badge>
-                    </div>
-                  )}
+                {analysis?.annotated_video_path && (
+                  <div className="absolute top-4 left-4">
+                    <Badge className="bg-blue-600 text-white hover:bg-blue-600">
+                      <Activity className="h-3 w-3 mr-1" />
+                      AI Analysis Active
+                    </Badge>
+                  </div>
+                )}
               </div>
             </Card>
 
@@ -283,7 +281,8 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
                     Ready for Analysis
                   </h3>
                   <p className="text-slate-600 mb-6 max-w-md mx-auto">
-                    Get detailed insights on your tennis technique with AI-powered ball detection and pose estimation.
+                    Get detailed insights on your tennis technique with
+                    AI-powered ball detection and pose estimation.
                   </p>
                   <Button
                     onClick={startAnalysis}
@@ -292,7 +291,9 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
                     className="brand-gradient hover:shadow-lg text-white px-8 py-3"
                   >
                     <Activity className="h-5 w-5 mr-2" />
-                    {isStartingAnalysis ? 'Starting Analysis...' : 'Start Analysis'}
+                    {isStartingAnalysis
+                      ? 'Starting Analysis...'
+                      : 'Start Analysis'}
                   </Button>
                 </div>
               </Card>

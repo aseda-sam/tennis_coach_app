@@ -127,6 +127,7 @@ export interface AnalysisData {
   pose_detection_rate?: number;
   ball_detections: any[];
   pose_detections: any[];
+  annotated_video_path?: string; // Path to annotated video file
   created_at: string;
   updated_at?: string;
   // New timing information

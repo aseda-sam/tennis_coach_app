@@ -66,7 +66,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   // Smart video URL selection: use annotated video if available, otherwise original
   const getVideoUrl = () => {
-    if (analysis?.pose_detections && analysis.pose_detections.length > 0) {
+    if (analysis?.annotated_video_path) {
       // Use the new annotated video endpoint
       const baseUrl =
         process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
@@ -117,20 +117,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             <VideoPlayer
               videoUrl={getVideoUrl()}
               title={
-                analysis?.pose_detections && analysis.pose_detections.length > 0
+                analysis?.annotated_video_path
                   ? `${videoFilename} (Annotated)`
                   : videoFilename
               }
               showControls={true}
               aspectRatioMode={aspectRatioMode}
             />
-            {analysis?.pose_detections &&
-              analysis.pose_detections.length > 0 && (
-                <div className="ai-analysis-badge">
-                  <span className="ai-icon">⚡</span>
-                  AI Analysis Active
-                </div>
-              )}
+            {analysis?.annotated_video_path && (
+              <div className="ai-analysis-badge">
+                <span className="ai-icon">⚡</span>
+                AI Analysis Active
+              </div>
+            )}
           </div>
 
           {/* Video Details and Actions below video */}
@@ -250,7 +249,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               <div className="analysis-error">
                 <h3>❌ Video Data Error</h3>
                 <p>{videoError}</p>
-                <button className="retry-btn" onClick={() => window.location.reload()}>
+                <button
+                  className="retry-btn"
+                  onClick={() => window.location.reload()}
+                >
                   Reload Page
                 </button>
               </div>
