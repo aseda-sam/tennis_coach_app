@@ -64,6 +64,49 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
     fetchVideoDetails();
   }, [videoId]);
 
+  // Format relative time
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} seconds ago`;
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    } else {
+      const days = Math.floor(diffInSeconds / 86400);
+      if (days === 1) {
+        return 'Yesterday';
+      } else if (days < 7) {
+        return `${days} days ago`;
+      } else {
+        return date.toLocaleDateString();
+      }
+    }
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  // Format duration
+  const formatDuration = (seconds: number) => {
+    if (!seconds) return 'N/A';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   const getVideoUrl = () => {
     const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
     if (analysis?.pose_detections && analysis.pose_detections.length > 0) {
@@ -72,48 +115,47 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
     return videoUrl;
   };
 
-  const analysisItems = [
-    {
+  // Only show analysis items that have real data
+  const analysisItems = [];
+  
+  // Video Quality Assessment - always show if we have quality data
+  if (video?.quality_level || video?.quality_score) {
+    analysisItems.push({
       title: 'Video Quality Assessment',
-      score: video?.quality_level || 'Excellent',
-      percentage: Math.round((video?.quality_score || 0.95) * 100),
+      score: video?.quality_level ? video.quality_level.charAt(0).toUpperCase() + video.quality_level.slice(1) : 'Good',
+      percentage: Math.round((video?.quality_score || 0.8) * 100),
       color: 'text-green-600',
       bgColor: 'bg-green-50',
       borderColor: 'border-green-200',
       icon: Eye,
-    },
-    {
-      title: 'Performance Metrics',
-      score: 'Basic Timing',
-      percentage: 68,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200',
-      icon: Activity,
-    },
-    {
+    });
+  }
+  
+  // Pose Detection - only show if we have real analysis data
+  if (analysis?.pose_detection_rate !== undefined) {
+    analysisItems.push({
       title: 'Pose Detection',
-      score: analysis?.pose_detection_rate
-        ? `${(analysis.pose_detection_rate * 100).toFixed(1)}% DETECTED`
-        : '100.0% DETECTED',
-      percentage: Math.round((analysis?.pose_detection_rate || 1) * 100),
+      score: `${(analysis.pose_detection_rate * 100).toFixed(1)}% DETECTED`,
+      percentage: Math.round(analysis.pose_detection_rate * 100),
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
       borderColor: 'border-purple-200',
       icon: TrendingUp,
-    },
-    {
+    });
+  }
+  
+  // Ball Detection - only show if we have real analysis data
+  if (analysis?.detection_rate !== undefined) {
+    analysisItems.push({
       title: 'Ball Detection',
-      score: analysis?.detection_rate
-        ? `${(analysis.detection_rate * 100).toFixed(1)}% DETECTED`
-        : '41.4% DETECTED',
-      percentage: Math.round((analysis?.detection_rate || 0.414) * 100),
+      score: `${(analysis.detection_rate * 100).toFixed(1)}% DETECTED`,
+      percentage: Math.round(analysis.detection_rate * 100),
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-200',
       icon: Activity,
-    },
-  ];
+    });
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
@@ -132,7 +174,9 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
             <h1 className="text-xl font-semibold text-slate-900 truncate max-w-md">
               {videoFilename}
             </h1>
-            <p className="text-slate-600">Uploaded recently</p>
+            <p className="text-slate-600">
+              {video?.created_at ? formatRelativeTime(video.created_at) : 'Uploaded recently'}
+            </p>
           </div>
         </div>
 
@@ -198,25 +242,29 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <label className="text-sm text-slate-600">File Size</label>
-                  <p className="font-semibold">{video?.file_size || 'N/A'}</p>
+                  <p className="font-semibold">
+                    {video?.file_size ? formatFileSize(video.file_size) : 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-slate-600">Resolution</label>
                   <p className="font-semibold">
                     {video?.width && video?.height
-                      ? `${video.width}x${video.height}`
+                      ? `${video.width}×${video.height}`
                       : 'N/A'}
                   </p>
                 </div>
                 <div>
                   <label className="text-sm text-slate-600">Duration</label>
-                  <p className="font-semibold">{video?.duration || 'N/A'}</p>
+                  <p className="font-semibold">
+                    {video?.duration ? formatDuration(video.duration) : 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-slate-600">Status</label>
                   <div className="mt-1">
                     <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                      Analysis Complete
+                      {analysis ? 'Analysis Complete' : 'Ready for Analysis'}
                     </Badge>
                   </div>
                 </div>
@@ -267,26 +315,7 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
               </div>
             </Card>
 
-            {/* Quick Actions */}
-            <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-sm">
-              <h3 className="font-semibold text-slate-900 mb-4">
-                Quick Actions
-              </h3>
-              <div className="space-y-3">
-                <Button className="w-full justify-start brand-gradient hover:shadow-lg text-white">
-                  <Activity className="h-4 w-4 mr-2" />
-                  View Detailed Analysis
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  Export Report
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Eye className="h-4 w-4 mr-2" />
-                  Compare with Previous
-                </Button>
-              </div>
-            </Card>
+
 
             {/* Analysis Status Section - Show when analysis is running */}
             {(isLoading || isPolling) && (
