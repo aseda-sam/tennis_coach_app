@@ -63,8 +63,8 @@ class CVService:
             # Try to initialize models one by one to handle partial failures
             # YOLO will automatically download models if they don't exist locally
             models_to_try = [
-                ("nano", "yolov8n.pt"),
-                ("small", "yolov8s.pt"),
+                ("nano", "ml_models/yolov8n.pt"),
+                ("small", "ml_models/yolov8s.pt"),
             ]
 
             for model_name, model_path in models_to_try:
