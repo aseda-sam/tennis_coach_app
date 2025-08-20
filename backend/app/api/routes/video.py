@@ -205,9 +205,7 @@ async def delete_video(
         success, filename, deleted_video_id = delete_video_with_analyses(db, video_id)
 
         if not success:
-            raise handle_file_error(
-                "delete_failed", filename or "unknown", "Video deletion failed"
-            )
+            raise handle_file_error("delete_failed", filename, "Video deletion failed")
 
         return VideoDeleteResponse(
             message=f"Video {filename} deleted successfully",

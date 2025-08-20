@@ -93,7 +93,9 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     # Get video from database
     video = get_video_by_id(db, video_id)
     if not video:
-        return False, "", video_id
+        from app.utils.error_handling import handle_not_found_error
+
+        raise handle_not_found_error("Video", str(video_id))
 
     filename = video.filename
 
