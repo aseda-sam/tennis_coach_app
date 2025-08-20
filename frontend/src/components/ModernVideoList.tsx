@@ -285,7 +285,7 @@ const ModernVideoList: React.FC<ModernVideoListProps> = ({
           </div>
         </div>
 
-        <div className="p-5">
+        <div className="p-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-slate-900 truncate mb-2">
@@ -322,7 +322,7 @@ const ModernVideoList: React.FC<ModernVideoListProps> = ({
           </div>
 
           <div className="space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-3 text-slate-600">
+            <div className="flex flex-col gap-2 text-slate-600">
               <div>
                 <span className="text-slate-400">Size:</span>
                 <span className="ml-1 font-medium">
@@ -333,7 +333,7 @@ const ModernVideoList: React.FC<ModernVideoListProps> = ({
                 <span className="text-slate-400">Resolution:</span>
                 <span className="ml-1 font-medium">
                   {video.width && video.height
-                    ? `${video.width}x${video.height}`
+                    ? `${video.width}×${video.height}`
                     : 'Unknown'}
                 </span>
               </div>
@@ -617,7 +617,7 @@ const ModernVideoList: React.FC<ModernVideoListProps> = ({
           <div
             className={
               viewMode === 'grid'
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8'
                 : 'space-y-4'
             }
           >

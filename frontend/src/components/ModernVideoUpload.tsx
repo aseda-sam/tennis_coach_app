@@ -182,24 +182,25 @@ const ModernVideoUpload: React.FC<ModernVideoUploadProps> = ({
       <div className="max-w-4xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-slate-900">
+          {onBack && (
+            <Button
+              variant="ghost"
+              onClick={onBack}
+              className="text-slate-600 hover:text-slate-900 mb-4"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Home
+            </Button>
+          )}
+          <div className="mb-4">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">
               Upload Tennis Video
             </h1>
-            {onBack && (
-              <Button
-                variant="outline"
-                onClick={onBack}
-                className="text-slate-600 hover:text-slate-900 border-slate-300"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-              </Button>
-            )}
+            <p className="text-slate-600">
+              Upload your tennis videos for AI-powered analysis and technique
+              insights
+            </p>
           </div>
-          <p className="text-slate-600">
-            Upload your tennis videos for AI-powered analysis and technique
-            insights
-          </p>
         </div>
 
         {/* Upload Card */}
