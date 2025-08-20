@@ -97,6 +97,9 @@ class AnalysisInfo(BaseModel):
     annotated_video_path: Optional[str] = Field(
         default=None, description="Path to annotated video"
     )
+    confidence_threshold_used: Optional[float] = Field(
+        default=None, description="Actual confidence threshold used after adaptation"
+    )
     created_at: datetime = Field(description="Analysis creation timestamp")
     updated_at: Optional[datetime] = Field(
         default=None, description="Last update timestamp"

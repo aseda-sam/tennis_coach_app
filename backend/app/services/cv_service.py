@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,28 +42,58 @@ def log_timing_error(operation_name: str, start_time: float, error: Exception) -
 
 
 class CVService:
-    """Computer Vision service for tennis video analysis."""
+    """Computer Vision service for video analysis."""
 
     def __init__(self) -> None:
-        """Initialize the CV service."""
         self.ball_detector = None
         self.pose_detector = None
+        self.yolo_models = {}  # Cache for different YOLO models
         self._initialize_models()
 
     def _initialize_models(self) -> None:
         """Initialize YOLO and MediaPipe models."""
         start_time = time.time()
+
+        # Initialize YOLO models for ball detection
+        self.yolo_models = {}  # Ensure it's always initialized as empty dict
+
         try:
-            # Initialize YOLO for ball detection
             from ultralytics import YOLO
 
-            self.ball_detector = YOLO("yolov8n.pt")  # Use nano model for speed
-            logger.info("YOLO model initialized successfully")
+            # Try to initialize models one by one to handle partial failures
+            # YOLO will automatically download models if they don't exist locally
+            models_to_try = [
+                ("nano", "yolov8n.pt"),
+                ("small", "yolov8s.pt"),
+            ]
+
+            for model_name, model_path in models_to_try:
+                try:
+                    logger.info(f"Loading YOLO model: {model_name} ({model_path})")
+                    self.yolo_models[model_name] = YOLO(model_path)
+                    logger.info(f"Successfully loaded YOLO model: {model_name}")
+                except (OSError, RuntimeError, ImportError) as e:
+                    logger.warning(f"Failed to load YOLO model {model_name}: {e}")
+                    continue
+
+            if self.yolo_models:
+                # Set default model to the first available one
+                default_model = next(iter(self.yolo_models.keys()))
+                self.ball_detector = self.yolo_models[default_model]
+                logger.info("YOLO models initialized successfully")
+                logger.info(f"Available models: {list(self.yolo_models.keys())}")
+                logger.info(f"Default model: {default_model}")
+            else:
+                logger.warning(
+                    "No YOLO models could be loaded, ball detection disabled"
+                )
+                self.ball_detector = None
+
         except ImportError:
             logger.warning("Ultralytics not available, ball detection disabled")
             self.ball_detector = None
-        except (OSError, RuntimeError) as e:
-            logger.error(f"Failed to initialize YOLO: {e}")
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.error(f"Unexpected error during YOLO initialization: {e}")
             self.ball_detector = None
 
         try:
@@ -89,6 +121,51 @@ class CVService:
         elapsed_time = time.time() - start_time
         logger.info(f"⏱️ Model initialization completed in {elapsed_time:.3f}s")
 
+    def _select_yolo_model(self, video_quality_level: Optional[str] = None) -> str:
+        """
+        Select appropriate YOLO model based on video quality.
+
+        Args:
+            video_quality_level: Quality level from video assessment
+
+        Returns:
+            Model name to use ('nano' or 'small')
+        """
+        # Check what models are actually available
+        available_models = list(self.yolo_models.keys()) if self.yolo_models else []
+
+        if not available_models:
+            logger.warning("No YOLO models available")
+            return "nano"  # Return default even if not available (will be handled by caller)
+
+        if not video_quality_level or video_quality_level == "unknown":
+            # Return the first available model (prefer nano if available)
+            if "nano" in available_models:
+                return "nano"
+            return available_models[0]
+
+        # Model selection logic based on quality
+        quality_model_mapping = {
+            "excellent": "small",  # Use better model for excellent quality
+            "good": "small",  # Use better model for good quality
+            "fair": "nano",  # Use faster model for fair quality
+            "poor": "nano",  # Use faster model for poor quality
+        }
+
+        preferred_model = quality_model_mapping.get(video_quality_level, "nano")
+
+        # Check if preferred model is available, otherwise use fallback
+        if preferred_model in available_models:
+            return preferred_model
+        else:
+            logger.warning(
+                f"Preferred model '{preferred_model}' not available, using fallback"
+            )
+            # Return the first available model (prefer nano if available)
+            if "nano" in available_models:
+                return "nano"
+            return available_models[0]
+
     def extract_frames(
         self, video_path: Path, max_frames: Optional[int] = None
     ) -> List[np.ndarray]:
@@ -114,24 +191,38 @@ class CVService:
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             fps = cap.get(cv2.CAP_PROP_FPS)
 
-            # Calculate frame interval to get max_frames (or process all frames if max_frames is None)
+            # Use FRAME_SKIP_RATIO from config for proper frame skipping
+            from app.core.config import env_limits
+
+            frame_skip_ratio = env_limits["frame_skip_ratio"]
+
+            # Calculate frame interval based on max_frames and frame_skip_ratio
             if max_frames is None:
-                interval = 1  # Process every frame
+                # If no max_frames specified, use frame_skip_ratio directly
+                interval = frame_skip_ratio
             else:
-                interval = (
+                # If max_frames specified, calculate interval to get max_frames
+                # but respect the minimum frame_skip_ratio
+                calculated_interval = (
                     total_frames // max_frames if total_frames > max_frames else 1
                 )
+                interval = max(calculated_interval, frame_skip_ratio)
+
+            # Log frame skipping status
+            if frame_skip_ratio > 1:
+                logger.info(
+                    f"Frame skipping enabled: processing every {frame_skip_ratio} frames"
+                )
+            else:
+                logger.info("Frame skipping disabled: processing all frames")
 
             logger.info(f"Extracting frames from {video_path}")
             logger.info(
-                f"Total frames: {total_frames}, FPS: {fps}, Interval: {interval}"
+                f"Total frames: {total_frames}, FPS: {fps}, Frame skip ratio: {frame_skip_ratio}, Interval: {interval}"
             )
 
-            # Process all frames if max_frames is None, otherwise limit to max_frames
-            max_frames_to_process = (
-                max_frames if max_frames is not None else total_frames
-            )
-            while frame_count < max_frames_to_process:
+            # Process frames with proper skipping
+            while frame_count < total_frames:
                 ret, frame = cap.read()
                 if not ret:
                     break
@@ -140,7 +231,11 @@ class CVService:
                 if frame_count % interval == 0:
                     frames.append(frame)
 
-                frame_count += 1
+                    # Stop if we've reached max_frames
+                    if max_frames is not None and len(frames) >= max_frames:
+                        break
+
+                frame_count += interval
 
                 # Skip frames to maintain interval
                 if interval > 1:
@@ -148,7 +243,7 @@ class CVService:
                         cap.read()
 
             cap.release()
-            logger.info(f"Extracted {len(frames)} frames")
+            logger.info(f"Extracted {len(frames)} frames using interval {interval}")
 
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error extracting frames: {e}")
@@ -156,7 +251,9 @@ class CVService:
         log_timing("Frame Extraction", start_time)
         return frames
 
-    def detect_balls(self, frames: List[np.ndarray]) -> List[List[Dict[str, Any]]]:
+    def detect_balls(
+        self, frames: List[np.ndarray], confidence_threshold: Optional[float] = None
+    ) -> List[List[Dict[str, Any]]]:
         """
         Detect tennis balls in frames using YOLO.
 
@@ -192,7 +289,12 @@ class CVService:
                             class_id = int(box.cls[0].cpu().numpy())
 
                             # Filter for sports balls (class 32 in COCO dataset)
-                            if class_id == 32 and confidence > 0.5:
+                            # Use adaptive confidence threshold or fallback to config default
+                            threshold = (
+                                confidence_threshold
+                                or settings.BALL_CONFIDENCE_THRESHOLD
+                            )
+                            if class_id == 32 and confidence > threshold:
                                 frame_detections.append(
                                     {
                                         "bbox": [int(x1), int(y1), int(x2), int(y2)],
@@ -457,7 +559,11 @@ class CVService:
             # File is left at temp_path location for manual cleanup
 
     def analyze_video(
-        self, video_path: Path, include_pose: bool = True
+        self,
+        video_path: Path,
+        include_pose: bool = True,
+        confidence_threshold: Optional[float] = None,
+        video_quality_level: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Perform comprehensive video analysis with ball detection and pose estimation.
@@ -465,6 +571,8 @@ class CVService:
         Args:
             video_path: Path to video file
             include_pose: Whether to include pose detection (default: True)
+            confidence_threshold: Optional confidence threshold (if not provided, uses default)
+            video_quality_level: Video quality level for model selection
 
         Returns:
             Analysis results dictionary with timing information
@@ -493,9 +601,60 @@ class CVService:
                 "timing": stage_timings,
             }
 
-        # Detect balls
+        # Select YOLO model based on video quality
+        selected_model = self._select_yolo_model(video_quality_level)
+
+        # Check if the selected model exists in available models
+        if not self.yolo_models or selected_model not in self.yolo_models:
+            logger.warning(f"Selected YOLO model '{selected_model}' not available")
+            if self.yolo_models:
+                # Use the first available model as fallback
+                fallback_model = next(iter(self.yolo_models.keys()))
+                logger.info(f"Using fallback model: {fallback_model}")
+                self.ball_detector = self.yolo_models[fallback_model]
+                selected_model = fallback_model
+            else:
+                # No models available at all
+                logger.error("No YOLO models available for ball detection")
+                return {
+                    "error": "Ball detection models not available",
+                    "frames_processed": len(frames),
+                    "ball_detections": [[] for _ in frames],
+                    "pose_detections": [],
+                    "analysis_summary": {
+                        "total_frames": len(frames),
+                        "frames_with_balls": 0,
+                        "total_ball_detections": 0,
+                        "average_detections_per_frame": 0,
+                        "detection_rate": 0,
+                        "frames_with_pose": 0,
+                        "pose_detection_rate": 0,
+                        "video_quality": {},
+                        "confidence_threshold_used": confidence_threshold
+                        or settings.BALL_CONFIDENCE_THRESHOLD,
+                        "yolo_model_used": "none",
+                        "yolo_model_selection_reason": "No models available",
+                    },
+                    "timing": stage_timings,
+                }
+        else:
+            self.ball_detector = self.yolo_models[selected_model]
+
+        logger.info(
+            f"Selected YOLO model: {selected_model} (quality: {video_quality_level or 'unknown'})"
+        )
+
+        # Use provided confidence threshold or default
+        adaptive_confidence_threshold = (
+            confidence_threshold or settings.BALL_CONFIDENCE_THRESHOLD
+        )
+        logger.info(f"Using confidence threshold: {adaptive_confidence_threshold:.3f}")
+
+        # Detect balls with confidence threshold
         ball_detection_start = time.time()
-        ball_detections = self.detect_balls(frames)
+        ball_detections = self.detect_balls(
+            frames, confidence_threshold=adaptive_confidence_threshold
+        )
         stage_timings["ball_detection"] = time.time() - ball_detection_start
 
         # Detect poses (if enabled)
@@ -592,6 +751,10 @@ class CVService:
             "detection_rate": frames_with_balls / len(frames) if frames else 0,
             "frames_with_pose": frames_with_pose,
             "pose_detection_rate": frames_with_pose / len(frames) if frames else 0,
+            "video_quality": {},  # Quality assessment is now done during upload
+            "confidence_threshold_used": adaptive_confidence_threshold,
+            "yolo_model_used": selected_model,
+            "yolo_model_selection_reason": f"Quality-based selection: {video_quality_level or 'unknown'} quality",
         }
 
         # Log detailed timing breakdown
@@ -817,6 +980,110 @@ class CVService:
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error extracting video metadata: {e}")
             return {"error": str(e)}
+
+
+def assess_video_quality(frames: List[np.ndarray]) -> Dict[str, Any]:
+    """
+    Assess video quality and return quality metrics and recommended confidence thresholds.
+
+    Args:
+        frames: List of video frames to analyze
+
+    Returns:
+        Dictionary containing quality metrics and recommended thresholds
+    """
+    if not frames:
+        return {
+            "quality_score": 0.0,
+            "blur_score": 0.0,
+            "lighting_score": 0.0,
+            "resolution_score": 0.0,
+            "recommended_confidence_threshold": settings.BALL_CONFIDENCE_THRESHOLD,
+            "quality_level": "unknown",
+        }
+
+    # Sample frames for analysis (use every 10th frame to avoid performance issues)
+    sample_frames = frames[::10] if len(frames) > 10 else frames
+
+    # Calculate blur score using Laplacian variance
+    blur_scores = []
+    for frame in sample_frames:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
+        blur_scores.append(blur_score)
+
+    avg_blur_score = np.mean(blur_scores)
+    # Normalize blur score (higher variance = less blur)
+    blur_quality = min(
+        1.0, avg_blur_score / 500.0
+    )  # Threshold based on typical tennis video blur
+
+    # Calculate lighting score using brightness and contrast
+    lighting_scores = []
+    for frame in sample_frames:
+        # Convert to LAB color space for better lighting analysis
+        lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        l_channel = lab[:, :, 0]
+
+        # Calculate brightness (mean of L channel)
+        brightness = np.mean(l_channel)
+        # Calculate contrast (standard deviation of L channel)
+        contrast = np.std(l_channel)
+
+        # Normalize brightness (good range: 50-200)
+        brightness_score = 1.0 - abs(brightness - 125) / 125
+        brightness_score = max(0.0, min(1.0, brightness_score))
+
+        # Normalize contrast (good range: >20)
+        contrast_score = min(1.0, contrast / 50.0)
+
+        # Combined lighting score
+        lighting_score = (brightness_score + contrast_score) / 2
+        lighting_scores.append(lighting_score)
+
+    lighting_quality = np.mean(lighting_scores)
+
+    # Calculate resolution score
+    first_frame = frames[0]
+    height, width = first_frame.shape[:2]
+
+    # Normalize resolution score (4K = 1.0, 720p = 0.5, 480p = 0.25)
+    resolution_score = min(1.0, (width * height) / (1920 * 1080))
+
+    # Calculate overall quality score
+    quality_score = blur_quality * 0.4 + lighting_quality * 0.4 + resolution_score * 0.2
+
+    # Determine quality level
+    if quality_score >= 0.8:
+        quality_level = "excellent"
+        recommended_threshold = settings.BALL_CONFIDENCE_THRESHOLD
+    elif quality_score >= 0.6:
+        quality_level = "good"
+        recommended_threshold = settings.BALL_CONFIDENCE_THRESHOLD * 0.9
+    elif quality_score >= 0.4:
+        quality_level = "fair"
+        recommended_threshold = settings.BALL_CONFIDENCE_THRESHOLD * 0.8
+    else:
+        quality_level = "poor"
+        recommended_threshold = settings.BALL_CONFIDENCE_THRESHOLD * 0.7
+
+    logger.info(
+        f"Video quality assessment: {quality_level} (score: {quality_score:.2f})"
+    )
+    logger.info(
+        f"  Blur: {blur_quality:.2f}, Lighting: {lighting_quality:.2f}, Resolution: {resolution_score:.2f}"
+    )
+    logger.info(f"  Recommended confidence threshold: {recommended_threshold:.2f}")
+
+    return {
+        "quality_score": float(quality_score),
+        "blur_score": float(blur_quality),
+        "lighting_score": float(lighting_quality),
+        "resolution_score": float(resolution_score),
+        "recommended_confidence_threshold": float(recommended_threshold),
+        "quality_level": quality_level,
+        "frame_count_analyzed": len(sample_frames),
+    }
 
 
 # Global CV service instance

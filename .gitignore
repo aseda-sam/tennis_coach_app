@@ -110,3 +110,8 @@ backend/tests/test_data/*.mp4
 backend/tests/test_data/*.MP4
 backend/tests/test_data/*.avi
 backend/tests/test_data/*.mov
+
+# Temporary test files
+test_yolo_fix.py
+*.tmp
+*.temp

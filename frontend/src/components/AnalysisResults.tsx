@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { AnalysisData } from '../services/api';
+import { VideoMetadata } from '../types/video';
 import './AnalysisResults.css';
 import TimingPerformance from './TimingPerformance';
 
 interface AnalysisResultsProps {
   analysis: AnalysisData | null;
+  video: VideoMetadata | null;
   isLoading?: boolean;
   error?: string | null;
 }
 
 const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   analysis,
+  video,
   isLoading = false,
   error = null,
 }) => {
@@ -18,17 +21,34 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     pose: boolean;
     ball: boolean;
     timing: boolean;
+    quality: boolean;
   }>({
     pose: false,
     ball: false,
     timing: false,
+    quality: false,
   });
 
-  const toggleSection = (section: 'pose' | 'ball' | 'timing') => {
+  const toggleSection = (section: 'pose' | 'ball' | 'timing' | 'quality') => {
     setExpandedSections((prev) => ({
       ...prev,
-      [section]: !prev[section]
+      [section]: !prev[section],
     }));
+  };
+
+  const getQualityBadgeClass = (qualityLevel?: string): string => {
+    switch (qualityLevel) {
+      case 'excellent':
+        return 'success';
+      case 'good':
+        return 'info';
+      case 'fair':
+        return 'warning';
+      case 'poor':
+        return 'error';
+      default:
+        return 'info';
+    }
   };
 
   const formatPercentage = (value: number): string => {
@@ -71,14 +91,74 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   return (
     <div className="analysis-results">
       <div className="analysis-header">
-        <h3>🎾 Tennis Coach Analysis Results</h3>
+        <div className="header-content">
+          <h3>🎾 Tennis Coach Analysis Results</h3>
+        </div>
       </div>
+
+      {/* Video Quality Section */}
+      {video && video.quality_score !== undefined && (
+        <div className="analysis-section">
+          <div
+            className="section-header clickable"
+            onClick={() => toggleSection('quality')}
+          >
+            <span className="section-icon">📊</span>
+            <h4>Video Quality Assessment</h4>
+            <div
+              className={`status-badge ${getQualityBadgeClass(video.quality_level)}`}
+            >
+              {video.quality_level || 'Unknown'}
+            </div>
+            <span className="toggle-icon">
+              {expandedSections.quality ? '▼' : '▶'}
+            </span>
+          </div>
+
+          {expandedSections.quality && (
+            <div className="analysis-metrics">
+              <div className="metric-card">
+                <div className="metric-value">
+                  {(video.quality_score * 100).toFixed(1)}%
+                </div>
+                <div className="metric-label">Overall Quality</div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-value">
+                  {((video.blur_score || 0) * 100).toFixed(1)}%
+                </div>
+                <div className="metric-label">Sharpness</div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-value">
+                  {((video.lighting_score || 0) * 100).toFixed(1)}%
+                </div>
+                <div className="metric-label">Lighting</div>
+              </div>
+              <div className="metric-card">
+                <div className="metric-value">
+                  {((video.resolution_score || 0) * 100).toFixed(1)}%
+                </div>
+                <div className="metric-label">Resolution</div>
+              </div>
+              {analysis && analysis.confidence_threshold_used && (
+                <div className="metric-card">
+                  <div className="metric-value">
+                    {(analysis.confidence_threshold_used * 100).toFixed(1)}%
+                  </div>
+                  <div className="metric-label">Adaptive Threshold</div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Performance Timing Section */}
       {(analysis.timing || analysis.processing_time) && (
         <div className="analysis-section">
-          <div 
-            className="section-header clickable" 
+          <div
+            className="section-header clickable"
             onClick={() => toggleSection('timing')}
           >
             <span className="section-icon">⚡</span>
@@ -90,9 +170,9 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               {expandedSections.timing ? '▼' : '▶'}
             </span>
           </div>
-          
+
           {expandedSections.timing && (
-            <TimingPerformance 
+            <TimingPerformance
               timing={analysis.timing}
               processingTime={analysis.processing_time}
             />
@@ -103,8 +183,8 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       {/* Pose Detection Results */}
       {analysis.frames_with_pose !== undefined && (
         <div className="analysis-section">
-          <div 
-            className="section-header clickable" 
+          <div
+            className="section-header clickable"
             onClick={() => toggleSection('pose')}
           >
             <span className="section-icon">👤</span>
@@ -116,7 +196,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               {expandedSections.pose ? '▼' : '▶'}
             </span>
           </div>
-          
+
           {expandedSections.pose && (
             <div className="analysis-metrics">
               <div className="metric-card">
@@ -140,8 +220,8 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
       {/* Ball Detection Results */}
       <div className="analysis-section">
-        <div 
-          className="section-header clickable" 
+        <div
+          className="section-header clickable"
           onClick={() => toggleSection('ball')}
         >
           <span className="section-icon">🎾</span>
@@ -153,11 +233,13 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
             {expandedSections.ball ? '▼' : '▶'}
           </span>
         </div>
-        
+
         {expandedSections.ball && (
           <div className="analysis-metrics">
             <div className="metric-card">
-              <div className="metric-value">{analysis.total_ball_detections}</div>
+              <div className="metric-value">
+                {analysis.total_ball_detections}
+              </div>
               <div className="metric-label">Ball Detections</div>
             </div>
             <div className="metric-card">

@@ -74,3 +74,30 @@ def update_video_status(
         db.refresh(video)
         return video
     return None
+
+
+def update_video_quality(
+    db: Session,
+    video_id: int,
+    quality_score: float,
+    blur_score: float,
+    lighting_score: float,
+    resolution_score: float,
+    quality_level: str,
+) -> Optional[Video]:
+    """Update video quality metrics."""
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if video:
+        video.quality_score = quality_score
+        video.blur_score = blur_score
+        video.lighting_score = lighting_score
+        video.resolution_score = resolution_score
+        video.quality_level = quality_level
+        # Set quality_assessed_at to current timestamp
+        from sqlalchemy.sql import func
+
+        video.quality_assessed_at = func.now()
+        db.commit()
+        db.refresh(video)
+        return video
+    return None
