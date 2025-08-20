@@ -105,11 +105,12 @@ data/database/*.db
 .python-version
 backend/test_videos/
 
-# Test video files (large binary files)
-backend/tests/test_data/*.mp4
+# Test video files (large binary files - exclude small test videos)
 backend/tests/test_data/*.MP4
 backend/tests/test_data/*.avi
 backend/tests/test_data/*.mov
+# Allow small test videos (under 10MB) to be tracked
+# backend/tests/test_data/*.mp4  # Commented out to allow small test videos
 
 # Temporary test files
 test_yolo_fix.py
