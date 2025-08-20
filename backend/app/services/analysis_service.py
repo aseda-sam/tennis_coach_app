@@ -408,17 +408,7 @@ def delete_analysis(db: Session, video_filename: str) -> bool:
 
     analysis = get_analysis_by_video(db, video_filename)
     if analysis:
-        # Check if the video still exists in the database
-        video = db.query(Video).filter(Video.filename == video_filename).first()
-
-        if video:
-            logger.warning(
-                f"Cannot delete analysis for {video_filename} - video still exists in database. "
-                f"Delete the video first to remove associated analysis and annotated files."
-            )
-            return False
-
-        # Only delete annotated video files if the video no longer exists
+        # Delete annotated video files
         if analysis.annotated_video_path:
             annotated_path = Path(analysis.annotated_video_path)
             if annotated_path.exists():

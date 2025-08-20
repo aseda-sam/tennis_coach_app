@@ -35,7 +35,9 @@ def get_analyses_with_missing_videos() -> List[Tuple]:
             # Get the video record
             video = db.query(Video).filter(Video.id == analysis.video_id).first()
             if not video:
-                logger.warning(f"Analysis {analysis.id} references non-existent video {analysis.video_id}")
+                logger.warning(
+                    f"Analysis {analysis.id} references non-existent video {analysis.video_id}"
+                )
                 continue
 
             # Check if annotated video file exists
@@ -57,8 +59,12 @@ def regenerate_annotated_video(analysis, video) -> bool:
     """Regenerate annotated video for a specific analysis."""
     try:
         from app.core.config import settings
+        from app.core.database import get_db
+        from app.models.analysis import Analysis
 
-        logger.info(f"Regenerating annotated video for analysis {analysis.id} (video: {video.filename})")
+        logger.info(
+            f"Regenerating annotated video for analysis {analysis.id} (video: {video.filename})"
+        )
 
         # Check if original video exists
         upload_dir = Path(settings.UPLOAD_DIR)
@@ -68,6 +74,23 @@ def regenerate_annotated_video(analysis, video) -> bool:
             logger.error(f"Original video not found: {original_video_path}")
             return False
 
+        # Get database session and re-query the analysis in this session
+        db = next(get_db())
+        analysis_in_session = (
+            db.query(Analysis).filter(Analysis.id == analysis.id).first()
+        )
+
+        if not analysis_in_session:
+            logger.error(f"Analysis {analysis.id} not found in database session")
+            return False
+
+        # Delete existing analysis to force regeneration
+        logger.info(
+            f"Deleting existing analysis {analysis_in_session.id} to force regeneration"
+        )
+        db.delete(analysis_in_session)
+        db.commit()
+
         # Run analysis to regenerate annotated video
         logger.info(f"Running analysis for video: {video.filename}")
 
@@ -75,11 +98,11 @@ def regenerate_annotated_video(analysis, video) -> bool:
         from app.services.analysis_service import analyze_video
 
         result = analyze_video(
-            db=None,  # We'll handle DB operations separately
-            video_filename=video.filename,
-            confidence_threshold=None,  # Use default
-            include_pose=True,  # Include pose detection for annotated video
-            video_quality_level=video.quality_level
+            db=db,  # Pass the database session
+            video_id=video.id,  # Use video ID instead of filename
+            analysis_type="ball_tracking",
+            confidence_threshold=0.7,  # Use default confidence threshold
+            include_pose_detection=True,  # Include pose detection for annotated video
         )
 
         if "error" in result:
@@ -91,17 +114,14 @@ def regenerate_annotated_video(analysis, video) -> bool:
             annotated_path = Path(result["annotated_video_path"])
             if annotated_path.exists():
                 file_size = annotated_path.stat().st_size
-                logger.info(f"Successfully regenerated annotated video: {annotated_path} ({file_size} bytes)")
-
-                # Update the analysis record with the new path
-                from app.core.database import get_db
-                db = next(get_db())
-                analysis.annotated_video_path = str(annotated_path)
-                db.commit()
-
+                logger.info(
+                    f"Successfully regenerated annotated video: {annotated_path} ({file_size} bytes)"
+                )
                 return True
             else:
-                logger.error(f"Annotated video path returned but file doesn't exist: {annotated_path}")
+                logger.error(
+                    f"Annotated video path returned but file doesn't exist: {annotated_path}"
+                )
                 return False
         else:
             logger.warning("No annotated video path in analysis result")
@@ -120,12 +140,10 @@ def main():
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Show what would be regenerated without actually doing it"
+        help="Show what would be regenerated without actually doing it",
     )
     parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Force regeneration even if files exist"
+        "--force", action="store_true", help="Force regeneration even if files exist"
     )
 
     args = parser.parse_args()
