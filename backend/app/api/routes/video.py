@@ -222,19 +222,6 @@ async def delete_video(
                             f"Failed to delete annotated video {annotated_path}: {e}"
                         )
 
-        # Always check for orphaned annotated files by naming pattern (outside the loop)
-        processed_dir = Path(settings.PROCESSED_DIR)
-        base_name = Path(db_video.filename).stem
-        potential_annotated = processed_dir / f"{base_name}_annotated.mp4"
-        if potential_annotated.exists():
-            try:
-                potential_annotated.unlink()
-                logger.info(f"Deleted orphaned annotated video: {potential_annotated}")
-            except OSError as e:
-                logger.warning(
-                    f"Failed to delete annotated video {potential_annotated}: {e}"
-                )
-
         # Delete original video file from file system
         upload_dir = Path(settings.UPLOAD_DIR)
         file_path = upload_dir / db_video.filename
