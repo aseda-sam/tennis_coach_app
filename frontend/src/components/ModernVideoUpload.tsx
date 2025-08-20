@@ -181,26 +181,25 @@ const ModernVideoUpload: React.FC<ModernVideoUploadProps> = ({
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       <div className="max-w-4xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          {onBack && (
-            <Button
-              variant="ghost"
-              onClick={onBack}
-              className="text-slate-600 hover:text-slate-900"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Home
-            </Button>
-          )}
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-3xl font-bold text-slate-900">
               Upload Tennis Video
             </h1>
-            <p className="text-slate-600">
-              Upload your tennis videos for AI-powered analysis and technique
-              insights
-            </p>
+            {onBack && (
+              <Button
+                variant="outline"
+                onClick={onBack}
+                className="text-slate-600 hover:text-slate-900 border-slate-300"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+              </Button>
+            )}
           </div>
+          <p className="text-slate-600">
+            Upload your tennis videos for AI-powered analysis and technique
+            insights
+          </p>
         </div>
 
         {/* Upload Card */}
@@ -283,19 +282,23 @@ const ModernVideoUpload: React.FC<ModernVideoUploadProps> = ({
                 </div>
 
                 <div className="space-y-4">
-                  <label className="inline-block">
-                    <Button className="brand-gradient hover:shadow-lg text-white">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Choose Video File
-                    </Button>
-                    <input
-                      type="file"
-                      accept="video/*"
-                      onChange={handleFileInput}
-                      className="hidden"
-                      aria-label="Choose video file"
-                    />
-                  </label>
+                  <Button
+                    className="brand-gradient hover:shadow-lg text-white cursor-pointer"
+                    onClick={() =>
+                      document.getElementById('video-upload')?.click()
+                    }
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Choose Video File
+                  </Button>
+                  <input
+                    id="video-upload"
+                    type="file"
+                    accept="video/*"
+                    onChange={handleFileInput}
+                    className="hidden"
+                    aria-label="Choose video file"
+                  />
 
                   <div className="flex flex-wrap justify-center gap-2">
                     {ALLOWED_TYPES.map((type) => (

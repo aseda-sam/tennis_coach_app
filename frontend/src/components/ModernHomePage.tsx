@@ -107,17 +107,15 @@ export default function ModernHomePage({
                   />
                 </Button>
 
-                {hasVideos && (
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={onViewVideos}
-                    className="px-8 py-4 text-lg border-2 hover:bg-slate-50"
-                  >
-                    <Play className="h-5 w-5 mr-2" />
-                    View My Videos
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={onViewVideos}
+                  className="px-8 py-4 text-lg border-2 hover:bg-slate-50"
+                >
+                  <Play className="h-5 w-5 mr-2" />
+                  View Videos
+                </Button>
               </div>
             </div>
 

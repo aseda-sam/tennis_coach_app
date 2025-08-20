@@ -44,7 +44,7 @@ function App() {
   };
 
   // Mock function to check if user has videos - replace with real logic
-  const hasVideos = false;
+  const hasVideos = true;
 
   const renderCurrentView = () => {
     switch (currentView) {
