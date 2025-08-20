@@ -32,20 +32,29 @@ class Settings(BaseSettings):
     SUPPORTED_FORMATS: list[str] = [".mp4", ".mov", ".avi"]
 
     # Computer Vision
-    YOLO_MODEL_PATH: str = "yolov8n.pt"
+    ML_MODELS_DIR: str = "ml_models"
+    YOLO_MODELS: dict[str, str] = {
+        "nano": "ml_models/yolov8n.pt",
+        "small": "ml_models/yolov8s.pt",
+    }
+    YOLO_DEFAULT_MODEL: str = (
+        "nano"  # Default model to use when quality-based selection fails
+    )
     CONFIDENCE_THRESHOLD: float = 0.5
     BALL_CONFIDENCE_THRESHOLD: float = 0.7
 
     # Processing
     MAX_VIDEO_DURATION: int = 300  # 5 minutes
-    FRAME_SKIP_RATIO: int = 2  # Process every nth frame
+    FRAME_SKIP_RATIO: int = 1  # Process every frame (no skipping by default)
     MAX_VIDEO_RESOLUTION: tuple[int, int] = (3840, 2160)  # 4K support (local)
     MAX_FPS: int = 60  # 60fps support (local)
 
     # Docker-specific limits (will be overridden in Docker)
     DOCKER_MAX_VIDEO_RESOLUTION: tuple[int, int] = (1920, 1080)  # 1080p for Docker
     DOCKER_MAX_FPS: int = 60  # 60fps for Docker
-    DOCKER_FRAME_SKIP_RATIO: int = 3  # Process every 3rd frame in Docker
+    DOCKER_FRAME_SKIP_RATIO: int = (
+        1  # Process every frame in Docker (no skipping by default)
+    )
 
     # API
     API_V1_STR: str = "/v0"
