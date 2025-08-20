@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List
 
 import cv2
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -266,7 +266,6 @@ async def delete_video(
 @router.post("/upload", response_model=VideoUploadResponse)
 async def upload_video(
     file: UploadFile = File(...),
-    description: str = Form(None),
     db: Session = Depends(get_db),
 ) -> VideoUploadResponse:
     """
@@ -274,7 +273,6 @@ async def upload_video(
 
     Args:
         file: Video file to upload
-        description: Optional description of the video
 
     Returns:
         Upload confirmation with video information
