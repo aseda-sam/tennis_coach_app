@@ -1,6 +1,6 @@
 """
-Legacy integration tests - being replaced by more focused test files.
-These tests use real test video files for comprehensive testing.
+Integration tests for end-to-end workflows.
+These tests use real test video files for comprehensive testing of complete user workflows.
 """
 
 import os

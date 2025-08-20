@@ -26,48 +26,61 @@ FastAPI backend for the tennis analysis system with computer vision capabilities
 ### Installation
 
 1. **Install FFmpeg**:
+
    ```bash
    # macOS
    brew install ffmpeg
-   
+
    # Ubuntu/Debian
    sudo apt install ffmpeg
-   
+
    # Windows (using chocolatey)
    choco install ffmpeg
    ```
 
 2. **Setup Python Environment**:
+
    ```bash
    # Create virtual environment
    python3 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
-   
+
    # Install dependencies
    cd backend
    pip install -e .
    ```
 
 3. **Create Data Directories**:
+
    ```bash
    mkdir -p data/videos/raw data/videos/processed data/analysis_cache data/database
+   ```
+
+4. **Download YOLO Models (Optional)**:
+   ```bash
+   # Models will be downloaded automatically when needed, but you can pre-download them:
+   cd backend
+   python scripts/download_models.py
    ```
 
 ### Running the Server
 
 #### Development Mode
+
 ```bash
 cd backend
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 #### Production Mode
+
 ```bash
 cd backend
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 #### Docker (Alternative)
+
 ```bash
 # Build and run with Docker Compose
 docker compose up backend
@@ -111,7 +124,7 @@ CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 
 ### Optional Environment Variables
 
-```bash
+````bash
 # Processing Configuration
 MAX_WORKERS=4
 BATCH_SIZE=10
@@ -119,7 +132,20 @@ CONFIDENCE_THRESHOLD=0.5
 
 # Security (for production)
 SECRET_KEY=your-secret-key-here
-```
+
+## Model Files
+
+The application uses YOLO models for ball detection. These are automatically downloaded when needed:
+
+- **yolov8n.pt** (~6.5MB): Nano model - faster processing, good for real-time
+- **yolov8s.pt** (~22.6MB): Small model - better accuracy, slower processing
+
+### Model Management
+
+- Models are downloaded automatically on first use
+- Models are cached locally in the working directory
+- Model files are ignored by Git (see `.gitignore`)
+- You can pre-download models using: `python scripts/download_models.py`
 
 ## Development
 
@@ -140,7 +166,7 @@ ruff format .
 # Check specific files
 ruff check app/api/routes/
 ruff format app/services/
-```
+````
 
 ### Testing
 
@@ -161,6 +187,7 @@ pytest tests/test_integration.py::TestVideoIntegration::test_schema_validation
 ```
 
 #### Test Types
+
 - **Basic API Tests** (`test_api_basic.py`): Endpoint availability and error handling
 - **Integration Tests** (`test_integration.py`): Complete workflows, schema validation, and CRUD operations
 - **Video Processing Tests** (`test_video_processing.py`): Real video file processing
@@ -169,6 +196,7 @@ pytest tests/test_integration.py::TestVideoIntegration::test_schema_validation
 - **Error Handling**: Tests standardized error responses and edge cases
 
 #### Test Markers
+
 - `@pytest.mark.slow` - Long-running tests (real video processing)
 - `@pytest.mark.integration` - Integration tests (complete workflows)
 - `@pytest.mark.unit` - Unit tests (isolated functionality)
@@ -195,6 +223,7 @@ alembic history
 ### Database Schema
 
 #### Analysis Table
+
 - `id` (Integer, Primary Key) - Unique analysis identifier
 - `video_id` (Integer, Foreign Key) - Reference to videos table
 - `video_filename` (String) - Original video filename
@@ -213,6 +242,7 @@ alembic history
 - `completed_at` (DateTime) - Analysis completion timestamp (nullable)
 
 #### Video Table
+
 - `id` (Integer, Primary Key) - Unique video identifier
 - `filename` (String) - Original filename
 - `file_path` (String) - Storage path
@@ -258,16 +288,20 @@ backend/
 ## API Overview
 
 ### API Versioning
+
 The API uses versioned endpoints for stability and backward compatibility:
+
 - **Current**: `/v0/` - Alpha version (under development)
 - **Future**: `/v1/` - Stable version (when ready for production)
 
 ### Health & Status
+
 - `GET /health` - Health check endpoint
 - `GET /` - API root information
 - `GET /v0` - Version 0 API information
 
 ### Video Management
+
 - `POST /v0/videos/upload` - Upload video file
 - `GET /v0/videos/` - List all videos
 - `GET /v0/videos/{video_id}` - Get video details by ID
@@ -276,6 +310,7 @@ The API uses versioned endpoints for stability and backward compatibility:
 - `DELETE /v0/videos/{video_id}` - Delete video
 
 ### Analysis
+
 - `POST /v0/analysis/videos/{video_id}` - Start analysis
 - `GET /v0/analysis/{analysis_id}` - Get analysis results by ID
 - `GET /v0/analysis/` - List all analyses
@@ -283,22 +318,26 @@ The API uses versioned endpoints for stability and backward compatibility:
 - `DELETE /v0/analysis/{analysis_id}` - Delete analysis
 
 ### Interactive Documentation
+
 - Visit http://localhost:8000/docs for Swagger UI
 - Visit http://localhost:8000/redoc for ReDoc
 
 ## Computer Vision Features
 
 ### Ball Detection
+
 - **Model**: YOLOv8n (nano)
 - **Features**: Real-time ball tracking, trajectory analysis
 - **Output**: Bounding boxes, confidence scores, detection metrics
 
 ### Pose Estimation
+
 - **Model**: MediaPipe Pose
 - **Features**: 11 tennis-relevant keypoints (shoulders, elbows, wrists, hips, knees, ankles)
 - **Output**: Skeleton overlays, pose detection metrics
 
 ### Annotated Videos
+
 - **Format**: H.264 MP4 (browser-compatible)
 - **Overlays**: Ball detection (red boxes) + pose estimation (green skeleton)
 - **Processing**: Automatic codec fallback for compatibility
@@ -308,6 +347,7 @@ The API uses versioned endpoints for stability and backward compatibility:
 ### Common Issues
 
 #### Port Already in Use
+
 ```bash
 # Check what's using port 8000
 lsof -i :8000
@@ -317,6 +357,7 @@ kill -9 <PID>
 ```
 
 #### Database Issues
+
 ```bash
 # Reset database
 rm data/database/tennis_coach.db
@@ -324,6 +365,7 @@ alembic upgrade head
 ```
 
 #### Video Processing Errors
+
 ```bash
 # Check FFmpeg installation
 ffmpeg -version
@@ -333,6 +375,7 @@ ffmpeg -i video.mp4 -f null -
 ```
 
 #### Memory Issues
+
 ```bash
 # Monitor memory usage
 htop
@@ -342,6 +385,7 @@ sudo sysctl vm.swappiness=10
 ```
 
 ### Debug Mode
+
 ```bash
 # Enable debug logging
 export DEBUG=True
@@ -354,6 +398,7 @@ uvicorn app.main:app --reload --log-level debug
 ## Production Deployment
 
 ### Docker Deployment
+
 ```bash
 # Build production image
 docker build -t tennis-backend:latest .
@@ -366,6 +411,7 @@ docker run -p 8000:8000 \
 ```
 
 ### Environment Variables for Production
+
 ```bash
 # Database (consider PostgreSQL for production)
 DATABASE_URL=postgresql://user:password@host:5432/tennis_analysis
