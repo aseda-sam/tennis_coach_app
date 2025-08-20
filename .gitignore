@@ -103,7 +103,6 @@ data/database/*.db
 
 # Python version management
 .python-version
-backend/test_videos/
 
 # Test video files (large binary files - exclude small test videos)
 backend/tests/test_data/*.MP4
