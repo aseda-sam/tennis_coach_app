@@ -97,7 +97,7 @@ def _extract_sample_frames(video_path: Path, max_frames: int) -> List[np.ndarray
                 frames.append(frame)
                 extracted_count += 1
 
-            frame_count += 1
+            frame_count += interval
 
             # Skip frames to maintain interval
             if interval > 1:
