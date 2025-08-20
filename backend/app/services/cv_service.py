@@ -53,25 +53,45 @@ class CVService:
     def _initialize_models(self) -> None:
         """Initialize YOLO and MediaPipe models."""
         start_time = time.time()
+
+        # Initialize YOLO models for ball detection
+        self.yolo_models = {}  # Ensure it's always initialized as empty dict
+
         try:
-            # Initialize YOLO models for ball detection
             from ultralytics import YOLO
 
-            # Initialize different YOLO model sizes
-            self.yolo_models = {
-                "nano": YOLO("yolov8n.pt"),  # Fastest, smallest
-                "small": YOLO("yolov8s.pt"),  # Better accuracy, slower
-            }
+            # Try to initialize models one by one to handle partial failures
+            models_to_try = [
+                ("nano", "yolov8n.pt"),
+                ("small", "yolov8s.pt"),
+            ]
 
-            # Set default model
-            self.ball_detector = self.yolo_models["nano"]
-            logger.info("YOLO models initialized successfully")
-            logger.info(f"Available models: {list(self.yolo_models.keys())}")
+            for model_name, model_path in models_to_try:
+                try:
+                    self.yolo_models[model_name] = YOLO(model_path)
+                    logger.info(f"Successfully loaded YOLO model: {model_name}")
+                except (OSError, RuntimeError, ImportError) as e:
+                    logger.warning(f"Failed to load YOLO model {model_name}: {e}")
+                    continue
+
+            if self.yolo_models:
+                # Set default model to the first available one
+                default_model = next(iter(self.yolo_models.keys()))
+                self.ball_detector = self.yolo_models[default_model]
+                logger.info("YOLO models initialized successfully")
+                logger.info(f"Available models: {list(self.yolo_models.keys())}")
+                logger.info(f"Default model: {default_model}")
+            else:
+                logger.warning(
+                    "No YOLO models could be loaded, ball detection disabled"
+                )
+                self.ball_detector = None
+
         except ImportError:
             logger.warning("Ultralytics not available, ball detection disabled")
             self.ball_detector = None
-        except (OSError, RuntimeError) as e:
-            logger.error(f"Failed to initialize YOLO: {e}")
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.error(f"Unexpected error during YOLO initialization: {e}")
             self.ball_detector = None
 
         try:
@@ -109,8 +129,18 @@ class CVService:
         Returns:
             Model name to use ('nano' or 'small')
         """
+        # Check what models are actually available
+        available_models = list(self.yolo_models.keys()) if self.yolo_models else []
+
+        if not available_models:
+            logger.warning("No YOLO models available")
+            return "nano"  # Return default even if not available (will be handled by caller)
+
         if not video_quality_level or video_quality_level == "unknown":
-            return "nano"  # Default to nano for unknown quality
+            # Return the first available model (prefer nano if available)
+            if "nano" in available_models:
+                return "nano"
+            return available_models[0]
 
         # Model selection logic based on quality
         quality_model_mapping = {
@@ -120,7 +150,19 @@ class CVService:
             "poor": "nano",  # Use faster model for poor quality
         }
 
-        return quality_model_mapping.get(video_quality_level, "nano")  # Default to nano
+        preferred_model = quality_model_mapping.get(video_quality_level, "nano")
+
+        # Check if preferred model is available, otherwise use fallback
+        if preferred_model in available_models:
+            return preferred_model
+        else:
+            logger.warning(
+                f"Preferred model '{preferred_model}' not available, using fallback"
+            )
+            # Return the first available model (prefer nano if available)
+            if "nano" in available_models:
+                return "nano"
+            return available_models[0]
 
     def extract_frames(
         self, video_path: Path, max_frames: Optional[int] = None
@@ -559,7 +601,43 @@ class CVService:
 
         # Select YOLO model based on video quality
         selected_model = self._select_yolo_model(video_quality_level)
-        self.ball_detector = self.yolo_models[selected_model]
+
+        # Check if the selected model exists in available models
+        if not self.yolo_models or selected_model not in self.yolo_models:
+            logger.warning(f"Selected YOLO model '{selected_model}' not available")
+            if self.yolo_models:
+                # Use the first available model as fallback
+                fallback_model = next(iter(self.yolo_models.keys()))
+                logger.info(f"Using fallback model: {fallback_model}")
+                self.ball_detector = self.yolo_models[fallback_model]
+                selected_model = fallback_model
+            else:
+                # No models available at all
+                logger.error("No YOLO models available for ball detection")
+                return {
+                    "error": "Ball detection models not available",
+                    "frames_processed": len(frames),
+                    "ball_detections": [[] for _ in frames],
+                    "pose_detections": [],
+                    "analysis_summary": {
+                        "total_frames": len(frames),
+                        "frames_with_balls": 0,
+                        "total_ball_detections": 0,
+                        "average_detections_per_frame": 0,
+                        "detection_rate": 0,
+                        "frames_with_pose": 0,
+                        "pose_detection_rate": 0,
+                        "video_quality": {},
+                        "confidence_threshold_used": confidence_threshold
+                        or settings.BALL_CONFIDENCE_THRESHOLD,
+                        "yolo_model_used": "none",
+                        "yolo_model_selection_reason": "No models available",
+                    },
+                    "timing": stage_timings,
+                }
+        else:
+            self.ball_detector = self.yolo_models[selected_model]
+
         logger.info(
             f"Selected YOLO model: {selected_model} (quality: {video_quality_level or 'unknown'})"
         )
