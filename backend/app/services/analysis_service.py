@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.analysis import Analysis
-from app.models.video import Video
 from app.services.cv_service import cv_service
 from app.utils.progress_utils import update_task_progress
 
