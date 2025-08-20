@@ -74,6 +74,9 @@ def create_analysis_record(
         processing_time=processing_time,
         model_used=model_used,
         confidence_threshold=confidence_threshold,
+        confidence_threshold_used=analysis_results.get("analysis_summary", {}).get(
+            "confidence_threshold_used"
+        ),
         status=status,
     )
 
@@ -211,15 +214,39 @@ def analyze_video(
         # Start timing
         start_time = time.time()
 
+        # Get quality-based confidence threshold from video record
+        quality_based_threshold = None
+        if video.quality_level and video.quality_level != "unknown":
+            # Use the quality assessment from upload to set adaptive threshold
+            if video.quality_level == "excellent":
+                quality_based_threshold = confidence_threshold  # Use default
+            elif video.quality_level == "good":
+                quality_based_threshold = confidence_threshold * 0.9
+            elif video.quality_level == "fair":
+                quality_based_threshold = confidence_threshold * 0.8
+            elif video.quality_level == "poor":
+                quality_based_threshold = confidence_threshold * 0.7
+
+            logger.info(
+                f"Using quality-based threshold: {quality_based_threshold:.3f} (quality: {video.quality_level})"
+            )
+        else:
+            quality_based_threshold = confidence_threshold
+            logger.info(
+                f"Using default threshold: {confidence_threshold:.3f} (no quality data)"
+            )
+
         # Update progress - starting ball detection
         update_task_progress(
             task_id, "ball_detection", 0, "Starting ball detection analysis", 20
         )
 
-        # Perform analysis
+        # Perform analysis with quality-based threshold
         analysis_results = cv_service.analyze_video(
             video_path,
             include_pose=include_pose_detection,
+            confidence_threshold=quality_based_threshold,
+            video_quality_level=video.quality_level,
         )
 
         # Update progress - analysis complete, starting video annotation
@@ -285,13 +312,16 @@ def analyze_video(
             )
             analysis_record.processing_time = processing_time
             analysis_record.model_used = (
-                "yolov8n+mediapipe"
+                f"{analysis_results.get('analysis_summary', {}).get('yolo_model_used', 'yolov8n')}+mediapipe"
                 if cv_service.ball_detector and cv_service.pose_detector
-                else "yolov8n"
+                else analysis_results.get("analysis_summary", {}).get(
+                    "yolo_model_used", "yolov8n"
+                )
                 if cv_service.ball_detector
                 else None
             )
             analysis_record.confidence_threshold = confidence_threshold
+            analysis_record.confidence_threshold_used = quality_based_threshold
             analysis_record.status = "completed"
             analysis_record.completed_at = datetime.now()
             db.commit()
@@ -305,9 +335,11 @@ def analyze_video(
                 analysis_type=analysis_type,
                 analysis_results=analysis_results,
                 processing_time=processing_time,
-                model_used="yolov8n+mediapipe"
+                model_used=f"{analysis_results.get('analysis_summary', {}).get('yolo_model_used', 'yolov8n')}+mediapipe"
                 if cv_service.ball_detector and cv_service.pose_detector
-                else "yolov8n"
+                else analysis_results.get("analysis_summary", {}).get(
+                    "yolo_model_used", "yolov8n"
+                )
                 if cv_service.ball_detector
                 else None,
                 confidence_threshold=confidence_threshold,

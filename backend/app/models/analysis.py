@@ -43,6 +43,9 @@ class Analysis(Base):
     processing_time = Column(Float, default=0.0)  # seconds
     model_used = Column(String, nullable=True)  # 'yolov8n', etc.
     confidence_threshold = Column(Float, default=0.5)
+    confidence_threshold_used = Column(
+        Float, nullable=True
+    )  # Actual threshold used after adaptation
 
     # Processing status (processing, completed, failed)
     status = Column(String(50), default="completed")
