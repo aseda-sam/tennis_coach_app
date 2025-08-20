@@ -1,5 +1,6 @@
 """Analysis API routes with proper REST patterns and error handling."""
 
+import logging
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends
@@ -33,6 +34,8 @@ from app.utils.error_handling import (
     handle_processing_error,
     log_and_raise_error,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

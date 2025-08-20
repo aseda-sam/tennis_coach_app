@@ -1,7 +1,17 @@
+export interface VideoQualityMetrics {
+  quality_score: number;
+  blur_score: number;
+  lighting_score: number;
+  resolution_score: number;
+  quality_level: string;
+  recommended_confidence_threshold: number;
+  frame_count_analyzed: number;
+}
+
 export interface VideoMetadata {
-  id: number;                    // NEW: video ID
+  id: number; // NEW: video ID
   filename: string;
-  file_path: string;             // NEW: file path
+  file_path: string; // NEW: file path
   file_size: number;
   content_type?: string;
   duration?: number;
@@ -9,25 +19,34 @@ export interface VideoMetadata {
   height?: number;
   fps?: number;
   frame_count?: number;
-  created_at: string;            // NEW: creation timestamp
-  updated_at?: string;           // NEW: update timestamp
-  status: string;                // NEW: processing status
-  error_message?: string;        // NEW: error message if processing failed
+  created_at: string; // NEW: creation timestamp
+  updated_at?: string; // NEW: update timestamp
+  status: string; // NEW: processing status
+  error_message?: string; // NEW: error message if processing failed
+  // Quality metrics (assessed once on upload)
+  quality_score?: number;
+  blur_score?: number;
+  lighting_score?: number;
+  resolution_score?: number;
+  quality_level?: string;
+  quality_assessed_at?: string;
 }
 
 export interface VideoUploadResponse {
-  video_id: number;              // CHANGED: from video object to video_id
+  video_id: number; // CHANGED: from video object to video_id
   filename: string;
   file_size: number;
   status: string;
   message: string;
-  metadata?: {                   // NEW: metadata object
+  metadata?: {
+    // NEW: metadata object
     duration?: number;
     fps?: number;
     width?: number;
     height?: number;
     frame_count?: number;
   };
+  quality_metrics?: VideoQualityMetrics; // NEW: quality assessment results
 }
 
 export interface VideoListResponse {
@@ -36,7 +55,8 @@ export interface VideoListResponse {
 }
 
 export interface ApiError {
-  error: {                       // CHANGED: new error structure
+  error: {
+    // CHANGED: new error structure
     code: string;
     message: string;
     details?: any;

@@ -189,38 +189,3 @@ def ensure_unique_filename(filename: str, directory: Path) -> str:
         counter += 1
 
     return unique_filename
-
-
-def get_file_size_mb(file_size_bytes: int) -> float:
-    """
-    Convert file size from bytes to megabytes.
-
-    Args:
-        file_size_bytes: File size in bytes
-
-    Returns:
-        File size in megabytes
-    """
-
-    return file_size_bytes / (1024 * 1024)
-
-
-def format_file_size(file_size_bytes: int) -> str:
-    """
-    Format file size in human-readable format.
-
-    Args:
-        file_size_bytes: File size in bytes
-
-    Returns:
-        Formatted file size string
-    """
-
-    if file_size_bytes < 1024:
-        return f"{file_size_bytes} B"
-    elif file_size_bytes < 1024 * 1024:
-        return f"{file_size_bytes / 1024:.1f} KB"
-    elif file_size_bytes < 1024 * 1024 * 1024:
-        return f"{file_size_bytes / (1024 * 1024):.1f} MB"
-    else:
-        return f"{file_size_bytes / (1024 * 1024 * 1024):.1f} GB"
