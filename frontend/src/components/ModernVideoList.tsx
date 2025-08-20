@@ -8,7 +8,6 @@ import {
   Grid3X3,
   List,
   Play,
-  Plus,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -564,7 +563,7 @@ const ModernVideoList: React.FC<ModernVideoListProps> = ({
               onClick={onUpload}
               className="brand-gradient hover:shadow-lg"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Upload className="h-4 w-4 mr-2" />
               Upload Video
             </Button>
           </div>
