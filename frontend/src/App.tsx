@@ -3,10 +3,11 @@ import './App.css';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
+import ModernHomePage from './components/ModernHomePage';
 import { VideoMetadata } from './types/video';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'upload' | 'list' | 'dashboard'>('upload');
+  const [currentView, setCurrentView] = useState<'home' | 'upload' | 'list' | 'dashboard'>('home');
   const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(null);
 
   const handleVideoUploaded = () => {
@@ -28,25 +29,40 @@ function App() {
     setSelectedVideo(null);
   };
 
+  const handleGetStarted = () => {
+    setCurrentView('upload');
+  };
+
+  const handleViewVideos = () => {
+    setCurrentView('list');
+  };
+
   const renderCurrentView = () => {
     switch (currentView) {
+      case 'home':
+        return (
+          <ModernHomePage
+            onGetStarted={handleGetStarted}
+            onViewVideos={handleViewVideos}
+            hasVideos={true} // TODO: Check if user has videos
+          />
+        );
+
       case 'upload':
         return (
           <div className="app-container">
             <div className="upload-section">
-              <h1 className="app-title">Tennis Video Analyzer</h1>
+              <button 
+                className="back-to-home-btn"
+                onClick={() => setCurrentView('home')}
+              >
+                ← Back to Home
+              </button>
+              <h1 className="app-title">Upload Video</h1>
               <p className="app-subtitle">
-                Upload your tennis videos for advanced performance analysis and technique insights
+                Upload your tennis videos for advanced performance analysis
               </p>
               <VideoUpload onUploadSuccess={handleVideoUploaded} />
-              <div className="view-videos-section">
-                <button 
-                  className="view-videos-btn"
-                  onClick={() => setCurrentView('list')}
-                >
-                  View My Videos
-                </button>
-              </div>
             </div>
           </div>
         );
@@ -57,10 +73,10 @@ function App() {
             <div className="list-section">
               <div className="list-header">
                 <button 
-                  className="back-to-upload-btn"
-                  onClick={() => setCurrentView('upload')}
+                  className="back-to-home-btn"
+                  onClick={() => setCurrentView('home')}
                 >
-                  ← Back to Upload
+                  ← Back to Home
                 </button>
                 <button 
                   className="upload-new-btn"
@@ -103,11 +119,7 @@ function App() {
     }
   };
 
-  return (
-    <div className="App">
-      {renderCurrentView()}
-    </div>
-  );
+  return <div className="App">{renderCurrentView()}</div>;
 }
 
 export default App;
