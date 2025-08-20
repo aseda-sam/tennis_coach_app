@@ -22,11 +22,10 @@ from app.api.schemas.video import (
 )
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.analysis import Analysis
 from app.services.quality_service import quick_assess_video_quality
 from app.services.video_service import (
     create_video_record,
-    delete_video_record,
+    delete_video_with_analyses,
     get_all_videos,
     get_video_by_id,
     update_video_quality,
@@ -202,49 +201,18 @@ async def delete_video(
         Deletion confirmation
     """
     try:
-        # Get video from database
-        db_video = get_video_by_id(db, video_id)
-        if not db_video:
-            raise handle_not_found_error("video", str(video_id))
+        # Use service function to handle all deletion logic
+        success, filename, deleted_video_id = delete_video_with_analyses(db, video_id)
 
-        # Delete associated analysis files first (before cascade deletion)
-        analyses = db.query(Analysis).filter(Analysis.video_id == video_id).all()
-        for analysis in analyses:
-            # Delete annotated video files
-            if analysis.annotated_video_path:
-                annotated_path = Path(analysis.annotated_video_path)
-                if annotated_path.exists():
-                    try:
-                        annotated_path.unlink()
-                        logger.info(f"Deleted annotated video: {annotated_path}")
-                    except OSError as e:
-                        logger.warning(
-                            f"Failed to delete annotated video {annotated_path}: {e}"
-                        )
-
-        # Delete original video file from file system
-        upload_dir = Path(settings.UPLOAD_DIR)
-        file_path = upload_dir / db_video.filename
-
-        if file_path.exists() and file_path.is_file():
-            try:
-                file_path.unlink()
-                logger.info(f"Deleted original video: {file_path}")
-            except OSError as e:
-                raise handle_file_error(
-                    "delete_failed", db_video.filename, str(e)
-                ) from e
-
-        # Delete from database (this will cascade delete analyses)
-        if not delete_video_record(db, db_video.filename):
+        if not success:
             raise handle_file_error(
-                "delete_failed", db_video.filename, "Database deletion failed"
+                "delete_failed", filename or "unknown", "Video deletion failed"
             )
 
         return VideoDeleteResponse(
-            message=f"Video {db_video.filename} deleted successfully",
-            video_id=video_id,
-            filename=db_video.filename,
+            message=f"Video {filename} deleted successfully",
+            video_id=deleted_video_id,
+            filename=filename,
         )
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "delete_video", {"video_id": video_id})

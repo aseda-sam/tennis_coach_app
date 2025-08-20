@@ -1,8 +1,11 @@
+import logging
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
 from app.models.video import Video
+
+logger = logging.getLogger(__name__)
 
 
 def create_video_record(
@@ -51,14 +54,87 @@ def get_all_videos(db: Session) -> List[Video]:
     return db.query(Video).order_by(Video.created_at.desc()).all()
 
 
-def delete_video_record(db: Session, filename: str) -> bool:
-    """Delete video record from database."""
+def delete_video_record(db: Session, video_id: int) -> bool:
+    """Delete video record from database by ID."""
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if video:
+        db.delete(video)
+        db.commit()
+        return True
+    return False
+
+
+def delete_video_by_filename(db: Session, filename: str) -> bool:
+    """Delete video record from database by filename."""
     video = db.query(Video).filter(Video.filename == filename).first()
     if video:
         db.delete(video)
         db.commit()
         return True
     return False
+
+
+def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, int]:
+    """
+    Delete a video and all its associated analyses, including file cleanup.
+
+    Args:
+        db: Database session
+        video_id: ID of the video to delete
+
+    Returns:
+        Tuple of (success: bool, filename: str, video_id: int)
+    """
+    from pathlib import Path
+
+    from app.core.config import settings
+    from app.models.analysis import Analysis
+
+    # Get video from database
+    video = get_video_by_id(db, video_id)
+    if not video:
+        return False, "", video_id
+
+    filename = video.filename
+
+    try:
+        # Delete associated analysis files first (before cascade deletion)
+        analyses = db.query(Analysis).filter(Analysis.video_id == video_id).all()
+        for analysis in analyses:
+            # Delete annotated video files
+            if analysis.annotated_video_path:
+                annotated_path = Path(analysis.annotated_video_path)
+                if annotated_path.exists():
+                    try:
+                        annotated_path.unlink()
+                        logger.info(f"Deleted annotated video: {annotated_path}")
+                    except OSError as e:
+                        logger.warning(
+                            f"Failed to delete annotated video {annotated_path}: {e}"
+                        )
+
+        # Delete original video file from file system
+        upload_dir = Path(settings.UPLOAD_DIR)
+        file_path = upload_dir / filename
+
+        if file_path.exists() and file_path.is_file():
+            try:
+                file_path.unlink()
+                logger.info(f"Deleted original video: {file_path}")
+            except OSError as e:
+                logger.error(f"Failed to delete video file {file_path}: {e}")
+                # Continue with database deletion even if file deletion fails
+
+        # Delete from database (this will cascade delete analyses)
+        if not delete_video_record(db, video_id):
+            logger.error(f"Database deletion failed for video {video_id}")
+            return False, filename, video_id
+
+        return True, filename, video_id
+
+    except (OSError, ValueError, RuntimeError) as e:
+        logger.error(f"Error during video deletion for {video_id}: {e}")
+        return False, filename, video_id
 
 
 def update_video_status(
