@@ -22,9 +22,15 @@ def download_models() -> None:
     try:
         from ultralytics import YOLO
 
+        from app.core.config import settings
+
+        # Create ml_models directory if it doesn't exist
+        ml_models_dir = Path(__file__).parent / settings.ML_MODELS_DIR
+        ml_models_dir.mkdir(exist_ok=True)
+
         models_to_download = [
-            ("yolov8n.pt", "nano model - faster, smaller"),
-            ("yolov8s.pt", "small model - better accuracy"),
+            (model_path, f"{model_name} model")
+            for model_name, model_path in settings.YOLO_MODELS.items()
         ]
 
         logger.info("Starting YOLO model downloads...")

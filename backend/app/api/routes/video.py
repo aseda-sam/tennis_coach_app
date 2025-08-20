@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List
 
 import cv2
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -222,19 +222,6 @@ async def delete_video(
                             f"Failed to delete annotated video {annotated_path}: {e}"
                         )
 
-        # Always check for orphaned annotated files by naming pattern (outside the loop)
-        processed_dir = Path(settings.PROCESSED_DIR)
-        base_name = Path(db_video.filename).stem
-        potential_annotated = processed_dir / f"{base_name}_annotated.mp4"
-        if potential_annotated.exists():
-            try:
-                potential_annotated.unlink()
-                logger.info(f"Deleted orphaned annotated video: {potential_annotated}")
-            except OSError as e:
-                logger.warning(
-                    f"Failed to delete annotated video {potential_annotated}: {e}"
-                )
-
         # Delete original video file from file system
         upload_dir = Path(settings.UPLOAD_DIR)
         file_path = upload_dir / db_video.filename
@@ -266,7 +253,6 @@ async def delete_video(
 @router.post("/upload", response_model=VideoUploadResponse)
 async def upload_video(
     file: UploadFile = File(...),
-    description: str = Form(None),
     db: Session = Depends(get_db),
 ) -> VideoUploadResponse:
     """
@@ -274,7 +260,6 @@ async def upload_video(
 
     Args:
         file: Video file to upload
-        description: Optional description of the video
 
     Returns:
         Upload confirmation with video information

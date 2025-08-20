@@ -6,14 +6,6 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class VideoUploadRequest(BaseModel):
-    """Request model for video upload with optional metadata."""
-
-    description: Optional[str] = Field(
-        default=None, max_length=500, description="Optional description of the video"
-    )
-
-
 class VideoMetadata(BaseModel):
     """Video metadata extracted from file."""
 

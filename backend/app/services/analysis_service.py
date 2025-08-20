@@ -407,7 +407,7 @@ def delete_analysis(db: Session, video_filename: str) -> bool:
 
     analysis = get_analysis_by_video(db, video_filename)
     if analysis:
-        # Delete annotated video file if it exists
+        # Delete annotated video files
         if analysis.annotated_video_path:
             annotated_path = Path(analysis.annotated_video_path)
             if annotated_path.exists():
