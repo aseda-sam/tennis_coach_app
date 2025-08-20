@@ -1,7 +1,7 @@
 import { Activity, ArrowLeft, Eye, TrendingUp } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
-import { videoApi } from '../services/api';
+import { analysisApi, videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import AnalysisResults from './AnalysisResults';
 import ProgressBar from './ProgressBar';
@@ -50,6 +50,7 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
   };
 
   const [video, setVideo] = useState<VideoMetadata | null>(null);
+  const [isStartingAnalysis, setIsStartingAnalysis] = useState(false);
 
   useEffect(() => {
     const fetchVideoDetails = async () => {
@@ -64,12 +65,33 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
     fetchVideoDetails();
   }, [videoId]);
 
+  // Start analysis function
+  const startAnalysis = async () => {
+    if (!video) return;
+    
+    try {
+      setIsStartingAnalysis(true);
+      await analysisApi.startAnalysis(videoId, {
+        analysis_type: 'comprehensive',
+        confidence_threshold: 0.5,
+        include_pose_detection: true,
+      });
+      // The useAnalysisManager hook will automatically detect the new analysis
+      // and start polling for updates
+    } catch (err) {
+      console.error('Failed to start analysis:', err);
+      // You might want to show an error message to the user here
+    } finally {
+      setIsStartingAnalysis(false);
+    }
+  };
+
   // Format relative time
   const formatRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+
     if (diffInSeconds < 60) {
       return `${diffInSeconds} seconds ago`;
     } else if (diffInSeconds < 3600) {
@@ -117,12 +139,15 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
 
   // Only show analysis items that have real data
   const analysisItems = [];
-  
+
   // Video Quality Assessment - always show if we have quality data
   if (video?.quality_level || video?.quality_score) {
     analysisItems.push({
       title: 'Video Quality Assessment',
-      score: video?.quality_level ? video.quality_level.charAt(0).toUpperCase() + video.quality_level.slice(1) : 'Good',
+      score: video?.quality_level
+        ? video.quality_level.charAt(0).toUpperCase() +
+          video.quality_level.slice(1)
+        : 'Good',
       percentage: Math.round((video?.quality_score || 0.8) * 100),
       color: 'text-green-600',
       bgColor: 'bg-green-50',
@@ -130,7 +155,7 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
       icon: Eye,
     });
   }
-  
+
   // Pose Detection - only show if we have real analysis data
   if (analysis?.pose_detection_rate !== undefined) {
     analysisItems.push({
@@ -143,7 +168,7 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
       icon: TrendingUp,
     });
   }
-  
+
   // Ball Detection - only show if we have real analysis data
   if (analysis?.detection_rate !== undefined) {
     analysisItems.push({
@@ -170,13 +195,27 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Videos
           </Button>
-          <div className="text-right">
-            <h1 className="text-xl font-semibold text-slate-900 truncate max-w-md">
-              {videoFilename}
-            </h1>
-            <p className="text-slate-600">
-              {video?.created_at ? formatRelativeTime(video.created_at) : 'Uploaded recently'}
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <h1 className="text-xl font-semibold text-slate-900 truncate max-w-md">
+                {videoFilename}
+              </h1>
+              <p className="text-slate-600">
+                {video?.created_at
+                  ? formatRelativeTime(video.created_at)
+                  : 'Uploaded recently'}
+              </p>
+            </div>
+            {!analysis && !isPolling && !isStartingAnalysis && (
+              <Button
+                onClick={startAnalysis}
+                disabled={isStartingAnalysis}
+                className="brand-gradient hover:shadow-lg text-white px-6 py-2"
+              >
+                <Activity className="h-4 w-4 mr-2" />
+                {isStartingAnalysis ? 'Starting...' : 'Analyze Video'}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -232,6 +271,32 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
                   )}
               </div>
             </Card>
+
+            {/* Analysis Call-to-Action - Show when no analysis exists */}
+            {!analysis && !isPolling && !isStartingAnalysis && (
+              <Card className="p-8 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 shadow-sm">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                    <Activity className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                    Ready for Analysis
+                  </h3>
+                  <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                    Get detailed insights on your tennis technique with AI-powered ball detection and pose estimation.
+                  </p>
+                  <Button
+                    onClick={startAnalysis}
+                    disabled={isStartingAnalysis}
+                    size="lg"
+                    className="brand-gradient hover:shadow-lg text-white px-8 py-3"
+                  >
+                    <Activity className="h-5 w-5 mr-2" />
+                    {isStartingAnalysis ? 'Starting Analysis...' : 'Start Analysis'}
+                  </Button>
+                </div>
+              </Card>
+            )}
 
             {/* Video Details */}
             <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-sm">
@@ -314,8 +379,6 @@ const ModernAnalysisDashboard: React.FC<ModernAnalysisDashboardProps> = ({
                 ))}
               </div>
             </Card>
-
-
 
             {/* Analysis Status Section - Show when analysis is running */}
             {(isLoading || isPolling) && (
