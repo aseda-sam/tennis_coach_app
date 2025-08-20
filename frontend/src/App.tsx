@@ -1,15 +1,22 @@
 import { useState } from 'react';
 import './App.css';
-import AnalysisDashboard from './components/AnalysisDashboard';
-import VideoList from './components/VideoList';
-import VideoUpload from './components/VideoUpload';
+import DesignComparison from './components/DesignComparison';
+import ModernAnalysisDashboard from './components/ModernAnalysisDashboard';
+import ModernHomePage from './components/ModernHomePage';
+import ModernVideoList from './components/ModernVideoList';
+import ModernVideoUpload from './components/ModernVideoUpload';
 import { VideoMetadata } from './types/video';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'upload' | 'list' | 'dashboard'>('upload');
-  const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(null);
+  const [currentView, setCurrentView] = useState<
+    'home' | 'upload' | 'list' | 'dashboard' | 'demo'
+  >('home');
+  const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(
+    null
+  );
 
-  const handleVideoUploaded = () => {
+  const handleVideoUploaded = (video: VideoMetadata) => {
+    // Could store the uploaded video or just navigate to list
     setCurrentView('list');
   };
 
@@ -28,53 +35,45 @@ function App() {
     setSelectedVideo(null);
   };
 
+  const handleGetStarted = () => {
+    setCurrentView('upload');
+  };
+
+  const handleViewVideos = () => {
+    setCurrentView('list');
+  };
+
+  // Mock function to check if user has videos - replace with real logic
+  const hasVideos = false;
+
   const renderCurrentView = () => {
     switch (currentView) {
+      case 'demo':
+        return <DesignComparison />;
+      case 'home':
+        return (
+          <ModernHomePage
+            onGetStarted={handleGetStarted}
+            onViewVideos={handleViewVideos}
+            hasVideos={hasVideos}
+          />
+        );
       case 'upload':
         return (
-          <div className="app-container">
-            <div className="upload-section">
-              <h1 className="app-title">Tennis Video Analyzer</h1>
-              <p className="app-subtitle">
-                Upload your tennis videos for advanced performance analysis and technique insights
-              </p>
-              <VideoUpload onUploadSuccess={handleVideoUploaded} />
-              <div className="view-videos-section">
-                <button 
-                  className="view-videos-btn"
-                  onClick={() => setCurrentView('list')}
-                >
-                  View My Videos
-                </button>
-              </div>
-            </div>
-          </div>
+          <ModernVideoUpload
+            onUploadSuccess={handleVideoUploaded}
+            onBack={() => setCurrentView('home')}
+          />
         );
 
       case 'list':
         return (
-          <div className="app-container">
-            <div className="list-section">
-              <div className="list-header">
-                <button 
-                  className="back-to-upload-btn"
-                  onClick={() => setCurrentView('upload')}
-                >
-                  ← Back to Upload
-                </button>
-                <button 
-                  className="upload-new-btn"
-                  onClick={() => setCurrentView('upload')}
-                >
-                  Upload New Video
-                </button>
-              </div>
-              <VideoList 
-                onVideoDeleted={handleVideoDeleted}
-                onViewAnalysis={handleViewAnalysis}
-              />
-            </div>
-          </div>
+          <ModernVideoList
+            onVideoDeleted={handleVideoDeleted}
+            onViewAnalysis={handleViewAnalysis}
+            onUpload={() => setCurrentView('upload')}
+            onBack={() => setCurrentView('home')}
+          />
         );
 
       case 'dashboard':
@@ -90,7 +89,7 @@ function App() {
         }
 
         return (
-          <AnalysisDashboard
+          <ModernAnalysisDashboard
             videoId={selectedVideo.id}
             videoFilename={selectedVideo.filename}
             videoUrl={`${process.env.REACT_APP_API_URL || 'http://localhost:8000/v0'}/videos/${selectedVideo.id}/stream`}
@@ -103,11 +102,7 @@ function App() {
     }
   };
 
-  return (
-    <div className="App">
-      {renderCurrentView()}
-    </div>
-  );
+  return <div className="App">{renderCurrentView()}</div>;
 }
 
 export default App;
