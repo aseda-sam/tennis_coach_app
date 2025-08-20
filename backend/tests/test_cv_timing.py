@@ -72,7 +72,11 @@ def test_cv_timing_direct() -> None:
     # Test 4: Full analysis timing
     print("\n4. Testing full analysis timing...")
     start_time = time.time()
-    analysis_results = cv_service.analyze_video(video_path, include_pose=True)
+    analysis_results = cv_service.analyze_video(
+        video_path,
+        include_pose=True,
+        video_quality_level="good",  # Test with quality-based model selection
+    )
     analysis_time = time.time() - start_time
 
     if "error" in analysis_results:
@@ -98,6 +102,19 @@ def test_cv_timing_direct() -> None:
             print(f"     - Total frames: {summary.get('total_frames', 0)}")
             print(f"     - Ball detections: {summary.get('total_ball_detections', 0)}")
             print(f"     - Pose detections: {summary.get('frames_with_pose', 0)}")
+            print(
+                f"     - YOLO model used: {summary.get('yolo_model_used', 'unknown')}"
+            )
+            print(
+                f"     - Model selection reason: {summary.get('yolo_model_selection_reason', 'unknown')}"
+            )
+
+    # Test 5: Model selection logic
+    print("\n5. Testing model selection logic...")
+    test_qualities = ["excellent", "good", "fair", "poor", "unknown", None]
+    for quality in test_qualities:
+        selected_model = cv_service._select_yolo_model(quality)
+        print(f"   Quality: {quality or 'None'} -> Model: {selected_model}")
 
     print("\n✅ Timing test completed!")
     print("   🎯 All timing functions are working correctly")

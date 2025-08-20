@@ -42,23 +42,31 @@ def log_timing_error(operation_name: str, start_time: float, error: Exception) -
 
 
 class CVService:
-    """Computer Vision service for tennis video analysis."""
+    """Computer Vision service for video analysis."""
 
     def __init__(self) -> None:
-        """Initialize the CV service."""
         self.ball_detector = None
         self.pose_detector = None
+        self.yolo_models = {}  # Cache for different YOLO models
         self._initialize_models()
 
     def _initialize_models(self) -> None:
         """Initialize YOLO and MediaPipe models."""
         start_time = time.time()
         try:
-            # Initialize YOLO for ball detection
+            # Initialize YOLO models for ball detection
             from ultralytics import YOLO
 
-            self.ball_detector = YOLO("yolov8n.pt")  # Use nano model for speed
-            logger.info("YOLO model initialized successfully")
+            # Initialize different YOLO model sizes
+            self.yolo_models = {
+                "nano": YOLO("yolov8n.pt"),  # Fastest, smallest
+                "small": YOLO("yolov8s.pt"),  # Better accuracy, slower
+            }
+
+            # Set default model
+            self.ball_detector = self.yolo_models["nano"]
+            logger.info("YOLO models initialized successfully")
+            logger.info(f"Available models: {list(self.yolo_models.keys())}")
         except ImportError:
             logger.warning("Ultralytics not available, ball detection disabled")
             self.ball_detector = None
@@ -90,6 +98,29 @@ class CVService:
 
         elapsed_time = time.time() - start_time
         logger.info(f"⏱️ Model initialization completed in {elapsed_time:.3f}s")
+
+    def _select_yolo_model(self, video_quality_level: Optional[str] = None) -> str:
+        """
+        Select appropriate YOLO model based on video quality.
+
+        Args:
+            video_quality_level: Quality level from video assessment
+
+        Returns:
+            Model name to use ('nano' or 'small')
+        """
+        if not video_quality_level or video_quality_level == "unknown":
+            return "nano"  # Default to nano for unknown quality
+
+        # Model selection logic based on quality
+        quality_model_mapping = {
+            "excellent": "small",  # Use better model for excellent quality
+            "good": "small",  # Use better model for good quality
+            "fair": "nano",  # Use faster model for fair quality
+            "poor": "nano",  # Use faster model for poor quality
+        }
+
+        return quality_model_mapping.get(video_quality_level, "nano")  # Default to nano
 
     def extract_frames(
         self, video_path: Path, max_frames: Optional[int] = None
@@ -488,6 +519,7 @@ class CVService:
         video_path: Path,
         include_pose: bool = True,
         confidence_threshold: Optional[float] = None,
+        video_quality_level: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Perform comprehensive video analysis with ball detection and pose estimation.
@@ -496,6 +528,7 @@ class CVService:
             video_path: Path to video file
             include_pose: Whether to include pose detection (default: True)
             confidence_threshold: Optional confidence threshold (if not provided, uses default)
+            video_quality_level: Video quality level for model selection
 
         Returns:
             Analysis results dictionary with timing information
@@ -523,6 +556,13 @@ class CVService:
                 "analysis_summary": {},
                 "timing": stage_timings,
             }
+
+        # Select YOLO model based on video quality
+        selected_model = self._select_yolo_model(video_quality_level)
+        self.ball_detector = self.yolo_models[selected_model]
+        logger.info(
+            f"Selected YOLO model: {selected_model} (quality: {video_quality_level or 'unknown'})"
+        )
 
         # Use provided confidence threshold or default
         adaptive_confidence_threshold = (
@@ -633,6 +673,8 @@ class CVService:
             "pose_detection_rate": frames_with_pose / len(frames) if frames else 0,
             "video_quality": {},  # Quality assessment is now done during upload
             "confidence_threshold_used": adaptive_confidence_threshold,
+            "yolo_model_used": selected_model,
+            "yolo_model_selection_reason": f"Quality-based selection: {video_quality_level or 'unknown'} quality",
         }
 
         # Log detailed timing breakdown

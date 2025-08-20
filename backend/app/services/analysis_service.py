@@ -246,6 +246,7 @@ def analyze_video(
             video_path,
             include_pose=include_pose_detection,
             confidence_threshold=quality_based_threshold,
+            video_quality_level=video.quality_level,
         )
 
         # Update progress - analysis complete, starting video annotation
@@ -311,9 +312,11 @@ def analyze_video(
             )
             analysis_record.processing_time = processing_time
             analysis_record.model_used = (
-                "yolov8n+mediapipe"
+                f"{analysis_results.get('analysis_summary', {}).get('yolo_model_used', 'yolov8n')}+mediapipe"
                 if cv_service.ball_detector and cv_service.pose_detector
-                else "yolov8n"
+                else analysis_results.get("analysis_summary", {}).get(
+                    "yolo_model_used", "yolov8n"
+                )
                 if cv_service.ball_detector
                 else None
             )
@@ -332,9 +335,11 @@ def analyze_video(
                 analysis_type=analysis_type,
                 analysis_results=analysis_results,
                 processing_time=processing_time,
-                model_used="yolov8n+mediapipe"
+                model_used=f"{analysis_results.get('analysis_summary', {}).get('yolo_model_used', 'yolov8n')}+mediapipe"
                 if cv_service.ball_detector and cv_service.pose_detector
-                else "yolov8n"
+                else analysis_results.get("analysis_summary", {}).get(
+                    "yolo_model_used", "yolov8n"
+                )
                 if cv_service.ball_detector
                 else None,
                 confidence_threshold=confidence_threshold,
