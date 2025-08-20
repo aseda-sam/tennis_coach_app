@@ -32,7 +32,14 @@ class Settings(BaseSettings):
     SUPPORTED_FORMATS: list[str] = [".mp4", ".mov", ".avi"]
 
     # Computer Vision
-    YOLO_MODEL_PATH: str = "yolov8n.pt"
+    ML_MODELS_DIR: str = "ml_models"
+    YOLO_MODELS: dict[str, str] = {
+        "nano": "ml_models/yolov8n.pt",
+        "small": "ml_models/yolov8s.pt",
+    }
+    YOLO_DEFAULT_MODEL: str = (
+        "nano"  # Default model to use when quality-based selection fails
+    )
     CONFIDENCE_THRESHOLD: float = 0.5
     BALL_CONFIDENCE_THRESHOLD: float = 0.7
 

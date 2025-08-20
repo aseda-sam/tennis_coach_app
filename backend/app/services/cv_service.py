@@ -63,8 +63,8 @@ class CVService:
             # Try to initialize models one by one to handle partial failures
             # YOLO will automatically download models if they don't exist locally
             models_to_try = [
-                ("nano", "yolov8n.pt"),
-                ("small", "yolov8s.pt"),
+                (model_name, model_path)
+                for model_name, model_path in settings.YOLO_MODELS.items()
             ]
 
             for model_name, model_path in models_to_try:
@@ -77,8 +77,12 @@ class CVService:
                     continue
 
             if self.yolo_models:
-                # Set default model to the first available one
-                default_model = next(iter(self.yolo_models.keys()))
+                # Set default model to the configured default or first available one
+                default_model = (
+                    settings.YOLO_DEFAULT_MODEL
+                    if settings.YOLO_DEFAULT_MODEL in self.yolo_models
+                    else next(iter(self.yolo_models.keys()))
+                )
                 self.ball_detector = self.yolo_models[default_model]
                 logger.info("YOLO models initialized successfully")
                 logger.info(f"Available models: {list(self.yolo_models.keys())}")
@@ -796,6 +800,7 @@ class CVService:
         """
         start_time = time.time()
         if not annotated_frames:
+            logger.warning("No annotated frames provided, skipping video creation")
             return None
 
         try:
@@ -827,6 +832,20 @@ class CVService:
             original_name = original_video_path.stem
             annotated_path = output_dir / f"{original_name}_annotated.mp4"
             logger.info(f"Annotated video path: {annotated_path.absolute()}")
+
+            # Check if file already exists and is valid
+            if annotated_path.exists():
+                file_size = annotated_path.stat().st_size
+                if file_size > 0:
+                    logger.info(
+                        f"Annotated video already exists: {annotated_path} ({file_size} bytes)"
+                    )
+                    return annotated_path
+                else:
+                    logger.warning(
+                        f"Existing annotated video is empty, recreating: {annotated_path}"
+                    )
+                    annotated_path.unlink()
 
             # Create video writer with any working codec first, then convert to H.264
             # No audio track - we don't need sound for analysis videos
@@ -876,6 +895,21 @@ class CVService:
                 f"Successfully created annotated video: {annotated_path} ({frames_written} frames)"
             )
 
+            # Verify the file was created and has content
+            if not annotated_path.exists():
+                logger.error(f"Annotated video file was not created: {annotated_path}")
+                return None
+
+            file_size = annotated_path.stat().st_size
+            if file_size == 0:
+                logger.error(f"Annotated video file is empty: {annotated_path}")
+                annotated_path.unlink()
+                return None
+
+            logger.info(
+                f"Annotated video file created successfully: {annotated_path} ({file_size} bytes)"
+            )
+
             # Convert to H.264 for better browser compatibility using FFmpeg
             import subprocess
             import uuid
@@ -912,7 +946,9 @@ class CVService:
                     str(annotated_path),  # Output file
                 ]
 
+                logger.info(f"Running FFmpeg conversion: {' '.join(cmd)}")
                 result = subprocess.run(cmd, capture_output=True, text=True)  # noqa: S603
+
                 if result.returncode == 0:
                     logger.info(f"Successfully converted to H.264: {annotated_path}")
                     conversion_successful = True
@@ -927,6 +963,7 @@ class CVService:
                         # Don't rollback - conversion was successful
                 else:
                     logger.warning(f"FFmpeg conversion failed: {result.stderr}")
+                    logger.warning(f"FFmpeg stdout: {result.stdout}")
                     # Fallback: restore original file
                     self._safe_restore_file(temp_path, annotated_path)
 
@@ -939,8 +976,22 @@ class CVService:
                 if temp_path and not conversion_successful:
                     self._safe_restore_file(temp_path, annotated_path)
 
-            log_timing("Video Creation", start_time)
-            return annotated_path
+            # Final verification
+            if annotated_path.exists():
+                final_size = annotated_path.stat().st_size
+                logger.info(
+                    f"Final annotated video: {annotated_path} ({final_size} bytes)"
+                )
+                if final_size > 0:
+                    log_timing("Video Creation", start_time)
+                    return annotated_path
+                else:
+                    logger.error(f"Final annotated video is empty: {annotated_path}")
+                    annotated_path.unlink()
+                    return None
+            else:
+                logger.error(f"Final annotated video does not exist: {annotated_path}")
+                return None
 
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error creating annotated video: {e}")
