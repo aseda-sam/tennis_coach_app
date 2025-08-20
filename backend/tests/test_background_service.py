@@ -134,8 +134,16 @@ class TestBackgroundTaskService:
         success = self.service.cancel_task(999)
         assert success is False
 
-    def test_get_task_stats(self) -> None:
+    @patch("app.services.background_service.get_video_by_id")
+    def test_get_task_stats(self, mock_get_video: Mock) -> None:
         """Test getting task statistics."""
+        self.reset_global_state()
+
+        # Mock video existence
+        mock_video = Mock()
+        mock_video.filename = "test_video.mp4"
+        mock_get_video.return_value = mock_video
+
         # Start some tasks
         self.service.start_analysis_task(video_id=1, analysis_type="ball_tracking")
         self.service.start_analysis_task(video_id=2, analysis_type="pose_detection")
