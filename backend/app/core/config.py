@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # Environment
-    ENVIRONMENT: str = "development"  # development, production
+    ENVIRONMENT: str = "development"  # development, production, test
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
     # API Configuration
@@ -71,6 +71,8 @@ class Settings(BaseSettings):
             return self.SUPABASE_DB_URL
         if self.DATABASE_URL:
             return self.DATABASE_URL
+        elif self.is_test:
+            return "sqlite:///./tests/test.db"
         else:
             return "sqlite:///../data/database/tennis_coach.db"
 
@@ -78,6 +80,11 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """Check if the environment is production."""
         return self.ENVIRONMENT == "production"
+
+    @property
+    def is_test(self) -> bool:
+        """Check if the environment is test."""
+        return self.ENVIRONMENT == "test"
 
     class Config:
         env_file = ".env"
@@ -101,6 +108,13 @@ def get_environment_limits() -> dict:
             "frame_skip_ratio": settings.DOCKER_FRAME_SKIP_RATIO,
             "environment": "docker",
         }
+    elif settings.is_test:
+        return {
+            "max_resolution": (1920, 1080),  # Lower resolution for tests
+            "max_fps": 30,  # Lower FPS for tests
+            "frame_skip_ratio": 2,  # Skip frames for faster tests
+            "environment": "test",
+        }
     else:
         return {
             "max_resolution": settings.MAX_VIDEO_RESOLUTION,
@@ -119,13 +133,8 @@ def create_directories() -> None:
     directories = [
         Path(settings.UPLOAD_DIR),
         Path(settings.PROCESSED_DIR),
-        Path("../data/database"),
-        Path("../data/analysis_cache"),
+        Path(settings.ML_MODELS_DIR),
     ]
 
     for directory in directories:
         directory.mkdir(parents=True, exist_ok=True)
-
-
-# Initialize directories
-create_directories()
