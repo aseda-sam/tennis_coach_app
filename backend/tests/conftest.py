@@ -100,6 +100,6 @@ def cleanup_test_files() -> Generator[None, None, None]:
 
     for test_dir in test_dirs:
         if test_dir.exists():
-            for file_path in test_dir.glob("*"):
+            for file_path in test_dir.glob("test_*"):
                 if file_path.is_file():
                     file_path.unlink(missing_ok=True)
