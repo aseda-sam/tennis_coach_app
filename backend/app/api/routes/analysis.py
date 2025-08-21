@@ -406,11 +406,11 @@ async def get_task_logs(task_id: int) -> Dict[str, Any]:
         task_info = background_service.get_task_status(task_id)
         if not task_info:
             raise handle_not_found_error("task", str(task_id))
-        
+
         # Get additional task details
         all_tasks = background_service.get_all_tasks()
         task_details = all_tasks.get(task_id, {})
-        
+
         return {
             "task_id": task_id,
             "status": task_info.status,

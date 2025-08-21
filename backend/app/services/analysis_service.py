@@ -284,8 +284,10 @@ def analyze_video(
                 pose_detections=analysis_results["pose_detections"],
                 racket_positions=racket_positions,
                 fps=fps,
-                contact_threshold=150.0,  # 150 pixels threshold for wrist-based fallback
-                racket_contact_threshold=100.0,  # Increased to 100 pixels for more permissive racket-based detection
+                contact_threshold=200.0,  # Realistic 200px threshold for wrist-based fallback  
+                racket_contact_threshold=150.0,  # Realistic 150px threshold for racket contact
+                min_ball_confidence=0.6,  # Only high-confidence ball detections
+                early_video_skip_seconds=2.0,  # Skip first 2 seconds (player positioning)
             )
             logger.info(f"Contact detection completed: {len(contact_timestamps)} contacts found")
 

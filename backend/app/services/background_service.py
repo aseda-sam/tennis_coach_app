@@ -171,7 +171,9 @@ class BackgroundTaskService:
                         )
 
                 # Run analysis (this is the CPU-intensive part)
-                logger.info(f"Task {task_id}: Starting analyze_video with include_pose_detection={include_pose_detection}")
+                logger.info(
+                    f"Task {task_id}: Starting analyze_video with include_pose_detection={include_pose_detection}"
+                )
                 result = analyze_video(
                     db=db,
                     video_id=video_id,
@@ -180,12 +182,18 @@ class BackgroundTaskService:
                     include_pose_detection=include_pose_detection,
                     task_id=task_id,
                 )
-                logger.info(f"Task {task_id}: analyze_video completed with result: {type(result)}")
+                logger.info(
+                    f"Task {task_id}: analyze_video completed with result: {type(result)}"
+                )
                 if isinstance(result, dict) and "error" in result:
-                    logger.error(f"Task {task_id}: Analysis failed with error: {result['error']}")
+                    logger.error(
+                        f"Task {task_id}: Analysis failed with error: {result['error']}"
+                    )
                 elif isinstance(result, dict) and "contact_timestamps" in result:
                     contact_count = len(result.get("contact_timestamps", []))
-                    logger.info(f"Task {task_id}: Analysis completed with {contact_count} contacts detected")
+                    logger.info(
+                        f"Task {task_id}: Analysis completed with {contact_count} contacts detected"
+                    )
                 else:
                     logger.info(f"Task {task_id}: Analysis completed successfully")
 

@@ -5,8 +5,9 @@ FastAPI backend for the tennis analysis system with computer vision capabilities
 ## Features
 
 - **Video Upload & Management**: Secure file upload with validation and metadata extraction
-- **Computer Vision Analysis**: YOLO ball detection + MediaPipe pose estimation
+- **Computer Vision Analysis**: YOLO ball detection + MediaPipe pose estimation + Ball-racket contact detection
 - **Annotated Video Creation**: Generate videos with detection overlays
+- **Smart Contact Detection**: Accurate ball-racket contact timing with false positive filtering
 - **RESTful API**: FastAPI with automatic OpenAPI documentation and versioning
 - **Database Integration**: SQLite with SQLAlchemy ORM
 - **Code Quality**: Ruff linting and formatting

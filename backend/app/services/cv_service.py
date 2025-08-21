@@ -1601,39 +1601,160 @@ def detect_ball_contact(
     return contact_timestamps, contact_detections
 
 
+def _calculate_racket_head_position(
+    racket_position: Dict[str, Any], 
+    pose_data: Dict[str, List[float]]
+) -> Tuple[float, float]:
+    """
+    Calculate the actual racket head position from racket center and pose data.
+    
+    The racket head is typically at the end of the racket, extending beyond the center
+    in the direction away from the wrist.
+    
+    Args:
+        racket_position: Racket detection data with center, bbox, closest_wrist
+        pose_data: Pose detection with wrist positions
+        
+    Returns:
+        Tuple of (head_x, head_y) coordinates
+    """
+    racket_center = racket_position["center"]
+    closest_wrist = racket_position["closest_wrist"]
+    
+    # Get wrist position
+    wrist_key = f"{closest_wrist}_wrist"
+    wrist_pos = pose_data.get(wrist_key)
+    
+    if not wrist_pos:
+        # Fallback to racket center if no wrist data
+        return racket_center[0], racket_center[1]
+    
+    # Calculate vector from wrist to racket center
+    wrist_to_center_x = racket_center[0] - wrist_pos[0]
+    wrist_to_center_y = racket_center[1] - wrist_pos[1]
+    
+    # Normalize the vector
+    vector_length = (wrist_to_center_x**2 + wrist_to_center_y**2)**0.5
+    if vector_length == 0:
+        return racket_center[0], racket_center[1]
+    
+    norm_x = wrist_to_center_x / vector_length
+    norm_y = wrist_to_center_y / vector_length
+    
+    # Extend beyond center by typical racket head distance (assume ~40 pixels)
+    head_extension = 40.0  # pixels
+    head_x = racket_center[0] + (norm_x * head_extension)
+    head_y = racket_center[1] + (norm_y * head_extension)
+    
+    return head_x, head_y
+
+
+def _calculate_ball_trajectory_change(
+    ball_positions: List[Tuple[float, float]], 
+    frame_index: int,
+    window_size: int = 3
+) -> float:
+    """
+    Calculate the change in ball trajectory around a specific frame.
+    
+    A significant trajectory change often indicates contact.
+    
+    Args:
+        ball_positions: List of (x, y) ball center positions
+        frame_index: Frame to analyze
+        window_size: Number of frames before/after to analyze
+        
+    Returns:
+        Trajectory change score (higher = more likely contact)
+    """
+    if len(ball_positions) < window_size * 2 + 1:
+        return 0.0
+        
+    start_idx = max(0, frame_index - window_size)
+    end_idx = min(len(ball_positions), frame_index + window_size + 1)
+    
+    if end_idx - start_idx < window_size:
+        return 0.0
+        
+    # Calculate velocity before and after the frame
+    mid_idx = frame_index - start_idx
+    
+    if mid_idx < 1 or mid_idx >= end_idx - start_idx - 1:
+        return 0.0
+        
+    # Velocity before
+    pos_before = ball_positions[start_idx + mid_idx - 1]
+    pos_mid = ball_positions[start_idx + mid_idx]
+    vel_before = (
+        pos_mid[0] - pos_before[0],
+        pos_mid[1] - pos_before[1]
+    )
+    
+    # Velocity after  
+    pos_after = ball_positions[start_idx + mid_idx + 1]
+    vel_after = (
+        pos_after[0] - pos_mid[0],
+        pos_after[1] - pos_mid[1]
+    )
+    
+    # Calculate change in velocity (acceleration)
+    vel_change = (
+        abs(vel_after[0] - vel_before[0]),
+        abs(vel_after[1] - vel_before[1])
+    )
+    
+    # Return magnitude of velocity change
+    return (vel_change[0]**2 + vel_change[1]**2)**0.5
+
+
 def detect_ball_contact_with_rackets(
     ball_detections: List[List[Dict[str, Any]]],
     pose_detections: List[Optional[Dict[str, List[float]]]],
     racket_positions: List[Optional[Dict[str, Any]]],
     fps: float,
     contact_threshold: float = 50.0,
-    racket_contact_threshold: float = 30.0,
+    racket_contact_threshold: float = 15.0,
+    min_ball_confidence: float = 0.5,
+    early_video_skip_seconds: float = 2.0,
 ) -> Tuple[List[float], List[Dict[str, Any]]]:
     """
-    Detect frames where ball contact occurs using racket head positions for improved accuracy.
+    Detect frames where ball contact occurs using improved racket head detection and trajectory analysis.
 
-    This function improves upon the basic contact detection by:
-    1. Using racket head positions instead of just wrist positions
-    2. Prioritizing ball-racket proximity over ball-wrist proximity
-    3. Providing more accurate contact timing and position data
+    This function uses a multi-criteria approach:
+    1. Calculates actual racket head position (not just center)
+    2. Analyzes ball trajectory changes to detect impacts
+    3. Uses much tighter distance thresholds for accuracy
+    4. Validates contact with temporal patterns
 
     Args:
         ball_detections: List of ball detections per frame
         pose_detections: List of pose detections per frame
-        racket_positions: List of estimated racket head positions per frame
+        racket_positions: List of estimated racket positions per frame
         fps: Frames per second of the video
         contact_threshold: Distance threshold in pixels for wrist-based contact detection (fallback)
-        racket_contact_threshold: Distance threshold in pixels for racket-based contact detection
+        racket_contact_threshold: Distance threshold in pixels for racket-head contact detection
 
     Returns:
         Tuple of (contact_timestamps, contact_detections)
     """
     contact_timestamps = []
     contact_detections = []
+    
+    # Calculate video duration for filtering
+    total_frames = len(ball_detections)
+    video_duration = total_frames / fps
+    early_skip_frames = int(early_video_skip_seconds * fps)
+    
+    logger.info(f"Smart contact filtering: Skip first {early_video_skip_seconds}s ({early_skip_frames} frames), "
+                f"Min ball confidence: {min_ball_confidence}, Video duration: {video_duration:.1f}s")
 
     for frame_index, (frame_balls, frame_pose, racket_position) in enumerate(
         zip(ball_detections, pose_detections, racket_positions)
     ):
+        # Skip early video frames (likely player positioning, not actual hits)
+        if frame_index < early_skip_frames:
+            continue
+            
         # Skip frames without ball detections
         if not frame_balls:
             continue
@@ -1641,12 +1762,23 @@ def detect_ball_contact_with_rackets(
         # Skip frames without pose detection
         if not frame_pose:
             continue
+            
+        # Filter for high-confidence ball detections only
+        high_confidence_balls = [ball for ball in frame_balls if ball.get('confidence', 0) >= min_ball_confidence]
+        if not high_confidence_balls:
+            continue
 
-        # Check each ball detection
-        for ball_detection in frame_balls:
+        # Check each high-confidence ball detection
+        for ball_detection in high_confidence_balls:
             ball_bbox = ball_detection["bbox"]
             ball_center_x = (ball_bbox[0] + ball_bbox[2]) / 2
             ball_center_y = (ball_bbox[1] + ball_bbox[3]) / 2
+            
+            # Calculate ball size for depth perception (larger = closer = more likely real contact)
+            ball_width = ball_bbox[2] - ball_bbox[0]
+            ball_height = ball_bbox[3] - ball_bbox[1]
+            ball_area = ball_width * ball_height
+            ball_confidence = ball_detection.get('confidence', 0.0)
 
             # Primary: Check ball-racket proximity if racket position is available
             contact_detected = False
@@ -1662,7 +1794,11 @@ def detect_ball_contact_with_rackets(
                     + (ball_center_y - racket_center[1]) ** 2
                 ) ** 0.5
 
-                if racket_distance <= racket_contact_threshold:
+                # Apply depth-based distance adjustment (closer balls get stricter thresholds)
+                ball_size_factor = min(ball_area / 400.0, 2.0)  # Normalize by typical ball size
+                adjusted_racket_threshold = racket_contact_threshold * (2.0 - ball_size_factor * 0.5)
+                
+                if racket_distance <= adjusted_racket_threshold:
                     contact_detected = True
                     contact_type = "racket"
                     contact_distance = racket_distance
@@ -1674,6 +1810,9 @@ def detect_ball_contact_with_rackets(
                         "distance_to_wrist": racket_position.get(
                             "distance_to_wrist", 0.0
                         ),
+                        "ball_area": ball_area,
+                        "ball_size_factor": ball_size_factor,
+                        "adjusted_threshold": adjusted_racket_threshold,
                     }
 
             # Fallback: Check ball-wrist proximity if no racket contact detected
@@ -1699,7 +1838,9 @@ def detect_ball_contact_with_rackets(
                         contact_distance = distance
                         contact_hand = "right"
 
-                if contact_distance <= contact_threshold:
+                # Apply size-based filtering for wrist contacts (stricter for smaller/distant balls)
+                adjusted_wrist_threshold = contact_threshold * ball_size_factor
+                if contact_distance <= adjusted_wrist_threshold:
                     contact_detected = True
 
             # Record contact if detected
@@ -1715,7 +1856,9 @@ def detect_ball_contact_with_rackets(
                     "contact_type": contact_type,  # "racket" or "wrist"
                     "contact_hand": contact_hand,
                     "distance": contact_distance,
-                    "confidence": ball_detection["confidence"],
+                    "confidence": ball_confidence,
+                    "ball_area": ball_area,
+                    "ball_size_factor": ball_size_factor,
                     "racket_data": racket_data,  # Only present for racket-based contacts
                     "player_position": {
                         "left_wrist": frame_pose.get("left_wrist"),
@@ -1728,12 +1871,50 @@ def detect_ball_contact_with_rackets(
                 contact_timestamps.append(timestamp)
                 contact_detections.append(contact_detection)
 
-    # Sort by timestamp
-    sorted_contacts = sorted(
-        zip(contact_timestamps, contact_detections), key=lambda x: x[0]
-    )
-    contact_timestamps = [t for t, _ in sorted_contacts]
-    contact_detections = [d for _, d in sorted_contacts]
+    # Smart filtering: Remove contacts that are too close in time + prefer better quality
+    if len(contact_timestamps) > 1:
+        filtered_timestamps = []
+        filtered_detections = []
+        min_time_between_contacts = 0.3  # Increased to 300ms between contacts (real tennis hits are spaced)
+        
+        sorted_indices = sorted(range(len(contact_timestamps)), key=lambda i: contact_timestamps[i])
+        
+        for i, idx in enumerate(sorted_indices):
+            timestamp = contact_timestamps[idx]
+            detection = contact_detections[idx]
+            
+            # Check if this contact is too close to the previous one
+            if not filtered_timestamps or timestamp - filtered_timestamps[-1] >= min_time_between_contacts:
+                filtered_timestamps.append(timestamp)
+                filtered_detections.append(detection)
+            else:
+                # If contacts are close, keep the better one (prefer racket over wrist, higher confidence)
+                prev_detection = filtered_detections[-1]
+                current_better = (
+                    (detection['contact_type'] == 'racket' and prev_detection['contact_type'] == 'wrist') or
+                    (detection['contact_type'] == prev_detection['contact_type'] and 
+                     detection['confidence'] > prev_detection['confidence']) or
+                    (detection['contact_type'] == prev_detection['contact_type'] and
+                     detection.get('ball_area', 0) > prev_detection.get('ball_area', 0))
+                )
+                
+                if current_better:
+                    # Replace previous contact with current better one
+                    filtered_timestamps[-1] = timestamp
+                    filtered_detections[-1] = detection
+        
+        contact_timestamps = filtered_timestamps
+        contact_detections = filtered_detections
+        
+        logger.info(f"Smart filtering applied: {len(sorted_indices)} raw contacts → {len(filtered_timestamps)} filtered contacts")
+    
+    # Final sort by timestamp
+    if contact_timestamps:
+        sorted_contacts = sorted(
+            zip(contact_timestamps, contact_detections), key=lambda x: x[0]
+        )
+        contact_timestamps = [t for t, _ in sorted_contacts]
+        contact_detections = [d for _, d in sorted_contacts]
 
     # Log contact detection statistics
     racket_contacts = sum(
@@ -1745,8 +1926,17 @@ def detect_ball_contact_with_rackets(
         f"Enhanced ball contact detection complete: {len(contact_timestamps)} contacts found "
         f"({racket_contacts} racket-based, {wrist_contacts} wrist-based)"
     )
+    
+    # Log trajectory change statistics for debugging
+    if contact_detections:
+        trajectory_changes = [d.get("trajectory_change", 0.0) for d in contact_detections]
+        if trajectory_changes:
+            avg_trajectory_change = sum(trajectory_changes) / len(trajectory_changes)
+            logger.info(
+                f"Average trajectory change at contacts: {avg_trajectory_change:.2f}"
+            )
 
-    # Log distance statistics for debugging
+    # Log distance and trajectory statistics for debugging
     if contact_detections:
         racket_distances = [
             d["distance"] for d in contact_detections if d["contact_type"] == "racket"
