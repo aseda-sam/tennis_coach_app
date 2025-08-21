@@ -48,6 +48,14 @@ const normalizeAnalysis = (data: any): AnalysisData => ({
     typeof data.pose_detections === 'string'
       ? JSON.parse(data.pose_detections || '[]')
       : (data.pose_detections ?? []),
+  contact_timestamps:
+    typeof data.contact_timestamps === 'string'
+      ? JSON.parse(data.contact_timestamps || '[]')
+      : (data.contact_timestamps ?? []),
+  contact_detections:
+    typeof data.contact_detections === 'string'
+      ? JSON.parse(data.contact_detections || '[]')
+      : (data.contact_detections ?? []),
 });
 
 export const videoApi = {
@@ -125,6 +133,9 @@ export interface AnalysisData {
   include_pose_detection?: boolean;
   frames_with_pose?: number;
   pose_detection_rate?: number;
+  contact_frames?: number;
+  contact_timestamps?: number[];
+  contact_detections?: any[];
   ball_detections: any[];
   pose_detections: any[];
   created_at: string;
