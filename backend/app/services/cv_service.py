@@ -1603,9 +1603,9 @@ def detect_ball_contact(
 
     def analyze_video_modular(
         self: "CVService",
-        video_path: str,
+        video_path: Path,
         config: "AnalysisConfig",
-        output_dir: Optional[str] = None,
+        output_dir: Optional[Path] = None,
     ) -> Dict[str, Any]:
         """
         Perform modular video analysis based on configuration.
@@ -1624,18 +1624,20 @@ def detect_ball_contact(
         )
 
         # Extract video frames
-        frames = self._extract_frames(video_path, config.max_frames)
+        frames = self.extract_frames(video_path, config.max_frames)
         if not frames:
             raise ValueError("No frames could be extracted from video")
 
-        fps = self._get_video_fps(video_path)
+        # Get video metadata for FPS
+        video_metadata = self.get_video_metadata(video_path)
+        fps = video_metadata.get("fps", 30.0)
         total_frames = len(frames)
 
         logger.info(f"Extracted {total_frames} frames at {fps:.2f} FPS")
 
         # Initialize results structure
         results = {
-            "video_path": video_path,
+            "video_path": str(video_path),
             "total_frames": total_frames,
             "fps": fps,
             "analysis_type": config.get_analysis_type(),
@@ -1679,11 +1681,7 @@ def detect_ball_contact(
         if config.include_pose_detection:
             logger.info("Running pose detection...")
             pose_start = time.time()
-            pose_detections = self.detect_poses(
-                frames,
-                config.pose_detection_confidence,
-                config.pose_tracking_confidence,
-            )
+            pose_detections = self.detect_poses_batch(frames)
             pose_time = time.time() - pose_start
             results["pose_detection"] = {
                 "detections": pose_detections,
@@ -1742,12 +1740,12 @@ def detect_ball_contact(
 
     def _create_annotated_video_modular(
         self: "CVService",
-        video_path: str,
+        video_path: Path,
         frames: List[np.ndarray],
         results: Dict[str, Any],
         config: "AnalysisConfig",
-        output_dir: Optional[str] = None,
-    ) -> str:
+        output_dir: Optional[Path] = None,
+    ) -> Optional[str]:
         """
         Create annotated video for modular analysis results.
 
@@ -1762,10 +1760,10 @@ def detect_ball_contact(
             Path to the annotated video file
         """
         if output_dir is None:
-            output_dir = Path(video_path).parent
+            output_dir = video_path.parent
 
         output_path = Path(output_dir)
-        video_name = Path(video_path).stem
+        video_name = video_path.stem
         annotated_filename = f"{video_name}_modular_annotated.mp4"
         annotated_path = output_path / annotated_filename
 
@@ -1837,9 +1835,10 @@ def detect_ball_contact(
                     and racket_positions[frame_index]
                 ):
                     pos = racket_positions[frame_index]
+                    center_x, center_y = pos["center"]
                     cv2.circle(
                         annotated_frame,
-                        (int(pos["x"]), int(pos["y"])),
+                        (int(center_x), int(center_y)),
                         5,
                         (0, 255, 255),  # Yellow
                         -1,
@@ -1849,7 +1848,7 @@ def detect_ball_contact(
             if config.include_pose_detection and frame_index < len(pose_detections):
                 pose = pose_detections[frame_index]
                 if pose:
-                    self._draw_pose_skeleton(annotated_frame, pose)
+                    annotated_frame = self.draw_pose_overlay(annotated_frame, pose)
 
             out.write(annotated_frame)
 
@@ -1859,10 +1858,10 @@ def detect_ball_contact(
 
     def run_component_analysis(
         self: "CVService",
-        video_path: str,
+        video_path: Path,
         component: str,
         config: Optional["AnalysisConfig"] = None,
-        output_dir: Optional[str] = None,
+        output_dir: Optional[Path] = None,
     ) -> Dict[str, Any]:
         """
         Run analysis for a specific component only.
