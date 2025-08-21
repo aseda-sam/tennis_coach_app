@@ -391,6 +391,43 @@ async def get_task_stats() -> TaskStatsResponse:
         log_and_raise_error(e, "get_task_stats")
 
 
+@router.get("/tasks/{task_id}/logs")
+async def get_task_logs(task_id: int) -> Dict[str, Any]:
+    """
+    Get detailed logs for a specific task.
+
+    Args:
+        task_id: Task ID
+
+    Returns:
+        Task logs and status information
+    """
+    try:
+        task_info = background_service.get_task_status(task_id)
+        if not task_info:
+            raise handle_not_found_error("task", str(task_id))
+
+        # Get additional task details
+        all_tasks = background_service.get_all_tasks()
+        task_details = all_tasks.get(task_id, {})
+
+        return {
+            "task_id": task_id,
+            "status": task_info.status,
+            "progress": task_info.progress,
+            "current_stage": task_info.current_stage,
+            "stage_message": task_info.stage_message,
+            "error": task_info.error,
+            "started_at": task_info.started_at,
+            "completed_at": task_info.completed_at,
+            "include_pose_detection": task_details.get("include_pose_detection", False),
+            "analysis_type": task_details.get("analysis_type", "unknown"),
+            "confidence_threshold": task_details.get("confidence_threshold", 0.0),
+        }
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_task_logs", {"task_id": task_id})
+
+
 @router.delete("/tasks/{task_id}")
 async def cancel_task(task_id: int) -> Dict[str, Any]:
     """
