@@ -255,6 +255,11 @@ def analyze_video(
         )
 
         # Add ball contact detection if both ball and pose detection are available
+        logger.info(f"Contact detection check: include_pose_detection={include_pose_detection}")
+        logger.info(f"Contact detection check: ball_detections present={analysis_results.get('ball_detections') is not None}")
+        logger.info(f"Contact detection check: pose_detections present={analysis_results.get('pose_detections') is not None}")
+        logger.info(f"Contact detection check: error present={'error' in analysis_results}")
+        
         if (
             include_pose_detection
             and analysis_results.get("ball_detections")
@@ -273,6 +278,7 @@ def analyze_video(
                 "racket_positions", [None] * len(analysis_results["ball_detections"])
             )
 
+            logger.info("Starting improved contact detection...")
             contact_timestamps, contact_detections = detect_ball_contact_with_rackets(
                 ball_detections=analysis_results["ball_detections"],
                 pose_detections=analysis_results["pose_detections"],
@@ -281,6 +287,7 @@ def analyze_video(
                 contact_threshold=150.0,  # 150 pixels threshold for wrist-based fallback
                 racket_contact_threshold=100.0,  # Increased to 100 pixels for more permissive racket-based detection
             )
+            logger.info(f"Contact detection completed: {len(contact_timestamps)} contacts found")
 
             # Add contact detection results to analysis results
             analysis_results["contact_timestamps"] = contact_timestamps
