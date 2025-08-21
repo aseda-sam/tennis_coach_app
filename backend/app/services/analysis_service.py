@@ -255,11 +255,19 @@ def analyze_video(
         )
 
         # Add ball contact detection if both ball and pose detection are available
-        logger.info(f"Contact detection check: include_pose_detection={include_pose_detection}")
-        logger.info(f"Contact detection check: ball_detections present={analysis_results.get('ball_detections') is not None}")
-        logger.info(f"Contact detection check: pose_detections present={analysis_results.get('pose_detections') is not None}")
-        logger.info(f"Contact detection check: error present={'error' in analysis_results}")
-        
+        logger.info(
+            f"Contact detection check: include_pose_detection={include_pose_detection}"
+        )
+        logger.info(
+            f"Contact detection check: ball_detections present={analysis_results.get('ball_detections') is not None}"
+        )
+        logger.info(
+            f"Contact detection check: pose_detections present={analysis_results.get('pose_detections') is not None}"
+        )
+        logger.info(
+            f"Contact detection check: error present={'error' in analysis_results}"
+        )
+
         if (
             include_pose_detection
             and analysis_results.get("ball_detections")
@@ -284,12 +292,14 @@ def analyze_video(
                 pose_detections=analysis_results["pose_detections"],
                 racket_positions=racket_positions,
                 fps=fps,
-                contact_threshold=200.0,  # Realistic 200px threshold for wrist-based fallback  
+                contact_threshold=200.0,  # Realistic 200px threshold for wrist-based fallback
                 racket_contact_threshold=150.0,  # Realistic 150px threshold for racket contact
                 min_ball_confidence=0.6,  # Only high-confidence ball detections
                 early_video_skip_seconds=2.0,  # Skip first 2 seconds (player positioning)
             )
-            logger.info(f"Contact detection completed: {len(contact_timestamps)} contacts found")
+            logger.info(
+                f"Contact detection completed: {len(contact_timestamps)} contacts found"
+            )
 
             # Add contact detection results to analysis results
             analysis_results["contact_timestamps"] = contact_timestamps
