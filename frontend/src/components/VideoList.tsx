@@ -107,7 +107,7 @@ const VideoList: React.FC<VideoListProps> = ({
       const response: AnalysisStartResponse = await analysisApi.startAnalysis(
         videoId,
         {
-          analysis_type: 'ball_tracking',
+          analysis_type: 'comprehensive',
           confidence_threshold: 0.5,
           include_pose_detection: true,
         }

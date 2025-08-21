@@ -1,10 +1,10 @@
 import React from 'react';
 import {
-  FrameExtractionIcon,
   BallDetectionIcon,
+  FrameExtractionIcon,
   PoseDetectionIcon,
-  VideoAnnotationIcon,
   ProcessingIcon,
+  VideoAnnotationIcon,
 } from './Icons';
 import './StageProgress.css';
 
@@ -31,6 +31,8 @@ const StageProgress: React.FC<StageProgressProps> = ({
         return <FrameExtractionIcon size={20} className="stage-icon" />;
       case 'ball_detection':
         return <BallDetectionIcon size={20} className="stage-icon" />;
+      case 'racket_detection':
+        return <BallDetectionIcon size={20} className="stage-icon" />; // Using ball icon for now
       case 'pose_detection':
         return <PoseDetectionIcon size={20} className="stage-icon" />;
       case 'video_annotation':
@@ -50,6 +52,8 @@ const StageProgress: React.FC<StageProgressProps> = ({
         return 'Frame Extraction';
       case 'ball_detection':
         return 'Ball Detection';
+      case 'racket_detection':
+        return 'Racket Detection';
       case 'pose_detection':
         return 'Pose Detection';
       case 'video_annotation':
@@ -70,6 +74,8 @@ const StageProgress: React.FC<StageProgressProps> = ({
         return 'info';
       case 'ball_detection':
         return 'primary';
+      case 'racket_detection':
+        return 'warning';
       case 'pose_detection':
         return 'secondary';
       case 'video_annotation':
@@ -82,9 +88,7 @@ const StageProgress: React.FC<StageProgressProps> = ({
   return (
     <div className={`stage-progress-container ${size}`}>
       <div className="stage-header">
-        <div className="stage-icon-container">
-          {getStageIcon()}
-        </div>
+        <div className="stage-icon-container">{getStageIcon()}</div>
         <div className="stage-info">
           <div className="stage-name">{getStageName()}</div>
           <div className="stage-message">{stageMessage}</div>
@@ -94,17 +98,17 @@ const StageProgress: React.FC<StageProgressProps> = ({
           <span className="stage-progress">({stageProgress}%)</span>
         </div>
       </div>
-      
+
       <div className="stage-progress-bars">
         <div className="overall-progress-bar">
-          <div 
+          <div
             className={`progress-fill ${getStageColor()}`}
             style={{ width: `${overallProgress}%` }}
             data-testid="overall-progress-fill"
           />
         </div>
         <div className="stage-progress-bar">
-          <div 
+          <div
             className={`progress-fill ${getStageColor()}`}
             style={{ width: `${stageProgress}%` }}
             data-testid="stage-progress-fill"
