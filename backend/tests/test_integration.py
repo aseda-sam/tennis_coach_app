@@ -178,7 +178,7 @@ class TestVideoIntegration:
 
         # Create analysis for first video
         analysis_request = {
-            "analysis_type": "ball_tracking",
+            "analysis_type": "comprehensive",
             "confidence_threshold": 0.5,
             "include_pose_detection": False,
             "synchronous": True,
@@ -249,7 +249,7 @@ class TestAnalysisIntegration:
 
         # Start analysis (synchronous mode for testing)
         analysis_request = {
-            "analysis_type": "ball_tracking",
+            "analysis_type": "comprehensive",
             "confidence_threshold": 0.5,
             "include_pose_detection": False,
             "synchronous": True,
@@ -271,7 +271,7 @@ class TestAnalysisIntegration:
 
         # Verify analysis results
         assert analysis_info["video_id"] == video_id
-        assert analysis_info["analysis_type"] == "ball_tracking"
+        assert analysis_info["analysis_type"] == "comprehensive"
         assert analysis_info["status"] == "completed"
         assert "detection_rate" in analysis_info
 
@@ -292,7 +292,7 @@ class TestAnalysisIntegration:
 
         # Start analysis (synchronous mode for testing)
         analysis_request = {
-            "analysis_type": "ball_tracking",
+            "analysis_type": "comprehensive",
             "confidence_threshold": 0.5,
             "include_pose_detection": False,
             "synchronous": True,
@@ -333,7 +333,7 @@ class TestAnalysisIntegration:
 
         # Start analysis (synchronous mode for testing)
         analysis_request = {
-            "analysis_type": "ball_tracking",
+            "analysis_type": "comprehensive",
             "confidence_threshold": 0.5,
             "include_pose_detection": False,
             "synchronous": True,
