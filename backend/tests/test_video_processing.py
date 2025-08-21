@@ -82,7 +82,7 @@ class TestVideoProcessing:
 
         # Start analysis
         analysis_request = {
-            "analysis_type": "ball_tracking",
+            "analysis_type": "comprehensive",
             "confidence_threshold": 0.7,
             "include_pose_detection": False,
         }

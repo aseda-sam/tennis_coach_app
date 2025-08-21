@@ -151,7 +151,7 @@ def get_all_analyses(db: Session) -> list[Analysis]:
 def analyze_video(
     db: Session,
     video_id: int,
-    analysis_type: str = "ball_tracking",
+    analysis_type: str = "comprehensive",
     confidence_threshold: float = 0.7,
     include_pose_detection: bool = False,
     task_id: Optional[int] = None,
