@@ -104,7 +104,7 @@ def regenerate_annotated_video(analysis: "Analysis", video: "Video") -> bool:
         result = analyze_video(
             db=db,  # Pass the database session
             video_id=video.id,  # Use video ID instead of filename
-            analysis_type="ball_tracking",
+            analysis_type="comprehensive",
             confidence_threshold=0.7,  # Use default confidence threshold
             include_pose_detection=True,  # Include pose detection for annotated video
         )

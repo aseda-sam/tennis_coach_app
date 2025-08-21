@@ -123,6 +123,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               }
               showControls={true}
               aspectRatioMode={aspectRatioMode}
+              contactTimestamps={analysis?.contact_timestamps || []}
             />
             {analysis?.pose_detections &&
               analysis.pose_detections.length > 0 && (

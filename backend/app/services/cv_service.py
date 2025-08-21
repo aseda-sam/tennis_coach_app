@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
 
+from app.api.schemas.analysis import AnalysisConfig
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -335,6 +336,249 @@ class CVService:
 
         log_timing("Ball Detection", start_time)
         return detections
+
+    def detect_rackets(
+        self, frames: List[np.ndarray], confidence_threshold: Optional[float] = None
+    ) -> List[List[Dict[str, Any]]]:
+        """
+        Detect tennis rackets in frames using YOLO.
+
+        Args:
+            frames: List of frame arrays
+            confidence_threshold: Optional confidence threshold for racket detection
+
+        Returns:
+            List of racket detections per frame
+        """
+        start_time = time.time()
+        if not self.ball_detector:  # Reuse the same YOLO model
+            logger.warning("YOLO detector not available for racket detection")
+            return [[] for _ in frames]
+
+        detections = []
+        frame_timings = []
+
+        # COCO dataset classes that could be tennis rackets or sports equipment
+        # Class 32: sports ball (already used for ball detection)
+        # Class 38: tennis racket (correct class ID)
+        # Class 34: baseball bat (similar shape, might detect rackets)
+        # Class 35: baseball glove (unlikely to interfere)
+        # Class 36: skateboard (unlikely to interfere)
+        # Class 37: surfboard (unlikely to interfere)
+        # Class 39: bottle (unlikely to interfere)
+        # Class 40: wine glass (unlikely to interfere)
+        # Class 41: cup (unlikely to interfere)
+        # Class 42: fork (unlikely to interfere)
+        # Class 43: knife (unlikely to interfere)
+        # Class 44: spoon (unlikely to interfere)
+        # Class 45: bowl (unlikely to interfere)
+        # Class 46: banana (unlikely to interfere)
+        # Class 47: apple (unlikely to interfere)
+        # Class 48: sandwich (unlikely to interfere)
+        # Class 49: orange (unlikely to interfere)
+        # Class 50: broccoli (unlikely to interfere)
+        # Class 51: carrot (unlikely to interfere)
+        # Class 52: hot dog (unlikely to interfere)
+        # Class 53: pizza (unlikely to interfere)
+        # Class 54: donut (unlikely to interfere)
+        # Class 55: cake (unlikely to interfere)
+        # Class 56: chair (unlikely to interfere)
+        # Class 57: couch (unlikely to interfere)
+        # Class 58: potted plant (unlikely to interfere)
+        # Class 59: bed (unlikely to interfere)
+        # Class 60: dining table (unlikely to interfere)
+        # Class 61: toilet (unlikely to interfere)
+        # Class 62: tv (unlikely to interfere)
+        # Class 63: laptop (unlikely to interfere)
+        # Class 64: mouse (unlikely to interfere)
+        # Class 65: remote (unlikely to interfere)
+        # Class 66: keyboard (unlikely to interfere)
+        # Class 67: cell phone (unlikely to interfere)
+        # Class 68: microwave (unlikely to interfere)
+        # Class 69: oven (unlikely to interfere)
+        # Class 70: toaster (unlikely to interfere)
+        # Class 71: sink (unlikely to interfere)
+        # Class 72: refrigerator (unlikely to interfere)
+        # Class 73: book (unlikely to interfere)
+        # Class 74: clock (unlikely to interfere)
+        # Class 75: vase (unlikely to interfere)
+        # Class 76: scissors (unlikely to interfere)
+        # Class 77: teddy bear (unlikely to interfere)
+        # Class 78: hair drier (unlikely to interfere)
+        # Class 79: toothbrush (unlikely to interfere)
+
+        # Focus on classes that could be rackets or similar sports equipment
+        racket_classes = [38, 34]  # tennis racket, baseball bat
+
+        try:
+            for i, frame in enumerate(frames):
+                frame_start = time.time()
+
+                # Run YOLO detection
+                results = self.ball_detector(frame, verbose=False)
+
+                frame_detections = []
+                for result in results:
+                    boxes = result.boxes
+                    if boxes is not None:
+                        for box in boxes:
+                            # Get bounding box coordinates
+                            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                            confidence = box.conf[0].cpu().numpy()
+                            class_id = int(box.cls[0].cpu().numpy())
+
+                            # Filter for racket-like objects
+                            threshold = (
+                                confidence_threshold or 0.3
+                            )  # Lower threshold for rackets
+                            if class_id in racket_classes and confidence > threshold:
+                                # Calculate racket properties
+                                bbox_width = x2 - x1
+                                bbox_height = y2 - y1
+                                aspect_ratio = (
+                                    bbox_width / bbox_height if bbox_height > 0 else 0
+                                )
+
+                                # Filter by aspect ratio to focus on racket-like shapes
+                                # Rackets typically have aspect ratios between 0.3 and 3.0
+                                if 0.3 <= aspect_ratio <= 3.0:
+                                    frame_detections.append(
+                                        {
+                                            "bbox": [
+                                                int(x1),
+                                                int(y1),
+                                                int(x2),
+                                                int(y2),
+                                            ],
+                                            "confidence": float(confidence),
+                                            "class_id": class_id,
+                                            "frame_index": i,
+                                            "aspect_ratio": float(aspect_ratio),
+                                            "area": float(bbox_width * bbox_height),
+                                        }
+                                    )
+
+                detections.append(frame_detections)
+                frame_time = time.time() - frame_start
+                frame_timings.append(frame_time)
+
+                # Log every 10th frame for performance monitoring
+                if i % 10 == 0:
+                    logger.debug(
+                        f"Frame {i}: {len(frame_detections)} racket detections in {frame_time:.3f}s"
+                    )
+
+            total_detections = sum(len(d) for d in detections)
+            avg_frame_time = (
+                sum(frame_timings) / len(frame_timings) if frame_timings else 0
+            )
+            total_time = sum(frame_timings)
+
+            logger.info(
+                f"Racket detection complete: {total_detections} total detections"
+            )
+            logger.info(
+                f"⏱️ Average frame time: {avg_frame_time:.3f}s, Total time: {total_time:.3f}s"
+            )
+
+        except (RuntimeError, ValueError, OSError) as e:
+            logger.error(f"Error in racket detection: {e}")
+            detections = [[] for _ in frames]
+
+        log_timing("Racket Detection", start_time)
+        return detections
+
+    def estimate_racket_head_position(
+        self,
+        racket_detections: List[List[Dict[str, Any]]],
+        pose_detections: List[Optional[Dict[str, List[float]]]],
+    ) -> List[Optional[Dict[str, Any]]]:
+        """
+        Estimate racket head position relative to player wrists.
+
+        Args:
+            racket_detections: List of racket detections per frame
+            pose_detections: List of pose detections per frame
+
+        Returns:
+            List of racket head positions per frame
+        """
+        racket_positions = []
+
+        for _frame_idx, (frame_rackets, frame_pose) in enumerate(
+            zip(racket_detections, pose_detections)
+        ):
+            if not frame_rackets or not frame_pose:
+                racket_positions.append(None)
+                continue
+
+            # Get player wrist positions
+            left_wrist = frame_pose.get("left_wrist")
+            right_wrist = frame_pose.get("right_wrist")
+
+            if not left_wrist and not right_wrist:
+                racket_positions.append(None)
+                continue
+
+            # Find the best racket detection for this frame
+            best_racket = None
+            best_score = 0
+
+            for racket in frame_rackets:
+                racket_bbox = racket["bbox"]
+                racket_center_x = (racket_bbox[0] + racket_bbox[2]) / 2
+                racket_center_y = (racket_bbox[1] + racket_bbox[3]) / 2
+
+                # Calculate distance to closest wrist
+                min_distance = float("inf")
+                closest_wrist = None
+
+                if left_wrist:
+                    distance = (
+                        (racket_center_x - left_wrist[0]) ** 2
+                        + (racket_center_y - left_wrist[1]) ** 2
+                    ) ** 0.5
+                    if distance < min_distance:
+                        min_distance = distance
+                        closest_wrist = "left"
+
+                if right_wrist:
+                    distance = (
+                        (racket_center_x - right_wrist[0]) ** 2
+                        + (racket_center_y - right_wrist[1]) ** 2
+                    ) ** 0.5
+                    if distance < min_distance:
+                        min_distance = distance
+                        closest_wrist = "right"
+
+                # Score based on confidence, proximity to wrist, and aspect ratio
+                confidence_score = racket["confidence"]
+                proximity_score = max(0, 1 - (min_distance / 200))  # Normalize distance
+                aspect_ratio_score = (
+                    1 - abs(racket["aspect_ratio"] - 1.5) / 1.5
+                )  # Prefer ~1.5 ratio
+
+                total_score = (
+                    confidence_score * 0.5
+                    + proximity_score * 0.3
+                    + aspect_ratio_score * 0.2
+                )
+
+                if total_score > best_score:
+                    best_score = total_score
+                    best_racket = {
+                        "bbox": racket_bbox,
+                        "center": [racket_center_x, racket_center_y],
+                        "confidence": racket["confidence"],
+                        "closest_wrist": closest_wrist,
+                        "distance_to_wrist": min_distance,
+                        "aspect_ratio": racket["aspect_ratio"],
+                        "score": total_score,
+                    }
+
+            racket_positions.append(best_racket)
+
+        return racket_positions
 
     def detect_pose(self, frame: np.ndarray) -> Optional[Dict[str, List[float]]]:
         """
@@ -661,6 +905,14 @@ class CVService:
         )
         stage_timings["ball_detection"] = time.time() - ball_detection_start
 
+        # Detect rackets with confidence threshold
+        racket_detection_start = time.time()
+        racket_detections = self.detect_rackets(
+            frames,
+            confidence_threshold=0.3,  # Lower threshold for rackets
+        )
+        stage_timings["racket_detection"] = time.time() - racket_detection_start
+
         # Detect poses (if enabled)
         pose_detections = []
         annotated_frames = []
@@ -673,12 +925,22 @@ class CVService:
             pose_detections = self.detect_poses_batch(frames)
             stage_timings["pose_detection"] = time.time() - pose_detection_start
 
+            # Estimate racket head positions relative to player wrists
+            racket_position_start = time.time()
+            racket_positions = self.estimate_racket_head_position(
+                racket_detections, pose_detections
+            )
+            stage_timings["racket_position_estimation"] = (
+                time.time() - racket_position_start
+            )
+
             # Create annotated frames
             annotation_start = time.time()
             for i, frame in enumerate(frames):
                 pose_keypoints = pose_detections[i]
+                racket_position = racket_positions[i]
 
-                # Create annotated frame with both ball and pose overlays
+                # Create annotated frame with ball, racket, and pose overlays
                 annotated_frame = frame.copy()
 
                 # Draw ball detections
@@ -701,6 +963,46 @@ class CVService:
                         1,
                     )
 
+                # Draw racket detections
+                for detection in racket_detections[i]:
+                    bbox = detection["bbox"]
+                    cv2.rectangle(
+                        annotated_frame,
+                        (bbox[0], bbox[1]),
+                        (bbox[2], bbox[3]),
+                        (255, 0, 0),  # Blue for rackets
+                        2,
+                    )
+                    cv2.putText(
+                        annotated_frame,
+                        f"Racket: {detection['confidence']:.2f}",
+                        (bbox[0], bbox[1] - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (255, 0, 0),
+                        1,
+                    )
+
+                # Draw racket head position if available
+                if racket_position:
+                    center_x, center_y = racket_position["center"]
+                    cv2.circle(
+                        annotated_frame,
+                        (int(center_x), int(center_y)),
+                        8,
+                        (255, 255, 0),  # Yellow for racket head
+                        -1,
+                    )
+                    cv2.putText(
+                        annotated_frame,
+                        f"Head: {racket_position['score']:.2f}",
+                        (int(center_x) + 10, int(center_y) - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (255, 255, 0),
+                        1,
+                    )
+
                 # Draw pose overlay
                 if pose_keypoints:
                     annotated_frame = self.draw_pose_overlay(
@@ -713,18 +1015,71 @@ class CVService:
         else:
             logger.info("Skipping pose detection (disabled or model not available)")
             pose_detections = [None] * len(frames)
-            annotated_frames = frames.copy()
+            racket_positions = [None] * len(frames)
+
+            # Still create annotated frames with ball and racket detections
+            annotation_start = time.time()
+            for i, frame in enumerate(frames):
+                # Create annotated frame with ball and racket overlays (no pose)
+                annotated_frame = frame.copy()
+
+                # Draw ball detections
+                for detection in ball_detections[i]:
+                    bbox = detection["bbox"]
+                    cv2.rectangle(
+                        annotated_frame,
+                        (bbox[0], bbox[1]),
+                        (bbox[2], bbox[3]),
+                        (0, 0, 255),
+                        2,
+                    )
+                    cv2.putText(
+                        annotated_frame,
+                        f"Ball: {detection['confidence']:.2f}",
+                        (bbox[0], bbox[1] - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 0, 255),
+                        1,
+                    )
+
+                # Draw racket detections
+                for detection in racket_detections[i]:
+                    bbox = detection["bbox"]
+                    cv2.rectangle(
+                        annotated_frame,
+                        (bbox[0], bbox[1]),
+                        (bbox[2], bbox[3]),
+                        (255, 0, 0),  # Blue for rackets
+                        2,
+                    )
+                    cv2.putText(
+                        annotated_frame,
+                        f"Racket: {detection['confidence']:.2f}",
+                        (bbox[0], bbox[1] - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (255, 0, 0),
+                        1,
+                    )
+
+                annotated_frames.append(annotated_frame)
+
+            stage_timings["frame_annotation"] = time.time() - annotation_start
 
         # Calculate analysis summary
         total_ball_detections = sum(len(d) for d in ball_detections)
         frames_with_balls = sum(1 for d in ball_detections if d)
+        total_racket_detections = sum(len(d) for d in racket_detections)
+        frames_with_rackets = sum(1 for d in racket_detections if d)
         frames_with_pose = sum(1 for p in pose_detections if p is not None)
+        frames_with_racket_positions = sum(1 for r in racket_positions if r is not None)
 
         # Create annotated video (only for pose detection, skip if no poses found)
         annotated_video_path = None
-        if frames_with_pose > 0:
+        if frames_with_pose > 0 or frames_with_balls > 0 or frames_with_rackets > 0:
             logger.info(
-                f"Creating annotated video with {frames_with_pose} frames containing poses"
+                f"Creating annotated video with {frames_with_pose} pose frames, {frames_with_balls} ball frames, {frames_with_rackets} racket frames"
             )
             video_creation_start = time.time()
             annotated_video_path = self._create_annotated_video(
@@ -739,7 +1094,7 @@ class CVService:
             else:
                 logger.warning("Failed to create annotated video")
         else:
-            logger.info("No poses detected, skipping annotated video creation")
+            logger.info("No detections found, skipping annotated video creation")
 
         # Calculate total analysis time
         total_analysis_time = time.time() - analysis_start
@@ -753,6 +1108,10 @@ class CVService:
             if frames
             else 0,
             "detection_rate": frames_with_balls / len(frames) if frames else 0,
+            "frames_with_rackets": frames_with_rackets,
+            "total_racket_detections": total_racket_detections,
+            "racket_detection_rate": frames_with_rackets / len(frames) if frames else 0,
+            "frames_with_racket_positions": frames_with_racket_positions,
             "frames_with_pose": frames_with_pose,
             "pose_detection_rate": frames_with_pose / len(frames) if frames else 0,
             "video_quality": {},  # Quality assessment is now done during upload
@@ -772,6 +1131,10 @@ class CVService:
         results = {
             "frames_processed": len(frames),
             "ball_detections": ball_detections,
+            "racket_detections": racket_detections,
+            "racket_positions": racket_positions
+            if "racket_positions" in locals()
+            else [None] * len(frames),
             "pose_detections": pose_detections,
             "analysis_summary": analysis_summary,
             "video_path": str(video_path),
@@ -1135,6 +1498,412 @@ def assess_video_quality(frames: List[np.ndarray]) -> Dict[str, Any]:
         "quality_level": quality_level,
         "frame_count_analyzed": len(sample_frames),
     }
+
+
+def detect_ball_contact(
+    ball_detections: List[List[Dict[str, Any]]],
+    pose_detections: List[Optional[Dict[str, List[float]]]],
+    fps: float,
+    contact_threshold: float = 50.0,
+) -> Tuple[List[float], List[Dict[str, Any]]]:
+    """
+    Detect frames where ball contact occurs based on ball and player proximity.
+
+    Args:
+        ball_detections: List of ball detections per frame
+        pose_detections: List of pose detections per frame
+        fps: Frames per second of the video
+        contact_threshold: Distance threshold in pixels for contact detection
+
+    Returns:
+        Tuple of (contact_timestamps, contact_detections)
+    """
+    contact_timestamps = []
+    contact_detections = []
+
+    for frame_index, (frame_balls, frame_pose) in enumerate(
+        zip(ball_detections, pose_detections)
+    ):
+        # Skip frames without ball detections
+        if not frame_balls:
+            continue
+
+        # Skip frames without pose detection
+        if not frame_pose:
+            continue
+
+        # Check each ball detection against player position
+        for ball_detection in frame_balls:
+            ball_bbox = ball_detection["bbox"]
+            ball_center_x = (ball_bbox[0] + ball_bbox[2]) / 2
+            ball_center_y = (ball_bbox[1] + ball_bbox[3]) / 2
+
+            # Get player hand positions (primary contact points)
+            left_wrist = frame_pose.get("left_wrist")
+            right_wrist = frame_pose.get("right_wrist")
+
+            # Check distance to both wrists
+            min_distance = float("inf")
+            contact_hand = None
+
+            if left_wrist:
+                distance = (
+                    (ball_center_x - left_wrist[0]) ** 2
+                    + (ball_center_y - left_wrist[1]) ** 2
+                ) ** 0.5
+                if distance < min_distance:
+                    min_distance = distance
+                    contact_hand = "left"
+
+            if right_wrist:
+                distance = (
+                    (ball_center_x - right_wrist[0]) ** 2
+                    + (ball_center_y - right_wrist[1]) ** 2
+                ) ** 0.5
+                if distance < min_distance:
+                    min_distance = distance
+                    contact_hand = "right"
+
+            # Check if ball is close enough to player hands for contact
+            if min_distance <= contact_threshold:
+                timestamp = frame_index / fps
+
+                # Create contact detection record
+                contact_detection = {
+                    "frame_index": frame_index,
+                    "timestamp": timestamp,
+                    "ball_position": {"x": ball_center_x, "y": ball_center_y},
+                    "ball_bbox": ball_bbox,
+                    "contact_hand": contact_hand,
+                    "distance": min_distance,
+                    "confidence": ball_detection["confidence"],
+                    "player_position": {
+                        "left_wrist": left_wrist,
+                        "right_wrist": right_wrist,
+                        "left_shoulder": frame_pose.get("left_shoulder"),
+                        "right_shoulder": frame_pose.get("right_shoulder"),
+                    },
+                }
+
+                contact_timestamps.append(timestamp)
+                contact_detections.append(contact_detection)
+
+    # Sort by timestamp
+    sorted_contacts = sorted(
+        zip(contact_timestamps, contact_detections), key=lambda x: x[0]
+    )
+    contact_timestamps = [t for t, _ in sorted_contacts]
+    contact_detections = [d for _, d in sorted_contacts]
+
+    logger.info(
+        f"Ball contact detection complete: {len(contact_timestamps)} contacts found"
+    )
+
+    return contact_timestamps, contact_detections
+
+    def analyze_video_modular(
+        self: "CVService",
+        video_path: Path,
+        config: "AnalysisConfig",
+        output_dir: Optional[Path] = None,
+    ) -> Dict[str, Any]:
+        """
+        Perform modular video analysis based on configuration.
+
+        Args:
+            video_path: Path to the video file
+            config: Analysis configuration specifying which components to run
+            output_dir: Directory to save output files (optional)
+
+        Returns:
+            Dictionary containing analysis results for enabled components
+        """
+        start_time = time.time()
+        logger.info(
+            f"Starting modular analysis with config: {config.get_analysis_type()}"
+        )
+
+        # Extract video frames
+        frames = self.extract_frames(video_path, config.max_frames)
+        if not frames:
+            raise ValueError("No frames could be extracted from video")
+
+        # Get video metadata for FPS
+        video_metadata = self.get_video_metadata(video_path)
+        fps = video_metadata.get("fps", 30.0)
+        total_frames = len(frames)
+
+        logger.info(f"Extracted {total_frames} frames at {fps:.2f} FPS")
+
+        # Initialize results structure
+        results = {
+            "video_path": str(video_path),
+            "total_frames": total_frames,
+            "fps": fps,
+            "analysis_type": config.get_analysis_type(),
+            "components_run": [],
+            "processing_time": 0.0,
+        }
+
+        # Run enabled components
+        if config.include_ball_detection:
+            logger.info("Running ball detection...")
+            ball_start = time.time()
+            ball_detections = self.detect_balls(
+                frames, config.ball_confidence_threshold
+            )
+            ball_time = time.time() - ball_start
+            results["ball_detection"] = {
+                "detections": ball_detections,
+                "processing_time": ball_time,
+                "frames_with_balls": sum(1 for dets in ball_detections if dets),
+                "total_ball_detections": sum(len(dets) for dets in ball_detections),
+            }
+            results["components_run"].append("ball_detection")
+            log_timing("Ball detection", ball_start)
+
+        if config.include_racket_detection:
+            logger.info("Running racket detection...")
+            racket_start = time.time()
+            racket_detections = self.detect_rackets(
+                frames, config.racket_confidence_threshold
+            )
+            racket_time = time.time() - racket_start
+            results["racket_detection"] = {
+                "detections": racket_detections,
+                "processing_time": racket_time,
+                "frames_with_rackets": sum(1 for dets in racket_detections if dets),
+                "total_racket_detections": sum(len(dets) for dets in racket_detections),
+            }
+            results["components_run"].append("racket_detection")
+            log_timing("Racket detection", racket_start)
+
+        if config.include_pose_detection:
+            logger.info("Running pose detection...")
+            pose_start = time.time()
+            pose_detections = self.detect_poses_batch(frames)
+            pose_time = time.time() - pose_start
+            results["pose_detection"] = {
+                "detections": pose_detections,
+                "processing_time": pose_time,
+                "frames_with_pose": sum(1 for pose in pose_detections if pose),
+                "total_pose_detections": sum(1 for pose in pose_detections if pose),
+            }
+            results["components_run"].append("pose_detection")
+            log_timing("Pose detection", pose_start)
+
+        # Estimate racket positions if both racket and pose detection are enabled
+        if config.include_racket_detection and config.include_pose_detection:
+            logger.info("Estimating racket positions...")
+            racket_pos_start = time.time()
+            racket_positions = self.estimate_racket_head_position(
+                racket_detections, pose_detections
+            )
+            racket_pos_time = time.time() - racket_pos_start
+            results["racket_detection"]["positions"] = racket_positions
+            results["racket_detection"]["frames_with_positions"] = sum(
+                1 for pos in racket_positions if pos
+            )
+            results["racket_detection"]["position_estimation_time"] = racket_pos_time
+            log_timing("Racket position estimation", racket_pos_start)
+
+        # Create annotated video if any detections exist
+        if any(
+            [
+                config.include_ball_detection
+                and results.get("ball_detection", {}).get("frames_with_balls", 0) > 0,
+                config.include_racket_detection
+                and results.get("racket_detection", {}).get("frames_with_rackets", 0)
+                > 0,
+                config.include_pose_detection
+                and results.get("pose_detection", {}).get("frames_with_pose", 0) > 0,
+            ]
+        ):
+            logger.info("Creating annotated video...")
+            annotate_start = time.time()
+            annotated_video_path = self._create_annotated_video_modular(
+                video_path, frames, results, config, output_dir
+            )
+            annotate_time = time.time() - annotate_start
+            results["annotated_video_path"] = annotated_video_path
+            results["annotation_time"] = annotate_time
+            log_timing("Video annotation", annotate_start)
+
+        # Calculate total processing time
+        total_time = time.time() - start_time
+        results["processing_time"] = total_time
+
+        logger.info(f"Modular analysis completed in {total_time:.3f}s")
+        log_timing("Total modular analysis", start_time)
+
+        return results
+
+    def _create_annotated_video_modular(
+        self: "CVService",
+        video_path: Path,
+        frames: List[np.ndarray],
+        results: Dict[str, Any],
+        config: "AnalysisConfig",
+        output_dir: Optional[Path] = None,
+    ) -> Optional[str]:
+        """
+        Create annotated video for modular analysis results.
+
+        Args:
+            video_path: Original video path
+            frames: List of video frames
+            results: Analysis results
+            config: Analysis configuration
+            output_dir: Output directory
+
+        Returns:
+            Path to the annotated video file
+        """
+        if output_dir is None:
+            output_dir = video_path.parent
+
+        output_path = Path(output_dir)
+        video_name = video_path.stem
+        annotated_filename = f"{video_name}_modular_annotated.mp4"
+        annotated_path = output_path / annotated_filename
+
+        # Get video properties
+        fps = results["fps"]
+        height, width = frames[0].shape[:2]
+
+        # Initialize video writer
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
+
+        # Get detection data
+        ball_detections = results.get("ball_detection", {}).get("detections", [])
+        racket_detections = results.get("racket_detection", {}).get("detections", [])
+        racket_positions = results.get("racket_detection", {}).get("positions", [])
+        pose_detections = results.get("pose_detection", {}).get("detections", [])
+
+        # Annotate each frame
+        for frame_index, frame in enumerate(frames):
+            annotated_frame = frame.copy()
+
+            # Draw ball detections (red)
+            if config.include_ball_detection and frame_index < len(ball_detections):
+                for ball in ball_detections[frame_index]:
+                    bbox = ball["bbox"]
+                    confidence = ball["confidence"]
+                    cv2.rectangle(
+                        annotated_frame,
+                        (int(bbox[0]), int(bbox[1])),
+                        (int(bbox[2]), int(bbox[3])),
+                        (0, 0, 255),  # Red
+                        2,
+                    )
+                    cv2.putText(
+                        annotated_frame,
+                        f"Ball: {confidence:.2f}",
+                        (int(bbox[0]), int(bbox[1] - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 0, 255),
+                        1,
+                    )
+
+            # Draw racket detections (blue)
+            if config.include_racket_detection and frame_index < len(racket_detections):
+                for racket in racket_detections[frame_index]:
+                    bbox = racket["bbox"]
+                    confidence = racket["confidence"]
+                    cv2.rectangle(
+                        annotated_frame,
+                        (int(bbox[0]), int(bbox[1])),
+                        (int(bbox[2]), int(bbox[3])),
+                        (255, 0, 0),  # Blue
+                        2,
+                    )
+                    cv2.putText(
+                        annotated_frame,
+                        f"Racket: {confidence:.2f}",
+                        (int(bbox[0]), int(bbox[1] - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (255, 0, 0),
+                        1,
+                    )
+
+                # Draw racket positions (yellow circles)
+                if (
+                    frame_index < len(racket_positions)
+                    and racket_positions[frame_index]
+                ):
+                    pos = racket_positions[frame_index]
+                    center_x, center_y = pos["center"]
+                    cv2.circle(
+                        annotated_frame,
+                        (int(center_x), int(center_y)),
+                        5,
+                        (0, 255, 255),  # Yellow
+                        -1,
+                    )
+
+            # Draw pose detections (green)
+            if config.include_pose_detection and frame_index < len(pose_detections):
+                pose = pose_detections[frame_index]
+                if pose:
+                    annotated_frame = self.draw_pose_overlay(annotated_frame, pose)
+
+            out.write(annotated_frame)
+
+        out.release()
+        logger.info(f"Modular annotated video saved to: {annotated_path}")
+        return str(annotated_path)
+
+    def run_component_analysis(
+        self: "CVService",
+        video_path: Path,
+        component: str,
+        config: Optional["AnalysisConfig"] = None,
+        output_dir: Optional[Path] = None,
+    ) -> Dict[str, Any]:
+        """
+        Run analysis for a specific component only.
+
+        Args:
+            video_path: Path to the video file
+            component: Component to analyze ('ball', 'racket', 'pose')
+            config: Optional configuration (will create default if None)
+            output_dir: Directory to save output files
+
+        Returns:
+            Dictionary containing results for the specified component
+        """
+        if config is None:
+            config = AnalysisConfig()
+
+        # Create component-specific config
+        component_config = AnalysisConfig(
+            include_ball_detection=component == "ball",
+            include_racket_detection=component == "racket",
+            include_pose_detection=component == "pose",
+        )
+
+        # Copy relevant parameters from original config
+        if component == "ball":
+            component_config.ball_confidence_threshold = (
+                config.ball_confidence_threshold
+            )
+        elif component == "racket":
+            component_config.racket_confidence_threshold = (
+                config.racket_confidence_threshold
+            )
+        elif component == "pose":
+            component_config.pose_detection_confidence = (
+                config.pose_detection_confidence
+            )
+            component_config.pose_tracking_confidence = config.pose_tracking_confidence
+
+        component_config.max_frames = config.max_frames
+
+        logger.info(f"Running {component} analysis only...")
+        return self.analyze_video_modular(video_path, component_config, output_dir)
 
 
 # Global CV service instance

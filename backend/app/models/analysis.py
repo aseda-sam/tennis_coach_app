@@ -34,6 +34,15 @@ class Analysis(Base):
     frames_with_pose = Column(Integer, default=0)
     pose_detection_rate = Column(Float, default=0.0)
 
+    # Ball contact detection results
+    contact_frames = Column(Integer, default=0)  # Number of frames with ball contact
+    contact_timestamps = Column(
+        Text, nullable=True
+    )  # JSON string of contact timestamps
+    contact_detections = Column(
+        Text, nullable=True
+    )  # JSON string of contact detection data
+
     # Raw detection data (JSON)
     ball_detections = Column(Text, nullable=True)  # JSON string of detections
     pose_detections = Column(Text, nullable=True)  # JSON string of pose keypoints

@@ -68,6 +68,11 @@ def create_analysis_record(
         pose_detection_rate=analysis_results.get("analysis_summary", {}).get(
             "pose_detection_rate", 0.0
         ),
+        contact_frames=analysis_results.get("analysis_summary", {}).get(
+            "contact_frames", 0
+        ),
+        contact_timestamps=json.dumps(analysis_results.get("contact_timestamps", [])),
+        contact_detections=json.dumps(analysis_results.get("contact_detections", [])),
         ball_detections=json.dumps(analysis_results.get("ball_detections", [])),
         pose_detections=json.dumps(analysis_results.get("pose_detections", [])),
         annotated_video_path=analysis_results.get("annotated_video_path"),
@@ -146,7 +151,7 @@ def get_all_analyses(db: Session) -> list[Analysis]:
 def analyze_video(
     db: Session,
     video_id: int,
-    analysis_type: str = "ball_tracking",
+    analysis_type: str = "comprehensive",
     confidence_threshold: float = 0.7,
     include_pose_detection: bool = False,
     task_id: Optional[int] = None,
@@ -249,6 +254,42 @@ def analyze_video(
             video_quality_level=video.quality_level,
         )
 
+        # Add ball contact detection if both ball and pose detection are available
+        if (
+            include_pose_detection
+            and analysis_results.get("ball_detections")
+            and analysis_results.get("pose_detections")
+            and "error" not in analysis_results
+        ):
+            # Get video metadata for FPS
+            video_metadata = cv_service.get_video_metadata(video_path)
+            fps = video_metadata.get("fps", 30.0)  # Default to 30 FPS if not available
+
+            # Detect ball contact
+            from app.services.cv_service import detect_ball_contact
+
+            contact_timestamps, contact_detections = detect_ball_contact(
+                ball_detections=analysis_results["ball_detections"],
+                pose_detections=analysis_results["pose_detections"],
+                fps=fps,
+                contact_threshold=150.0,  # 150 pixels threshold - more realistic for tennis videos
+            )
+
+            # Add contact detection results to analysis results
+            analysis_results["contact_timestamps"] = contact_timestamps
+            analysis_results["contact_detections"] = contact_detections
+            analysis_results["contact_frames"] = len(contact_timestamps)
+
+            # Update analysis summary
+            if "analysis_summary" not in analysis_results:
+                analysis_results["analysis_summary"] = {}
+            analysis_results["analysis_summary"]["contact_frames"] = len(
+                contact_timestamps
+            )
+            analysis_results["analysis_summary"]["contact_timestamps"] = (
+                contact_timestamps
+            )
+
         # Update progress - analysis complete, starting video annotation
         update_task_progress(
             task_id,
@@ -301,6 +342,15 @@ def analyze_video(
             analysis_record.pose_detection_rate = analysis_results.get(
                 "analysis_summary", {}
             ).get("pose_detection_rate", 0.0)
+            analysis_record.contact_frames = analysis_results.get(
+                "analysis_summary", {}
+            ).get("contact_frames", 0)
+            analysis_record.contact_timestamps = json.dumps(
+                analysis_results.get("contact_timestamps", [])
+            )
+            analysis_record.contact_detections = json.dumps(
+                analysis_results.get("contact_detections", [])
+            )
             analysis_record.ball_detections = json.dumps(
                 analysis_results.get("ball_detections", [])
             )
