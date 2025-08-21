@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
 
+from app.api.schemas.analysis import AnalysisConfig
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -504,7 +505,7 @@ class CVService:
         """
         racket_positions = []
 
-        for frame_idx, (frame_rackets, frame_pose) in enumerate(
+        for _frame_idx, (frame_rackets, frame_pose) in enumerate(
             zip(racket_detections, pose_detections)
         ):
             if not frame_rackets or not frame_pose:
@@ -1599,6 +1600,311 @@ def detect_ball_contact(
     )
 
     return contact_timestamps, contact_detections
+
+    def analyze_video_modular(
+        self,
+        video_path: str,
+        config: "AnalysisConfig",
+        output_dir: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Perform modular video analysis based on configuration.
+
+        Args:
+            video_path: Path to the video file
+            config: Analysis configuration specifying which components to run
+            output_dir: Directory to save output files (optional)
+
+        Returns:
+            Dictionary containing analysis results for enabled components
+        """
+        start_time = time.time()
+        logger.info(
+            f"Starting modular analysis with config: {config.get_analysis_type()}"
+        )
+
+        # Extract video frames
+        frames = self._extract_frames(video_path, config.max_frames)
+        if not frames:
+            raise ValueError("No frames could be extracted from video")
+
+        fps = self._get_video_fps(video_path)
+        total_frames = len(frames)
+
+        logger.info(f"Extracted {total_frames} frames at {fps:.2f} FPS")
+
+        # Initialize results structure
+        results = {
+            "video_path": video_path,
+            "total_frames": total_frames,
+            "fps": fps,
+            "analysis_type": config.get_analysis_type(),
+            "components_run": [],
+            "processing_time": 0.0,
+        }
+
+        # Run enabled components
+        if config.include_ball_detection:
+            logger.info("Running ball detection...")
+            ball_start = time.time()
+            ball_detections = self.detect_balls(
+                frames, config.ball_confidence_threshold
+            )
+            ball_time = time.time() - ball_start
+            results["ball_detection"] = {
+                "detections": ball_detections,
+                "processing_time": ball_time,
+                "frames_with_balls": sum(1 for dets in ball_detections if dets),
+                "total_ball_detections": sum(len(dets) for dets in ball_detections),
+            }
+            results["components_run"].append("ball_detection")
+            log_timing("Ball detection", ball_start)
+
+        if config.include_racket_detection:
+            logger.info("Running racket detection...")
+            racket_start = time.time()
+            racket_detections = self.detect_rackets(
+                frames, config.racket_confidence_threshold
+            )
+            racket_time = time.time() - racket_start
+            results["racket_detection"] = {
+                "detections": racket_detections,
+                "processing_time": racket_time,
+                "frames_with_rackets": sum(1 for dets in racket_detections if dets),
+                "total_racket_detections": sum(len(dets) for dets in racket_detections),
+            }
+            results["components_run"].append("racket_detection")
+            log_timing("Racket detection", racket_start)
+
+        if config.include_pose_detection:
+            logger.info("Running pose detection...")
+            pose_start = time.time()
+            pose_detections = self.detect_poses(
+                frames,
+                config.pose_detection_confidence,
+                config.pose_tracking_confidence,
+            )
+            pose_time = time.time() - pose_start
+            results["pose_detection"] = {
+                "detections": pose_detections,
+                "processing_time": pose_time,
+                "frames_with_pose": sum(1 for pose in pose_detections if pose),
+                "total_pose_detections": sum(1 for pose in pose_detections if pose),
+            }
+            results["components_run"].append("pose_detection")
+            log_timing("Pose detection", pose_start)
+
+        # Estimate racket positions if both racket and pose detection are enabled
+        if config.include_racket_detection and config.include_pose_detection:
+            logger.info("Estimating racket positions...")
+            racket_pos_start = time.time()
+            racket_positions = self.estimate_racket_head_position(
+                racket_detections, pose_detections
+            )
+            racket_pos_time = time.time() - racket_pos_start
+            results["racket_detection"]["positions"] = racket_positions
+            results["racket_detection"]["frames_with_positions"] = sum(
+                1 for pos in racket_positions if pos
+            )
+            results["racket_detection"]["position_estimation_time"] = racket_pos_time
+            log_timing("Racket position estimation", racket_pos_start)
+
+        # Create annotated video if any detections exist
+        if any(
+            [
+                config.include_ball_detection
+                and results.get("ball_detection", {}).get("frames_with_balls", 0) > 0,
+                config.include_racket_detection
+                and results.get("racket_detection", {}).get("frames_with_rackets", 0)
+                > 0,
+                config.include_pose_detection
+                and results.get("pose_detection", {}).get("frames_with_pose", 0) > 0,
+            ]
+        ):
+            logger.info("Creating annotated video...")
+            annotate_start = time.time()
+            annotated_video_path = self._create_annotated_video_modular(
+                video_path, frames, results, config, output_dir
+            )
+            annotate_time = time.time() - annotate_start
+            results["annotated_video_path"] = annotated_video_path
+            results["annotation_time"] = annotate_time
+            log_timing("Video annotation", annotate_start)
+
+        # Calculate total processing time
+        total_time = time.time() - start_time
+        results["processing_time"] = total_time
+
+        logger.info(f"Modular analysis completed in {total_time:.3f}s")
+        log_timing("Total modular analysis", start_time)
+
+        return results
+
+    def _create_annotated_video_modular(
+        self,
+        video_path: str,
+        frames: List[np.ndarray],
+        results: Dict[str, Any],
+        config: "AnalysisConfig",
+        output_dir: Optional[str] = None,
+    ) -> str:
+        """
+        Create annotated video for modular analysis results.
+
+        Args:
+            video_path: Original video path
+            frames: List of video frames
+            results: Analysis results
+            config: Analysis configuration
+            output_dir: Output directory
+
+        Returns:
+            Path to the annotated video file
+        """
+        if output_dir is None:
+            output_dir = Path(video_path).parent
+
+        output_path = Path(output_dir)
+        video_name = Path(video_path).stem
+        annotated_filename = f"{video_name}_modular_annotated.mp4"
+        annotated_path = output_path / annotated_filename
+
+        # Get video properties
+        fps = results["fps"]
+        height, width = frames[0].shape[:2]
+
+        # Initialize video writer
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
+
+        # Get detection data
+        ball_detections = results.get("ball_detection", {}).get("detections", [])
+        racket_detections = results.get("racket_detection", {}).get("detections", [])
+        racket_positions = results.get("racket_detection", {}).get("positions", [])
+        pose_detections = results.get("pose_detection", {}).get("detections", [])
+
+        # Annotate each frame
+        for frame_index, frame in enumerate(frames):
+            annotated_frame = frame.copy()
+
+            # Draw ball detections (red)
+            if config.include_ball_detection and frame_index < len(ball_detections):
+                for ball in ball_detections[frame_index]:
+                    bbox = ball["bbox"]
+                    confidence = ball["confidence"]
+                    cv2.rectangle(
+                        annotated_frame,
+                        (int(bbox[0]), int(bbox[1])),
+                        (int(bbox[2]), int(bbox[3])),
+                        (0, 0, 255),  # Red
+                        2,
+                    )
+                    cv2.putText(
+                        annotated_frame,
+                        f"Ball: {confidence:.2f}",
+                        (int(bbox[0]), int(bbox[1] - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 0, 255),
+                        1,
+                    )
+
+            # Draw racket detections (blue)
+            if config.include_racket_detection and frame_index < len(racket_detections):
+                for racket in racket_detections[frame_index]:
+                    bbox = racket["bbox"]
+                    confidence = racket["confidence"]
+                    cv2.rectangle(
+                        annotated_frame,
+                        (int(bbox[0]), int(bbox[1])),
+                        (int(bbox[2]), int(bbox[3])),
+                        (255, 0, 0),  # Blue
+                        2,
+                    )
+                    cv2.putText(
+                        annotated_frame,
+                        f"Racket: {confidence:.2f}",
+                        (int(bbox[0]), int(bbox[1] - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (255, 0, 0),
+                        1,
+                    )
+
+                # Draw racket positions (yellow circles)
+                if (
+                    frame_index < len(racket_positions)
+                    and racket_positions[frame_index]
+                ):
+                    pos = racket_positions[frame_index]
+                    cv2.circle(
+                        annotated_frame,
+                        (int(pos["x"]), int(pos["y"])),
+                        5,
+                        (0, 255, 255),  # Yellow
+                        -1,
+                    )
+
+            # Draw pose detections (green)
+            if config.include_pose_detection and frame_index < len(pose_detections):
+                pose = pose_detections[frame_index]
+                if pose:
+                    self._draw_pose_skeleton(annotated_frame, pose)
+
+            out.write(annotated_frame)
+
+        out.release()
+        logger.info(f"Modular annotated video saved to: {annotated_path}")
+        return str(annotated_path)
+
+    def run_component_analysis(
+        self,
+        video_path: str,
+        component: str,
+        config: Optional["AnalysisConfig"] = None,
+        output_dir: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Run analysis for a specific component only.
+
+        Args:
+            video_path: Path to the video file
+            component: Component to analyze ('ball', 'racket', 'pose')
+            config: Optional configuration (will create default if None)
+            output_dir: Directory to save output files
+
+        Returns:
+            Dictionary containing results for the specified component
+        """
+        if config is None:
+            config = AnalysisConfig()
+
+        # Create component-specific config
+        component_config = AnalysisConfig(
+            include_ball_detection=component == "ball",
+            include_racket_detection=component == "racket",
+            include_pose_detection=component == "pose",
+        )
+
+        # Copy relevant parameters from original config
+        if component == "ball":
+            component_config.ball_confidence_threshold = (
+                config.ball_confidence_threshold
+            )
+        elif component == "racket":
+            component_config.racket_confidence_threshold = (
+                config.racket_confidence_threshold
+            )
+        elif component == "pose":
+            component_config.pose_detection_confidence = (
+                config.pose_detection_confidence
+            )
+            component_config.pose_tracking_confidence = config.pose_tracking_confidence
+
+        component_config.max_frames = config.max_frames
+
+        logger.info(f"Running {component} analysis only...")
+        return self.analyze_video_modular(video_path, component_config, output_dir)
 
 
 # Global CV service instance

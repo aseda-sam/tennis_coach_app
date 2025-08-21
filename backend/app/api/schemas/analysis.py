@@ -280,3 +280,98 @@ class TaskStatsResponse(BaseModel):
     status_counts: Dict[str, int] = Field(description="Count of tasks by status")
     active_workers: int = Field(description="Number of active worker threads")
     max_workers: int = Field(description="Maximum number of worker threads")
+
+
+class AnalysisConfig(BaseModel):
+    """Configuration for modular video analysis."""
+
+    # Component toggles
+    include_ball_detection: bool = Field(
+        default=True, description="Enable ball detection"
+    )
+    include_racket_detection: bool = Field(
+        default=True, description="Enable racket detection"
+    )
+    include_pose_detection: bool = Field(
+        default=True, description="Enable pose detection"
+    )
+
+    # Ball detection parameters
+    ball_confidence_threshold: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold for ball detection",
+    )
+
+    # Racket detection parameters
+    racket_confidence_threshold: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold for racket detection",
+    )
+
+    # Pose detection parameters
+    pose_detection_confidence: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Minimum detection confidence for pose estimation",
+    )
+    pose_tracking_confidence: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Minimum tracking confidence for pose estimation",
+    )
+
+    # Video processing parameters
+    max_frames: Optional[int] = Field(
+        default=None,
+        description="Maximum number of frames to process (None = all frames)",
+    )
+    video_quality_level: Optional[str] = Field(
+        default=None, description="Video quality level for model selection"
+    )
+
+    # Future parameters (for contact detection, etc.)
+    contact_detection_threshold: Optional[float] = Field(
+        default=None, ge=0.0, description="Distance threshold for contact detection"
+    )
+
+    def get_component_config(self, component: str) -> Dict:
+        """Get configuration for a specific component."""
+        configs = {
+            "ball_detection": {
+                "enabled": self.include_ball_detection,
+                "confidence_threshold": self.ball_confidence_threshold,
+            },
+            "racket_detection": {
+                "enabled": self.include_racket_detection,
+                "confidence_threshold": self.racket_confidence_threshold,
+            },
+            "pose_detection": {
+                "enabled": self.include_pose_detection,
+                "detection_confidence": self.pose_detection_confidence,
+                "tracking_confidence": self.pose_tracking_confidence,
+            },
+        }
+        return configs.get(component, {})
+
+    def get_analysis_type(self) -> str:
+        """Determine the analysis type based on enabled components."""
+        components = []
+        if self.include_ball_detection:
+            components.append("ball")
+        if self.include_racket_detection:
+            components.append("racket")
+        if self.include_pose_detection:
+            components.append("pose")
+
+        if len(components) == 3:
+            return "comprehensive"
+        elif len(components) == 1:
+            return f"{components[0]}_only"
+        else:
+            return "custom"
