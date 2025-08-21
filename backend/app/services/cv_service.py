@@ -1137,5 +1137,107 @@ def assess_video_quality(frames: List[np.ndarray]) -> Dict[str, Any]:
     }
 
 
+def detect_ball_contact(
+    ball_detections: List[List[Dict[str, Any]]],
+    pose_detections: List[Optional[Dict[str, List[float]]]],
+    fps: float,
+    contact_threshold: float = 50.0,
+) -> Tuple[List[float], List[Dict[str, Any]]]:
+    """
+    Detect frames where ball contact occurs based on ball and player proximity.
+
+    Args:
+        ball_detections: List of ball detections per frame
+        pose_detections: List of pose detections per frame
+        fps: Frames per second of the video
+        contact_threshold: Distance threshold in pixels for contact detection
+
+    Returns:
+        Tuple of (contact_timestamps, contact_detections)
+    """
+    contact_timestamps = []
+    contact_detections = []
+
+    for frame_index, (frame_balls, frame_pose) in enumerate(
+        zip(ball_detections, pose_detections)
+    ):
+        # Skip frames without ball detections
+        if not frame_balls:
+            continue
+
+        # Skip frames without pose detection
+        if not frame_pose:
+            continue
+
+        # Check each ball detection against player position
+        for ball_detection in frame_balls:
+            ball_bbox = ball_detection["bbox"]
+            ball_center_x = (ball_bbox[0] + ball_bbox[2]) / 2
+            ball_center_y = (ball_bbox[1] + ball_bbox[3]) / 2
+
+            # Get player hand positions (primary contact points)
+            left_wrist = frame_pose.get("left_wrist")
+            right_wrist = frame_pose.get("right_wrist")
+
+            # Check distance to both wrists
+            min_distance = float("inf")
+            contact_hand = None
+
+            if left_wrist:
+                distance = (
+                    (ball_center_x - left_wrist[0]) ** 2
+                    + (ball_center_y - left_wrist[1]) ** 2
+                ) ** 0.5
+                if distance < min_distance:
+                    min_distance = distance
+                    contact_hand = "left"
+
+            if right_wrist:
+                distance = (
+                    (ball_center_x - right_wrist[0]) ** 2
+                    + (ball_center_y - right_wrist[1]) ** 2
+                ) ** 0.5
+                if distance < min_distance:
+                    min_distance = distance
+                    contact_hand = "right"
+
+            # Check if ball is close enough to player hands for contact
+            if min_distance <= contact_threshold:
+                timestamp = frame_index / fps
+
+                # Create contact detection record
+                contact_detection = {
+                    "frame_index": frame_index,
+                    "timestamp": timestamp,
+                    "ball_position": {"x": ball_center_x, "y": ball_center_y},
+                    "ball_bbox": ball_bbox,
+                    "contact_hand": contact_hand,
+                    "distance": min_distance,
+                    "confidence": ball_detection["confidence"],
+                    "player_position": {
+                        "left_wrist": left_wrist,
+                        "right_wrist": right_wrist,
+                        "left_shoulder": frame_pose.get("left_shoulder"),
+                        "right_shoulder": frame_pose.get("right_shoulder"),
+                    },
+                }
+
+                contact_timestamps.append(timestamp)
+                contact_detections.append(contact_detection)
+
+    # Sort by timestamp
+    sorted_contacts = sorted(
+        zip(contact_timestamps, contact_detections), key=lambda x: x[0]
+    )
+    contact_timestamps = [t for t, _ in sorted_contacts]
+    contact_detections = [d for _, d in sorted_contacts]
+
+    logger.info(
+        f"Ball contact detection complete: {len(contact_timestamps)} contacts found"
+    )
+
+    return contact_timestamps, contact_detections
+
+
 # Global CV service instance
 cv_service = CVService()

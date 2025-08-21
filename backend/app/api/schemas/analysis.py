@@ -57,6 +57,15 @@ class AnalysisResults(BaseModel):
     pose_detections: Optional[str] = Field(
         default=None, description="Pose detection data"
     )
+    contact_frames: Optional[int] = Field(
+        default=None, ge=0, description="Frames with ball contact"
+    )
+    contact_timestamps: Optional[str] = Field(
+        default=None, description="Contact timestamps data"
+    )
+    contact_detections: Optional[str] = Field(
+        default=None, description="Contact detection data"
+    )
 
 
 class AnalysisInfo(BaseModel):
@@ -87,6 +96,15 @@ class AnalysisInfo(BaseModel):
     )
     pose_detection_rate: Optional[float] = Field(
         default=None, description="Pose detection rate"
+    )
+    contact_frames: Optional[int] = Field(
+        default=None, description="Frames with ball contact"
+    )
+    contact_timestamps: Optional[List[float]] = Field(
+        default=None, description="Contact timestamps (parsed from JSON)"
+    )
+    contact_detections: Optional[List[object]] = Field(
+        default=None, description="Contact detection data (parsed from JSON)"
     )
     ball_detections: Optional[List[object]] = Field(
         default=None, description="Ball detection data (parsed from JSON)"
@@ -120,6 +138,28 @@ class AnalysisInfo(BaseModel):
     @classmethod
     def _parse_pose_detections(cls, v: object) -> List[object]:
         """Parse pose_detections from JSON string to array."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v or "[]")
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return v or []
+
+    @field_validator("contact_timestamps", mode="before")
+    @classmethod
+    def _parse_contact_timestamps(cls, v: object) -> List[float]:
+        """Parse contact_timestamps from JSON string to array."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v or "[]")
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return v or []
+
+    @field_validator("contact_detections", mode="before")
+    @classmethod
+    def _parse_contact_detections(cls, v: object) -> List[object]:
+        """Parse contact_detections from JSON string to array."""
         if isinstance(v, str):
             try:
                 return json.loads(v or "[]")
