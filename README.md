@@ -155,6 +155,14 @@ tennis_coach_app/
 - **Timing Information**: Creation and completion timestamps
 - **API Endpoint**: `GET /v0/analysis/status/{analysis_id}` for status updates
 
+### Ball-Racket Contact Detection ⚡ **NEW**
+- **Accurate Timing**: Precise contact frame detection aligned with visual ball-racket contact
+- **Smart Filtering**: Eliminates false positives from player positioning and visual overlays
+- **Depth Perception**: Ball size analysis for distinguishing real contact from parallax effects
+- **Quality Prioritization**: Prefers racket-based detections over wrist-based fallbacks
+- **Realistic Thresholds**: 150px racket, 200px wrist distance thresholds based on real video analysis
+- **Temporal Validation**: 300ms minimum between contacts for realistic tennis timing
+
 ### Annotated Videos
 - **Combined Overlays**: Pose and ball detection on same video
 - **H.264 Codec**: Browser-compatible video format
@@ -172,6 +180,7 @@ tennis_coach_app/
 - **[Database Schema](project_docs/database_schema.md)** - Database models and relationships
 - **[Deployment Guide](project_docs/deployment_guide.md)** - Production deployment instructions
 - **[Project Roadmap](project_docs/project_plan.md)** - Development phases and future plans
+- **[Contact Detection Improvements](project_docs/contact_detection_improvements.md)** - Ball-racket contact detection enhancement details
 - **[Pose Estimation Comparison](project_docs/pose_estimation_comparison.md)** - Technology decision record
 
 ## Development

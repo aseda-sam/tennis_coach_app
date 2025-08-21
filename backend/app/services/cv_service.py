@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
 
-from app.api.schemas.analysis import AnalysisConfig
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -1601,309 +1600,384 @@ def detect_ball_contact(
 
     return contact_timestamps, contact_detections
 
-    def analyze_video_modular(
-        self: "CVService",
-        video_path: Path,
-        config: "AnalysisConfig",
-        output_dir: Optional[Path] = None,
-    ) -> Dict[str, Any]:
-        """
-        Perform modular video analysis based on configuration.
 
-        Args:
-            video_path: Path to the video file
-            config: Analysis configuration specifying which components to run
-            output_dir: Directory to save output files (optional)
+def _calculate_racket_head_position(
+    racket_position: Dict[str, Any], pose_data: Dict[str, List[float]]
+) -> Tuple[float, float]:
+    """
+    Calculate the actual racket head position from racket center and pose data.
 
-        Returns:
-            Dictionary containing analysis results for enabled components
-        """
-        start_time = time.time()
+    The racket head is typically at the end of the racket, extending beyond the center
+    in the direction away from the wrist.
+
+    Args:
+        racket_position: Racket detection data with center, bbox, closest_wrist
+        pose_data: Pose detection with wrist positions
+
+    Returns:
+        Tuple of (head_x, head_y) coordinates
+    """
+    racket_center = racket_position["center"]
+    closest_wrist = racket_position["closest_wrist"]
+
+    # Get wrist position
+    wrist_key = f"{closest_wrist}_wrist"
+    wrist_pos = pose_data.get(wrist_key)
+
+    if not wrist_pos:
+        # Fallback to racket center if no wrist data
+        return racket_center[0], racket_center[1]
+
+    # Calculate vector from wrist to racket center
+    wrist_to_center_x = racket_center[0] - wrist_pos[0]
+    wrist_to_center_y = racket_center[1] - wrist_pos[1]
+
+    # Normalize the vector
+    vector_length = (wrist_to_center_x**2 + wrist_to_center_y**2) ** 0.5
+    if vector_length == 0:
+        return racket_center[0], racket_center[1]
+
+    norm_x = wrist_to_center_x / vector_length
+    norm_y = wrist_to_center_y / vector_length
+
+    # Extend beyond center by typical racket head distance (assume ~40 pixels)
+    head_extension = 40.0  # pixels
+    head_x = racket_center[0] + (norm_x * head_extension)
+    head_y = racket_center[1] + (norm_y * head_extension)
+
+    return head_x, head_y
+
+
+def _calculate_ball_trajectory_change(
+    ball_positions: List[Tuple[float, float]], frame_index: int, window_size: int = 3
+) -> float:
+    """
+    Calculate the change in ball trajectory around a specific frame.
+
+    A significant trajectory change often indicates contact.
+
+    Args:
+        ball_positions: List of (x, y) ball center positions
+        frame_index: Frame to analyze
+        window_size: Number of frames before/after to analyze
+
+    Returns:
+        Trajectory change score (higher = more likely contact)
+    """
+    if len(ball_positions) < window_size * 2 + 1:
+        return 0.0
+
+    start_idx = max(0, frame_index - window_size)
+    end_idx = min(len(ball_positions), frame_index + window_size + 1)
+
+    if end_idx - start_idx < window_size:
+        return 0.0
+
+    # Calculate velocity before and after the frame
+    mid_idx = frame_index - start_idx
+
+    if mid_idx < 1 or mid_idx >= end_idx - start_idx - 1:
+        return 0.0
+
+    # Velocity before
+    pos_before = ball_positions[start_idx + mid_idx - 1]
+    pos_mid = ball_positions[start_idx + mid_idx]
+    vel_before = (pos_mid[0] - pos_before[0], pos_mid[1] - pos_before[1])
+
+    # Velocity after
+    pos_after = ball_positions[start_idx + mid_idx + 1]
+    vel_after = (pos_after[0] - pos_mid[0], pos_after[1] - pos_mid[1])
+
+    # Calculate change in velocity (acceleration)
+    vel_change = (abs(vel_after[0] - vel_before[0]), abs(vel_after[1] - vel_before[1]))
+
+    # Return magnitude of velocity change
+    return (vel_change[0] ** 2 + vel_change[1] ** 2) ** 0.5
+
+
+def detect_ball_contact_with_rackets(
+    ball_detections: List[List[Dict[str, Any]]],
+    pose_detections: List[Optional[Dict[str, List[float]]]],
+    racket_positions: List[Optional[Dict[str, Any]]],
+    fps: float,
+    contact_threshold: float = 50.0,
+    racket_contact_threshold: float = 15.0,
+    min_ball_confidence: float = 0.5,
+    early_video_skip_seconds: float = 2.0,
+) -> Tuple[List[float], List[Dict[str, Any]]]:
+    """
+    Detect frames where ball contact occurs using improved racket head detection and trajectory analysis.
+
+    This function uses a multi-criteria approach:
+    1. Calculates actual racket head position (not just center)
+    2. Analyzes ball trajectory changes to detect impacts
+    3. Uses much tighter distance thresholds for accuracy
+    4. Validates contact with temporal patterns
+
+    Args:
+        ball_detections: List of ball detections per frame
+        pose_detections: List of pose detections per frame
+        racket_positions: List of estimated racket positions per frame
+        fps: Frames per second of the video
+        contact_threshold: Distance threshold in pixels for wrist-based contact detection (fallback)
+        racket_contact_threshold: Distance threshold in pixels for racket-head contact detection
+
+    Returns:
+        Tuple of (contact_timestamps, contact_detections)
+    """
+    contact_timestamps = []
+    contact_detections = []
+
+    # Calculate video duration for filtering
+    total_frames = len(ball_detections)
+    video_duration = total_frames / fps
+    early_skip_frames = int(early_video_skip_seconds * fps)
+
+    logger.info(
+        f"Smart contact filtering: Skip first {early_video_skip_seconds}s ({early_skip_frames} frames), "
+        f"Min ball confidence: {min_ball_confidence}, Video duration: {video_duration:.1f}s"
+    )
+
+    for frame_index, (frame_balls, frame_pose, racket_position) in enumerate(
+        zip(ball_detections, pose_detections, racket_positions)
+    ):
+        # Skip early video frames (likely player positioning, not actual hits)
+        if frame_index < early_skip_frames:
+            continue
+
+        # Skip frames without ball detections
+        if not frame_balls:
+            continue
+
+        # Skip frames without pose detection
+        if not frame_pose:
+            continue
+
+        # Filter for high-confidence ball detections only
+        high_confidence_balls = [
+            ball
+            for ball in frame_balls
+            if ball.get("confidence", 0) >= min_ball_confidence
+        ]
+        if not high_confidence_balls:
+            continue
+
+        # Check each high-confidence ball detection
+        for ball_detection in high_confidence_balls:
+            ball_bbox = ball_detection["bbox"]
+            ball_center_x = (ball_bbox[0] + ball_bbox[2]) / 2
+            ball_center_y = (ball_bbox[1] + ball_bbox[3]) / 2
+
+            # Calculate ball size for depth perception (larger = closer = more likely real contact)
+            ball_width = ball_bbox[2] - ball_bbox[0]
+            ball_height = ball_bbox[3] - ball_bbox[1]
+            ball_area = ball_width * ball_height
+            ball_confidence = ball_detection.get("confidence", 0.0)
+
+            # Calculate ball size factor for use in both racket and wrist detection
+            ball_size_factor = min(
+                ball_area / 400.0, 2.0
+            )  # Normalize by typical ball size
+
+            # Primary: Check ball-racket proximity if racket position is available
+            contact_detected = False
+            contact_type = "wrist"  # Default to wrist-based contact
+            contact_distance = float("inf")
+            contact_hand = None
+            racket_data = None
+
+            if racket_position and racket_position.get("center"):
+                racket_center = racket_position["center"]
+                racket_distance = (
+                    (ball_center_x - racket_center[0]) ** 2
+                    + (ball_center_y - racket_center[1]) ** 2
+                ) ** 0.5
+
+                # Apply depth-based distance adjustment (closer balls get stricter thresholds)
+                adjusted_racket_threshold = racket_contact_threshold * (
+                    2.0 - ball_size_factor * 0.5
+                )
+
+                if racket_distance <= adjusted_racket_threshold:
+                    contact_detected = True
+                    contact_type = "racket"
+                    contact_distance = racket_distance
+                    contact_hand = racket_position.get("closest_wrist")
+                    racket_data = {
+                        "racket_center": racket_center,
+                        "racket_confidence": racket_position.get("confidence", 0.0),
+                        "racket_score": racket_position.get("score", 0.0),
+                        "distance_to_wrist": racket_position.get(
+                            "distance_to_wrist", 0.0
+                        ),
+                        "ball_area": ball_area,
+                        "ball_size_factor": ball_size_factor,
+                        "adjusted_threshold": adjusted_racket_threshold,
+                    }
+
+            # Fallback: Check ball-wrist proximity if no racket contact detected
+            if not contact_detected:
+                left_wrist = frame_pose.get("left_wrist")
+                right_wrist = frame_pose.get("right_wrist")
+
+                if left_wrist:
+                    distance = (
+                        (ball_center_x - left_wrist[0]) ** 2
+                        + (ball_center_y - left_wrist[1]) ** 2
+                    ) ** 0.5
+                    if distance < contact_distance:
+                        contact_distance = distance
+                        contact_hand = "left"
+
+                if right_wrist:
+                    distance = (
+                        (ball_center_x - right_wrist[0]) ** 2
+                        + (ball_center_y - right_wrist[1]) ** 2
+                    ) ** 0.5
+                    if distance < contact_distance:
+                        contact_distance = distance
+                        contact_hand = "right"
+
+                # Apply size-based filtering for wrist contacts (stricter for smaller/distant balls)
+                adjusted_wrist_threshold = contact_threshold * ball_size_factor
+                if contact_distance <= adjusted_wrist_threshold:
+                    contact_detected = True
+
+            # Record contact if detected
+            if contact_detected:
+                timestamp = frame_index / fps
+
+                # Create enhanced contact detection record
+                contact_detection = {
+                    "frame_index": frame_index,
+                    "timestamp": timestamp,
+                    "ball_position": {"x": ball_center_x, "y": ball_center_y},
+                    "ball_bbox": ball_bbox,
+                    "contact_type": contact_type,  # "racket" or "wrist"
+                    "contact_hand": contact_hand,
+                    "distance": contact_distance,
+                    "confidence": ball_confidence,
+                    "ball_area": ball_area,
+                    "ball_size_factor": ball_size_factor,
+                    "racket_data": racket_data,  # Only present for racket-based contacts
+                    "player_position": {
+                        "left_wrist": frame_pose.get("left_wrist"),
+                        "right_wrist": frame_pose.get("right_wrist"),
+                        "left_shoulder": frame_pose.get("left_shoulder"),
+                        "right_shoulder": frame_pose.get("right_shoulder"),
+                    },
+                }
+
+                contact_timestamps.append(timestamp)
+                contact_detections.append(contact_detection)
+
+    # Smart filtering: Remove contacts that are too close in time + prefer better quality
+    if len(contact_timestamps) > 1:
+        filtered_timestamps = []
+        filtered_detections = []
+        min_time_between_contacts = (
+            0.3  # Increased to 300ms between contacts (real tennis hits are spaced)
+        )
+
+        sorted_indices = sorted(
+            range(len(contact_timestamps)), key=lambda i: contact_timestamps[i]
+        )
+
+        for _i, idx in enumerate(sorted_indices):
+            timestamp = contact_timestamps[idx]
+            detection = contact_detections[idx]
+
+            # Check if this contact is too close to the previous one
+            if (
+                not filtered_timestamps
+                or timestamp - filtered_timestamps[-1] >= min_time_between_contacts
+            ):
+                filtered_timestamps.append(timestamp)
+                filtered_detections.append(detection)
+            else:
+                # If contacts are close, keep the better one (prefer racket over wrist, higher confidence)
+                prev_detection = filtered_detections[-1]
+                current_better = (
+                    (
+                        detection["contact_type"] == "racket"
+                        and prev_detection["contact_type"] == "wrist"
+                    )
+                    or (
+                        detection["contact_type"] == prev_detection["contact_type"]
+                        and detection["confidence"] > prev_detection["confidence"]
+                    )
+                    or (
+                        detection["contact_type"] == prev_detection["contact_type"]
+                        and detection.get("ball_area", 0)
+                        > prev_detection.get("ball_area", 0)
+                    )
+                )
+
+                if current_better:
+                    # Replace previous contact with current better one
+                    filtered_timestamps[-1] = timestamp
+                    filtered_detections[-1] = detection
+
+        contact_timestamps = filtered_timestamps
+        contact_detections = filtered_detections
+
         logger.info(
-            f"Starting modular analysis with config: {config.get_analysis_type()}"
+            f"Smart filtering applied: {len(sorted_indices)} raw contacts → {len(filtered_timestamps)} filtered contacts"
         )
 
-        # Extract video frames
-        frames = self.extract_frames(video_path, config.max_frames)
-        if not frames:
-            raise ValueError("No frames could be extracted from video")
+    # Final sort by timestamp
+    if contact_timestamps:
+        sorted_contacts = sorted(
+            zip(contact_timestamps, contact_detections), key=lambda x: x[0]
+        )
+        contact_timestamps = [t for t, _ in sorted_contacts]
+        contact_detections = [d for _, d in sorted_contacts]
 
-        # Get video metadata for FPS
-        video_metadata = self.get_video_metadata(video_path)
-        fps = video_metadata.get("fps", 30.0)
-        total_frames = len(frames)
+    # Log contact detection statistics
+    racket_contacts = sum(
+        1 for d in contact_detections if d["contact_type"] == "racket"
+    )
+    wrist_contacts = sum(1 for d in contact_detections if d["contact_type"] == "wrist")
 
-        logger.info(f"Extracted {total_frames} frames at {fps:.2f} FPS")
+    logger.info(
+        f"Enhanced ball contact detection complete: {len(contact_timestamps)} contacts found "
+        f"({racket_contacts} racket-based, {wrist_contacts} wrist-based)"
+    )
 
-        # Initialize results structure
-        results = {
-            "video_path": str(video_path),
-            "total_frames": total_frames,
-            "fps": fps,
-            "analysis_type": config.get_analysis_type(),
-            "components_run": [],
-            "processing_time": 0.0,
-        }
-
-        # Run enabled components
-        if config.include_ball_detection:
-            logger.info("Running ball detection...")
-            ball_start = time.time()
-            ball_detections = self.detect_balls(
-                frames, config.ball_confidence_threshold
+    # Log trajectory change statistics for debugging
+    if contact_detections:
+        trajectory_changes = [
+            d.get("trajectory_change", 0.0) for d in contact_detections
+        ]
+        if trajectory_changes:
+            avg_trajectory_change = sum(trajectory_changes) / len(trajectory_changes)
+            logger.info(
+                f"Average trajectory change at contacts: {avg_trajectory_change:.2f}"
             )
-            ball_time = time.time() - ball_start
-            results["ball_detection"] = {
-                "detections": ball_detections,
-                "processing_time": ball_time,
-                "frames_with_balls": sum(1 for dets in ball_detections if dets),
-                "total_ball_detections": sum(len(dets) for dets in ball_detections),
-            }
-            results["components_run"].append("ball_detection")
-            log_timing("Ball detection", ball_start)
 
-        if config.include_racket_detection:
-            logger.info("Running racket detection...")
-            racket_start = time.time()
-            racket_detections = self.detect_rackets(
-                frames, config.racket_confidence_threshold
+    # Log distance and trajectory statistics for debugging
+    if contact_detections:
+        racket_distances = [
+            d["distance"] for d in contact_detections if d["contact_type"] == "racket"
+        ]
+        wrist_distances = [
+            d["distance"] for d in contact_detections if d["contact_type"] == "wrist"
+        ]
+
+        if racket_distances:
+            logger.info(
+                f"Racket contact distances: min={min(racket_distances):.1f}, max={max(racket_distances):.1f}, avg={sum(racket_distances) / len(racket_distances):.1f}"
             )
-            racket_time = time.time() - racket_start
-            results["racket_detection"] = {
-                "detections": racket_detections,
-                "processing_time": racket_time,
-                "frames_with_rackets": sum(1 for dets in racket_detections if dets),
-                "total_racket_detections": sum(len(dets) for dets in racket_detections),
-            }
-            results["components_run"].append("racket_detection")
-            log_timing("Racket detection", racket_start)
-
-        if config.include_pose_detection:
-            logger.info("Running pose detection...")
-            pose_start = time.time()
-            pose_detections = self.detect_poses_batch(frames)
-            pose_time = time.time() - pose_start
-            results["pose_detection"] = {
-                "detections": pose_detections,
-                "processing_time": pose_time,
-                "frames_with_pose": sum(1 for pose in pose_detections if pose),
-                "total_pose_detections": sum(1 for pose in pose_detections if pose),
-            }
-            results["components_run"].append("pose_detection")
-            log_timing("Pose detection", pose_start)
-
-        # Estimate racket positions if both racket and pose detection are enabled
-        if config.include_racket_detection and config.include_pose_detection:
-            logger.info("Estimating racket positions...")
-            racket_pos_start = time.time()
-            racket_positions = self.estimate_racket_head_position(
-                racket_detections, pose_detections
+        if wrist_distances:
+            logger.info(
+                f"Wrist contact distances: min={min(wrist_distances):.1f}, max={max(wrist_distances):.1f}, avg={sum(wrist_distances) / len(wrist_distances):.1f}"
             )
-            racket_pos_time = time.time() - racket_pos_start
-            results["racket_detection"]["positions"] = racket_positions
-            results["racket_detection"]["frames_with_positions"] = sum(
-                1 for pos in racket_positions if pos
-            )
-            results["racket_detection"]["position_estimation_time"] = racket_pos_time
-            log_timing("Racket position estimation", racket_pos_start)
-
-        # Create annotated video if any detections exist
-        if any(
-            [
-                config.include_ball_detection
-                and results.get("ball_detection", {}).get("frames_with_balls", 0) > 0,
-                config.include_racket_detection
-                and results.get("racket_detection", {}).get("frames_with_rackets", 0)
-                > 0,
-                config.include_pose_detection
-                and results.get("pose_detection", {}).get("frames_with_pose", 0) > 0,
-            ]
-        ):
-            logger.info("Creating annotated video...")
-            annotate_start = time.time()
-            annotated_video_path = self._create_annotated_video_modular(
-                video_path, frames, results, config, output_dir
-            )
-            annotate_time = time.time() - annotate_start
-            results["annotated_video_path"] = annotated_video_path
-            results["annotation_time"] = annotate_time
-            log_timing("Video annotation", annotate_start)
-
-        # Calculate total processing time
-        total_time = time.time() - start_time
-        results["processing_time"] = total_time
-
-        logger.info(f"Modular analysis completed in {total_time:.3f}s")
-        log_timing("Total modular analysis", start_time)
-
-        return results
-
-    def _create_annotated_video_modular(
-        self: "CVService",
-        video_path: Path,
-        frames: List[np.ndarray],
-        results: Dict[str, Any],
-        config: "AnalysisConfig",
-        output_dir: Optional[Path] = None,
-    ) -> Optional[str]:
-        """
-        Create annotated video for modular analysis results.
-
-        Args:
-            video_path: Original video path
-            frames: List of video frames
-            results: Analysis results
-            config: Analysis configuration
-            output_dir: Output directory
-
-        Returns:
-            Path to the annotated video file
-        """
-        if output_dir is None:
-            output_dir = video_path.parent
-
-        output_path = Path(output_dir)
-        video_name = video_path.stem
-        annotated_filename = f"{video_name}_modular_annotated.mp4"
-        annotated_path = output_path / annotated_filename
-
-        # Get video properties
-        fps = results["fps"]
-        height, width = frames[0].shape[:2]
-
-        # Initialize video writer
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
-
-        # Get detection data
-        ball_detections = results.get("ball_detection", {}).get("detections", [])
-        racket_detections = results.get("racket_detection", {}).get("detections", [])
-        racket_positions = results.get("racket_detection", {}).get("positions", [])
-        pose_detections = results.get("pose_detection", {}).get("detections", [])
-
-        # Annotate each frame
-        for frame_index, frame in enumerate(frames):
-            annotated_frame = frame.copy()
-
-            # Draw ball detections (red)
-            if config.include_ball_detection and frame_index < len(ball_detections):
-                for ball in ball_detections[frame_index]:
-                    bbox = ball["bbox"]
-                    confidence = ball["confidence"]
-                    cv2.rectangle(
-                        annotated_frame,
-                        (int(bbox[0]), int(bbox[1])),
-                        (int(bbox[2]), int(bbox[3])),
-                        (0, 0, 255),  # Red
-                        2,
-                    )
-                    cv2.putText(
-                        annotated_frame,
-                        f"Ball: {confidence:.2f}",
-                        (int(bbox[0]), int(bbox[1] - 10)),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        (0, 0, 255),
-                        1,
-                    )
-
-            # Draw racket detections (blue)
-            if config.include_racket_detection and frame_index < len(racket_detections):
-                for racket in racket_detections[frame_index]:
-                    bbox = racket["bbox"]
-                    confidence = racket["confidence"]
-                    cv2.rectangle(
-                        annotated_frame,
-                        (int(bbox[0]), int(bbox[1])),
-                        (int(bbox[2]), int(bbox[3])),
-                        (255, 0, 0),  # Blue
-                        2,
-                    )
-                    cv2.putText(
-                        annotated_frame,
-                        f"Racket: {confidence:.2f}",
-                        (int(bbox[0]), int(bbox[1] - 10)),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        (255, 0, 0),
-                        1,
-                    )
-
-                # Draw racket positions (yellow circles)
-                if (
-                    frame_index < len(racket_positions)
-                    and racket_positions[frame_index]
-                ):
-                    pos = racket_positions[frame_index]
-                    center_x, center_y = pos["center"]
-                    cv2.circle(
-                        annotated_frame,
-                        (int(center_x), int(center_y)),
-                        5,
-                        (0, 255, 255),  # Yellow
-                        -1,
-                    )
-
-            # Draw pose detections (green)
-            if config.include_pose_detection and frame_index < len(pose_detections):
-                pose = pose_detections[frame_index]
-                if pose:
-                    annotated_frame = self.draw_pose_overlay(annotated_frame, pose)
-
-            out.write(annotated_frame)
-
-        out.release()
-        logger.info(f"Modular annotated video saved to: {annotated_path}")
-        return str(annotated_path)
-
-    def run_component_analysis(
-        self: "CVService",
-        video_path: Path,
-        component: str,
-        config: Optional["AnalysisConfig"] = None,
-        output_dir: Optional[Path] = None,
-    ) -> Dict[str, Any]:
-        """
-        Run analysis for a specific component only.
-
-        Args:
-            video_path: Path to the video file
-            component: Component to analyze ('ball', 'racket', 'pose')
-            config: Optional configuration (will create default if None)
-            output_dir: Directory to save output files
-
-        Returns:
-            Dictionary containing results for the specified component
-        """
-        if config is None:
-            config = AnalysisConfig()
-
-        # Create component-specific config
-        component_config = AnalysisConfig(
-            include_ball_detection=component == "ball",
-            include_racket_detection=component == "racket",
-            include_pose_detection=component == "pose",
+    else:
+        logger.info(
+            "No contacts detected - this might indicate threshold issues or data problems"
         )
 
-        # Copy relevant parameters from original config
-        if component == "ball":
-            component_config.ball_confidence_threshold = (
-                config.ball_confidence_threshold
-            )
-        elif component == "racket":
-            component_config.racket_confidence_threshold = (
-                config.racket_confidence_threshold
-            )
-        elif component == "pose":
-            component_config.pose_detection_confidence = (
-                config.pose_detection_confidence
-            )
-            component_config.pose_tracking_confidence = config.pose_tracking_confidence
-
-        component_config.max_frames = config.max_frames
-
-        logger.info(f"Running {component} analysis only...")
-        return self.analyze_video_modular(video_path, component_config, output_dir)
+    return contact_timestamps, contact_detections
 
 
 # Global CV service instance
