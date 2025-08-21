@@ -1,7 +1,5 @@
 """Test configuration and shared fixtures."""
 
-import os
-import shutil
 from pathlib import Path
 from typing import Generator
 
@@ -46,6 +44,7 @@ def db_session(test_db: Generator) -> Generator:
 @pytest.fixture
 def client(db_session: Generator) -> Generator[TestClient, None, None]:
     """Create a test client with database override."""
+
     def override_get_db() -> Generator:
         try:
             yield db_session
@@ -64,12 +63,14 @@ def client(db_session: Generator) -> Generator[TestClient, None, None]:
 def cleanup_test_files() -> Generator:
     """Clean up any files starting with test_ after each test."""
     yield
-    
+
     # Clean up any test_ files in the data directories
     base_data_dir = Path("../data")
-    for main_dir in [base_data_dir / "videos" / "raw",
-                     base_data_dir / "videos" / "processed",
-                     base_data_dir / "analysis_cache"]:
+    for main_dir in [
+        base_data_dir / "videos" / "raw",
+        base_data_dir / "videos" / "processed",
+        base_data_dir / "analysis_cache",
+    ]:
         if main_dir.exists():
             for file_path in main_dir.glob("test_*"):
                 if file_path.is_file():
