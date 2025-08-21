@@ -195,36 +195,48 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
   - [ ] Add trajectory confidence scoring
   - [ ] **User Testing**: Verify smoother ball tracking
 
-#### Phase 9B: Contact Posture Analysis MVP
+#### Phase 9B: Advanced Contact Detection & Racket Analysis 🚧 **IN PROGRESS**
 
-**Goal**: Implement minimal viable contact posture analysis using improved ball detection.
+**Goal**: Implement sophisticated contact detection using racket tracking and multi-criteria analysis.
 
-- [ ] **Step 1: Contact Frame Detection** (Foundation)
+- [ ] **Step 1: Racket Detection Foundation** (Current Priority)
 
-  - [ ] Implement ball deceleration detection algorithm
-  - [ ] Add wrist proximity filtering for contact candidates
-  - [ ] Create contact event detection service
-  - [ ] **User Testing**: Verify contact frame detection accuracy
+  - [ ] Implement racket detection using YOLO sports equipment classes
+  - [ ] Add racket template matching for improved accuracy
+  - [ ] Create racket position tracking across frames
+  - [ ] Estimate racket head position relative to player wrists
+  - [ ] **User Testing**: Verify racket detection accuracy on test videos
 
-- [ ] **Step 2: Basic Posture Metrics** (Core functionality)
+- [ ] **Step 2: Multi-Criteria Contact Detection**
 
-  - [ ] Calculate contact height (normalized to player torso)
-  - [ ] Calculate lateral offset (ball position relative to body midline)
-  - [ ] Calculate elbow angle at contact
-  - [ ] **User Testing**: Verify metric calculations are reasonable
+  - [ ] Implement ball-racket proximity analysis (primary signal)
+  - [ ] Add ball size analysis for depth perception (secondary signal)
+  - [ ] Create ball velocity change detection (sudden direction changes)
+  - [ ] Combine multiple signals with weighted confidence scoring
+  - [ ] **User Testing**: Compare with manual contact annotations
 
-- [ ] **Step 3: Contact Analysis API** (Backend integration)
+- [ ] **Step 3: Contact Validation & Filtering**
 
-  - [ ] Create `ContactPostureAnalysis` Pydantic schemas
-  - [ ] Implement compute-on-read endpoint (`GET /v0/analysis/{id}/contact`)
+  - [ ] Implement multi-frame analysis (before/after contact)
+  - [ ] Add racket swing pattern validation
+  - [ ] Filter false positives from 2D perspective illusions
+  - [ ] Create contact confidence scoring system
+  - [ ] **User Testing**: Verify reduced false positives
+
+- [ ] **Step 4: Contact Analysis API** (Backend integration)
+
+  - [ ] Create `AdvancedContactAnalysis` Pydantic schemas
+  - [ ] Implement compute-on-read endpoint (`GET /v0/analysis/{id}/contacts`)
   - [ ] Add JSON caching with invalidation (algo_version + inputs_hash)
+  - [ ] Store racket detection data in analysis results
   - [ ] **User Testing**: Test API endpoint with existing analyses
 
-- [ ] **Step 4: Frontend Contact Display** (UI integration)
+- [ ] **Step 5: Frontend Contact Display** (UI integration)
   - [ ] Add contact events list to `AnalysisResults` component
-  - [ ] Implement timeline markers on video player
-  - [ ] Display contact metrics with tooltips
-  - [ ] **User Testing**: Verify UI displays contact data correctly
+  - [ ] Implement timeline markers on video player with confidence indicators
+  - [ ] Display contact metrics with racket position data
+  - [ ] Add contact confidence visualization
+  - [ ] **User Testing**: Verify UI displays advanced contact data correctly
 
 #### Phase 9C: Enhanced Contact Analysis
 
@@ -266,6 +278,34 @@ A computer vision-based tennis analysis system that demonstrates data engineerin
   - [ ] Track improvement over time
   - [ ] Generate progress reports
   - [ ] **User Testing**: Verify trend analysis works across sessions
+
+#### Phase 9E: Data Validation & Annotation Tools
+
+**Goal**: Create tools for validating and improving contact detection accuracy.
+
+- [ ] **Step 1: Manual Annotation Interface**
+
+  - [ ] Create simple web-based video annotation tool
+  - [ ] Allow manual marking of contact points with timestamps
+  - [ ] Support for marking racket positions and ball contacts
+  - [ ] Export annotation data in standardized format (JSON/CSV)
+  - [ ] **User Testing**: Verify annotation tool is intuitive and accurate
+
+- [ ] **Step 2: Validation Framework**
+
+  - [ ] Create comparison tools for algorithm vs manual annotations
+  - [ ] Implement precision/recall metrics for contact detection
+  - [ ] Add confidence interval calculations
+  - [ ] Generate validation reports with visualizations
+  - [ ] **User Testing**: Verify validation metrics are meaningful
+
+- [ ] **Step 3: Ground Truth Dataset**
+
+  - [ ] Create annotated dataset of tennis videos with known contacts
+  - [ ] Include various video qualities and playing styles
+  - [ ] Document annotation guidelines and standards
+  - [ ] Use dataset for algorithm training and validation
+  - [ ] **User Testing**: Verify dataset quality and completeness
 
 ### Phase 10: Advanced Features (Future)
 
