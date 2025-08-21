@@ -72,7 +72,7 @@ class Settings(BaseSettings):
         if self.DATABASE_URL:
             return self.DATABASE_URL
         elif self.is_test:
-            return "sqlite:///:memory:"  # Use in-memory database for tests
+            return "sqlite:///./tests/test.db"  # Use simple file-based database for tests
         else:
             return "sqlite:///../data/database/tennis_coach.db"
 
