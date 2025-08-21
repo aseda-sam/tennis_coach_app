@@ -265,14 +265,21 @@ def analyze_video(
             video_metadata = cv_service.get_video_metadata(video_path)
             fps = video_metadata.get("fps", 30.0)  # Default to 30 FPS if not available
 
-            # Detect ball contact
-            from app.services.cv_service import detect_ball_contact
+            # Detect ball contact using improved racket-based detection
+            from app.services.cv_service import detect_ball_contact_with_rackets
 
-            contact_timestamps, contact_detections = detect_ball_contact(
+            # Use racket positions if available, otherwise fall back to basic contact detection
+            racket_positions = analysis_results.get(
+                "racket_positions", [None] * len(analysis_results["ball_detections"])
+            )
+
+            contact_timestamps, contact_detections = detect_ball_contact_with_rackets(
                 ball_detections=analysis_results["ball_detections"],
                 pose_detections=analysis_results["pose_detections"],
+                racket_positions=racket_positions,
                 fps=fps,
-                contact_threshold=150.0,  # 150 pixels threshold - more realistic for tennis videos
+                contact_threshold=150.0,  # 150 pixels threshold for wrist-based fallback
+                racket_contact_threshold=100.0,  # Increased to 100 pixels for more permissive racket-based detection
             )
 
             # Add contact detection results to analysis results
@@ -280,14 +287,32 @@ def analyze_video(
             analysis_results["contact_detections"] = contact_detections
             analysis_results["contact_frames"] = len(contact_timestamps)
 
-            # Update analysis summary
+            # Update analysis summary with enhanced contact detection statistics
             if "analysis_summary" not in analysis_results:
                 analysis_results["analysis_summary"] = {}
+
+            # Calculate contact detection statistics
+            racket_contacts = sum(
+                1 for d in contact_detections if d.get("contact_type") == "racket"
+            )
+            wrist_contacts = sum(
+                1 for d in contact_detections if d.get("contact_type") == "wrist"
+            )
+
             analysis_results["analysis_summary"]["contact_frames"] = len(
                 contact_timestamps
             )
             analysis_results["analysis_summary"]["contact_timestamps"] = (
                 contact_timestamps
+            )
+            analysis_results["analysis_summary"]["racket_based_contacts"] = (
+                racket_contacts
+            )
+            analysis_results["analysis_summary"]["wrist_based_contacts"] = (
+                wrist_contacts
+            )
+            analysis_results["analysis_summary"]["contact_detection_method"] = (
+                "enhanced_racket_based"
             )
 
         # Update progress - analysis complete, starting video annotation
