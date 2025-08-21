@@ -1602,7 +1602,7 @@ def detect_ball_contact(
     return contact_timestamps, contact_detections
 
     def analyze_video_modular(
-        self,
+        self: "CVService",
         video_path: str,
         config: "AnalysisConfig",
         output_dir: Optional[str] = None,
@@ -1741,7 +1741,7 @@ def detect_ball_contact(
         return results
 
     def _create_annotated_video_modular(
-        self,
+        self: "CVService",
         video_path: str,
         frames: List[np.ndarray],
         results: Dict[str, Any],
@@ -1858,7 +1858,7 @@ def detect_ball_contact(
         return str(annotated_path)
 
     def run_component_analysis(
-        self,
+        self: "CVService",
         video_path: str,
         component: str,
         config: Optional["AnalysisConfig"] = None,
