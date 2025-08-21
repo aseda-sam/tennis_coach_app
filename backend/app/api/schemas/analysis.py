@@ -12,9 +12,9 @@ class AnalysisRequest(BaseModel):
     """Request model for starting video analysis."""
 
     analysis_type: str = Field(
-        default="ball_tracking",
+        default="comprehensive",
         description="Type of analysis to perform",
-        example="ball_tracking",
+        example="comprehensive",
     )
     confidence_threshold: float = Field(
         default=0.7, ge=0.0, le=1.0, description="Detection confidence threshold"
@@ -57,6 +57,15 @@ class AnalysisResults(BaseModel):
     pose_detections: Optional[str] = Field(
         default=None, description="Pose detection data"
     )
+    contact_frames: Optional[int] = Field(
+        default=None, ge=0, description="Frames with ball contact"
+    )
+    contact_timestamps: Optional[str] = Field(
+        default=None, description="Contact timestamps data"
+    )
+    contact_detections: Optional[str] = Field(
+        default=None, description="Contact detection data"
+    )
 
 
 class AnalysisInfo(BaseModel):
@@ -87,6 +96,15 @@ class AnalysisInfo(BaseModel):
     )
     pose_detection_rate: Optional[float] = Field(
         default=None, description="Pose detection rate"
+    )
+    contact_frames: Optional[int] = Field(
+        default=None, description="Frames with ball contact"
+    )
+    contact_timestamps: Optional[List[float]] = Field(
+        default=None, description="Contact timestamps (parsed from JSON)"
+    )
+    contact_detections: Optional[List[object]] = Field(
+        default=None, description="Contact detection data (parsed from JSON)"
     )
     ball_detections: Optional[List[object]] = Field(
         default=None, description="Ball detection data (parsed from JSON)"
@@ -120,6 +138,28 @@ class AnalysisInfo(BaseModel):
     @classmethod
     def _parse_pose_detections(cls, v: object) -> List[object]:
         """Parse pose_detections from JSON string to array."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v or "[]")
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return v or []
+
+    @field_validator("contact_timestamps", mode="before")
+    @classmethod
+    def _parse_contact_timestamps(cls, v: object) -> List[float]:
+        """Parse contact_timestamps from JSON string to array."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v or "[]")
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return v or []
+
+    @field_validator("contact_detections", mode="before")
+    @classmethod
+    def _parse_contact_detections(cls, v: object) -> List[object]:
+        """Parse contact_detections from JSON string to array."""
         if isinstance(v, str):
             try:
                 return json.loads(v or "[]")
@@ -182,9 +222,11 @@ class AnalysisStatus:
 class AnalysisTypes:
     """Analysis type constants."""
 
-    BALL_TRACKING = "ball_tracking"
-    POSE_DETECTION = "pose_detection"
-    COMPREHENSIVE = "comprehensive"
+    BALL_ONLY = "ball_only"
+    RACKET_ONLY = "racket_only"
+    POSE_ONLY = "pose_only"
+    COMPREHENSIVE = "comprehensive"  # All three: ball + racket + pose
+    CUSTOM = "custom"  # Custom combination of components
 
 
 # Background task schemas
@@ -240,3 +282,98 @@ class TaskStatsResponse(BaseModel):
     status_counts: Dict[str, int] = Field(description="Count of tasks by status")
     active_workers: int = Field(description="Number of active worker threads")
     max_workers: int = Field(description="Maximum number of worker threads")
+
+
+class AnalysisConfig(BaseModel):
+    """Configuration for modular video analysis."""
+
+    # Component toggles
+    include_ball_detection: bool = Field(
+        default=True, description="Enable ball detection"
+    )
+    include_racket_detection: bool = Field(
+        default=True, description="Enable racket detection"
+    )
+    include_pose_detection: bool = Field(
+        default=True, description="Enable pose detection"
+    )
+
+    # Ball detection parameters
+    ball_confidence_threshold: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold for ball detection",
+    )
+
+    # Racket detection parameters
+    racket_confidence_threshold: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold for racket detection",
+    )
+
+    # Pose detection parameters
+    pose_detection_confidence: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Minimum detection confidence for pose estimation",
+    )
+    pose_tracking_confidence: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Minimum tracking confidence for pose estimation",
+    )
+
+    # Video processing parameters
+    max_frames: Optional[int] = Field(
+        default=None,
+        description="Maximum number of frames to process (None = all frames)",
+    )
+    video_quality_level: Optional[str] = Field(
+        default=None, description="Video quality level for model selection"
+    )
+
+    # Future parameters (for contact detection, etc.)
+    contact_detection_threshold: Optional[float] = Field(
+        default=None, ge=0.0, description="Distance threshold for contact detection"
+    )
+
+    def get_component_config(self, component: str) -> Dict:
+        """Get configuration for a specific component."""
+        configs = {
+            "ball_detection": {
+                "enabled": self.include_ball_detection,
+                "confidence_threshold": self.ball_confidence_threshold,
+            },
+            "racket_detection": {
+                "enabled": self.include_racket_detection,
+                "confidence_threshold": self.racket_confidence_threshold,
+            },
+            "pose_detection": {
+                "enabled": self.include_pose_detection,
+                "detection_confidence": self.pose_detection_confidence,
+                "tracking_confidence": self.pose_tracking_confidence,
+            },
+        }
+        return configs.get(component, {})
+
+    def get_analysis_type(self) -> str:
+        """Determine the analysis type based on enabled components."""
+        components = []
+        if self.include_ball_detection:
+            components.append("ball")
+        if self.include_racket_detection:
+            components.append("racket")
+        if self.include_pose_detection:
+            components.append("pose")
+
+        if len(components) == 3:
+            return "comprehensive"
+        elif len(components) == 1:
+            return f"{components[0]}_only"
+        else:
+            return "custom"

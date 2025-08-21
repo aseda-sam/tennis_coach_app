@@ -15,6 +15,7 @@ interface VideoPlayerProps {
   onClose?: () => void;
   showControls?: boolean;
   aspectRatioMode?: 'cover' | 'contain' | 'auto';
+  contactTimestamps?: number[];  // Array of timestamps where ball contact occurs
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -23,6 +24,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onClose,
   showControls = true,
   aspectRatioMode = 'contain',
+  contactTimestamps = [],
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -272,15 +274,33 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {showControls && (
           <div className="video-controls">
             <div className="progress-container">
-              <input
-                type="range"
-                className="progress-bar"
-                min="0"
-                max={duration || 0}
-                value={currentTime}
-                onChange={handleSeek}
-                step="0.1"
-              />
+              <div className="progress-bar-wrapper">
+                <input
+                  type="range"
+                  className="progress-bar"
+                  min="0"
+                  max={duration || 0}
+                  value={currentTime}
+                  onChange={handleSeek}
+                  step="0.1"
+                />
+                {/* Contact markers */}
+                {contactTimestamps.length > 0 && duration > 0 && (
+                  <div className="contact-markers">
+                    {contactTimestamps.map((timestamp, index) => {
+                      const position = (timestamp / duration) * 100;
+                      return (
+                        <div
+                          key={index}
+                          className="contact-marker"
+                          style={{ left: `${position}%` }}
+                          title={`Ball contact at ${formatTime(timestamp)}`}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <div className="time-display">
                 <span>{formattedCurrentTime}</span>
                 <span>{formattedDuration}</span>

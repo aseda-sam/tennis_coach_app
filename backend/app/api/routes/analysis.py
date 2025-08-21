@@ -107,9 +107,11 @@ async def start_analysis(
 
         # Validate analysis type
         valid_types = [
-            AnalysisTypes.BALL_TRACKING,
-            AnalysisTypes.POSE_DETECTION,
+            AnalysisTypes.BALL_ONLY,
+            AnalysisTypes.RACKET_ONLY,
+            AnalysisTypes.POSE_ONLY,
             AnalysisTypes.COMPREHENSIVE,
+            AnalysisTypes.CUSTOM,
         ]
         if request.analysis_type not in valid_types:
             raise handle_processing_error(
