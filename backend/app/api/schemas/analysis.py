@@ -12,9 +12,9 @@ class AnalysisRequest(BaseModel):
     """Request model for starting video analysis."""
 
     analysis_type: str = Field(
-        default="ball_tracking",
+        default="comprehensive",
         description="Type of analysis to perform",
-        example="ball_tracking",
+        example="comprehensive",
     )
     confidence_threshold: float = Field(
         default=0.7, ge=0.0, le=1.0, description="Detection confidence threshold"
@@ -222,9 +222,11 @@ class AnalysisStatus:
 class AnalysisTypes:
     """Analysis type constants."""
 
-    BALL_TRACKING = "ball_tracking"
-    POSE_DETECTION = "pose_detection"
-    COMPREHENSIVE = "comprehensive"
+    BALL_ONLY = "ball_only"
+    RACKET_ONLY = "racket_only"
+    POSE_ONLY = "pose_only"
+    COMPREHENSIVE = "comprehensive"  # All three: ball + racket + pose
+    CUSTOM = "custom"  # Custom combination of components
 
 
 # Background task schemas
