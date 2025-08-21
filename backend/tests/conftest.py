@@ -17,8 +17,8 @@ from sqlalchemy.orm import sessionmaker
 from app.core.database import Base, get_db
 from app.main import app
 
-# Test database configuration
-SQLALCHEMY_DATABASE_URL = "sqlite:///./tests/test.db"
+# Test database configuration - use temporary file for CI compatibility
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"  # Use in-memory database for tests
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )

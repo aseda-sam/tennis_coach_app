@@ -25,10 +25,10 @@ class Settings(BaseSettings):
     SUPABASE_KEY: Optional[str] = None
     SUPABASE_DB_URL: Optional[str] = None  # Direct connection to Supabase database
 
-    # File storage - Environment-based configuration
-    STORAGE_TYPE: str = "local"  # local, cloudinary, s3
+    # File Storage
     UPLOAD_DIR: str = "../data/videos/raw"
     PROCESSED_DIR: str = "../data/videos/processed"
+    ANALYSIS_CACHE_DIR: str = "../data/analysis_cache"
     MAX_FILE_SIZE: int = 104857600  # 100MB
     SUPPORTED_FORMATS: list[str] = [".mp4", ".mov", ".avi"]
 
@@ -72,7 +72,7 @@ class Settings(BaseSettings):
         if self.DATABASE_URL:
             return self.DATABASE_URL
         elif self.is_test:
-            return "sqlite:///./tests/test.db"
+            return "sqlite:///:memory:"  # Use in-memory database for tests
         else:
             return "sqlite:///../data/database/tennis_coach.db"
 
@@ -134,6 +134,8 @@ def create_directories() -> None:
         Path(settings.UPLOAD_DIR),
         Path(settings.PROCESSED_DIR),
         Path(settings.ML_MODELS_DIR),
+        Path(settings.ANALYSIS_CACHE_DIR),  # Analysis cache directory
+        Path("../data/database"),  # Database directory
     ]
 
     for directory in directories:
