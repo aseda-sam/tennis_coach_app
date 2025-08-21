@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     # Environment
     ENVIRONMENT: str = "development"  # development, production
+    LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
     # API Configuration
     API_HOST: str = "0.0.0.0"
