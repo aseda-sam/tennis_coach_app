@@ -64,7 +64,7 @@ def create_mock_detections() -> tuple[
 
     # Mock pose detections - player present in all frames
     pose_detections = []
-    for i in range(50):
+    for _i in range(50):
         pose_detections.append(
             {
                 "left_wrist": [150, 180],  # Close to ball in frame 10 and 30
@@ -88,7 +88,7 @@ def create_mock_detections() -> tuple[
 class TestBallContactDetection:
     """Test cases for ball contact detection functionality."""
 
-    def test_contact_detection_with_valid_data(self):
+    def test_contact_detection_with_valid_data(self) -> None:
         """Test contact detection with valid ball and pose data."""
         ball_detections, pose_detections = create_mock_detections()
         fps = 30.0
@@ -121,7 +121,7 @@ class TestBallContactDetection:
         assert contact_detections[2]["frame_index"] == 30
         assert contact_detections[2]["contact_hand"] == "left"
 
-    def test_contact_detection_with_no_ball_detections(self):
+    def test_contact_detection_with_no_ball_detections(self) -> None:
         """Test contact detection when no balls are detected."""
         ball_detections = [[] for _ in range(50)]  # No ball detections
         pose_detections = [
@@ -140,7 +140,7 @@ class TestBallContactDetection:
         assert len(contact_timestamps) == 0
         assert len(contact_detections) == 0
 
-    def test_contact_detection_with_no_pose_detections(self):
+    def test_contact_detection_with_no_pose_detections(self) -> None:
         """Test contact detection when no poses are detected."""
         ball_detections = [[] for _ in range(50)]
         ball_detections[10] = [
@@ -165,7 +165,7 @@ class TestBallContactDetection:
         assert len(contact_timestamps) == 0
         assert len(contact_detections) == 0
 
-    def test_contact_detection_distance_calculation(self):
+    def test_contact_detection_distance_calculation(self) -> None:
         """Test that distance calculation is working correctly."""
         ball_detections = [[] for _ in range(10)]
         ball_detections[5] = [
@@ -197,7 +197,7 @@ class TestBallContactDetection:
         assert contact_detections[0]["distance"] == pytest.approx(0.0, rel=1e-6)
         assert contact_detections[0]["contact_hand"] == "left"
 
-    def test_contact_detection_hand_selection(self):
+    def test_contact_detection_hand_selection(self) -> None:
         """Test that the closest hand is selected for contact."""
         ball_detections = [[] for _ in range(10)]
         ball_detections[5] = [
