@@ -272,7 +272,7 @@ def analyze_video(
                 ball_detections=analysis_results["ball_detections"],
                 pose_detections=analysis_results["pose_detections"],
                 fps=fps,
-                contact_threshold=50.0,  # 50 pixels threshold
+                contact_threshold=150.0,  # 150 pixels threshold - more realistic for tennis videos
             )
 
             # Add contact detection results to analysis results
