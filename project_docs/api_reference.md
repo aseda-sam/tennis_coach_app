@@ -50,6 +50,14 @@ All endpoints are prefixed with the version number (e.g., `/v0/videos/upload`).
 - `GET /v0/analysis/status/{analysis_id}` - Get analysis processing status
 - `DELETE /v0/analysis/{analysis_id}` - Delete analysis results
 
+### Ball Contacts
+- `POST /v0/ball-contacts/` - Create a new ball contact marker
+- `GET /v0/ball-contacts/video/{video_id}` - Get all ball contacts for a video
+- `GET /v0/ball-contacts/video/{video_id}/timestamps` - Get ball contact timestamps for a video
+- `GET /v0/ball-contacts/{ball_contact_id}` - Get a specific ball contact by ID
+- `PUT /v0/ball-contacts/{ball_contact_id}` - Update a ball contact
+- `DELETE /v0/ball-contacts/{ball_contact_id}` - Delete a ball contact
+
 ## Authentication
 
 Currently, no authentication is required for MVP. Future versions will implement JWT-based authentication.
@@ -89,6 +97,92 @@ The API is configured to allow requests from:
 - http://127.0.0.1:3000
 
 This enables the React frontend to communicate with the backend.
+
+## Ball Contact Endpoints
+
+### Create Ball Contact
+**POST** `/v0/ball-contacts/`
+
+Creates a new ball contact marker for a video.
+
+**Request Body:**
+```json
+{
+  "video_id": 1,
+  "video_timestamp": 5.23,
+  "contact_hand": "right",
+  "stroke_type": "ground_stroke",
+  "stroke_subtype": "forehand",
+  "detection_source": "manual"
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "id": 1,
+  "video_id": 1,
+  "video_timestamp": 5.23,
+  "contact_hand": "right",
+  "stroke_type": "ground_stroke",
+  "stroke_subtype": "forehand",
+  "detection_source": "manual",
+  "created_at": "2025-01-01T12:00:00Z"
+}
+```
+
+### Get Ball Contacts for Video
+**GET** `/v0/ball-contacts/video/{video_id}`
+
+Retrieves all ball contacts for a specific video.
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "id": 1,
+    "video_timestamp": 5.23,
+    "contact_hand": "right",
+    "stroke_type": "ground_stroke",
+    "detection_source": "manual"
+  }
+]
+```
+
+### Get Ball Contact Timestamps
+**GET** `/v0/ball-contacts/video/{video_id}/timestamps`
+
+Retrieves only the timestamps of ball contacts for a video.
+
+**Response:** `200 OK`
+```json
+[5.23, 8.45, 12.67]
+```
+
+### Update Ball Contact
+**PUT** `/v0/ball-contacts/{ball_contact_id}`
+
+Updates an existing ball contact.
+
+**Request Body:**
+```json
+{
+  "stroke_type": "serve",
+  "stroke_subtype": "flat"
+}
+```
+
+### Delete Ball Contact
+**DELETE** `/v0/ball-contacts/{ball_contact_id}`
+
+Deletes a ball contact marker.
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Ball contact deleted successfully"
+}
+```
 
 ## Error Responses
 
