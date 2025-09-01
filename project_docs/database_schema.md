@@ -35,6 +35,7 @@ CREATE TABLE videos (
 ```
 
 **Key Fields:**
+
 - `id` - Unique video identifier (Primary Key)
 - `filename` - Original uploaded filename
 - `file_path` - Storage location on filesystem
@@ -80,6 +81,7 @@ CREATE TABLE ball_contacts (
 ```
 
 **Key Fields:**
+
 - `id` - Unique ball contact identifier (Primary Key)
 - `frame_number` - Frame index in the video (nullable)
 - `video_timestamp` - Timestamp in seconds when contact occurred (NOT NULL)
@@ -134,6 +136,7 @@ CREATE TABLE analyses (
 ```
 
 **Key Fields:**
+
 - `id` - Unique analysis identifier (Primary Key)
 - `video_id` - Reference to videos table (Foreign Key)
 - `video_filename` - Original video filename
@@ -159,11 +162,13 @@ CREATE TABLE analyses (
 ## Relationships
 
 ### One-to-Many: Videos to Analyses
+
 - One video can have multiple analyses
 - Each analysis belongs to one video
 - Foreign key: `analyses.video_id` → `videos.id`
 
 ### One-to-Many: Videos to Ball Contacts
+
 - One video can have multiple ball contacts
 - Each ball contact belongs to one video
 - Foreign key: `ball_contacts.video_id` → `videos.id`
@@ -172,15 +177,18 @@ CREATE TABLE analyses (
 ## Indexes
 
 ### Videos Table
+
 - `ix_videos_id` - Primary key index
 - `ix_videos_filename` - Unique filename index
 
 ### Analyses Table
+
 - `ix_analyses_id` - Primary key index
 - `ix_analyses_video_id` - Foreign key index
 - `ix_analyses_video_filename` - Filename lookup index
 
 ### Ball Contacts Table
+
 - `ix_ball_contacts_id` - Primary key index
 - `ix_ball_contacts_video_id` - Foreign key index
 - `ix_ball_contacts_frame_number` - Frame number lookup index
@@ -190,17 +198,20 @@ CREATE TABLE analyses (
 ### Status Values
 
 **Video Status:**
+
 - `uploaded` - File uploaded successfully
 - `processing` - Currently being processed
 - `completed` - Processing finished successfully
 - `failed` - Processing encountered an error
 
 **Analysis Status:**
+
 - `processing` - Analysis is currently running
 - `completed` - Analysis finished successfully
 - `failed` - Analysis encountered an error
 
 ### Analysis Types
+
 - `ball_tracking` - Ball detection only
 - `pose_estimation` - Pose detection only
 - `comprehensive` - Both ball and pose detection
@@ -208,16 +219,19 @@ CREATE TABLE analyses (
 ### Ball Contact Data Types
 
 **Contact Hand Values:**
+
 - `left` - Left hand contact
 - `right` - Right hand contact
 
 **Stroke Type Values:**
+
 - `ground_stroke` - Ground stroke (forehand/backhand)
 - `serve` - Serve
 - `volley` - Volley
 - `overhead` - Overhead/smash
 
 **Stroke Subtype Values:**
+
 - `topspin` - Topspin shot
 - `backspin` - Backspin/slice
 - `forehand` - Forehand stroke
@@ -228,6 +242,7 @@ CREATE TABLE analyses (
 - `drop` - Drop shot
 
 **Detection Source Values:**
+
 - `automated` - Automatically detected by AI
 - `manual` - Manually added by user
 
@@ -252,6 +267,7 @@ alembic downgrade -1
 ## Backup and Recovery
 
 ### Backup
+
 ```bash
 # Create backup
 cp data/database/tennis_coach.db data/database/tennis_coach_backup.db
@@ -261,6 +277,7 @@ cp data/database/tennis_coach.db "data/database/tennis_coach_$(date +%Y%m%d_%H%M
 ```
 
 ### Recovery
+
 ```bash
 # Restore from backup
 cp data/database/tennis_coach_backup.db data/database/tennis_coach.db

@@ -11,6 +11,7 @@ The main configuration is defined in `backend/app/core/config.py` using the `Set
 ## Environment Variables
 
 ### API Configuration
+
 - `API_HOST` - API server host (default: "0.0.0.0")
 - `API_PORT` - API server port (default: 8000)
 - `DEBUG` - Enable debug mode (default: False)
@@ -18,12 +19,14 @@ The main configuration is defined in `backend/app/core/config.py` using the `Set
 - `LOG_LEVEL` - Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL (default: "INFO")
 
 ### Database Configuration
+
 - `DATABASE_URL` - SQLite database URL (default: "sqlite:///../data/database/tennis_coach.db")
 - `SUPABASE_URL` - Supabase project URL (production)
 - `SUPABASE_KEY` - Supabase API key (production)
 - `SUPABASE_DB_URL` - Direct Supabase database connection URL (production)
 
 ### File Storage Configuration
+
 - `STORAGE_TYPE` - Storage type: "local", "cloudinary", "s3" (default: "local")
 - `UPLOAD_DIR` - Directory for uploaded videos (default: "../data/videos/raw")
 - `PROCESSED_DIR` - Directory for processed videos (default: "../data/videos/processed")
@@ -31,36 +34,43 @@ The main configuration is defined in `backend/app/core/config.py` using the `Set
 - `SUPPORTED_FORMATS` - List of supported video formats (default: [".mp4", ".mov", ".avi"])
 
 ### Computer Vision Configuration
+
 - `ML_MODELS_DIR` - Directory containing ML models (default: "ml_models")
 - `YOLO_DEFAULT_MODEL` - Default YOLO model to use (default: "nano")
 - `CONFIDENCE_THRESHOLD` - General confidence threshold (default: 0.5)
 - `BALL_CONFIDENCE_THRESHOLD` - Ball detection confidence threshold (default: 0.7)
 
 ### Ball Contact Detection Configuration
+
 - `BALL_CONTACT_TIMESTAMP_TOLERANCE` - Tolerance in seconds for duplicate contact detection (default: 0.1)
 
 This setting controls how close two ball contacts can be in time before they're considered duplicates. Used when:
+
 - Preventing duplicate manual contact markers
 - Validating contact timestamps
 - Checking for existing contacts at similar timestamps
 
 **Usage Examples:**
+
 - `0.1` - 100ms tolerance (default, suitable for most cases)
 - `0.05` - 50ms tolerance (more strict, for high-precision analysis)
 - `0.2` - 200ms tolerance (more lenient, for rough marking)
 
 ### Processing Configuration
+
 - `MAX_VIDEO_DURATION` - Maximum video duration in seconds (default: 300 = 5 minutes)
 - `FRAME_SKIP_RATIO` - Process every Nth frame (default: 1 = every frame)
 - `MAX_VIDEO_RESOLUTION` - Maximum video resolution (default: (3840, 2160) = 4K)
 - `MAX_FPS` - Maximum frame rate (default: 60)
 
 ### Docker-Specific Configuration
+
 - `DOCKER_MAX_VIDEO_RESOLUTION` - Maximum resolution in Docker (default: (1920, 1080) = 1080p)
 - `DOCKER_MAX_FPS` - Maximum frame rate in Docker (default: 60)
 - `DOCKER_FRAME_SKIP_RATIO` - Frame skip ratio in Docker (default: 1)
 
 ### CORS Configuration
+
 - `BACKEND_CORS_ORIGINS` - List of allowed CORS origins (default: ["http://localhost:3000", "http://127.0.0.1:3000"])
 
 ## Environment Detection
@@ -68,16 +78,19 @@ This setting controls how close two ball contacts can be in time before they're 
 The application automatically detects the environment and applies appropriate limits:
 
 ### Local Environment
+
 - Uses full resolution and frame rate limits
 - Processes every frame by default
 - Optimized for development and testing
 
 ### Docker Environment
+
 - Uses reduced resolution and frame rate limits
 - Optimized for containerized deployment
 - Detected by presence of `/.dockerenv` file
 
 ### Production Environment
+
 - Uses production database (Supabase)
 - Applies strict processing limits
 - Optimized for performance and cost
@@ -85,6 +98,7 @@ The application automatically detects the environment and applies appropriate li
 ## Configuration Usage
 
 ### In Python Code
+
 ```python
 from app.core.config import settings
 
@@ -94,6 +108,7 @@ max_file_size = settings.MAX_FILE_SIZE
 ```
 
 ### Environment Variable Override
+
 ```bash
 # Set tolerance to 200ms
 export BALL_CONTACT_TIMESTAMP_TOLERANCE=0.2
@@ -103,7 +118,9 @@ export MAX_FILE_SIZE=52428800
 ```
 
 ### .env File
+
 Create a `.env` file in the backend directory:
+
 ```env
 BALL_CONTACT_TIMESTAMP_TOLERANCE=0.15
 MAX_FILE_SIZE=52428800
@@ -113,6 +130,7 @@ ENVIRONMENT=production
 ## Configuration Validation
 
 The configuration system automatically validates:
+
 - Data types (float, int, string, etc.)
 - Required vs optional fields
 - Environment-specific constraints
@@ -130,6 +148,7 @@ The configuration system automatically validates:
 ## Migration Notes
 
 When adding new configuration settings:
+
 1. Add the setting to `Settings` class in `config.py`
 2. Document it in this file
 3. Update any relevant tests

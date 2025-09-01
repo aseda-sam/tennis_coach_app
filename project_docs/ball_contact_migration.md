@@ -279,16 +279,18 @@ export const ballContactApi = {
     const response = await api.get(`/ball-contacts/video/${videoId}`);
     return response.data;
   },
-  
+
   getContactTimestamps: async (videoId: number): Promise<number[]> => {
-    const response = await api.get(`/ball-contacts/video/${videoId}/timestamps`);
+    const response = await api.get(
+      `/ball-contacts/video/${videoId}/timestamps`
+    );
     return response.data;
   },
-  
+
   createContact: async (contact: BallContactCreate): Promise<BallContact> => {
-    const response = await api.post('/ball-contacts/', contact);
+    const response = await api.post("/ball-contacts/", contact);
     return response.data;
-  }
+  },
 };
 ```
 
@@ -401,17 +403,20 @@ export const ballContactApi = {
 ## Implementation Timeline
 
 ### Week 1: Backend Integration
+
 - [ ] Update analysis service to create ball contacts
 - [ ] Add contact timestamps endpoint
 - [ ] Test analysis workflow integration
 
 ### Week 2: Frontend Integration
+
 - [ ] Create ball contact API service
 - [ ] Update VideoPlayer component
 - [ ] Update AnalysisDashboard component
 - [ ] Test frontend integration
 
 ### Week 3: Cleanup & Validation
+
 - [ ] Clean up database
 - [ ] End-to-end testing
 - [ ] Performance validation
