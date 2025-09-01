@@ -52,7 +52,7 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this ball contact?')) {
+    if (!window.confirm('Are you sure you want to delete this ball contact?')) {
       return;
     }
 
@@ -155,12 +155,16 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
             <div className="contact-details">
               <div className="detail-row">
                 <span className="detail-label">Timestamp:</span>
-                <span className="detail-value">{formatTime(contact.video_timestamp)}</span>
+                <span className="detail-value">
+                  {formatTime(contact.video_timestamp)}
+                </span>
               </div>
 
               <div className="detail-row">
                 <span className="detail-label">Contact Hand:</span>
-                <span className="detail-value capitalize">{contact.contact_hand}</span>
+                <span className="detail-value capitalize">
+                  {contact.contact_hand}
+                </span>
               </div>
 
               <div className="detail-row">
@@ -179,7 +183,9 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
 
               <div className="detail-row">
                 <span className="detail-label">Detection Source:</span>
-                <span className={`detail-value badge ${contact.detection_source}`}>
+                <span
+                  className={`detail-value badge ${contact.detection_source}`}
+                >
                   {contact.detection_source}
                 </span>
               </div>
