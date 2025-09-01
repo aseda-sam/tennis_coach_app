@@ -144,7 +144,7 @@ def update_ball_contact(
     return contact
 
 
-def delete_ball_contact(db: Session, ball_contact_id: int) -> bool:
+def delete_ball_contact(db: Session, ball_contact_id: int) -> None:
     """
     Delete a BallContact record by its ID.
 
@@ -152,10 +152,14 @@ def delete_ball_contact(db: Session, ball_contact_id: int) -> bool:
         db (Session): SQLAlchemy database session.
         ball_contact_id (int): ID of the BallContact record to delete.
 
-    Returns:
-        bool: True if the record was deleted, False otherwise.
+    Raises:
+        ValueError: If the BallContact record is not found.
     """
-    result = db.query(BallContact).filter(BallContact.id == ball_contact_id).delete()
+    # First check if the contact exists
+    contact = db.query(BallContact).filter(BallContact.id == ball_contact_id).first()
+    if not contact:
+        raise ValueError(f"BallContact with ID {ball_contact_id} not found")
 
+    # Delete the contact
+    db.delete(contact)
     db.commit()
-    return result > 0
