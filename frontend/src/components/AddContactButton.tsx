@@ -69,13 +69,8 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
       ) : (
         <div className="add-contact-form">
           <div className="form-header">
-            <span className="timestamp-display">
-              {formatTime(currentTime)}
-            </span>
-            <button
-              className="close-form-btn"
-              onClick={() => setIsOpen(false)}
-            >
+            <span className="timestamp-display">{formatTime(currentTime)}</span>
+            <button className="close-form-btn" onClick={() => setIsOpen(false)}>
               ×
             </button>
           </div>

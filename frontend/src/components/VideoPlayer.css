@@ -2,7 +2,9 @@
 .video-player-container {
   background: white;
   border-radius: 16px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   max-width: 100%;
   border: 1px solid #f1f5f9;
@@ -384,23 +386,23 @@
   .video-player-header {
     padding: 16px 20px;
   }
-  
+
   .video-title {
     font-size: 1.1rem;
   }
-  
+
   .video-controls {
     padding: 12px 16px;
   }
-  
+
   .left-controls {
     gap: 12px;
   }
-  
+
   .volume-slider {
     width: 60px;
   }
-  
+
   .play-button {
     width: 60px;
     height: 60px;
@@ -439,6 +441,10 @@
 }
 
 @keyframes spin {
-  0% { transform: translate(-50%, -50%) rotate(0deg); }
-  100% { transform: translate(-50%, -50%) rotate(360deg); }
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }

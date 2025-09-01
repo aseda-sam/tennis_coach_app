@@ -6,9 +6,9 @@ import React, {
   useState,
 } from 'react';
 import { useBallContacts } from '../hooks/useBallContacts';
-import BallContactModal from './BallContactModal';
-import AddContactButton from './AddContactButton';
 import { BallContact, BallContactCreate } from '../services/ballContactApi';
+import AddContactButton from './AddContactButton';
+import BallContactModal from './BallContactModal';
 import {
   CloseIcon,
   FullscreenIcon,
@@ -45,12 +45,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showPlayOverlay, setShowPlayOverlay] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
-  const [selectedContact, setSelectedContact] = useState<BallContact | null>(null);
+  const [selectedContact, setSelectedContact] = useState<BallContact | null>(
+    null
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Use ball contacts hook if videoId is provided
-  const { contacts: ballContacts, timestamps: contactTimestamps, updateContact, deleteContact, createContact } = useBallContacts({
+  const {
+    contacts: ballContacts,
+    updateContact,
+    deleteContact,
+    createContact,
+  } = useBallContacts({
     videoId: videoId || 0,
     autoRefresh: !!videoId,
   });
@@ -323,10 +330,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 {ballContacts.length > 0 && duration > 0 && (
                   <div className="contact-markers">
                     {ballContacts.map((contact) => {
-                      const position = (contact.video_timestamp / duration) * 100;
-                      const isAutomated = contact.detection_source === 'automated';
+                      const position =
+                        (contact.video_timestamp / duration) * 100;
+                      const isAutomated =
+                        contact.detection_source === 'automated';
                       const markerClass = `contact-marker ${isAutomated ? 'automated' : 'manual'}`;
-                      
+
                       return (
                         <div
                           key={contact.id}
