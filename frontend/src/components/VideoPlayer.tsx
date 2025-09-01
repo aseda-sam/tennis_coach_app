@@ -289,6 +289,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <AddContactButton
             currentTime={currentTime}
             videoId={videoId || 0}
+            videoDuration={duration}
             onAddContact={async (contact: BallContactCreate) => {
               await createContact(contact);
             }}
@@ -407,6 +408,7 @@ Stroke: ${contact.stroke_type || 'Unknown'}`}
       <BallContactModal
         contact={selectedContact}
         isOpen={isModalOpen}
+        videoDuration={duration}
         onClose={() => {
           setIsModalOpen(false);
           setSelectedContact(null);
