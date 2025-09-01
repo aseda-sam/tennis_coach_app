@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BallContactCreate } from '../services/ballContactApi';
 import './AddContactButton.css';
 
@@ -25,6 +25,14 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
     stroke_subtype: '',
     detection_source: 'manual',
   });
+
+  // Update video_timestamp when currentTime changes
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      video_timestamp: currentTime,
+    }));
+  }, [currentTime]);
 
   const handleAddContact = async () => {
     setIsLoading(true);
@@ -70,14 +78,11 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
           <span className="add-text">Add Contact</span>
         </button>
       ) : (
-        <div 
-          className="add-contact-form"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="add-contact-form" onClick={(e) => e.stopPropagation()}>
           <div className="form-header">
             <span className="timestamp-display">{formatTime(currentTime)}</span>
-            <button 
-              className="close-form-btn" 
+            <button
+              className="close-form-btn"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(false);
