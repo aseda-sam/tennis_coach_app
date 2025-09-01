@@ -3,6 +3,7 @@ from typing import List, Literal, Optional
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.ball_contact import BallContact
 from app.models.video import Video
 
@@ -66,21 +67,22 @@ def create_ball_contact(
     if video_timestamp < 0:
         raise ValueError("Timestamp must be greater than 0")
 
-    # Check for existing manual contact at the same timestamp (within 0.1 seconds)
+    # Check for existing manual contact at the same timestamp (within tolerance)
+    tolerance = settings.BALL_CONTACT_TIMESTAMP_TOLERANCE
     existing_manual_detection = (
         db.query(BallContact)
         .filter(
             BallContact.video_id == video_id,
             BallContact.detection_source == "manual",
             BallContact.video_timestamp.between(
-                video_timestamp - 0.1, video_timestamp + 0.1
+                video_timestamp - tolerance, video_timestamp + tolerance
             ),
         )
         .first()
     )
     if existing_manual_detection:
         raise ValueError(
-            f"Manual contact already exists at timestamp {video_timestamp} (±0.1 seconds) for video {video_id}"
+            f"Manual contact already exists at timestamp {video_timestamp} (±{tolerance} seconds) for video {video_id}"
         )
 
     # Create new manual contact detection
