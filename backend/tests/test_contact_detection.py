@@ -5,7 +5,14 @@ Tests for ball contact detection functionality.
 from typing import Any, Dict, List
 
 import pytest
+from sqlalchemy.orm import Session
 
+from app.models.video import Video
+from app.services.ball_contact_service import (
+    ALLOWED_BALL_CONTACT_FIELDS,
+    create_ball_contact,
+    update_ball_contact,
+)
 from app.services.cv_service import detect_ball_contact
 
 
@@ -230,3 +237,186 @@ class TestBallContactDetection:
         assert contact_detections[0]["distance"] == pytest.approx(
             1.414, rel=1e-3
         )  # sqrt(1^2 + 1^2)
+
+
+class TestBallContactServiceSecurity:
+    """Test cases for ball contact service security features."""
+
+    def test_allowed_fields_constant(self) -> None:
+        """Test that ALLOWED_BALL_CONTACT_FIELDS contains all valid fields."""
+        expected_fields = {
+            "frame_number",
+            "video_timestamp",
+            "player",
+            "contact_hand",
+            "stroke_type",
+            "stroke_subtype",
+            "confidence",
+            "ball_position",
+            "player_position",
+            "description",
+            "detection_source",
+            "ball_area",
+            "ball_size_factor",
+            "racket_data",
+            "ball_bbox",
+            "ball_racket_distance",
+        }
+        assert expected_fields == ALLOWED_BALL_CONTACT_FIELDS
+
+    def test_update_ball_contact_with_valid_fields(self, db_session: Session) -> None:
+        """Test that update_ball_contact accepts valid fields."""
+        # Create a test video first
+        video = Video(
+            filename="test_video.mp4",
+            file_path="/test/path",
+            file_size=1024000,  # 1MB
+            duration=60.0,
+            fps=30.0,
+            frame_count=1800,
+        )
+        db_session.add(video)
+        db_session.commit()
+        db_session.refresh(video)
+
+        # Create a test ball contact
+        contact = create_ball_contact(
+            db=db_session,
+            video_id=video.id,
+            video_timestamp=1.5,
+            contact_hand="right",
+            stroke_type="ground_stroke",
+            stroke_subtype="forehand",
+            detection_source="manual",
+        )
+
+        # Update with valid fields
+        updated_contact = update_ball_contact(
+            db=db_session,
+            ball_contact_id=contact.id,
+            confidence=0.95,
+            description="Updated description",
+            stroke_type="serve",
+        )
+
+        assert updated_contact.confidence == 0.95
+        assert updated_contact.description == "Updated description"
+        assert updated_contact.stroke_type == "serve"
+
+    def test_update_ball_contact_with_invalid_fields(self, db_session: Session) -> None:
+        """Test that update_ball_contact rejects invalid fields."""
+        # Create a test video first
+        video = Video(
+            filename="test_video_invalid_fields.mp4",
+            file_path="/test/path",
+            file_size=1024000,  # 1MB
+            duration=60.0,
+            fps=30.0,
+            frame_count=1800,
+        )
+        db_session.add(video)
+        db_session.commit()
+        db_session.refresh(video)
+
+        # Create a test ball contact
+        contact = create_ball_contact(
+            db=db_session,
+            video_id=video.id,
+            video_timestamp=1.5,
+            contact_hand="right",
+            stroke_type="ground_stroke",
+            stroke_subtype="forehand",
+            detection_source="manual",
+        )
+
+        # Try to update with invalid fields
+        with pytest.raises(ValueError, match="Invalid fields for update"):
+            update_ball_contact(
+                db=db_session,
+                ball_contact_id=contact.id,
+                invalid_field="should_fail",
+                another_invalid_field="should_also_fail",
+            )
+
+    def test_update_ball_contact_with_mixed_valid_invalid_fields(
+        self, db_session: Session
+    ) -> None:
+        """Test that update_ball_contact rejects when any field is invalid."""
+        # Create a test video first
+        video = Video(
+            filename="test_video_mixed_fields.mp4",
+            file_path="/test/path",
+            file_size=1024000,  # 1MB
+            duration=60.0,
+            fps=30.0,
+            frame_count=1800,
+        )
+        db_session.add(video)
+        db_session.commit()
+        db_session.refresh(video)
+
+        # Create a test ball contact
+        contact = create_ball_contact(
+            db=db_session,
+            video_id=video.id,
+            video_timestamp=1.5,
+            contact_hand="right",
+            stroke_type="ground_stroke",
+            stroke_subtype="forehand",
+            detection_source="manual",
+        )
+
+        # Try to update with mix of valid and invalid fields
+        with pytest.raises(ValueError, match="Invalid fields for update"):
+            update_ball_contact(
+                db=db_session,
+                ball_contact_id=contact.id,
+                confidence=0.95,  # Valid field
+                invalid_field="should_fail",  # Invalid field
+            )
+
+    def test_update_ball_contact_sql_injection_prevention(
+        self, db_session: Session
+    ) -> None:
+        """Test that update_ball_contact prevents SQL injection attempts."""
+        # Create a test video first
+        video = Video(
+            filename="test_video_sql_injection.mp4",
+            file_path="/test/path",
+            file_size=1024000,  # 1MB
+            duration=60.0,
+            fps=30.0,
+            frame_count=1800,
+        )
+        db_session.add(video)
+        db_session.commit()
+        db_session.refresh(video)
+
+        # Create a test ball contact
+        contact = create_ball_contact(
+            db=db_session,
+            video_id=video.id,
+            video_timestamp=1.5,
+            contact_hand="right",
+            stroke_type="ground_stroke",
+            stroke_subtype="forehand",
+            detection_source="manual",
+        )
+
+        # Try to inject malicious field names
+        malicious_fields = [
+            "id; DROP TABLE ball_contacts; --",
+            "__class__",
+            "__dict__",
+            "_sa_instance_state",
+            "query",
+            "metadata",
+        ]
+
+        for malicious_field in malicious_fields:
+            with pytest.raises(ValueError, match="Invalid fields for update"):
+                update_ball_contact(
+                    db=db_session,
+                    ball_contact_id=contact.id,
+                    **{malicious_field: "malicious_value"},
+                )
