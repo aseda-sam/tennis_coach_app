@@ -29,8 +29,8 @@ def upgrade() -> None:
 
     # Copy data from enum to string (convert enum values to strings)
     op.execute("""
-        UPDATE ball_contacts 
-        SET contact_hand_new = CASE 
+        UPDATE ball_contacts
+        SET contact_hand_new = CASE
             WHEN contact_hand = 'left' THEN 'left'
             WHEN contact_hand = 'right' THEN 'right'
             ELSE NULL
@@ -49,8 +49,8 @@ def downgrade() -> None:
     # Convert back to enum (this is simplified - you'd need to recreate the enum type)
     # For now, we'll just convert the string column back
     op.execute("""
-        UPDATE ball_contacts 
-        SET contact_hand = CASE 
+        UPDATE ball_contacts
+        SET contact_hand = CASE
             WHEN contact_hand = 'left' THEN 'left'
             WHEN contact_hand = 'right' THEN 'right'
             ELSE NULL
