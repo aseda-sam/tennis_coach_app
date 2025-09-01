@@ -8,6 +8,26 @@ from app.models.video import Video
 
 logger = logging.getLogger(__name__)
 
+# Define allowed fields for BallContact updates
+ALLOWED_BALL_CONTACT_FIELDS = {
+    "frame_number",
+    "video_timestamp",
+    "player",
+    "contact_hand",
+    "stroke_type",
+    "stroke_subtype",
+    "confidence",
+    "ball_position",
+    "player_position",
+    "description",
+    "detection_source",
+    "ball_area",
+    "ball_size_factor",
+    "racket_data",
+    "ball_bbox",
+    "ball_racket_distance",
+}
+
 
 def create_ball_contact(
     db: Session,
@@ -131,13 +151,25 @@ def update_ball_contact(
 
     Returns:
         BallContact: The updated BallContact record.
+
+    Raises:
+        ValueError: If the BallContact record is not found or invalid fields are provided.
     """
     contact = db.query(BallContact).filter(BallContact.id == ball_contact_id).first()
     if not contact:
         raise ValueError(f"BallContact with ID {ball_contact_id} not found")
 
+    # Validate that all update keys are allowed fields
+    invalid_fields = set(updates.keys()) - ALLOWED_BALL_CONTACT_FIELDS
+    if invalid_fields:
+        raise ValueError(
+            f"Invalid fields for update: {invalid_fields}. Allowed fields: {ALLOWED_BALL_CONTACT_FIELDS}"
+        )
+
+    # Safely update only validated fields
     for key, value in updates.items():
-        setattr(contact, key, value)
+        if key in ALLOWED_BALL_CONTACT_FIELDS:
+            setattr(contact, key, value)
 
     db.commit()
     db.refresh(contact)
