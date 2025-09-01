@@ -9,6 +9,7 @@ The Tennis Coach API provides endpoints for video upload, processing, and analys
 **Current Version**: v0 (Alpha) - API is under active development and may have breaking changes.
 
 ## Base URL
+
 ```
 http://localhost:8000
 ```
@@ -31,11 +32,13 @@ All endpoints are prefixed with the version number (e.g., `/v0/videos/upload`).
 ## Quick Reference
 
 ### Health & Status
+
 - `GET /health` - Health check endpoint
 - `GET /` - API root information
 - `GET /v0` - Version 0 API information
 
 ### Video Management
+
 - `POST /v0/videos/upload` - Upload a tennis video for analysis
 - `GET /v0/videos/` - List all uploaded videos
 - `GET /v0/videos/{video_id}` - Get video details by ID
@@ -44,11 +47,21 @@ All endpoints are prefixed with the version number (e.g., `/v0/videos/upload`).
 - `DELETE /v0/videos/{video_id}` - Delete video and associated data
 
 ### Analysis
+
 - `POST /v0/analysis/videos/{video_id}` - Start analysis for a video
 - `GET /v0/analysis/{analysis_id}` - Get analysis results by ID
 - `GET /v0/analysis/` - List all analyses
 - `GET /v0/analysis/status/{analysis_id}` - Get analysis processing status
 - `DELETE /v0/analysis/{analysis_id}` - Delete analysis results
+
+### Ball Contacts
+
+- `POST /v0/ball-contacts/` - Create a new ball contact marker
+- `GET /v0/ball-contacts/video/{video_id}` - Get all ball contacts for a video
+- `GET /v0/ball-contacts/video/{video_id}/timestamps` - Get ball contact timestamps for a video
+- `GET /v0/ball-contacts/{ball_contact_id}` - Get a specific ball contact by ID
+- `PUT /v0/ball-contacts/{ball_contact_id}` - Update a ball contact
+- `DELETE /v0/ball-contacts/{ball_contact_id}` - Delete a ball contact
 
 ## Authentication
 
@@ -63,18 +76,21 @@ Currently, no authentication is required for MVP. Future versions will implement
 ### Video Processing Limits (Environment-Specific)
 
 #### Local Environment (M1 MacBook Pro)
+
 - **Maximum resolution**: 4K (3840x2160)
 - **Maximum frame rate**: 60fps
 - **Maximum duration**: 5 minutes (300 seconds)
 - **Frame skip ratio**: 2 (process every 2nd frame)
 
 #### Docker Environment
+
 - **Maximum resolution**: 1080p (1920x1080)
 - **Maximum frame rate**: 60fps
 - **Maximum duration**: 5 minutes (300 seconds)
 - **Frame skip ratio**: 3 (process every 3rd frame)
 
 #### Production Environment (Render)
+
 - **Maximum resolution**: 1080p (1920x1080)
 - **Maximum frame rate**: 30fps
 - **Maximum duration**: 5 minutes (300 seconds)
@@ -85,10 +101,108 @@ Currently, no authentication is required for MVP. Future versions will implement
 ## CORS Configuration
 
 The API is configured to allow requests from:
+
 - http://localhost:3000
 - http://127.0.0.1:3000
 
 This enables the React frontend to communicate with the backend.
+
+## Ball Contact Endpoints
+
+### Create Ball Contact
+
+**POST** `/v0/ball-contacts/`
+
+Creates a new ball contact marker for a video.
+
+**Request Body:**
+
+```json
+{
+  "video_id": 1,
+  "video_timestamp": 5.23,
+  "contact_hand": "right",
+  "stroke_type": "ground_stroke",
+  "stroke_subtype": "forehand",
+  "detection_source": "manual"
+}
+```
+
+**Response:** `201 Created`
+
+```json
+{
+  "id": 1,
+  "video_id": 1,
+  "video_timestamp": 5.23,
+  "contact_hand": "right",
+  "stroke_type": "ground_stroke",
+  "stroke_subtype": "forehand",
+  "detection_source": "manual",
+  "created_at": "2025-01-01T12:00:00Z"
+}
+```
+
+### Get Ball Contacts for Video
+
+**GET** `/v0/ball-contacts/video/{video_id}`
+
+Retrieves all ball contacts for a specific video.
+
+**Response:** `200 OK`
+
+```json
+[
+  {
+    "id": 1,
+    "video_timestamp": 5.23,
+    "contact_hand": "right",
+    "stroke_type": "ground_stroke",
+    "detection_source": "manual"
+  }
+]
+```
+
+### Get Ball Contact Timestamps
+
+**GET** `/v0/ball-contacts/video/{video_id}/timestamps`
+
+Retrieves only the timestamps of ball contacts for a video.
+
+**Response:** `200 OK`
+
+```json
+[5.23, 8.45, 12.67]
+```
+
+### Update Ball Contact
+
+**PUT** `/v0/ball-contacts/{ball_contact_id}`
+
+Updates an existing ball contact.
+
+**Request Body:**
+
+```json
+{
+  "stroke_type": "serve",
+  "stroke_subtype": "flat"
+}
+```
+
+### Delete Ball Contact
+
+**DELETE** `/v0/ball-contacts/{ball_contact_id}`
+
+Deletes a ball contact marker.
+
+**Response:** `200 OK`
+
+```json
+{
+  "message": "Ball contact deleted successfully"
+}
+```
 
 ## Error Responses
 
@@ -107,6 +221,7 @@ The API uses standardized error responses with the following structure:
 ```
 
 ### Common HTTP Status Codes
+
 - `200` - Success
 - `400` - Bad Request (validation errors, processing failures)
 - `404` - Not Found (video or analysis not found)
@@ -114,6 +229,7 @@ The API uses standardized error responses with the following structure:
 - `500` - Internal Server Error (unexpected server errors)
 
 ### Error Codes
+
 - `VALIDATION_ERROR` - Input validation failed
 - `FILE_TOO_LARGE` - File exceeds size limit
 - `UNSUPPORTED_FORMAT` - File format not supported
@@ -128,6 +244,7 @@ The API uses standardized error responses with the following structure:
 ## Request/Response Models
 
 ### Video Upload Response
+
 ```json
 {
   "video_id": 1,
@@ -146,6 +263,7 @@ The API uses standardized error responses with the following structure:
 ```
 
 ### Video Information Response
+
 ```json
 {
   "id": 1,
@@ -166,6 +284,7 @@ The API uses standardized error responses with the following structure:
 ```
 
 ### Analysis Start Response
+
 ```json
 {
   "analysis_id": 1,
@@ -177,6 +296,7 @@ The API uses standardized error responses with the following structure:
 ```
 
 ### Analysis Status Response
+
 ```json
 {
   "analysis_id": 1,
@@ -188,6 +308,7 @@ The API uses standardized error responses with the following structure:
 ```
 
 **Status Values:**
+
 - `processing` - Analysis is currently running
 - `completed` - Analysis finished successfully
 - `failed` - Analysis encountered an error
@@ -199,6 +320,7 @@ The API uses standardized error responses with the following structure:
 ### Testing the API
 
 1. **Start the backend server**:
+
    ```bash
    cd backend
    python -m uvicorn app.main:app --reload --port 8000
@@ -211,6 +333,7 @@ The API uses standardized error responses with the following structure:
 ### Example Requests
 
 #### Upload Video
+
 ```bash
 curl -X POST "http://localhost:8000/v0/videos/upload" \
   -H "accept: application/json" \
@@ -219,18 +342,21 @@ curl -X POST "http://localhost:8000/v0/videos/upload" \
 ```
 
 #### List Videos
+
 ```bash
 curl -X GET "http://localhost:8000/v0/videos/" \
   -H "accept: application/json"
 ```
 
 #### Get Video Details
+
 ```bash
 curl -X GET "http://localhost:8000/v0/videos/1" \
   -H "accept: application/json"
 ```
 
 #### Start Analysis
+
 ```bash
 curl -X POST "http://localhost:8000/v0/analysis/videos/1" \
   -H "accept: application/json" \
@@ -243,12 +369,14 @@ curl -X POST "http://localhost:8000/v0/analysis/videos/1" \
 ```
 
 #### Get Analysis Results
+
 ```bash
 curl -X GET "http://localhost:8000/v0/analysis/1" \
   -H "accept: application/json"
 ```
 
 #### Get Analysis Status
+
 ```bash
 curl -X GET "http://localhost:8000/v0/analysis/status/1" \
   -H "accept: application/json"

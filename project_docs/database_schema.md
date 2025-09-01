@@ -35,6 +35,7 @@ CREATE TABLE videos (
 ```
 
 **Key Fields:**
+
 - `id` - Unique video identifier (Primary Key)
 - `filename` - Original uploaded filename
 - `file_path` - Storage location on filesystem
@@ -47,6 +48,59 @@ CREATE TABLE videos (
 - `status` - Processing status (uploaded, processing, completed, failed)
 - `error_message` - Error details if processing failed
 - `created_at` - Upload timestamp
+- `updated_at` - Last modification timestamp
+
+### Ball Contacts Table
+
+Stores ball contact detection data for tennis videos. This table tracks when the ball makes contact with the player's racket or hand, including both automated and manual detections.
+
+```sql
+CREATE TABLE ball_contacts (
+    id INTEGER PRIMARY KEY,
+    frame_number INTEGER,
+    video_timestamp FLOAT NOT NULL,
+    player INTEGER,
+    contact_hand VARCHAR(10),  -- 'left' or 'right'
+    stroke_type VARCHAR,       -- 'ground_stroke', 'serve', 'volley', 'overhead'
+    stroke_subtype VARCHAR,    -- 'topspin', 'backspin', 'forehand', 'backhand', 'flat', 'slice', 'lob', 'drop'
+    confidence FLOAT,
+    ball_position VARCHAR,     -- JSON: {"x": 0.5, "y": 0.3}
+    player_position VARCHAR,   -- JSON: {"x": 0.5, "y": 0.3}
+    description VARCHAR,
+    detection_source VARCHAR(20) NOT NULL DEFAULT 'automated',  -- 'automated' or 'manual'
+    ball_area FLOAT,
+    ball_size_factor FLOAT,
+    racket_data VARCHAR,
+    ball_bbox VARCHAR,
+    ball_racket_distance FLOAT,
+    video_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME,
+    FOREIGN KEY(video_id) REFERENCES videos (id) ON DELETE CASCADE
+);
+```
+
+**Key Fields:**
+
+- `id` - Unique ball contact identifier (Primary Key)
+- `frame_number` - Frame index in the video (nullable)
+- `video_timestamp` - Timestamp in seconds when contact occurred (NOT NULL)
+- `player` - Player identifier (nullable)
+- `contact_hand` - Hand used for contact ('left' or 'right')
+- `stroke_type` - Type of stroke (ground_stroke, serve, volley, overhead)
+- `stroke_subtype` - Subtype of stroke (topspin, backspin, forehand, backhand, flat, slice, lob, drop)
+- `confidence` - Detection confidence score (0.0 to 1.0)
+- `ball_position` - JSON string of ball coordinates
+- `player_position` - JSON string of player position data
+- `description` - Additional description or notes
+- `detection_source` - Source of detection ('automated' or 'manual')
+- `ball_area` - Area of detected ball in pixels
+- `ball_size_factor` - Size factor of the ball
+- `racket_data` - JSON string of racket detection data
+- `ball_bbox` - JSON string of ball bounding box coordinates
+- `ball_racket_distance` - Distance between ball and racket in pixels
+- `video_id` - Reference to videos table (Foreign Key, NOT NULL)
+- `created_at` - Contact detection timestamp
 - `updated_at` - Last modification timestamp
 
 ### Analyses Table
@@ -82,6 +136,7 @@ CREATE TABLE analyses (
 ```
 
 **Key Fields:**
+
 - `id` - Unique analysis identifier (Primary Key)
 - `video_id` - Reference to videos table (Foreign Key)
 - `video_filename` - Original video filename
@@ -107,40 +162,89 @@ CREATE TABLE analyses (
 ## Relationships
 
 ### One-to-Many: Videos to Analyses
+
 - One video can have multiple analyses
 - Each analysis belongs to one video
 - Foreign key: `analyses.video_id` → `videos.id`
 
+### One-to-Many: Videos to Ball Contacts
+
+- One video can have multiple ball contacts
+- Each ball contact belongs to one video
+- Foreign key: `ball_contacts.video_id` → `videos.id`
+- Cascade delete: When a video is deleted, all associated ball contacts are also deleted
+
 ## Indexes
 
 ### Videos Table
+
 - `ix_videos_id` - Primary key index
 - `ix_videos_filename` - Unique filename index
 
 ### Analyses Table
+
 - `ix_analyses_id` - Primary key index
 - `ix_analyses_video_id` - Foreign key index
 - `ix_analyses_video_filename` - Filename lookup index
+
+### Ball Contacts Table
+
+- `ix_ball_contacts_id` - Primary key index
+- `ix_ball_contacts_video_id` - Foreign key index
+- `ix_ball_contacts_frame_number` - Frame number lookup index
 
 ## Data Types
 
 ### Status Values
 
 **Video Status:**
+
 - `uploaded` - File uploaded successfully
 - `processing` - Currently being processed
 - `completed` - Processing finished successfully
 - `failed` - Processing encountered an error
 
 **Analysis Status:**
+
 - `processing` - Analysis is currently running
 - `completed` - Analysis finished successfully
 - `failed` - Analysis encountered an error
 
 ### Analysis Types
+
 - `ball_tracking` - Ball detection only
 - `pose_estimation` - Pose detection only
 - `comprehensive` - Both ball and pose detection
+
+### Ball Contact Data Types
+
+**Contact Hand Values:**
+
+- `left` - Left hand contact
+- `right` - Right hand contact
+
+**Stroke Type Values:**
+
+- `ground_stroke` - Ground stroke (forehand/backhand)
+- `serve` - Serve
+- `volley` - Volley
+- `overhead` - Overhead/smash
+
+**Stroke Subtype Values:**
+
+- `topspin` - Topspin shot
+- `backspin` - Backspin/slice
+- `forehand` - Forehand stroke
+- `backhand` - Backhand stroke
+- `flat` - Flat shot
+- `slice` - Slice shot
+- `lob` - Lob shot
+- `drop` - Drop shot
+
+**Detection Source Values:**
+
+- `automated` - Automatically detected by AI
+- `manual` - Manually added by user
 
 ## Migration Management
 
@@ -163,6 +267,7 @@ alembic downgrade -1
 ## Backup and Recovery
 
 ### Backup
+
 ```bash
 # Create backup
 cp data/database/tennis_coach.db data/database/tennis_coach_backup.db
@@ -172,6 +277,7 @@ cp data/database/tennis_coach.db "data/database/tennis_coach_$(date +%Y%m%d_%H%M
 ```
 
 ### Recovery
+
 ```bash
 # Restore from backup
 cp data/database/tennis_coach_backup.db data/database/tennis_coach.db

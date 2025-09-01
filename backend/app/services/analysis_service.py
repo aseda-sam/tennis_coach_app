@@ -13,10 +13,55 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.analysis import Analysis
+from app.services.ball_contact_service import create_ball_contact
 from app.services.cv_service import cv_service
 from app.utils.progress_utils import update_task_progress
 
 logger = logging.getLogger(__name__)
+
+
+def _create_ball_contacts_from_detections(
+    db: Session, video_id: int, contact_detections: list
+) -> None:
+    """
+    Create ball contact records from contact detections.
+
+    Args:
+        db: Database session
+        video_id: ID of the video
+        contact_detections: List of contact detection dictionaries
+    """
+    for contact in contact_detections:
+        try:
+            # Map contact_type to stroke_type
+            stroke_type = "ground_stroke"  # Default mapping
+            if contact.get("contact_type") == "serve":
+                stroke_type = "serve"
+            elif contact.get("contact_type") == "volley":
+                stroke_type = "volley"
+            elif contact.get("contact_type") == "overhead":
+                stroke_type = "overhead"
+
+            # Create ball contact record
+            create_ball_contact(
+                db=db,
+                video_id=video_id,
+                video_timestamp=contact["timestamp"],
+                contact_hand=contact["contact_hand"],
+                stroke_type=stroke_type,
+                stroke_subtype=None,  # Could be enhanced later
+                detection_source="automated",
+            )
+        except ValueError as e:
+            # Log error but continue with other contacts
+            logger.warning(
+                f"Failed to create ball contact for timestamp {contact.get('timestamp')}: {e}"
+            )
+            continue
+
+    logger.info(
+        f"Created {len(contact_detections)} ball contact records for video {video_id}"
+    )
 
 
 def create_analysis_record(
@@ -71,8 +116,9 @@ def create_analysis_record(
         contact_frames=analysis_results.get("analysis_summary", {}).get(
             "contact_frames", 0
         ),
-        contact_timestamps=json.dumps(analysis_results.get("contact_timestamps", [])),
-        contact_detections=json.dumps(analysis_results.get("contact_detections", [])),
+        # Note: contact_timestamps and contact_detections are now stored in ball_contacts table
+        contact_timestamps=None,
+        contact_detections=None,
         ball_detections=json.dumps(analysis_results.get("ball_detections", [])),
         pose_detections=json.dumps(analysis_results.get("pose_detections", [])),
         annotated_video_path=analysis_results.get("annotated_video_path"),
@@ -334,6 +380,10 @@ def analyze_video(
                 "enhanced_racket_based"
             )
 
+            # Create ball contact records from contact detections
+            if contact_detections:
+                _create_ball_contacts_from_detections(db, video_id, contact_detections)
+
         # Update progress - analysis complete, starting video annotation
         update_task_progress(
             task_id,
@@ -389,12 +439,9 @@ def analyze_video(
             analysis_record.contact_frames = analysis_results.get(
                 "analysis_summary", {}
             ).get("contact_frames", 0)
-            analysis_record.contact_timestamps = json.dumps(
-                analysis_results.get("contact_timestamps", [])
-            )
-            analysis_record.contact_detections = json.dumps(
-                analysis_results.get("contact_detections", [])
-            )
+            # Note: contact_timestamps and contact_detections are now stored in ball_contacts table
+            analysis_record.contact_timestamps = None
+            analysis_record.contact_detections = None
             analysis_record.ball_detections = json.dumps(
                 analysis_results.get("ball_detections", [])
             )

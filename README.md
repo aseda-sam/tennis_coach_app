@@ -28,17 +28,20 @@ A computer vision-based tennis coaching platform. Currently implements a backend
 **Prerequisites**: Docker and Docker Compose
 
 1. **Clone and Setup**
+
 ```bash
 git clone https://github.com/aseda-sam/tennis_coach_app.git
 cd tennis_coach_app
 ```
 
 2. **Start All Services**
+
 ```bash
 docker compose up --build
 ```
 
 3. **Access the Application**
+
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
@@ -49,6 +52,7 @@ docker compose up --build
 **Prerequisites**: Python 3.11+, Node.js 16+, FFmpeg
 
 1. **Install FFmpeg** (required for video processing):
+
 ```bash
 # macOS
 brew install ffmpeg
@@ -61,6 +65,7 @@ choco install ffmpeg
 ```
 
 2. **Setup Backend**
+
 ```bash
 # Create Python virtual environment
 python3 -m venv venv
@@ -73,6 +78,7 @@ cd ..
 ```
 
 3. **Setup Frontend**
+
 ```bash
 # Install frontend dependencies
 cd frontend
@@ -81,18 +87,21 @@ cd ..
 ```
 
 4. **Run Backend Server**
+
 ```bash
 cd backend
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
 5. **Run Frontend Development Server** (in a new terminal)
+
 ```bash
 cd frontend
 npm start
 ```
 
 6. **Access the Application**
+
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
@@ -138,32 +147,39 @@ tennis_coach_app/
 ## Analysis Capabilities
 
 ### Ball Detection
+
 - **YOLO Integration**: Uses YOLOv8n for efficient ball detection
 - **Real-time Processing**: Processes video frames for ball tracking
 - **Detection Metrics**: Tracks total detections, frames with balls, detection rate
 - **Visual Overlays**: Red bounding boxes around detected balls
 
 ### Pose Estimation
+
 - **MediaPipe Integration**: Advanced pose detection with 33 keypoints
 - **Tennis-Focused**: Extracts 11 relevant keypoints (shoulders, elbows, wrists, hips, knees, ankles)
 - **Stroke Analysis**: Tracks upper body mechanics and lower body positioning
 - **Visual Overlays**: Green skeleton lines and blue joint markers
 
 ### Progress Tracking
+
 - **Status Monitoring**: Track analysis progress (processing/completed/failed)
 - **Progress Percentage**: Real-time completion percentage (0-100)
 - **Timing Information**: Creation and completion timestamps
 - **API Endpoint**: `GET /v0/analysis/status/{analysis_id}` for status updates
 
-### Ball-Racket Contact Detection ⚡ **NEW**
-- **Accurate Timing**: Precise contact frame detection aligned with visual ball-racket contact
-- **Smart Filtering**: Eliminates false positives from player positioning and visual overlays
-- **Depth Perception**: Ball size analysis for distinguishing real contact from parallax effects
-- **Quality Prioritization**: Prefers racket-based detections over wrist-based fallbacks
-- **Realistic Thresholds**: 150px racket, 200px wrist distance thresholds based on real video analysis
-- **Temporal Validation**: 300ms minimum between contacts for realistic tennis timing
+### Ball Contact System ⚡ **NEW**
+
+- **Manual Contact Marking**: Add ball contact markers directly on video timeline
+- **Automated Detection**: AI-powered ball contact detection with configurable tolerance
+- **Contact Management**: Create, edit, and delete ball contact markers
+- **Stroke Classification**: Categorize contacts by stroke type (ground_stroke, serve, volley, overhead)
+- **Hand Detection**: Track which hand (left/right) was used for contact
+- **Timestamp Precision**: Configurable tolerance for duplicate detection (default: 0.1 seconds)
+- **Source Attribution**: Distinguish between automated and manual contact detections
+- **Real-time Validation**: Frontend validation prevents invalid timestamp inputs
 
 ### Annotated Videos
+
 - **Combined Overlays**: Pose and ball detection on same video
 - **H.264 Codec**: Browser-compatible video format
 - **Smart Playback**: Automatically shows annotated version when available
@@ -172,14 +188,18 @@ tennis_coach_app/
 ## Documentation
 
 ### Development Guides
+
 - **[Backend Guide](backend/README.md)** - Setup, API, testing, deployment
 - **[Frontend Guide](frontend/README.md)** - Components, testing, build process
 
 ### Project Documentation
+
 - **[API Reference](project_docs/api_reference.md)** - API endpoints and usage guide
 - **[Database Schema](project_docs/database_schema.md)** - Database models and relationships
+- **[Configuration Guide](project_docs/configuration.md)** - Environment variables and settings
 - **[Deployment Guide](project_docs/deployment_guide.md)** - Production deployment instructions
 - **[Project Roadmap](project_docs/project_plan.md)** - Development phases and future plans
+- **[Ball Contact Migration](project_docs/ball_contact_migration.md)** - Ball contact system implementation details
 - **[Contact Detection Improvements](project_docs/contact_detection_improvements.md)** - Ball-racket contact detection enhancement details
 - **[Pose Estimation Comparison](project_docs/pose_estimation_comparison.md)** - Technology decision record
 
@@ -219,6 +239,7 @@ docker compose exec frontend sh
 ### Local Development
 
 #### Backend Development
+
 ```bash
 cd backend
 
@@ -236,6 +257,7 @@ pytest
 ```
 
 #### Frontend Development
+
 ```bash
 cd frontend
 
@@ -250,6 +272,7 @@ npm test
 ```
 
 ### Database Operations
+
 ```bash
 # Database is automatically created on startup
 # Located at: data/database/tennis_coach.db

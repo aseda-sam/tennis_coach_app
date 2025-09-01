@@ -1,0 +1,46 @@
+name: Claude Manual Code Review
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  claude-manual-review:
+    # Only run when someone comments "@claude review" on a PR
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@claude') &&
+      contains(github.event.comment.body, 'review')
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          # Direct prompt for manual review
+          direct_prompt: |
+            Please review this pull request and provide feedback on:
+            - Code quality and best practices
+            - Potential bugs or issues
+            - Performance considerations
+            - Security concerns
+            - Test coverage
+
+            This is a manual review request. Be thorough and constructive in your feedback.
+
+          # Use sticky comments to avoid duplicate reviews
+          use_sticky_comment: true
