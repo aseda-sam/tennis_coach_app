@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { BallContact, BallContactUpdate } from '../services/ballContactApi';
+import { formatTime, validateTimestamp } from '../utils/validation';
 import './BallContactModal.css';
 
 interface BallContactModalProps {
   contact: BallContact | null;
   isOpen: boolean;
+  videoDuration: number; // Add video duration prop
   onClose: () => void;
   onUpdate: (contactId: number, updates: BallContactUpdate) => Promise<void>;
   onDelete: (contactId: number) => Promise<void>;
@@ -13,12 +15,14 @@ interface BallContactModalProps {
 const BallContactModal: React.FC<BallContactModalProps> = ({
   contact,
   isOpen,
+  videoDuration,
   onClose,
   onUpdate,
   onDelete,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [formData, setFormData] = useState<BallContactUpdate>({
     video_timestamp: contact?.video_timestamp || 0,
     contact_hand: contact?.contact_hand || 'right',
@@ -36,7 +40,23 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
         stroke_subtype: contact.stroke_subtype || '',
       });
     }
+    setValidationError(null);
   }, [contact]);
+
+  // Validate timestamp whenever form data changes
+  useEffect(() => {
+    if (
+      isEditing &&
+      videoDuration > 0 &&
+      formData.video_timestamp !== undefined
+    ) {
+      const validation = validateTimestamp(
+        formData.video_timestamp,
+        videoDuration
+      );
+      setValidationError(validation.isValid ? null : validation.error || null);
+    }
+  }, [formData.video_timestamp, videoDuration, isEditing]);
 
   if (!isOpen || !contact) return null;
 
@@ -48,13 +68,27 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
       stroke_type: contact.stroke_type || 'ground_stroke',
       stroke_subtype: contact.stroke_subtype || '',
     });
+    setValidationError(null);
   };
 
   const handleSave = async () => {
+    // Validate before submitting
+    if (videoDuration > 0 && formData.video_timestamp !== undefined) {
+      const validation = validateTimestamp(
+        formData.video_timestamp,
+        videoDuration
+      );
+      if (!validation.isValid) {
+        setValidationError(validation.error || 'Invalid timestamp');
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
       await onUpdate(contact.id, formData);
       setIsEditing(false);
+      setValidationError(null);
     } catch (error) {
       console.error('Failed to update contact:', error);
       alert('Failed to update contact. Please try again.');
@@ -80,10 +114,12 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
     }
   };
 
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const handleTimestampChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTimestamp = parseFloat(e.target.value) || 0;
+    setFormData({
+      ...formData,
+      video_timestamp: newTimestamp,
+    });
   };
 
   return (
@@ -104,14 +140,20 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
                 <input
                   type="number"
                   step="0.1"
-                  value={formData.video_timestamp}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      video_timestamp: parseFloat(e.target.value) || 0,
-                    })
-                  }
+                  min="0"
+                  max={videoDuration > 0 ? videoDuration : undefined}
+                  value={formData.video_timestamp || 0}
+                  onChange={handleTimestampChange}
+                  className={validationError ? 'error' : ''}
                 />
+                {validationError && (
+                  <div className="validation-error">{validationError}</div>
+                )}
+                {videoDuration > 0 && (
+                  <div className="timestamp-info">
+                    Video duration: {formatTime(videoDuration)}
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
@@ -226,7 +268,10 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
             <>
               <button
                 className="btn btn-secondary"
-                onClick={() => setIsEditing(false)}
+                onClick={() => {
+                  setIsEditing(false);
+                  setValidationError(null);
+                }}
                 disabled={isLoading}
               >
                 Cancel
@@ -234,7 +279,7 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
               <button
                 className="btn btn-primary"
                 onClick={handleSave}
-                disabled={isLoading}
+                disabled={isLoading || !!validationError}
               >
                 {isLoading ? 'Saving...' : 'Save Changes'}
               </button>

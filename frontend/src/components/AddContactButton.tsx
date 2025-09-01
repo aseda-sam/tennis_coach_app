@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { BallContactCreate } from '../services/ballContactApi';
+import { formatTime, validateManualTimestamp } from '../utils/validation';
 import './AddContactButton.css';
 
 interface AddContactButtonProps {
   currentTime: number;
   videoId: number;
+  videoDuration: number; // Add video duration prop
   onAddContact: (contact: BallContactCreate) => Promise<void>;
   isVisible: boolean;
 }
@@ -12,11 +14,13 @@ interface AddContactButtonProps {
 const AddContactButton: React.FC<AddContactButtonProps> = ({
   currentTime,
   videoId,
+  videoDuration,
   onAddContact,
   isVisible,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [formData, setFormData] = useState<BallContactCreate>({
     video_id: videoId,
     video_timestamp: currentTime,
@@ -32,9 +36,34 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
       ...prev,
       video_timestamp: currentTime,
     }));
+    // Clear validation error when current time changes
+    setValidationError(null);
   }, [currentTime]);
 
+  // Validate timestamp whenever form data changes
+  useEffect(() => {
+    if (videoDuration > 0) {
+      const validation = validateManualTimestamp(
+        formData.video_timestamp,
+        videoDuration
+      );
+      setValidationError(validation.isValid ? null : validation.error || null);
+    }
+  }, [formData.video_timestamp, videoDuration]);
+
   const handleAddContact = async () => {
+    // Validate before submitting
+    if (videoDuration > 0) {
+      const validation = validateManualTimestamp(
+        formData.video_timestamp,
+        videoDuration
+      );
+      if (!validation.isValid) {
+        setValidationError(validation.error || 'Invalid timestamp');
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
       await onAddContact(formData);
@@ -47,6 +76,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
         stroke_subtype: '',
         detection_source: 'manual',
       });
+      setValidationError(null);
     } catch (error) {
       console.error('Failed to add contact:', error);
       alert('Failed to add contact. Please try again.');
@@ -55,10 +85,12 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
     }
   };
 
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const handleTimestampChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTimestamp = parseFloat(e.target.value) || 0;
+    setFormData({
+      ...formData,
+      video_timestamp: newTimestamp,
+    });
   };
 
   if (!isVisible) return null;
@@ -86,6 +118,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(false);
+                setValidationError(null);
               }}
             >
               ×
@@ -93,6 +126,27 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
           </div>
 
           <div className="form-fields">
+            <div className="form-group">
+              <label>Timestamp (seconds):</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max={videoDuration > 0 ? videoDuration : undefined}
+                value={formData.video_timestamp}
+                onChange={handleTimestampChange}
+                className={validationError ? 'error' : ''}
+              />
+              {validationError && (
+                <div className="validation-error">{validationError}</div>
+              )}
+              {videoDuration > 0 && (
+                <div className="timestamp-info">
+                  Video duration: {formatTime(videoDuration)}
+                </div>
+              )}
+            </div>
+
             <div className="form-group">
               <label>Contact Hand:</label>
               <select
@@ -149,6 +203,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(false);
+                setValidationError(null);
               }}
               disabled={isLoading}
             >
@@ -160,7 +215,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
                 e.stopPropagation();
                 handleAddContact();
               }}
-              disabled={isLoading}
+              disabled={isLoading || !!validationError}
             >
               {isLoading ? 'Adding...' : 'Add Contact'}
             </button>
