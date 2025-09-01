@@ -7,6 +7,7 @@ import {
     VolumeIcon,
     VolumeOffIcon
 } from './Icons';
+import { useBallContacts } from '../hooks/useBallContacts';
 import './VideoPlayer.css';
 
 interface VideoPlayerProps {
@@ -15,7 +16,8 @@ interface VideoPlayerProps {
   onClose?: () => void;
   showControls?: boolean;
   aspectRatioMode?: 'cover' | 'contain' | 'auto';
-  contactTimestamps?: number[];  // Array of timestamps where ball contact occurs
+  videoId?: number;  // Video ID for fetching ball contacts
+  contactTimestamps?: number[];  // Legacy prop - will be ignored if videoId is provided
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -24,6 +26,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onClose,
   showControls = true,
   aspectRatioMode = 'contain',
+  videoId,
   contactTimestamps = [],
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -36,6 +39,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Use ball contacts hook if videoId is provided
+  const { timestamps: ballContactTimestamps } = useBallContacts({
+    videoId: videoId || 0,
+    autoRefresh: !!videoId,
+  });
+  
+  // Use ball contact timestamps if available, otherwise fall back to legacy prop
+  const contactTimestampsToUse = videoId ? ballContactTimestamps : contactTimestamps;
   
   // Reset aspect ratio when video URL changes
   useEffect(() => {
@@ -285,9 +297,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   step="0.1"
                 />
                 {/* Contact markers */}
-                {contactTimestamps.length > 0 && duration > 0 && (
+                {contactTimestampsToUse.length > 0 && duration > 0 && (
                   <div className="contact-markers">
-                    {contactTimestamps.map((timestamp, index) => {
+                    {contactTimestampsToUse.map((timestamp, index) => {
                       const position = (timestamp / duration) * 100;
                       return (
                         <div
