@@ -155,13 +155,15 @@ tennis_coach_app/
 - **Timing Information**: Creation and completion timestamps
 - **API Endpoint**: `GET /v0/analysis/status/{analysis_id}` for status updates
 
-### Ball-Racket Contact Detection ⚡ **NEW**
-- **Accurate Timing**: Precise contact frame detection aligned with visual ball-racket contact
-- **Smart Filtering**: Eliminates false positives from player positioning and visual overlays
-- **Depth Perception**: Ball size analysis for distinguishing real contact from parallax effects
-- **Quality Prioritization**: Prefers racket-based detections over wrist-based fallbacks
-- **Realistic Thresholds**: 150px racket, 200px wrist distance thresholds based on real video analysis
-- **Temporal Validation**: 300ms minimum between contacts for realistic tennis timing
+### Ball Contact System ⚡ **NEW**
+- **Manual Contact Marking**: Add ball contact markers directly on video timeline
+- **Automated Detection**: AI-powered ball contact detection with configurable tolerance
+- **Contact Management**: Create, edit, and delete ball contact markers
+- **Stroke Classification**: Categorize contacts by stroke type (ground_stroke, serve, volley, overhead)
+- **Hand Detection**: Track which hand (left/right) was used for contact
+- **Timestamp Precision**: Configurable tolerance for duplicate detection (default: 0.1 seconds)
+- **Source Attribution**: Distinguish between automated and manual contact detections
+- **Real-time Validation**: Frontend validation prevents invalid timestamp inputs
 
 ### Annotated Videos
 - **Combined Overlays**: Pose and ball detection on same video
@@ -178,8 +180,10 @@ tennis_coach_app/
 ### Project Documentation
 - **[API Reference](project_docs/api_reference.md)** - API endpoints and usage guide
 - **[Database Schema](project_docs/database_schema.md)** - Database models and relationships
+- **[Configuration Guide](project_docs/configuration.md)** - Environment variables and settings
 - **[Deployment Guide](project_docs/deployment_guide.md)** - Production deployment instructions
 - **[Project Roadmap](project_docs/project_plan.md)** - Development phases and future plans
+- **[Ball Contact Migration](project_docs/ball_contact_migration.md)** - Ball contact system implementation details
 - **[Contact Detection Improvements](project_docs/contact_detection_improvements.md)** - Ball-racket contact detection enhancement details
 - **[Pose Estimation Comparison](project_docs/pose_estimation_comparison.md)** - Technology decision record
 

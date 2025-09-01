@@ -5,9 +5,10 @@ FastAPI backend for the tennis analysis system with computer vision capabilities
 ## Features
 
 - **Video Upload & Management**: Secure file upload with validation and metadata extraction
-- **Computer Vision Analysis**: YOLO ball detection + MediaPipe pose estimation + Ball-racket contact detection
+- **Computer Vision Analysis**: YOLO ball detection + MediaPipe pose estimation
 - **Annotated Video Creation**: Generate videos with detection overlays
-- **Smart Contact Detection**: Accurate ball-racket contact timing with false positive filtering
+- **Ball Contact System**: Manual and automated ball contact detection with configurable tolerance
+- **Contact Management**: Create, edit, and delete ball contact markers with stroke classification
 - **RESTful API**: FastAPI with automatic OpenAPI documentation and versioning
 - **Database Integration**: SQLite with SQLAlchemy ORM
 - **Code Quality**: Ruff linting and formatting
@@ -130,6 +131,9 @@ CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 MAX_WORKERS=4
 BATCH_SIZE=10
 CONFIDENCE_THRESHOLD=0.5
+
+# Ball Contact Configuration
+BALL_CONTACT_TIMESTAMP_TOLERANCE=0.1  # Tolerance in seconds for duplicate detection
 
 # Security (for production)
 SECRET_KEY=your-secret-key-here
@@ -318,6 +322,15 @@ The API uses versioned endpoints for stability and backward compatibility:
 - `GET /v0/analysis/status/{analysis_id}` - Get analysis processing status
 - `DELETE /v0/analysis/{analysis_id}` - Delete analysis
 
+### Ball Contacts
+
+- `POST /v0/ball-contacts/` - Create a new ball contact marker
+- `GET /v0/ball-contacts/video/{video_id}` - Get all ball contacts for a video
+- `GET /v0/ball-contacts/video/{video_id}/timestamps` - Get ball contact timestamps for a video
+- `GET /v0/ball-contacts/{ball_contact_id}` - Get a specific ball contact by ID
+- `PUT /v0/ball-contacts/{ball_contact_id}` - Update a ball contact
+- `DELETE /v0/ball-contacts/{ball_contact_id}` - Delete a ball contact
+
 ### Interactive Documentation
 
 - Visit http://localhost:8000/docs for Swagger UI
@@ -342,6 +355,16 @@ The API uses versioned endpoints for stability and backward compatibility:
 - **Format**: H.264 MP4 (browser-compatible)
 - **Overlays**: Ball detection (red boxes) + pose estimation (green skeleton)
 - **Processing**: Automatic codec fallback for compatibility
+
+### Ball Contact System
+
+- **Manual Marking**: Users can add ball contact markers directly on video timeline
+- **Automated Detection**: AI-powered contact detection with configurable tolerance
+- **Stroke Classification**: Support for ground_stroke, serve, volley, overhead
+- **Hand Detection**: Track left/right hand usage
+- **Source Attribution**: Distinguish between automated and manual detections
+- **Duplicate Prevention**: Configurable timestamp tolerance (default: 0.1 seconds)
+- **Database Storage**: Dedicated ball_contacts table with proper relationships
 
 ## Troubleshooting
 
