@@ -68,7 +68,10 @@
         "lines": 15,
         "statements": 15
       }
-    }
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(axios)/)"
+    ]
   },
   "prettier": {
     "semi": true,
