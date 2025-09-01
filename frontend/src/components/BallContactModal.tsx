@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BallContact, BallContactUpdate } from '../services/ballContactApi';
 import './BallContactModal.css';
 
@@ -25,6 +25,18 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
     stroke_type: contact?.stroke_type || 'ground_stroke',
     stroke_subtype: contact?.stroke_subtype || '',
   });
+
+  // Update form data when contact changes
+  useEffect(() => {
+    if (contact) {
+      setFormData({
+        video_timestamp: contact.video_timestamp,
+        contact_hand: contact.contact_hand,
+        stroke_type: contact.stroke_type || 'ground_stroke',
+        stroke_subtype: contact.stroke_subtype || '',
+      });
+    }
+  }, [contact]);
 
   if (!isOpen || !contact) return null;
 
