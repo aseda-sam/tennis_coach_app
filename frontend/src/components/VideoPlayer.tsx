@@ -1,13 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-    CloseIcon,
-    FullscreenIcon,
-    PauseIcon,
-    PlayIcon,
-    VolumeIcon,
-    VolumeOffIcon
-} from './Icons';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useBallContacts } from '../hooks/useBallContacts';
+import {
+  CloseIcon,
+  FullscreenIcon,
+  PauseIcon,
+  PlayIcon,
+  VolumeIcon,
+  VolumeOffIcon,
+} from './Icons';
 import './VideoPlayer.css';
 
 interface VideoPlayerProps {
@@ -16,7 +22,7 @@ interface VideoPlayerProps {
   onClose?: () => void;
   showControls?: boolean;
   aspectRatioMode?: 'cover' | 'contain' | 'auto';
-  videoId?: number;  // Video ID for fetching ball contacts
+  videoId?: number; // Video ID for fetching ball contacts
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -37,13 +43,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   // Use ball contacts hook if videoId is provided
   const { timestamps: contactTimestamps } = useBallContacts({
     videoId: videoId || 0,
     autoRefresh: !!videoId,
   });
-  
+
   // Reset aspect ratio when video URL changes
   useEffect(() => {
     setVideoAspectRatio(null);
@@ -58,7 +64,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       console.log('Video loaded metadata - duration:', video.duration);
       setDuration(video.duration);
       setError(null);
-      
+
       // Calculate and store the video's natural aspect ratio
       if (video.videoWidth && video.videoHeight) {
         const aspectRatio = video.videoWidth / video.videoHeight;
@@ -81,39 +87,40 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setShowPlayOverlay(true);
     };
 
-      const handleError = (e: Event) => {
-    console.error('Video error event:', e);
-    const video = videoRef.current;
-    if (video) {
-      console.error('Video error code:', video.error?.code);
-      console.error('Video error message:', video.error?.message);
-      console.error('Video ready state:', video.readyState);
-      console.error('Video network state:', video.networkState);
-    }
-    
-    // Provide more specific error messages based on error type
-    let errorMessage = 'Failed to load video. Please check if the video file exists.';
-    if (video?.error) {
-      switch (video.error.code) {
-        case MediaError.MEDIA_ERR_ABORTED:
-          errorMessage = 'Video loading was aborted.';
-          break;
-        case MediaError.MEDIA_ERR_NETWORK:
-          errorMessage = 'Network error occurred while loading video.';
-          break;
-        case MediaError.MEDIA_ERR_DECODE:
-          errorMessage = 'Video format is not supported or corrupted.';
-          break;
-        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-          errorMessage = 'Video format is not supported by your browser.';
-          break;
+    const handleError = (e: Event) => {
+      console.error('Video error event:', e);
+      const video = videoRef.current;
+      if (video) {
+        console.error('Video error code:', video.error?.code);
+        console.error('Video error message:', video.error?.message);
+        console.error('Video ready state:', video.readyState);
+        console.error('Video network state:', video.networkState);
       }
-    }
-    
-    setError(errorMessage);
-    setShowPlayOverlay(true);
-    setIsPlaying(false);
-  };
+
+      // Provide more specific error messages based on error type
+      let errorMessage =
+        'Failed to load video. Please check if the video file exists.';
+      if (video?.error) {
+        switch (video.error.code) {
+          case MediaError.MEDIA_ERR_ABORTED:
+            errorMessage = 'Video loading was aborted.';
+            break;
+          case MediaError.MEDIA_ERR_NETWORK:
+            errorMessage = 'Network error occurred while loading video.';
+            break;
+          case MediaError.MEDIA_ERR_DECODE:
+            errorMessage = 'Video format is not supported or corrupted.';
+            break;
+          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            errorMessage = 'Video format is not supported by your browser.';
+            break;
+        }
+      }
+
+      setError(errorMessage);
+      setShowPlayOverlay(true);
+      setIsPlaying(false);
+    };
 
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('timeupdate', handleTimeUpdate);
@@ -211,8 +218,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, []);
 
   // Memoize formatted time strings to prevent unnecessary re-renders
-  const formattedCurrentTime = useMemo(() => formatTime(currentTime), [currentTime, formatTime]);
-  const formattedDuration = useMemo(() => formatTime(duration), [duration, formatTime]);
+  const formattedCurrentTime = useMemo(
+    () => formatTime(currentTime),
+    [currentTime, formatTime]
+  );
+  const formattedDuration = useMemo(
+    () => formatTime(duration),
+    [duration, formatTime]
+  );
 
   const handleVideoClick = () => {
     if (showPlayOverlay) {
@@ -247,9 +260,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
 
       <div className="video-player-wrapper">
-        <div 
+        <div
           ref={containerRef}
-          className={`video-container video-container-${aspectRatioMode}`} 
+          className={`video-container video-container-${aspectRatioMode}`}
           onClick={handleVideoClick}
         >
           <video
@@ -259,7 +272,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             preload="metadata"
             data-testid="video-element"
           />
-          
+
           {error && (
             <div className="error-overlay">
               <div className="error-message">
@@ -268,7 +281,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
             </div>
           )}
-          
+
           {showPlayOverlay && !error && (
             <div className="play-overlay">
               <div className="play-button">
@@ -294,17 +307,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 {/* Contact markers */}
                 {contactTimestamps.length > 0 && duration > 0 && (
                   <div className="contact-markers">
-                    {contactTimestamps.map((timestamp: number, index: number) => {
-                      const position = (timestamp / duration) * 100;
-                      return (
-                        <div
-                          key={index}
-                          className="contact-marker"
-                          style={{ left: `${position}%` }}
-                          title={`Ball contact at ${formatTime(timestamp)}`}
-                        />
-                      );
-                    })}
+                    {contactTimestamps.map(
+                      (timestamp: number, index: number) => {
+                        const position = (timestamp / duration) * 100;
+                        return (
+                          <div
+                            key={index}
+                            className="contact-marker"
+                            style={{ left: `${position}%` }}
+                            title={`Ball contact at ${formatTime(timestamp)}`}
+                          />
+                        );
+                      }
+                    )}
                   </div>
                 )}
               </div>
@@ -316,10 +331,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             <div className="controls-row">
               <div className="left-controls">
-                <button
-                  className="control-btn play-btn"
-                  onClick={togglePlay}
-                >
+                <button className="control-btn play-btn" onClick={togglePlay}>
                   {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
                 </button>
 
@@ -328,7 +340,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     className="control-btn volume-btn"
                     onClick={toggleMute}
                   >
-                    {isMuted ? <VolumeOffIcon size={20} /> : <VolumeIcon size={20} />}
+                    {isMuted ? (
+                      <VolumeOffIcon size={20} />
+                    ) : (
+                      <VolumeIcon size={20} />
+                    )}
                   </button>
                   <input
                     type="range"
@@ -343,7 +359,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
 
               <div className="right-controls">
-                <button className="control-btn fullscreen-btn" onClick={toggleFullscreen}>
+                <button
+                  className="control-btn fullscreen-btn"
+                  onClick={toggleFullscreen}
+                >
                   <FullscreenIcon size={20} />
                 </button>
               </div>
