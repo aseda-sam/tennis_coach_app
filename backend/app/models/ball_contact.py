@@ -1,3 +1,5 @@
+import enum
+
 from sqlalchemy import (
     Column,
     DateTime,
@@ -6,6 +8,7 @@ from sqlalchemy import (
     Integer,
     String,
 )
+from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -17,11 +20,18 @@ class BallContact(Base):
 
     __tablename__ = "ball_contacts"
 
+    class ContactHandEnum(enum.Enum):
+        left = "left"
+        right = "right"
+
     id = Column(Integer, primary_key=True, index=True)
     frame_number = Column(Integer, nullable=True, index=True)
     video_timestamp = Column(Float, nullable=True)
     player = Column(Integer, nullable=True)
-    contact_hand = Column(String, nullable=True)  # left, right
+
+    contact_hand = Column(
+        SqlEnum(ContactHandEnum, name="contact_hand_enum"), nullable=True
+    )
     stroke_type = Column(
         String, nullable=True
     )  # ground_stroke, serve, volley, overhead
@@ -38,7 +48,7 @@ class BallContact(Base):
         String(20), nullable=False, default="automated"
     )  # 'automated' or 'manual'
 
-    # Questions: Don't understande these columns
+    # Questions: Don't understand these columns
     ball_area = Column(Float, nullable=True)
     ball_size_factor = Column(Float, nullable=True)
     racket_data = Column(String, nullable=True)

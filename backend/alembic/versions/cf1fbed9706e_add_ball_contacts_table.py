@@ -5,11 +5,12 @@ Revises: 864f3843d8c3
 Create Date: 2025-08-31 21:31:35.668152
 
 """
+
 from typing import Sequence, Union
 
 # revision identifiers, used by Alembic.
-revision: str = 'cf1fbed9706e'
-down_revision: Union[str, Sequence[str], None] = '864f3843d8c3'
+revision: str = "cf1fbed9706e"
+down_revision: Union[str, Sequence[str], None] = "864f3843d8c3"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
