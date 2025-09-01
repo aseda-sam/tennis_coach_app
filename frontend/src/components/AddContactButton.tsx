@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BallContactCreate } from '../services/ballContactApi';
 import './AddContactButton.css';
 
@@ -28,7 +28,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
 
   // Update video_timestamp when currentTime changes
   useEffect(() => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       video_timestamp: currentTime,
     }));
