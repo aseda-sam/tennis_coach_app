@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     CONFIDENCE_THRESHOLD: float = 0.5
     BALL_CONFIDENCE_THRESHOLD: float = 0.7
 
+    # Ball Contact Detection
+    BALL_CONTACT_TIMESTAMP_TOLERANCE: float = (
+        0.1  # Tolerance in seconds for duplicate contact detection
+    )
+
     # Processing
     MAX_VIDEO_DURATION: int = 300  # 5 minutes
     FRAME_SKIP_RATIO: int = 1  # Process every frame (no skipping by default)

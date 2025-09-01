@@ -123,7 +123,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               }
               showControls={true}
               aspectRatioMode={aspectRatioMode}
-              contactTimestamps={analysis?.contact_timestamps || []}
+              videoId={videoId}
             />
             {analysis?.pose_detections &&
               analysis.pose_detections.length > 0 && (
@@ -251,7 +251,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               <div className="analysis-error">
                 <h3>❌ Video Data Error</h3>
                 <p>{videoError}</p>
-                <button className="retry-btn" onClick={() => window.location.reload()}>
+                <button
+                  className="retry-btn"
+                  onClick={() => window.location.reload()}
+                >
                   Reload Page
                 </button>
               </div>
