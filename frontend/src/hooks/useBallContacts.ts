@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ballContactApi, BallContact, BallContactCreate, BallContactUpdate } from '../services/ballContactApi';
 
 interface UseBallContactsOptions {
@@ -29,6 +29,10 @@ export const useBallContacts = ({
   const [timestamps, setTimestamps] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use ref to store current contacts state to avoid stale closures
+  const contactsRef = useRef<BallContact[]>([]);
+  contactsRef.current = contacts;
 
   const loadContacts = useCallback(async () => {
     if (!videoId) return;
@@ -80,6 +84,7 @@ export const useBallContacts = ({
   const updateContact = useCallback(async (contactId: number, updates: BallContactUpdate): Promise<BallContact> => {
     try {
       const updatedContact = await ballContactApi.updateContact(contactId, updates);
+      
       setContacts(prev => prev.map(contact => 
         contact.id === contactId ? updatedContact : contact
       ));
@@ -87,8 +92,14 @@ export const useBallContacts = ({
       // Update timestamps if video_timestamp changed
       if (updates.video_timestamp !== undefined) {
         setTimestamps(prev => {
-          const filtered = prev.filter(t => t !== contacts.find(c => c.id === contactId)?.video_timestamp);
-          return [...filtered, updatedContact.video_timestamp].sort((a, b) => a - b);
+          // Get the old timestamp from the current contacts state using ref
+          const oldContact = contactsRef.current.find(c => c.id === contactId);
+          const oldTimestamp = oldContact?.video_timestamp;
+          const newTimestamp = updatedContact.video_timestamp;
+          
+          // Remove old timestamp and add new one
+          const filtered = oldTimestamp !== undefined ? prev.filter(t => t !== oldTimestamp) : prev;
+          return [...filtered, newTimestamp].sort((a, b) => a - b);
         });
       }
       
@@ -97,12 +108,15 @@ export const useBallContacts = ({
       const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to update ball contact';
       throw new Error(errorMessage);
     }
-  }, [contacts]);
+  }, []); // No dependencies needed since we use ref
 
   const deleteContact = useCallback(async (contactId: number): Promise<void> => {
     try {
       await ballContactApi.deleteContact(contactId);
-      const deletedContact = contacts.find(c => c.id === contactId);
+      
+      // Get the deleted contact from current state using ref
+      const deletedContact = contactsRef.current.find(c => c.id === contactId);
+      
       setContacts(prev => prev.filter(contact => contact.id !== contactId));
       
       if (deletedContact) {
@@ -112,7 +126,7 @@ export const useBallContacts = ({
       const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to delete ball contact';
       throw new Error(errorMessage);
     }
-  }, [contacts]);
+  }, []); // No dependencies needed since we use ref
 
   // Load contacts when videoId changes
   useEffect(() => {
