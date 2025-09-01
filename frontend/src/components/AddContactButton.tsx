@@ -60,17 +60,29 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
       {!isOpen ? (
         <button
           className="add-contact-btn"
-          onClick={() => setIsOpen(true)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(true);
+          }}
           title={`Add ball contact at ${formatTime(currentTime)}`}
         >
           <span className="add-icon">+</span>
           <span className="add-text">Add Contact</span>
         </button>
       ) : (
-        <div className="add-contact-form">
+        <div 
+          className="add-contact-form"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="form-header">
             <span className="timestamp-display">{formatTime(currentTime)}</span>
-            <button className="close-form-btn" onClick={() => setIsOpen(false)}>
+            <button 
+              className="close-form-btn" 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(false);
+              }}
+            >
               ×
             </button>
           </div>
@@ -129,14 +141,20 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
           <div className="form-actions">
             <button
               className="btn btn-secondary"
-              onClick={() => setIsOpen(false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(false);
+              }}
               disabled={isLoading}
             >
               Cancel
             </button>
             <button
               className="btn btn-primary"
-              onClick={handleAddContact}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddContact();
+              }}
               disabled={isLoading}
             >
               {isLoading ? 'Adding...' : 'Add Contact'}

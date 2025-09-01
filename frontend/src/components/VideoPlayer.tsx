@@ -292,7 +292,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onAddContact={async (contact: BallContactCreate) => {
               await createContact(contact);
             }}
-            isVisible={!!videoId && !error && !showPlayOverlay}
+            isVisible={!!videoId && !error && duration > 0}
           />
 
           {error && (
