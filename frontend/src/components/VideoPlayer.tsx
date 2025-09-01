@@ -6,6 +6,9 @@ import React, {
   useState,
 } from 'react';
 import { useBallContacts } from '../hooks/useBallContacts';
+import BallContactModal from './BallContactModal';
+import AddContactButton from './AddContactButton';
+import { BallContact, BallContactCreate } from '../services/ballContactApi';
 import {
   CloseIcon,
   FullscreenIcon,
@@ -42,10 +45,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showPlayOverlay, setShowPlayOverlay] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
+  const [selectedContact, setSelectedContact] = useState<BallContact | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Use ball contacts hook if videoId is provided
-  const { timestamps: contactTimestamps } = useBallContacts({
+  const { contacts: ballContacts, timestamps: contactTimestamps, updateContact, deleteContact, createContact } = useBallContacts({
     videoId: videoId || 0,
     autoRefresh: !!videoId,
   });
@@ -273,6 +278,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             data-testid="video-element"
           />
 
+          {/* Add Contact Button */}
+          <AddContactButton
+            currentTime={currentTime}
+            videoId={videoId || 0}
+            onAddContact={async (contact: BallContactCreate) => {
+              await createContact(contact);
+            }}
+            isVisible={!!videoId && !error && !showPlayOverlay}
+          />
+
           {error && (
             <div className="error-overlay">
               <div className="error-message">
@@ -305,21 +320,29 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   step="0.1"
                 />
                 {/* Contact markers */}
-                {contactTimestamps.length > 0 && duration > 0 && (
+                {ballContacts.length > 0 && duration > 0 && (
                   <div className="contact-markers">
-                    {contactTimestamps.map(
-                      (timestamp: number, index: number) => {
-                        const position = (timestamp / duration) * 100;
-                        return (
-                          <div
-                            key={index}
-                            className="contact-marker"
-                            style={{ left: `${position}%` }}
-                            title={`Ball contact at ${formatTime(timestamp)}`}
-                          />
-                        );
-                      }
-                    )}
+                    {ballContacts.map((contact) => {
+                      const position = (contact.video_timestamp / duration) * 100;
+                      const isAutomated = contact.detection_source === 'automated';
+                      const markerClass = `contact-marker ${isAutomated ? 'automated' : 'manual'}`;
+                      
+                      return (
+                        <div
+                          key={contact.id}
+                          className={markerClass}
+                          style={{ left: `${position}%` }}
+                          title={`${isAutomated ? 'Automated' : 'Manual'} ball contact at ${formatTime(contact.video_timestamp)}
+Hand: ${contact.contact_hand}
+Stroke: ${contact.stroke_type || 'Unknown'}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedContact(contact);
+                            setIsModalOpen(true);
+                          }}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -370,6 +393,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Ball Contact Management Modal */}
+      <BallContactModal
+        contact={selectedContact}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedContact(null);
+        }}
+        onUpdate={async (contactId, updates) => {
+          await updateContact(contactId, updates);
+        }}
+        onDelete={async (contactId) => {
+          await deleteContact(contactId);
+        }}
+      />
     </div>
   );
 };
