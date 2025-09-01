@@ -58,7 +58,7 @@ def upgrade() -> None:
 
     # Copy data from old table to new table
     op.execute("""
-        INSERT INTO ball_contacts_new 
+        INSERT INTO ball_contacts_new
         SELECT * FROM ball_contacts
     """)
 
@@ -117,7 +117,7 @@ def downgrade() -> None:
 
     # Copy data back
     op.execute("""
-        INSERT INTO ball_contacts_old 
+        INSERT INTO ball_contacts_old
         SELECT * FROM ball_contacts
     """)
 
