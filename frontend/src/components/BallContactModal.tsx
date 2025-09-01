@@ -134,12 +134,21 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
                 <label>Stroke Type:</label>
                 <select
                   value={formData.stroke_type}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      stroke_type: e.target.value as any,
-                    })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Type-safe validation for stroke_type
+                    if (
+                      value === 'ground_stroke' ||
+                      value === 'serve' ||
+                      value === 'volley' ||
+                      value === 'overhead'
+                    ) {
+                      setFormData({
+                        ...formData,
+                        stroke_type: value,
+                      });
+                    }
+                  }}
                 >
                   <option value="ground_stroke">Ground Stroke</option>
                   <option value="serve">Serve</option>
