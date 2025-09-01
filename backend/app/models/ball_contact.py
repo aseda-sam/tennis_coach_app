@@ -19,7 +19,7 @@ class BallContact(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     frame_number = Column(Integer, nullable=True, index=True)
-    video_timestamp = Column(Float, nullable=True)
+    video_timestamp = Column(Float, nullable=False)
     player = Column(Integer, nullable=True)
 
     contact_hand = Column(String(10), nullable=True)  # 'left' or 'right'
