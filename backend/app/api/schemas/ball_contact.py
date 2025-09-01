@@ -106,4 +106,3 @@ class BallContactDeleteResponse(BaseModel):
     """Model for ball contact deletion response."""
 
     message: str = Field(description="Deletion confirmation message")
-    marker_id: int = Field(description="ID of the deleted marker")
