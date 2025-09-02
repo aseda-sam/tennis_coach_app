@@ -39,7 +39,7 @@ async def analyze_video_ball_detection(
         if not video:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Video with ID {video_id} not found"
+                detail=f"Video with ID {video_id} not found",
             )
 
         # Check if video file exists
@@ -47,16 +47,22 @@ async def analyze_video_ball_detection(
         if not video_path.exists():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Video file not found: {video.file_path}"
+                detail=f"Video file not found: {video.file_path}",
             )
 
         # Check if ball detection already exists
         ball_detection_service = BallDetectionService()
-        existing_detection = ball_detection_service.get_detection_by_video_id(db, video_id)
+        existing_detection = ball_detection_service.get_detection_by_video_id(
+            db, video_id
+        )
 
         if existing_detection:
-            logger.info(f"Ball detection already exists for video {video_id}, returning existing results")
-            return _convert_to_response(existing_detection, request.include_detection_data)
+            logger.info(
+                f"Ball detection already exists for video {video_id}, returning existing results"
+            )
+            return _convert_to_response(
+                existing_detection, request.include_detection_data
+            )
 
         # Perform ball detection analysis
         logger.info(f"Starting ball detection analysis for video {video_id}")
@@ -65,14 +71,12 @@ async def analyze_video_ball_detection(
             video_path=video_path,
             confidence_threshold=request.confidence_threshold,
             video_quality_level=video.quality_level,
-            max_frames=request.max_frames
+            max_frames=request.max_frames,
         )
 
         # Save results to database
         ball_detection = ball_detection_service.save_detection_results(
-            db=db,
-            video_id=video_id,
-            detection_results=detection_results
+            db=db, video_id=video_id, detection_results=detection_results
         )
 
         logger.info(f"Ball detection analysis completed for video {video_id}")
@@ -107,7 +111,7 @@ async def get_ball_detection_results(
         if not video:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Video with ID {video_id} not found"
+                detail=f"Video with ID {video_id} not found",
             )
 
         # Get ball detection results
@@ -117,7 +121,7 @@ async def get_ball_detection_results(
         if not ball_detection:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No ball detection results found for video {video_id}. Use the analyze endpoint to trigger detection."
+                detail=f"No ball detection results found for video {video_id}. Use the analyze endpoint to trigger detection.",
             )
 
         return _convert_to_response(ball_detection, include_detection_data)
@@ -126,14 +130,18 @@ async def get_ball_detection_results(
         # Re-raise HTTP exceptions as-is
         raise
     except (OSError, RuntimeError, ValueError) as e:
-        logger.error(f"Error retrieving ball detection results for video {video_id}: {e}")
+        logger.error(
+            f"Error retrieving ball detection results for video {video_id}: {e}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve ball detection results: {e!s}",
         ) from e
 
 
-def _convert_to_response(ball_detection: BallDetection, include_detection_data: bool = False) -> BallDetectionResponse:
+def _convert_to_response(
+    ball_detection: BallDetection, include_detection_data: bool = False
+) -> BallDetectionResponse:
     """
     Convert BallDetection model to API response.
 
@@ -169,7 +177,9 @@ def _convert_to_response(ball_detection: BallDetection, include_detection_data: 
         try:
             detection_data = json.loads(ball_detection.detection_data)
         except json.JSONDecodeError:
-            logger.warning(f"Failed to parse detection data for detection {ball_detection.id}")
+            logger.warning(
+                f"Failed to parse detection data for detection {ball_detection.id}"
+            )
 
     return BallDetectionResponse(
         id=ball_detection.id,
