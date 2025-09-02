@@ -162,64 +162,134 @@ Pose Detection   →   PoseDetection  → Combine as needed  → Create video
 
 ## Implementation Phases
 
-### Phase 1: Extract Video Quality Assessment (Quick Win)
+### E2E Implementation Approach
+
+**Strategy**: Complete both backend + frontend for each phase before moving to the next phase. This ensures:
+
+- ✅ **Full testability** - Can test each service end-to-end through the UI
+- ✅ **User validation** - Get feedback on each feature before building the next
+- ✅ **Incremental value** - Each phase delivers working functionality
+- ✅ **Reduced risk** - Catch integration issues early per service
+
+**Timeline Impact**: Each phase takes slightly longer but provides complete functionality.
+
+### Phase 1: Extract Video Quality Assessment (Quick Win) ✅
 
 **Goal**: Create standalone video quality service and remove coupling
 
-**Tasks**:
+**Backend Tasks**: ✅ COMPLETED
 
-1. Create `backend/app/services/video_quality/`
-2. Move quality logic from `cv_service.py` and `quality_service.py`
-3. Update upload endpoint to use new quality service
-4. Create `/v0/video-quality/assess/{video_id}` endpoint (for independent assessment)
-5. Remove `quality_service.py`
-6. No new model needed - quality metrics stay in existing `Video` model
+1. ✅ Create `backend/app/services/video_quality/`
+2. ✅ Move quality logic from `cv_service.py` and `quality_service.py`
+3. ✅ Update upload endpoint to use new quality service
+4. ✅ Create `/v0/video-quality/assess/{video_id}` endpoint (for independent assessment)
+5. ✅ Remove `quality_service.py`
+6. ✅ No new model needed - quality metrics stay in existing `Video` model
+
+**Frontend Tasks**: ✅ NO CHANGES NEEDED
+
+The existing frontend already works perfectly with our new backend architecture:
+- ✅ Upload process triggers automatic quality assessment (via `VideoQualityService.quick_assess()`)
+- ✅ Quality metrics display in VideoList.tsx (quality_level, quality_score, etc.)
+- ✅ Quality metrics display in AnalysisResults.tsx (blur_score, lighting_score, etc.)
+- ✅ All existing functionality preserved
 
 **Files Created**:
 
+Backend (✅ Complete):
+
 - `backend/app/services/video_quality/__init__.py`
 - `backend/app/services/video_quality/assessment_service.py`
-- `backend/app/api/routes/video_quality.py` (for independent assessment)
-- `backend/app/api/schemas/video_quality.py` (for response schemas only)
+- `backend/app/api/routes/video_quality.py`
+- `backend/app/api/schemas/video_quality.py`
+
+Frontend (✅ No changes needed):
+- Existing components already handle quality metrics from Video model
 
 **Files Updated**:
 
+Backend (✅ Complete):
+
 - `backend/app/api/routes/video.py` (import new quality service)
-- `backend/app/services/video_service.py` (import new quality service if needed)
+- `backend/app/main.py` (add video quality router)
+- `backend/app/services/cv_service.py` (remove duplicate function)
+
+Frontend (✅ No changes needed):
+- Frontend continues to work with existing `/videos/{id}` endpoint
 
 **Success Criteria**:
 
+Backend (✅ Complete):
+
 - ✅ Upload still performs quality assessment automatically
-- ✅ Quality assessment can also be run independently
+- ✅ Quality assessment can also be run independently via API
 - ✅ No duplicate quality assessment code
 - ✅ Quality metrics remain in existing `Video` model
 - ✅ Existing upload functionality preserved
+
+Frontend (✅ Complete):
+- ✅ Upload → Quality Assessment → Display workflow intact
+- ✅ Quality metrics display correctly in UI
+- ✅ No breaking changes to user experience
+- ✅ Can test the entire upload-to-display flow
+
+**API Endpoints Available**:
+
+- ✅ `POST /v0/video-quality/assess/{video_id}` - Independent quality assessment
+- ✅ `GET /v0/video-quality/{video_id}` - Get current quality info
 
 ### Phase 2: Extract Ball Detection Service
 
 **Goal**: Independent ball detection (not trajectory tracking)
 
-**Tasks**:
+**Backend Tasks**:
 
 1. Create `backend/app/services/ball_detection/`
-2. Create `BallDetection` model
+2. Create `BallDetection` model with database migration
 3. Move ball detection from `cv_service.py`
 4. Create `/v0/ball-detection/analyze/{video_id}` endpoint
-5. Database migration
+5. Update legacy analysis to use new service
+
+**Frontend Tasks**:
+
+6. Add ball detection API service (`ballDetectionApi`)
+7. Add "Analyze Ball Detection" button to video actions
+8. Create ball detection results component
+9. Add ball detection status indicators
+10. Update AnalysisResults.tsx to use new ball detection data
 
 **Files Created**:
+
+Backend:
 
 - `backend/app/services/ball_detection/__init__.py`
 - `backend/app/services/ball_detection/detection_service.py`
 - `backend/app/models/ball_detection.py`
 - `backend/app/api/routes/ball_detection.py`
 - `backend/app/api/schemas/ball_detection.py`
+- Database migration for `ball_detections` table
+
+Frontend:
+
+- `frontend/src/services/ballDetectionApi.ts`
+- `frontend/src/components/BallDetectionResults.tsx`
+- Update `frontend/src/types/analysis.ts` (ball detection types)
 
 **Success Criteria**:
 
+Backend:
+
 - Ball detection can run independently
-- Ball detection data stored separately
+- Ball detection data stored separately from legacy analysis
 - YOLO model management preserved
+- Background processing supported
+
+Frontend:
+
+- Can trigger ball detection from UI
+- Ball detection results display properly
+- Loading states and error handling
+- Integration with existing video player
 
 ### Phase 3: Extract Pose Detection Service
 
@@ -481,17 +551,19 @@ def analyze_video_quality_task(video_id: int):
 - Compare processing times before/after
 - Optimize bottlenecks identified during migration
 
-## Timeline
+## Timeline (E2E Implementation)
 
-- **Phase 1** (Video Quality Assessment): 3-4 days
-- **Phase 2** (Ball Detection): 4-5 days
-- **Phase 3** (Pose Detection): 4-5 days
-- **Phase 3.5** (Video Annotation): 3-4 days
-- **Phase 4** (Posture Analysis): 6-7 days
-- **Phase 5** (Frontend Decoupling): 3-4 days
-- **Phase 6** (Legacy Migration): 4-5 days
+- **Phase 1** (Video Quality Assessment): 4-5 days (Backend ✅ 1 day + Frontend 🚧 1-2 days)
+- **Phase 2** (Ball Detection): 6-7 days (Backend 3-4 days + Frontend 2-3 days)
+- **Phase 3** (Pose Detection): 6-7 days (Backend 3-4 days + Frontend 2-3 days)
+- **Phase 3.5** (Video Annotation): 5-6 days (Backend 3-4 days + Frontend 2 days)
+- **Phase 4** (Posture Analysis): 8-9 days (Backend 5-6 days + Frontend 3 days)
+- **Phase 5** (Frontend Decoupling): 3-4 days (Frontend-focused)
+- **Phase 6** (Legacy Migration): 4-5 days (Backend + Frontend cleanup)
 
-**Total Estimated Time**: 27-34 days
+**Total Estimated Time**: 36-43 days
+
+**Note**: Frontend work includes API services, UI components, loading states, error handling, and e2e testing.
 
 ## Dependencies
 
