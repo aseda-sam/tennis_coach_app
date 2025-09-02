@@ -22,7 +22,7 @@ from app.api.schemas.video import (
 )
 from app.core.config import settings
 from app.core.database import get_db
-from app.services.quality_service import quick_assess_video_quality
+from app.services.video_quality import VideoQualityService
 from app.services.video_service import (
     create_video_record,
     delete_video_with_analyses,
@@ -290,7 +290,8 @@ async def upload_video(
         quality_metrics = None
         try:
             logger.info(f"Starting quality assessment for {unique_filename}")
-            quality_metrics = quick_assess_video_quality(file_path)
+            quality_service = VideoQualityService()
+            quality_metrics = quality_service.quick_assess(file_path)
 
             # Update video record with quality metrics
             update_video_quality(
@@ -370,7 +371,8 @@ async def assess_video_quality(
 
         # Perform quality assessment
         assessment_start = time.time()
-        quality_metrics = quick_assess_video_quality(video_path)
+        quality_service = VideoQualityService()
+        quality_metrics = quality_service.quick_assess(video_path)
         assessment_time = time.time() - assessment_start
 
         # Update video record with quality metrics
