@@ -3,6 +3,7 @@ Database model for ball detection results.
 """
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -59,6 +60,9 @@ class BallDetection(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    video = relationship("Video", back_populates="ball_detections")
 
     def __repr__(self) -> str:
         return f"<BallDetection(id={self.id}, video_id={self.video_id}, model={self.model_used}, detection_rate={self.detection_rate:.2f})>"
