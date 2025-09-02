@@ -28,15 +28,21 @@ class BallDetection(Base):
     # YOLO model information
     model_used = Column(String, nullable=False)  # 'yolov8n', 'yolov8s', etc.
     confidence_threshold = Column(Float, nullable=False, default=0.5)
-    model_selection_reason = Column(String, nullable=True)  # e.g., "Quality-based selection: good quality"
+    model_selection_reason = Column(
+        String, nullable=True
+    )  # e.g., "Quality-based selection: good quality"
 
     # Raw detection data (JSON format)
     detection_data = Column(Text, nullable=True)  # JSON string of all detections
-    confidence_scores = Column(Text, nullable=True)  # JSON string of confidence statistics
+    confidence_scores = Column(
+        Text, nullable=True
+    )  # JSON string of confidence statistics
 
     # Processing metadata
     processing_time_seconds = Column(Float, nullable=False)
-    frame_processing_rate = Column(Float, nullable=True)  # frames per second during processing
+    frame_processing_rate = Column(
+        Float, nullable=True
+    )  # frames per second during processing
 
     # Quality metrics
     average_confidence = Column(Float, nullable=True)
@@ -44,7 +50,9 @@ class BallDetection(Base):
     max_confidence = Column(Float, nullable=True)
 
     # Processing status
-    status = Column(String(50), default="completed", nullable=False)  # processing, completed, failed
+    status = Column(
+        String(50), default="completed", nullable=False
+    )  # processing, completed, failed
     error_message = Column(Text, nullable=True)
 
     # Timestamps
