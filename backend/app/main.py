@@ -11,7 +11,14 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import analysis, ball_contacts, ball_detection, video, video_quality
+from app.api.routes import (
+    analysis,
+    ball_contacts,
+    ball_detection,
+    pose_detection,
+    video,
+    video_quality,
+)
 from app.core.config import settings
 from app.core.database import create_tables
 from app.utils.error_handling import (
@@ -120,6 +127,15 @@ app.include_router(
 
 app.include_router(
     ball_detection.router,
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"},
+    },
+)
+
+app.include_router(
+    pose_detection.router,
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},

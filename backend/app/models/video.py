@@ -47,3 +47,11 @@ class Video(Base):
     analyses = relationship(
         "Analysis", backref="video", cascade="all, delete-orphan", lazy="dynamic"
     )
+
+    # New granular analysis relationships
+    ball_detections = relationship(
+        "BallDetection", back_populates="video", cascade="all, delete-orphan"
+    )
+    pose_detections = relationship(
+        "PoseDetection", back_populates="video", cascade="all, delete-orphan"
+    )
