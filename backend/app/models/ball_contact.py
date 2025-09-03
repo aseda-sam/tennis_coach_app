@@ -50,4 +50,4 @@ class BallContact(Base):
     video_id = Column(
         Integer, ForeignKey("videos.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    video = relationship("Video", backref="ball_contacts")
+    video = relationship("Video", back_populates="ball_contacts")
