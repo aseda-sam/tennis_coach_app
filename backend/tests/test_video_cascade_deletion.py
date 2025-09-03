@@ -13,7 +13,9 @@ from app.services.video_service import delete_video_with_analyses
 class TestVideoCascadeDeletion:
     """Test that video deletion properly cascades to all related records."""
 
-    def test_video_deletion_cascades_to_pose_detection(self, db_session: Session) -> None:
+    def test_video_deletion_cascades_to_pose_detection(
+        self, db_session: Session
+    ) -> None:
         """Test that deleting a video also deletes associated pose detection records."""
         # Create a test video
         video = Video(
@@ -46,7 +48,9 @@ class TestVideoCascadeDeletion:
         assert pose_detection.video_id == video.id
 
         # Delete the video
-        success, filename, deleted_video_id = delete_video_with_analyses(db_session, video.id)
+        success, filename, deleted_video_id = delete_video_with_analyses(
+            db_session, video.id
+        )
 
         # Verify deletion was successful
         assert success is True
@@ -58,12 +62,16 @@ class TestVideoCascadeDeletion:
         assert deleted_video is None
 
         # Verify the pose detection is also deleted (cascade should handle this)
-        deleted_pose_detection = db_session.query(PoseDetection).filter(
-            PoseDetection.id == pose_detection.id
-        ).first()
+        deleted_pose_detection = (
+            db_session.query(PoseDetection)
+            .filter(PoseDetection.id == pose_detection.id)
+            .first()
+        )
         assert deleted_pose_detection is None
 
-    def test_video_deletion_cascades_to_ball_detection(self, db_session: Session) -> None:
+    def test_video_deletion_cascades_to_ball_detection(
+        self, db_session: Session
+    ) -> None:
         """Test that deleting a video also deletes associated ball detection records."""
         # Create a test video
         video = Video(
@@ -97,7 +105,9 @@ class TestVideoCascadeDeletion:
         assert ball_detection.video_id == video.id
 
         # Delete the video
-        success, filename, deleted_video_id = delete_video_with_analyses(db_session, video.id)
+        success, filename, deleted_video_id = delete_video_with_analyses(
+            db_session, video.id
+        )
 
         # Verify deletion was successful
         assert success is True
@@ -109,12 +119,16 @@ class TestVideoCascadeDeletion:
         assert deleted_video is None
 
         # Verify the ball detection is also deleted (cascade should handle this)
-        deleted_ball_detection = db_session.query(BallDetection).filter(
-            BallDetection.id == ball_detection.id
-        ).first()
+        deleted_ball_detection = (
+            db_session.query(BallDetection)
+            .filter(BallDetection.id == ball_detection.id)
+            .first()
+        )
         assert deleted_ball_detection is None
 
-    def test_video_deletion_with_multiple_related_records(self, db_session: Session) -> None:
+    def test_video_deletion_with_multiple_related_records(
+        self, db_session: Session
+    ) -> None:
         """Test that deleting a video deletes all related records (pose, ball, etc.)."""
         # Create a test video
         video = Video(
@@ -163,7 +177,9 @@ class TestVideoCascadeDeletion:
         assert ball_detection.id is not None
 
         # Delete the video
-        success, filename, deleted_video_id = delete_video_with_analyses(db_session, video.id)
+        success, filename, deleted_video_id = delete_video_with_analyses(
+            db_session, video.id
+        )
 
         # Verify deletion was successful
         assert success is True
@@ -173,12 +189,16 @@ class TestVideoCascadeDeletion:
         deleted_video = db_session.query(Video).filter(Video.id == video.id).first()
         assert deleted_video is None
 
-        deleted_pose_detection = db_session.query(PoseDetection).filter(
-            PoseDetection.id == pose_detection.id
-        ).first()
+        deleted_pose_detection = (
+            db_session.query(PoseDetection)
+            .filter(PoseDetection.id == pose_detection.id)
+            .first()
+        )
         assert deleted_pose_detection is None
 
-        deleted_ball_detection = db_session.query(BallDetection).filter(
-            BallDetection.id == ball_detection.id
-        ).first()
+        deleted_ball_detection = (
+            db_session.query(BallDetection)
+            .filter(BallDetection.id == ball_detection.id)
+            .first()
+        )
         assert deleted_ball_detection is None
