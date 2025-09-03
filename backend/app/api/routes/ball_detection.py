@@ -58,7 +58,8 @@ async def analyze_video_ball_detection(
 
         if existing_detection:
             logger.info(
-                f"Ball detection already exists for video {video_id}, returning existing results"
+                f"Ball detection already exists for video {video_id}, "
+                f"returning existing results"
             )
             return _convert_to_response(
                 existing_detection, request.include_detection_data
@@ -121,7 +122,10 @@ async def get_ball_detection_results(
         if not ball_detection:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No ball detection results found for video {video_id}. Use the analyze endpoint to trigger detection.",
+                detail=(
+                    f"No ball detection results found for video {video_id}. "
+                    f"Use the analyze endpoint to trigger detection."
+                ),
             )
 
         return _convert_to_response(ball_detection, include_detection_data)

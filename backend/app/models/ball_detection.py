@@ -66,4 +66,7 @@ class BallDetection(Base):
     video = relationship("Video", back_populates="ball_detections")
 
     def __repr__(self) -> str:
-        return f"<BallDetection(id={self.id}, video_id={self.video_id}, model={self.model_used}, detection_rate={self.detection_rate:.2f})>"
+        return (
+            f"<BallDetection(id={self.id}, video_id={self.video_id}, "
+            f"model={self.model_used}, detection_rate={self.detection_rate:.2f})>"
+        )

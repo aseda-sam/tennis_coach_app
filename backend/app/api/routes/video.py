@@ -200,7 +200,8 @@ async def stream_annotated_video(
             annotated_filename = annotated_path.name
             logger.info(f"Using video annotation: {annotated_filename}")
         else:
-            # Fallback to legacy system - handle cases where filename has suffixes like _2, _3
+            # Fallback to legacy system - handle cases where filename has suffixes
+            # like _2, _3
             base_name = Path(db_video.filename).stem
             processed_dir = Path(settings.PROCESSED_DIR)
 
@@ -222,7 +223,8 @@ async def stream_annotated_video(
                         f"Found annotated video with suffix: {annotated_filename}"
                     )
                 else:
-                    # Fallback: search for any file containing the base name and "annotated"
+                    # Fallback: search for any file containing the base name
+                    # and "annotated"
                     pattern = f"*{base_name}*annotated*.mp4"
                     matching_files = list(processed_dir.glob(pattern))
                     if matching_files:
@@ -231,7 +233,8 @@ async def stream_annotated_video(
                         )
                         annotated_filename = annotated_path.name
                         logger.info(
-                            f"Found annotated video with flexible pattern: {annotated_filename}"
+                            f"Found annotated video with flexible pattern: "
+                            f"{annotated_filename}"
                         )
 
         validate_file_exists(annotated_path, annotated_filename)
@@ -305,7 +308,9 @@ async def get_video_analysis_status(
 
         # Check for ball detection (when implemented)
         # from app.models.ball_detection import BallDetection
-        # ball_detection = db.query(BallDetection).filter(BallDetection.video_id == video_id).first()
+        # ball_detection = db.query(BallDetection).filter(
+        #     BallDetection.video_id == video_id
+        # ).first()
         # if ball_detection and ball_detection.status == "completed":
         #     has_analysis = True
         #     analysis_types.append("ball_detection")
@@ -478,7 +483,8 @@ async def upload_video(
             )
 
             logger.info(
-                f"Quality assessment completed: {quality_metrics['quality_level']} quality"
+                f"Quality assessment completed: "
+                f"{quality_metrics['quality_level']} quality"
             )
 
         except (OSError, RuntimeError, ValueError) as e:
@@ -577,7 +583,10 @@ async def assess_video_quality(
             filename=db_video.filename,
             quality_metrics=quality_metrics_response,
             assessment_time=assessment_time,
-            message=f"Quality assessment completed: {quality_metrics['quality_level']} quality",
+            message=(
+                f"Quality assessment completed: "
+                f"{quality_metrics['quality_level']} quality"
+            ),
         )
 
     except HTTPException:

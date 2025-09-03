@@ -55,7 +55,8 @@ def _create_ball_contacts_from_detections(
         except ValueError as e:
             # Log error but continue with other contacts
             logger.warning(
-                f"Failed to create ball contact for timestamp {contact.get('timestamp')}: {e}"
+                f"Failed to create ball contact for timestamp "
+                f"{contact.get('timestamp')}: {e}"
             )
             continue
 
@@ -116,7 +117,8 @@ def create_analysis_record(
         contact_frames=analysis_results.get("analysis_summary", {}).get(
             "contact_frames", 0
         ),
-        # Note: contact_timestamps and contact_detections are now stored in ball_contacts table
+        # Note: contact_timestamps and contact_detections are now stored in
+        # ball_contacts table
         contact_timestamps=None,
         contact_detections=None,
         ball_detections=json.dumps(analysis_results.get("ball_detections", [])),
@@ -237,7 +239,9 @@ def analyze_video(
                 "total_frames": existing_analysis.total_frames,
                 "frames_with_balls": existing_analysis.frames_with_balls,
                 "total_ball_detections": existing_analysis.total_ball_detections,
-                "average_detections_per_frame": existing_analysis.average_detections_per_frame,
+                "average_detections_per_frame": (
+                    existing_analysis.average_detections_per_frame
+                ),
                 "detection_rate": existing_analysis.detection_rate,
             },
         }
@@ -279,7 +283,8 @@ def analyze_video(
                 quality_based_threshold = confidence_threshold * 0.7
 
             logger.info(
-                f"Using quality-based threshold: {quality_based_threshold:.3f} (quality: {video.quality_level})"
+                f"Using quality-based threshold: {quality_based_threshold:.3f} "
+                f"(quality: {video.quality_level})"
             )
         else:
             quality_based_threshold = confidence_threshold
@@ -305,10 +310,12 @@ def analyze_video(
             f"Contact detection check: include_pose_detection={include_pose_detection}"
         )
         logger.info(
-            f"Contact detection check: ball_detections present={analysis_results.get('ball_detections') is not None}"
+            f"Contact detection check: ball_detections present="
+            f"{analysis_results.get('ball_detections') is not None}"
         )
         logger.info(
-            f"Contact detection check: pose_detections present={analysis_results.get('pose_detections') is not None}"
+            f"Contact detection check: pose_detections present="
+            f"{analysis_results.get('pose_detections') is not None}"
         )
         logger.info(
             f"Contact detection check: error present={'error' in analysis_results}"
@@ -327,7 +334,8 @@ def analyze_video(
             # Detect ball contact using improved racket-based detection
             from app.services.cv_service import detect_ball_contact_with_rackets
 
-            # Use racket positions if available, otherwise fall back to basic contact detection
+            # Use racket positions if available, otherwise fall back to basic
+            # contact detection
             racket_positions = analysis_results.get(
                 "racket_positions", [None] * len(analysis_results["ball_detections"])
             )
@@ -338,10 +346,13 @@ def analyze_video(
                 pose_detections=analysis_results["pose_detections"],
                 racket_positions=racket_positions,
                 fps=fps,
-                contact_threshold=200.0,  # Realistic 200px threshold for wrist-based fallback
-                racket_contact_threshold=150.0,  # Realistic 150px threshold for racket contact
+                contact_threshold=200.0,  # Realistic 200px threshold for
+                # wrist-based fallback
+                racket_contact_threshold=150.0,  # Realistic 150px threshold for
+                # racket contact
                 min_ball_confidence=0.6,  # Only high-confidence ball detections
-                early_video_skip_seconds=2.0,  # Skip first 2 seconds (player positioning)
+                early_video_skip_seconds=2.0,  # Skip first 2 seconds
+                # (player positioning)
             )
             logger.info(
                 f"Contact detection completed: {len(contact_timestamps)} contacts found"
@@ -439,7 +450,8 @@ def analyze_video(
             analysis_record.contact_frames = analysis_results.get(
                 "analysis_summary", {}
             ).get("contact_frames", 0)
-            # Note: contact_timestamps and contact_detections are now stored in ball_contacts table
+            # Note: contact_timestamps and contact_detections are now stored in
+            # ball_contacts table
             analysis_record.contact_timestamps = None
             analysis_record.contact_detections = None
             analysis_record.ball_detections = json.dumps(
@@ -453,7 +465,8 @@ def analyze_video(
             )
             analysis_record.processing_time = processing_time
             analysis_record.model_used = (
-                f"{analysis_results.get('analysis_summary', {}).get('yolo_model_used', 'yolov8n')}+mediapipe"
+                f"{analysis_results.get('analysis_summary', {}).get('yolo_model_used', 'yolov8n')}"
+                f"+mediapipe"
                 if cv_service.ball_detector and cv_service.pose_detector
                 else analysis_results.get("analysis_summary", {}).get(
                     "yolo_model_used", "yolov8n"
@@ -476,7 +489,10 @@ def analyze_video(
                 analysis_type=analysis_type,
                 analysis_results=analysis_results,
                 processing_time=processing_time,
-                model_used=f"{analysis_results.get('analysis_summary', {}).get('yolo_model_used', 'yolov8n')}+mediapipe"
+                model_used=(
+                    f"{analysis_results.get('analysis_summary', {}).get('yolo_model_used', 'yolov8n')}"
+                    f"+mediapipe"
+                )
                 if cv_service.ball_detector and cv_service.pose_detector
                 else analysis_results.get("analysis_summary", {}).get(
                     "yolo_model_used", "yolov8n"

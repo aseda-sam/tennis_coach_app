@@ -69,4 +69,7 @@ class Analysis(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
-        return f"<Analysis(id={self.id}, video={self.video_filename}, type={self.analysis_type})>"
+        return (
+            f"<Analysis(id={self.id}, video={self.video_filename}, "
+            f"type={self.analysis_type})>"
+        )

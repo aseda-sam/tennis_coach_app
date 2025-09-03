@@ -22,24 +22,29 @@ class TestPoseDetectionService:
     """Test pose detection service functionality."""
 
     @pytest.fixture
-    def pose_service(self):
+    def pose_service(self) -> PoseDetectionService:
         """Create a pose detection service instance."""
         return PoseDetectionService()
 
     @pytest.fixture
-    def mock_video_file(self):
+    def mock_video_file(self) -> Path:
         """Create a mock video file path."""
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
             return Path(tmp.name)
 
-    def test_service_initialization(self, pose_service):
+    def test_service_initialization(self, pose_service: PoseDetectionService) -> None:
         """Test that pose detection service initializes properly."""
         assert pose_service is not None
         # Note: MediaPipe might not be available in test environment
         # assert pose_service.pose_detector is not None
 
     @patch("app.services.pose_detection.detection_service.cv2.VideoCapture")
-    def test_extract_frames(self, mock_video_capture, pose_service, mock_video_file):
+    def test_extract_frames(
+        self,
+        mock_video_capture: Mock,
+        pose_service: PoseDetectionService,
+        mock_video_file: Path,
+    ) -> None:
         """Test frame extraction from video."""
         # Mock video capture
         mock_cap = Mock()
@@ -56,7 +61,9 @@ class TestPoseDetectionService:
         assert len(frames) == 2
         mock_cap.release.assert_called_once()
 
-    def test_detect_poses_in_frames_no_detector(self, pose_service):
+    def test_detect_poses_in_frames_no_detector(
+        self, pose_service: PoseDetectionService
+    ) -> None:
         """Test pose detection when detector is not available."""
         pose_service.pose_detector = None
 
@@ -68,7 +75,9 @@ class TestPoseDetectionService:
         assert results["detection_rate"] == 0.0
         assert "error" in results
 
-    def test_save_detection_results(self, pose_service, db_session):
+    def test_save_detection_results(
+        self, pose_service: PoseDetectionService, db_session: Session
+    ) -> None:
         """Test saving pose detection results to database."""
         # Create test video
         video = Video(
@@ -108,7 +117,9 @@ class TestPoseDetectionService:
         assert pose_detection.detection_rate == 0.8
         assert pose_detection.status == "completed"
 
-    def test_get_detection_by_video_id(self, pose_service, db_session):
+    def test_get_detection_by_video_id(
+        self, pose_service: PoseDetectionService, db_session: Session
+    ) -> None:
         """Test retrieving pose detection by video ID."""
         # Create test video
         video = Video(
@@ -146,21 +157,21 @@ class TestPoseDetectionService:
 class TestPoseDetectionAPI:
     """Test pose detection API endpoints."""
 
-    def test_analyze_pose_detection_video_not_found(self):
+    def test_analyze_pose_detection_video_not_found(self) -> None:
         """Test pose detection analysis with non-existent video."""
         response = client.post("/v0/pose-detection/analyze/999")
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-    def test_get_pose_detection_video_not_found(self):
+    def test_get_pose_detection_video_not_found(self) -> None:
         """Test getting pose detection for non-existent video."""
         response = client.get("/v0/pose-detection/999")
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-    def test_analyze_pose_detection_request_validation(self):
+    def test_analyze_pose_detection_request_validation(self) -> None:
         """Test pose detection request validation."""
         # Test with invalid confidence threshold
         response = client.post(
@@ -175,8 +186,8 @@ class TestPoseDetectionAPI:
     )
     @patch("app.api.routes.pose_detection.Path.exists")
     def test_analyze_pose_detection_success(
-        self, mock_exists, mock_analyze, db_session
-    ):
+        self, mock_exists: Mock, mock_analyze: Mock, db_session: Session
+    ) -> None:
         """Test successful pose detection analysis."""
         # Setup
         mock_exists.return_value = True
