@@ -2,7 +2,9 @@
 Video annotation model for storing annotated video information.
 """
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, func
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -46,7 +48,7 @@ class VideoAnnotation(Base):
     error_message = Column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships

@@ -105,6 +105,20 @@ export const videoApi = {
   streamAnnotatedVideo: async (videoId: number): Promise<string> => {
     return `${API_BASE_URL}/videos/${videoId}/annotated/stream`;
   },
+
+  // Check video analysis status
+  getVideoAnalysisStatus: async (
+    videoId: number
+  ): Promise<{
+    video_id: number;
+    has_analysis: boolean;
+    has_annotated_video: boolean;
+    analysis_types: string[];
+    annotated_video_available: boolean;
+  }> => {
+    const response = await api.get(`/videos/${videoId}/analysis-status`);
+    return response.data;
+  },
 };
 
 // Updated to match backend AnalysisStartResponse
