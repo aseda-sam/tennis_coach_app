@@ -348,13 +348,22 @@ Frontend (✅ Complete):
 - ✅ Loading states and error handling
 - ✅ Integration with existing video player
 
-### Phase 3.1: Hybrid Background Service (NEW)
+### Phase 3.1: Hybrid Background Service Integration (CURRENT PRIORITY) 🚧
 
-**Goal**: Enable granular analysis execution without ball detection
+**Goal**: Integrate new modular services with background_service for proper task management
 
-**Problem**: Current background service always runs comprehensive analysis (ball + pose). User wants pose-only analysis for speed.
+**Problem**: New modular services (pose detection, ball detection) run synchronously and block the API, while legacy system has proper background processing with task management, progress tracking, and cancellation.
 
-**Solution**: Update background service to use new modular services based on analysis type:
+**Current State**:
+
+- ✅ Modular services created (PoseDetectionService, BallDetectionService)
+- ✅ Direct API endpoints work but are synchronous (blocking)
+- ❌ No task management for modular services
+- ❌ No progress tracking for modular services
+- ❌ No cancellation support for modular services
+- ❌ Server blocks during analysis (can't handle other requests)
+
+**Solution**: Update background service to route analysis types to appropriate modular services:
 
 ```python
 # In background_service.py
@@ -408,23 +417,47 @@ def _run_analysis_task(self, task_id, video_id, analysis_type, ...):
 
 **Implementation Tasks**:
 
-1. Update `BackgroundTaskService._run_analysis_task()` with conditional logic
-2. Add helper methods for each analysis type combination
-3. Ensure legacy Analysis records are created for frontend compatibility
-4. Add proper error handling for modular service failures
-5. Update progress tracking for different analysis types
+1. ✅ Update `BackgroundTaskService._run_analysis_task()` with conditional logic
+2. ✅ Add helper methods for each analysis type combination
+3. ✅ Ensure legacy Analysis records are created for frontend compatibility
+4. ✅ Add proper error handling for modular service failures
+5. ✅ Update progress tracking for different analysis types
+6. ✅ Update direct API endpoints to use background_service instead of synchronous calls
+7. ✅ Remove synchronous processing from modular service endpoints
+
+**API Endpoint Changes**:
+
+**Before (Synchronous - Blocking)**:
+
+```python
+# Direct service calls - blocks API request
+POST /v0/pose-detection/analyze/{video_id}  # Blocks for 2-5 minutes
+POST /v0/ball-detection/analyze/{video_id}  # Blocks for 1-3 minutes
+```
+
+**After (Asynchronous - Non-blocking)**:
+
+```python
+# All analysis goes through background_service
+POST /v1/analysis/videos/{video_id}  # Returns immediately with task_id
+# Routes to appropriate modular service based on analysis_type
+```
 
 **Frontend Changes**: ✅ NO CHANGES NEEDED
 
 - Frontend continues to call `POST /analysis/videos/{video_id}` with `analysis_type: "pose_only"`
 - Background service handles the routing to appropriate modular services
 - Results still appear in legacy Analysis format for UI compatibility
+- All analysis now has proper task management, progress tracking, and cancellation
 
 **Success Criteria**:
 
-- ✅ `analysis_type: "pose_only"` skips ball detection entirely
-- ✅ Pose-only analysis is significantly faster
-- ✅ Results are stored in both new PoseDetection model AND legacy Analysis model
+- ✅ `analysis_type: "pose_only"` uses PoseDetectionService via background_service
+- ✅ `analysis_type: "ball_only"` uses BallDetectionService via background_service
+- ✅ `analysis_type: "comprehensive"` uses both services via background_service
+- ✅ All analysis types have task management, progress tracking, and cancellation
+- ✅ Server remains responsive during analysis (non-blocking)
+- ✅ Results are stored in both new modular models AND legacy Analysis model
 - ✅ Frontend receives familiar Analysis response format
 - ✅ No breaking changes to existing analysis workflows
 
@@ -524,23 +557,53 @@ const getVideoUrl = () => {
 - Analysis results shown as overlays when available
 - No blocking analysis requirements
 
-### Phase 6: Legacy Analysis System Migration
+### Phase 6: Legacy Analysis System Deprecation
 
-**Goal**: Remove monolithic analysis system
+**Goal**: Fully deprecate and remove the monolithic analysis system
 
-**Tasks**:
+**Current State After Phase 3.1**:
 
-1. Data migration from `Analysis` to specific analysis tables
-2. Update existing API endpoints to use new services
-3. Remove `analysis_service.py` monolithic functions
-4. Remove `Analysis` model
-5. Update frontend to use new granular APIs
+- ✅ All analysis types route through background_service
+- ✅ Modular services handle the actual processing
+- ✅ Legacy Analysis records created for backward compatibility
+- ✅ Frontend continues to work without changes
+
+**Deprecation Strategy**:
+
+**Phase 6.1: Mark Legacy System as Deprecated**
+
+1. Add deprecation warnings to legacy `analyze_video()` function
+2. Add deprecation warnings to direct service calls in `cv_service.py`
+3. Update documentation to indicate legacy system is deprecated
+4. Add logging to track usage of deprecated functions
+
+**Phase 6.2: Remove Legacy Dependencies**
+
+1. Remove `cv_service.analyze_video()` method (keep only utility methods)
+2. Remove `analysis_service.analyze_video()` function
+3. Update any remaining direct calls to use background_service
+4. Remove unused imports and dependencies
+
+**Phase 6.3: Clean Up Legacy Code**
+
+1. Remove `Analysis` model and database table
+2. Remove `analysis_service.py` file
+3. Remove legacy analysis routes (keep only background task management)
+4. Update frontend to use new granular APIs (optional - can keep legacy format)
 
 **Migration Strategy**:
 
-- Keep legacy endpoints during transition
-- Gradual migration of frontend components
-- Deprecation warnings for old endpoints
+- ✅ **No data migration needed** - new services already store data in proper tables
+- ✅ **No frontend changes needed** - background_service maintains compatibility
+- ✅ **Gradual deprecation** - legacy system marked deprecated but still functional
+- ✅ **Safe removal** - legacy code removed only after full integration verified
+
+**Benefits of Deprecation**:
+
+- ✅ **Cleaner codebase** - remove 2000+ lines of monolithic code
+- ✅ **Better maintainability** - clear service boundaries
+- ✅ **Improved performance** - no duplicate processing paths
+- ✅ **Future-ready** - foundation for advanced analysis features
 
 ## Technical Specifications
 

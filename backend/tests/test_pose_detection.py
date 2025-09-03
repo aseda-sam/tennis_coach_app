@@ -219,8 +219,8 @@ class TestPoseDetectionAPI:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "completed"
-        assert "pose_detection_id" in data
+        assert data["status"] == "processing"
+        assert "task_id" in data
         assert data["video_filename"] == "test_analyze_pose_video.mp4"
 
 
