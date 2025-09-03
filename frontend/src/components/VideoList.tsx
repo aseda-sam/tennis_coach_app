@@ -3,6 +3,7 @@ import { videoApi } from '../services/api';
 import poseDetectionApi, {
   PoseDetectionStartResponse,
 } from '../services/poseDetectionApi';
+import { useTaskStatus } from '../hooks/useTaskStatus';
 import { VideoMetadata } from '../types/video';
 import {
   AnalyticsIcon,
@@ -71,6 +72,47 @@ const VideoList: React.FC<VideoListProps> = ({
       }
     >
   >(new Map());
+
+  // Get the current pose detection task ID for polling
+  const currentPoseTaskId = activePoseTasks.size > 0 
+    ? Array.from(activePoseTasks.values())[0]?.taskId || null 
+    : null;
+
+  // Poll for pose detection task completion
+  const { taskStatus: poseTaskStatus } = useTaskStatus({
+    taskId: currentPoseTaskId,
+    pollInterval: 2000,
+    autoStop: true,
+    onComplete: async (completedTask) => {
+      // Task completed, refresh videos and clear active tasks
+      await loadVideos();
+      setActivePoseTasks(new Map());
+    },
+    onError: (error) => {
+      console.error('Pose detection task failed:', error);
+      setError(error);
+      setActivePoseTasks(new Map());
+    },
+  });
+
+  // Update active pose tasks with progress from polling
+  useEffect(() => {
+    if (poseTaskStatus && currentPoseTaskId) {
+      setActivePoseTasks(prev => {
+        const newMap = new Map(prev);
+        for (const [videoId, task] of newMap.entries()) {
+          if (task.taskId === currentPoseTaskId) {
+            newMap.set(videoId, {
+              ...task,
+              progress: poseTaskStatus.progress,
+              status: poseTaskStatus.status,
+            });
+          }
+        }
+        return newMap;
+      });
+    }
+  }, [poseTaskStatus, currentPoseTaskId]);
 
   // Removed legacy analysis verification
 
@@ -172,11 +214,7 @@ const VideoList: React.FC<VideoListProps> = ({
             )
         );
 
-        // Start polling for this task (we'll need to create a pose-specific poller)
-        // For now, just show processing status
-        console.log(
-          `Pose detection started for video ${videoId}, task ${response.task_id}`
-        );
+        // Polling is now handled by useTaskStatus hook above
       } else {
         throw new Error(response.message || 'Failed to start pose detection');
       }
