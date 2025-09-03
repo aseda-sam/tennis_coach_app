@@ -148,7 +148,9 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
                 if annotated_path.exists():
                     try:
                         annotated_path.unlink()
-                        logger.info(f"Deleted pose detection annotated video: {annotated_path}")
+                        logger.info(
+                            f"Deleted pose detection annotated video: {annotated_path}"
+                        )
                     except OSError as e:
                         logger.warning(
                             f"Failed to delete pose detection annotated video {annotated_path}: {e}"
