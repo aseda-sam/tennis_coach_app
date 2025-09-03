@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from app.services.cv_service import detect_ball_contact_with_rackets
+from app.services.ball_contact_service import detect_ball_contact_with_rackets
 
 
 def create_mock_detections_with_rackets() -> tuple[
@@ -140,10 +140,10 @@ class TestImprovedBallContactDetection:
 
         # Check racket data is present for racket-based contacts
         assert contact_detections[0]["racket_data"] is not None
-        assert contact_detections[0]["racket_data"]["racket_center"] == [155, 185]
+        assert contact_detections[0]["racket_data"]["center"] == [155, 185]
         assert contact_detections[1]["racket_data"] is None  # Wrist-based contact
         assert contact_detections[2]["racket_data"] is not None
-        assert contact_detections[2]["racket_data"]["racket_center"] == [150, 180]
+        assert contact_detections[2]["racket_data"]["center"] == [150, 180]
 
     def test_fallback_to_wrist_based_detection(self) -> None:
         """Test fallback to wrist-based detection when no racket position available."""
@@ -182,7 +182,7 @@ class TestImprovedBallContactDetection:
         assert contact_detections[0]["contact_type"] == "wrist"
         assert contact_detections[0]["contact_hand"] == "right"
         assert contact_detections[0]["racket_data"] is None
-        assert contact_detections[0]["distance"] == pytest.approx(
+        assert contact_detections[0]["contact_distance"] == pytest.approx(
             1.414, rel=1e-3
         )  # sqrt(1^2 + 1^2)
 

@@ -5,7 +5,7 @@ Unit tests for timing functionality.
 import time
 from unittest.mock import patch
 
-from app.services.cv_service import log_timing, log_timing_error
+from app.utils.timing_utils import log_timing, log_timing_error
 
 
 class TestTimingFunctions:
@@ -15,7 +15,7 @@ class TestTimingFunctions:
         """Test successful timing log."""
         start_time = time.time() - 1.5  # 1.5 seconds ago
 
-        with patch("app.services.cv_service.logger") as mock_logger:
+        with patch("app.utils.timing_utils.logger") as mock_logger:
             log_timing("Test Operation", start_time)
 
             # Verify logger was called
@@ -32,7 +32,7 @@ class TestTimingFunctions:
         start_time = time.time() - 2.0  # 2.0 seconds ago
         test_error = ValueError("Test error")
 
-        with patch("app.services.cv_service.logger") as mock_logger:
+        with patch("app.utils.timing_utils.logger") as mock_logger:
             log_timing_error("Test Operation", start_time, test_error)
 
             # Verify logger was called
@@ -48,7 +48,7 @@ class TestTimingFunctions:
         """Test timing for very fast operations."""
         start_time = time.time() - 0.001  # 1ms ago
 
-        with patch("app.services.cv_service.logger") as mock_logger:
+        with patch("app.utils.timing_utils.logger") as mock_logger:
             log_timing("Fast Operation", start_time)
 
             # Verify logger was called
@@ -63,7 +63,7 @@ class TestTimingFunctions:
         """Test timing for very slow operations."""
         start_time = time.time() - 60.0  # 60 seconds ago
 
-        with patch("app.services.cv_service.logger") as mock_logger:
+        with patch("app.utils.timing_utils.logger") as mock_logger:
             log_timing("Slow Operation", start_time)
 
             # Verify logger was called

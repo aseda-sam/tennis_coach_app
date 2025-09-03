@@ -32,10 +32,7 @@ class VideoAnnotation(Base):
     # Source analysis references (optional - for tracking which analyses contributed)
     pose_detection_id = Column(Integer, ForeignKey("pose_detections.id"), nullable=True)
     # ball_detection_id = Column(Integer, ForeignKey("ball_detections.id"), nullable=True)
-    # Future: when ball_detections table exists
-    analysis_id = Column(
-        Integer, ForeignKey("analyses.id"), nullable=True
-    )  # Legacy analysis reference
+    # Legacy analysis reference removed - no longer needed
 
     # Processing metadata
     processing_time_seconds = Column(Float, nullable=False)
