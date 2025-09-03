@@ -65,23 +65,28 @@ async def analyze_video_ball_detection(
                 existing_detection, request.include_detection_data
             )
 
-        # Perform ball detection analysis
-        logger.info(f"Starting ball detection analysis for video {video_id}")
+        # Route through background service for proper task management
+        from app.services.background_service import background_service
 
-        detection_results = ball_detection_service.analyze_video_file(
-            video_path=video_path,
+        # Start background task for ball detection
+        task_id = background_service.start_analysis_task(
+            video_id=video_id,
+            analysis_type="ball_only",
             confidence_threshold=request.confidence_threshold,
-            video_quality_level=video.quality_level,
-            max_frames=request.max_frames,
+            include_pose_detection=False,
         )
 
-        # Save results to database
-        ball_detection = ball_detection_service.save_detection_results(
-            db=db, video_id=video_id, detection_results=detection_results
+        logger.info(
+            f"Ball detection analysis started in background for video {video_id}"
         )
-
-        logger.info(f"Ball detection analysis completed for video {video_id}")
-        return _convert_to_response(ball_detection, request.include_detection_data)
+        return BallDetectionResponse(
+            ball_detection_id=None,  # Will be created by background task
+            video_filename=video.filename,
+            status="processing",
+            message="Ball detection analysis started in background",
+            estimated_duration=180,  # 3 minutes estimate
+            task_id=task_id,
+        )
 
     except HTTPException:
         # Re-raise HTTP exceptions as-is

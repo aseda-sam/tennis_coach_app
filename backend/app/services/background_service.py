@@ -7,14 +7,21 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.services.analysis_service import analyze_video, update_analysis_status
+from app.services.analysis_service import (
+    analyze_video,
+    create_analysis_record,
+    update_analysis_status,
+)
+from app.services.ball_detection import BallDetectionService
+from app.services.pose_detection import PoseDetectionService
 from app.services.video_service import get_video_by_id
-from app.utils.progress_utils import set_task_storage
+from app.utils.progress_utils import set_task_storage, update_task_progress
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +146,11 @@ class BackgroundTaskService:
                     f"Task {task_id}: Starting analysis for video {video.filename}"
                 )
 
+                # Get video file path
+                video_path = Path(video.file_path)
+                if not video_path.exists():
+                    raise ValueError(f"Video file not found: {video.file_path}")
+
                 # Check if analysis record already exists for this video
                 from app.services.analysis_service import get_analysis_by_video_id
 
@@ -172,19 +184,51 @@ class BackgroundTaskService:
                             "Extracting video frames for analysis"
                         )
 
-                # Run analysis (this is the CPU-intensive part)
+                # Run analysis using new modular services based on analysis_type
                 logger.info(
-                    f"Task {task_id}: Starting analyze_video with "
+                    f"Task {task_id}: Starting analysis with type={analysis_type}, "
                     f"include_pose_detection={include_pose_detection}"
                 )
-                result = analyze_video(
-                    db=db,
-                    video_id=video_id,
-                    analysis_type=analysis_type,
-                    confidence_threshold=confidence_threshold,
-                    include_pose_detection=include_pose_detection,
-                    task_id=task_id,
-                )
+
+                # Route to appropriate modular service based on analysis_type
+                if analysis_type == "pose_only":
+                    result = self._run_pose_only_analysis(
+                        db=db,
+                        video_id=video_id,
+                        video_path=str(video_path),
+                        confidence_threshold=confidence_threshold,
+                        task_id=task_id,
+                    )
+                elif analysis_type == "ball_only":
+                    result = self._run_ball_only_analysis(
+                        db=db,
+                        video_id=video_id,
+                        video_path=str(video_path),
+                        confidence_threshold=confidence_threshold,
+                        task_id=task_id,
+                    )
+                elif analysis_type == "comprehensive":
+                    result = self._run_comprehensive_analysis(
+                        db=db,
+                        video_id=video_id,
+                        video_path=str(video_path),
+                        confidence_threshold=confidence_threshold,
+                        include_pose_detection=include_pose_detection,
+                        task_id=task_id,
+                    )
+                else:
+                    # Fall back to legacy system for other types
+                    logger.warning(
+                        f"Task {task_id}: Using legacy analyze_video for analysis_type={analysis_type}"
+                    )
+                    result = analyze_video(
+                        db=db,
+                        video_id=video_id,
+                        analysis_type=analysis_type,
+                        confidence_threshold=confidence_threshold,
+                        include_pose_detection=include_pose_detection,
+                        task_id=task_id,
+                    )
                 logger.info(
                     f"Task {task_id}: analyze_video completed with result: "
                     f"{type(result)}"
@@ -349,6 +393,317 @@ class BackgroundTaskService:
             "max_workers": self.max_workers,  # Use our stored value
             "active_workers": active_workers,
         }
+
+    def _run_pose_only_analysis(
+        self,
+        db: Session,
+        video_id: int,
+        video_path: str,
+        confidence_threshold: float,
+        task_id: int,
+    ) -> Dict[str, Any]:
+        """Run pose-only analysis using PoseDetectionService."""
+
+        logger.info(f"Task {task_id}: Starting pose-only analysis")
+
+        try:
+            # Update progress
+            update_task_progress(
+                task_id, "pose_detection", 0, "Starting pose detection analysis", 30
+            )
+
+            # Use PoseDetectionService
+            pose_service = PoseDetectionService()
+            pose_results = pose_service.analyze_video_file(
+                video_path=Path(video_path),
+                confidence_threshold=confidence_threshold,
+                detection_threshold=0.5,  # Default detection threshold
+                max_frames=None,  # Process all frames
+            )
+
+            # Check for errors
+            if "error" in pose_results:
+                raise RuntimeError(f"Pose detection failed: {pose_results['error']}")
+
+            # Update progress
+            update_task_progress(
+                task_id, "pose_detection", 50, "Saving pose detection results", 60
+            )
+
+            # Save results to PoseDetection table
+            pose_detection = pose_service.save_detection_results(
+                db=db, video_id=video_id, detection_results=pose_results
+            )
+
+            # Update progress
+            update_task_progress(
+                task_id, "pose_detection", 80, "Creating legacy analysis record", 90
+            )
+
+            # Create legacy Analysis record for backward compatibility
+            analysis_record = create_analysis_record(
+                db=db,
+                video_id=video_id,
+                video_filename=Path(video_path).name,
+                analysis_type="pose_only",
+                analysis_results={
+                    "pose_detections": pose_results.get("detection_data", []),
+                    "total_frames": pose_results.get("total_frames", 0),
+                    "frames_with_poses": pose_results.get("frames_with_poses", 0),
+                    "detection_rate": pose_results.get("detection_rate", 0.0),
+                },
+                processing_time=pose_results.get("processing_time_seconds", 0.0),
+                model_used="mediapipe",
+                confidence_threshold=confidence_threshold,
+                status="completed",
+            )
+
+            # Update analysis status
+            update_analysis_status(db, analysis_record.id, "completed")
+
+            logger.info(f"Task {task_id}: Pose-only analysis completed successfully")
+
+            return {
+                "analysis_id": analysis_record.id,
+                "processing_time": pose_results.get("processing_time_seconds", 0.0),
+                "analysis_summary": {
+                    "total_frames": pose_results.get("total_frames", 0),
+                    "frames_with_poses": pose_results.get("frames_with_poses", 0),
+                    "detection_rate": pose_results.get("detection_rate", 0.0),
+                },
+                "pose_detection_id": pose_detection.id,
+                "analysis_type": "pose_only",
+            }
+
+        except Exception as e:
+            logger.error(f"Task {task_id}: Pose-only analysis failed: {e}")
+            raise
+
+    def _run_ball_only_analysis(
+        self,
+        db: Session,
+        video_id: int,
+        video_path: str,
+        confidence_threshold: float,
+        task_id: int,
+    ) -> Dict[str, Any]:
+        """Run ball-only analysis using BallDetectionService."""
+
+        logger.info(f"Task {task_id}: Starting ball-only analysis")
+
+        try:
+            # Update progress
+            update_task_progress(
+                task_id, "ball_detection", 0, "Starting ball detection analysis", 30
+            )
+
+            # Use BallDetectionService
+            ball_service = BallDetectionService()
+            ball_results = ball_service.analyze_video_file(
+                video_path=Path(video_path),
+                confidence_threshold=confidence_threshold,
+                video_quality_level=None,  # Will be determined by service
+                max_frames=None,  # Process all frames
+            )
+
+            # Check for errors
+            if "error" in ball_results:
+                raise RuntimeError(f"Ball detection failed: {ball_results['error']}")
+
+            # Update progress
+            update_task_progress(
+                task_id, "ball_detection", 50, "Saving ball detection results", 60
+            )
+
+            # Save results to BallDetection table
+            ball_detection = ball_service.save_detection_results(
+                db=db, video_id=video_id, detection_results=ball_results
+            )
+
+            # Update progress
+            update_task_progress(
+                task_id, "ball_detection", 80, "Creating legacy analysis record", 90
+            )
+
+            # Create legacy Analysis record for backward compatibility
+            analysis_record = create_analysis_record(
+                db=db,
+                video_id=video_id,
+                video_filename=Path(video_path).name,
+                analysis_type="ball_only",
+                analysis_results={
+                    "ball_detections": ball_results.get("detection_data", []),
+                    "total_frames": ball_results.get("total_frames", 0),
+                    "frames_with_balls": ball_results.get("frames_with_balls", 0),
+                    "detection_rate": ball_results.get("detection_rate", 0.0),
+                },
+                processing_time=ball_results.get("processing_time_seconds", 0.0),
+                model_used=ball_results.get("model_used", "yolov8n"),
+                confidence_threshold=confidence_threshold,
+                status="completed",
+            )
+
+            # Update analysis status
+            update_analysis_status(db, analysis_record.id, "completed")
+
+            logger.info(f"Task {task_id}: Ball-only analysis completed successfully")
+
+            return {
+                "analysis_id": analysis_record.id,
+                "processing_time": ball_results.get("processing_time_seconds", 0.0),
+                "analysis_summary": {
+                    "total_frames": ball_results.get("total_frames", 0),
+                    "frames_with_balls": ball_results.get("frames_with_balls", 0),
+                    "detection_rate": ball_results.get("detection_rate", 0.0),
+                },
+                "ball_detection_id": ball_detection.id,
+                "analysis_type": "ball_only",
+            }
+
+        except Exception as e:
+            logger.error(f"Task {task_id}: Ball-only analysis failed: {e}")
+            raise
+
+    def _run_comprehensive_analysis(
+        self,
+        db: Session,
+        video_id: int,
+        video_path: str,
+        confidence_threshold: float,
+        include_pose_detection: bool,
+        task_id: int,
+    ) -> Dict[str, Any]:
+        """Run comprehensive analysis using both BallDetectionService and PoseDetectionService."""
+
+        logger.info(
+            f"Task {task_id}: Starting comprehensive analysis (pose_detection={include_pose_detection})"
+        )
+
+        try:
+            analysis_results = {}
+            ball_detection_id = None
+            pose_detection_id = None
+            total_processing_time = 0.0
+
+            # Run ball detection
+            update_task_progress(
+                task_id, "ball_detection", 0, "Starting ball detection analysis", 30
+            )
+
+            ball_service = BallDetectionService()
+            ball_results = ball_service.analyze_video_file(
+                video_path=Path(video_path),
+                confidence_threshold=confidence_threshold,
+                video_quality_level=None,
+                max_frames=None,
+            )
+
+            if "error" in ball_results:
+                raise RuntimeError(f"Ball detection failed: {ball_results['error']}")
+
+            # Save ball detection results
+            ball_detection = ball_service.save_detection_results(
+                db=db, video_id=video_id, detection_results=ball_results
+            )
+            ball_detection_id = ball_detection.id
+            total_processing_time += ball_results.get("processing_time_seconds", 0.0)
+
+            analysis_results.update(
+                {
+                    "ball_detections": ball_results.get("detection_data", []),
+                    "total_frames": ball_results.get("total_frames", 0),
+                    "frames_with_balls": ball_results.get("frames_with_balls", 0),
+                    "ball_detection_rate": ball_results.get("detection_rate", 0.0),
+                }
+            )
+
+            # Run pose detection if requested
+            if include_pose_detection:
+                update_task_progress(
+                    task_id,
+                    "pose_detection",
+                    30,
+                    "Starting pose detection analysis",
+                    60,
+                )
+
+                pose_service = PoseDetectionService()
+                pose_results = pose_service.analyze_video_file(
+                    video_path=Path(video_path),
+                    confidence_threshold=confidence_threshold,
+                    detection_threshold=0.5,
+                    max_frames=None,
+                )
+
+                if "error" in pose_results:
+                    raise RuntimeError(
+                        f"Pose detection failed: {pose_results['error']}"
+                    )
+
+                # Save pose detection results
+                pose_detection = pose_service.save_detection_results(
+                    db=db, video_id=video_id, detection_results=pose_results
+                )
+                pose_detection_id = pose_detection.id
+                total_processing_time += pose_results.get(
+                    "processing_time_seconds", 0.0
+                )
+
+                analysis_results.update(
+                    {
+                        "pose_detections": pose_results.get("detection_data", []),
+                        "frames_with_poses": pose_results.get("frames_with_poses", 0),
+                        "pose_detection_rate": pose_results.get("detection_rate", 0.0),
+                    }
+                )
+
+            # Update progress
+            update_task_progress(
+                task_id, "comprehensive", 60, "Creating legacy analysis record", 90
+            )
+
+            # Create legacy Analysis record for backward compatibility
+            analysis_record = create_analysis_record(
+                db=db,
+                video_id=video_id,
+                video_filename=Path(video_path).name,
+                analysis_type="comprehensive",
+                analysis_results=analysis_results,
+                processing_time=total_processing_time,
+                model_used="yolov8n+mediapipe" if include_pose_detection else "yolov8n",
+                confidence_threshold=confidence_threshold,
+                status="completed",
+            )
+
+            # Update analysis status
+            update_analysis_status(db, analysis_record.id, "completed")
+
+            logger.info(
+                f"Task {task_id}: Comprehensive analysis completed successfully"
+            )
+
+            return {
+                "analysis_id": analysis_record.id,
+                "processing_time": total_processing_time,
+                "analysis_summary": {
+                    "total_frames": analysis_results.get("total_frames", 0),
+                    "frames_with_balls": analysis_results.get("frames_with_balls", 0),
+                    "ball_detection_rate": analysis_results.get(
+                        "ball_detection_rate", 0.0
+                    ),
+                    "frames_with_poses": analysis_results.get("frames_with_poses", 0),
+                    "pose_detection_rate": analysis_results.get(
+                        "pose_detection_rate", 0.0
+                    ),
+                },
+                "ball_detection_id": ball_detection_id,
+                "pose_detection_id": pose_detection_id,
+                "analysis_type": "comprehensive",
+            }
+
+        except Exception as e:
+            logger.error(f"Task {task_id}: Comprehensive analysis failed: {e}")
+            raise
 
 
 # Global instance

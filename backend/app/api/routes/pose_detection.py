@@ -63,58 +63,24 @@ async def analyze_pose_detection(
             db.delete(existing_detection)
             db.commit()
 
-        # Run pose detection analysis
-        from pathlib import Path
+        # Route through background service for proper task management
+        from app.services.background_service import background_service
 
-        video_path = Path(video.file_path)
-        if not video_path.exists():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Video file not found: {video.file_path}",
-            )
-
-        # Perform pose detection analysis
-        detection_results = pose_service.analyze_video_file(
-            video_path=video_path,
+        # Start background task for pose detection
+        task_id = background_service.start_analysis_task(
+            video_id=video_id,
+            analysis_type="pose_only",
             confidence_threshold=request.confidence_threshold,
-            detection_threshold=request.detection_threshold,
-            max_frames=request.max_frames,
+            include_pose_detection=True,
         )
-
-        # Check for analysis errors
-        if "error" in detection_results:
-            raise handle_processing_error("pose_detection", detection_results["error"])
-
-        # Save results to database
-        pose_detection = pose_service.save_detection_results(
-            db, video_id, detection_results
-        )
-
-        # Create annotated video if pose detection was successful
-        try:
-            from app.services.video_annotation import VideoAnnotationService
-
-            annotation_service = VideoAnnotationService()
-            annotation = annotation_service.create_pose_annotation(
-                db=db,
-                video_id=video_id,
-                pose_detection_id=pose_detection.id,
-                annotation_style="standard",
-            )
-            logger.info(f"Created pose annotation {annotation.id} for video {video_id}")
-        except (OSError, ValueError, RuntimeError) as e:
-            logger.warning(
-                f"Failed to create pose annotation for video {video_id}: {e}"
-            )
-            # Don't fail the entire operation if annotation creation fails
 
         return PoseDetectionStartResponse(
-            pose_detection_id=pose_detection.id,
+            pose_detection_id=None,  # Will be created by background task
             video_filename=video.filename,
-            status="completed",
-            message="Pose detection analysis completed successfully",
-            estimated_duration=detection_results.get("processing_time_seconds", 0.0),
-            task_id=None,
+            status="processing",
+            message="Pose detection analysis started in background",
+            estimated_duration=300,  # 5 minutes estimate
+            task_id=task_id,
         )
 
     except HTTPException:
