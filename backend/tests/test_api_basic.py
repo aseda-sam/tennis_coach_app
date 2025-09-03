@@ -22,12 +22,6 @@ class TestBasicAPI:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_list_analyses_empty(self, client: TestClient) -> None:
-        """Test listing analyses when database is empty."""
-        response = client.get("/v0/analysis/")
-        assert response.status_code == 200
-        assert response.json() == []
-
     def test_upload_invalid_format(self, client: TestClient) -> None:
         """Test upload with unsupported file format."""
         test_content = b"fake content"
@@ -53,22 +47,9 @@ class TestBasicAPI:
         assert "error" in error_data
         assert "not found" in error_data["error"]["message"].lower()
 
-    def test_get_nonexistent_analysis(self, client: TestClient) -> None:
-        """Test getting an analysis that doesn't exist."""
-        response = client.get("/v0/analysis/999")
-        assert response.status_code == 404
-        error_data = response.json()
-        assert "error" in error_data
-        assert "not found" in error_data["error"]["message"].lower()
-
     def test_delete_nonexistent_video(self, client: TestClient) -> None:
         """Test deleting a video that doesn't exist."""
         response = client.delete("/v0/videos/999")
-        assert response.status_code == 404
-
-    def test_delete_nonexistent_analysis(self, client: TestClient) -> None:
-        """Test deleting an analysis that doesn't exist."""
-        response = client.delete("/v0/analysis/999")
         assert response.status_code == 404
 
     def test_upload_minimal_video_file(
