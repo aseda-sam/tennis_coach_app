@@ -2,7 +2,6 @@
 Tests for pose detection service and API endpoints.
 """
 
-import json
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -53,17 +52,17 @@ class TestPoseDetectionService:
         ]
 
         frames = pose_service._extract_frames(mock_video_file, max_frames=2)
-        
+
         assert len(frames) == 2
         mock_cap.release.assert_called_once()
 
     def test_detect_poses_in_frames_no_detector(self, pose_service):
         """Test pose detection when detector is not available."""
         pose_service.pose_detector = None
-        
+
         frames = [Mock(), Mock()]
         results = pose_service.detect_poses_in_frames(frames)
-        
+
         assert results["frames_with_poses"] == 0
         assert results["total_pose_detections"] == 0
         assert results["detection_rate"] == 0.0
@@ -137,7 +136,7 @@ class TestPoseDetectionService:
 
         # Retrieve detection
         retrieved = pose_service.get_detection_by_video_id(db_session, video.id)
-        
+
         assert retrieved is not None
         assert retrieved.id == pose_detection.id
         assert retrieved.video_id == video.id
@@ -150,14 +149,14 @@ class TestPoseDetectionAPI:
     def test_analyze_pose_detection_video_not_found(self):
         """Test pose detection analysis with non-existent video."""
         response = client.post("/v0/pose-detection/analyze/999")
-        
+
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
     def test_get_pose_detection_video_not_found(self):
         """Test getting pose detection for non-existent video."""
         response = client.get("/v0/pose-detection/999")
-        
+
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
@@ -168,7 +167,7 @@ class TestPoseDetectionAPI:
             "/v0/pose-detection/analyze/1",
             json={"confidence_threshold": 2.0}  # Invalid: > 1.0
         )
-        
+
         assert response.status_code == 422  # Validation error
 
     @patch("app.services.pose_detection.detection_service.PoseDetectionService.analyze_video_file")
