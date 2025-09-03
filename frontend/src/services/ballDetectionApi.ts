@@ -55,7 +55,7 @@ class BallDetectionApi {
     request: BallDetectionRequest = {}
   ): Promise<BallDetectionStartResponse> {
     const response = await api.post(
-      `/v0/ball-detection/analyze/${videoId}`,
+      `/ball-detection/analyze/${videoId}`,
       request
     );
     return response.data;
@@ -65,7 +65,7 @@ class BallDetectionApi {
    * Get ball detection results for a video
    */
   async getResults(videoId: number): Promise<BallDetectionResponse> {
-    const response = await api.get(`/v0/ball-detection/${videoId}`);
+    const response = await api.get(`/ball-detection/${videoId}`);
     return response.data;
   }
 

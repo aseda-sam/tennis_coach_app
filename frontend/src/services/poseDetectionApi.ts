@@ -54,7 +54,7 @@ class PoseDetectionApi {
     request: PoseDetectionRequest = {}
   ): Promise<PoseDetectionStartResponse> {
     const response = await api.post(
-      `/v0/pose-detection/analyze/${videoId}`,
+      `/pose-detection/analyze/${videoId}`,
       request
     );
     return response.data;
@@ -64,7 +64,7 @@ class PoseDetectionApi {
    * Get pose detection results for a video
    */
   async getResults(videoId: number): Promise<PoseDetectionResponse> {
-    const response = await api.get(`/v0/pose-detection/${videoId}`);
+    const response = await api.get(`/pose-detection/${videoId}`);
     return response.data;
   }
 
