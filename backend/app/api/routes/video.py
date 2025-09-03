@@ -8,6 +8,7 @@ from typing import List
 import cv2
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.schemas.common import PaginationParams
@@ -41,6 +42,17 @@ from app.utils.file_validation import (
     validate_file_exists,
     validate_video_file,
 )
+
+
+class VideoAnalysisStatus(BaseModel):
+    """Response model for video analysis status check."""
+
+    video_id: int
+    has_analysis: bool
+    has_annotated_video: bool
+    analysis_types: List[str] = []
+    annotated_video_available: bool = False
+
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -231,6 +243,107 @@ async def stream_annotated_video(
         )
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "stream_annotated_video", {"video_id": video_id})
+
+
+@router.get("/{video_id}/analysis-status", response_model=VideoAnalysisStatus)
+async def get_video_analysis_status(
+    video_id: int, db: Session = Depends(get_db)
+) -> VideoAnalysisStatus:
+    """
+    Check if a video has any analysis or annotated video available.
+
+    Args:
+        video_id: Unique video identifier
+
+    Returns:
+        Analysis status information for the video
+    """
+    try:
+        # Verify video exists
+        db_video = get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        analysis_types = []
+        has_analysis = False
+        has_annotated_video = False
+        annotated_video_available = False
+
+        # Check for legacy analysis
+        from app.models.analysis import Analysis
+
+        legacy_analysis = (
+            db.query(Analysis).filter(Analysis.video_id == video_id).first()
+        )
+        if legacy_analysis and legacy_analysis.status == "completed":
+            has_analysis = True
+            analysis_types.append("legacy_analysis")
+
+        # Check for pose detection
+        from app.models.pose_detection import PoseDetection
+
+        pose_detection = (
+            db.query(PoseDetection).filter(PoseDetection.video_id == video_id).first()
+        )
+        if pose_detection and pose_detection.status == "completed":
+            has_analysis = True
+            analysis_types.append("pose_detection")
+
+        # Check for ball detection (when implemented)
+        # from app.models.ball_detection import BallDetection
+        # ball_detection = db.query(BallDetection).filter(BallDetection.video_id == video_id).first()
+        # if ball_detection and ball_detection.status == "completed":
+        #     has_analysis = True
+        #     analysis_types.append("ball_detection")
+
+        # Check for video annotations (new system)
+        from app.models.video_annotation import VideoAnnotation
+
+        video_annotation = (
+            db.query(VideoAnnotation)
+            .filter(VideoAnnotation.video_id == video_id)
+            .order_by(VideoAnnotation.created_at.desc())
+            .first()
+        )
+
+        if video_annotation and video_annotation.annotated_video_path:
+            has_annotated_video = True
+            # Check if the annotated file actually exists
+            annotated_path = Path(video_annotation.annotated_video_path)
+            if annotated_path.exists():
+                annotated_video_available = True
+        else:
+            # Check for legacy annotated files
+            base_name = Path(db_video.filename).stem
+            processed_dir = Path(settings.PROCESSED_DIR)
+
+            # First try the standard naming pattern
+            annotated_filename = f"{base_name}_annotated.mp4"
+            annotated_path = processed_dir / annotated_filename
+
+            # If not found, search for files with suffixes
+            if not annotated_path.exists():
+                pattern = f"{base_name}_*_annotated.mp4"
+                matching_files = list(processed_dir.glob(pattern))
+                if matching_files:
+                    annotated_path = max(
+                        matching_files, key=lambda p: p.stat().st_mtime
+                    )
+
+            if annotated_path.exists():
+                has_annotated_video = True
+                annotated_video_available = True
+
+        return VideoAnalysisStatus(
+            video_id=video_id,
+            has_analysis=has_analysis,
+            has_annotated_video=has_annotated_video,
+            analysis_types=analysis_types,
+            annotated_video_available=annotated_video_available,
+        )
+
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_video_analysis_status", {"video_id": video_id})
 
 
 @router.delete("/{video_id}", response_model=VideoDeleteResponse)

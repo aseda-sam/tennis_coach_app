@@ -2,6 +2,8 @@
 API routes for pose detection analysis.
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -18,6 +20,7 @@ from app.services.pose_detection import PoseDetectionService
 from app.utils.error_handling import handle_processing_error
 
 router = APIRouter(prefix="/v0/pose-detection", tags=["pose-detection"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/analyze/{video_id}", response_model=PoseDetectionStartResponse)
@@ -99,7 +102,7 @@ async def analyze_pose_detection(
                 annotation_style="standard",
             )
             logger.info(f"Created pose annotation {annotation.id} for video {video_id}")
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.warning(
                 f"Failed to create pose annotation for video {video_id}: {e}"
             )
