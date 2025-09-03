@@ -1,6 +1,6 @@
-import videoQualityApi from './videoQualityApi';
 import ballDetectionApi from './ballDetectionApi';
 import poseDetectionApi from './poseDetectionApi';
+import videoQualityApi from './videoQualityApi';
 
 export interface ModularAnalysisRequest {
   include_video_quality?: boolean;
@@ -132,7 +132,10 @@ class ModularAnalysisApi {
    */
   async startPoseOnlyAnalysis(
     videoId: number,
-    request: Omit<ModularAnalysisRequest, 'include_video_quality' | 'include_ball_detection'> = {}
+    request: Omit<
+      ModularAnalysisRequest,
+      'include_video_quality' | 'include_ball_detection'
+    > = {}
   ) {
     return this.startComprehensiveAnalysis(videoId, {
       ...request,
@@ -145,7 +148,9 @@ class ModularAnalysisApi {
   /**
    * Get comprehensive analysis results
    */
-  async getComprehensiveResults(videoId: number): Promise<ModularAnalysisResult> {
+  async getComprehensiveResults(
+    videoId: number
+  ): Promise<ModularAnalysisResult> {
     const result: ModularAnalysisResult = {
       overall_status: 'completed',
       progress: 0,
@@ -185,7 +190,8 @@ class ModularAnalysisApi {
       }
       totalServices++;
 
-      result.progress = totalServices > 0 ? (completedServices / totalServices) * 100 : 0;
+      result.progress =
+        totalServices > 0 ? (completedServices / totalServices) * 100 : 0;
       result.overall_status = completedServices > 0 ? 'completed' : 'failed';
 
       return result;
@@ -205,7 +211,7 @@ class ModularAnalysisApi {
     const hasQuality = await videoQualityApi.hasAssessment(videoId);
     const hasBall = await ballDetectionApi.hasAnalysis(videoId);
     const hasPose = await poseDetectionApi.hasAnalysis(videoId);
-    
+
     return hasQuality || hasBall || hasPose;
   }
 }

@@ -1,17 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  analysisApi,
-  AnalysisData,
-  AnalysisStartResponse,
-  videoApi,
-} from '../services/api';
+import { analysisApi, AnalysisData, videoApi } from '../services/api';
+import modularAnalysisApi from '../services/modularAnalysisApi';
 import poseDetectionApi, {
   PoseDetectionStartResponse,
 } from '../services/poseDetectionApi';
-import modularAnalysisApi, {
-  ModularAnalysisRequest,
-  ModularAnalysisProgress,
-} from '../services/modularAnalysisApi';
 import { VideoMetadata } from '../types/video';
 import AnalysisModal from './AnalysisModal';
 import {
@@ -72,10 +64,7 @@ const VideoList: React.FC<VideoListProps> = ({
     >
   >(new Map());
 
-  // Track modular analysis progress
-  const [modularAnalysisProgress, setModularAnalysisProgress] = useState<
-    Map<number, ModularAnalysisProgress>
-  >(new Map());
+
 
   // Ref to store verifyAnalysisData function to avoid circular dependency
   const verifyAnalysisDataRef = useRef<
@@ -154,9 +143,7 @@ const VideoList: React.FC<VideoListProps> = ({
         );
 
         // Store modular analysis progress
-        setModularAnalysisProgress((prev) =>
-          new Map(prev.set(videoId, response.progress))
-        );
+        // TODO: Track individual service progress in future enhancement
 
         // Start polling for modular analysis results
         pollModularAnalysisStatus(videoId);
@@ -167,11 +154,7 @@ const VideoList: React.FC<VideoListProps> = ({
           newMap.delete(videoId);
           return newMap;
         });
-        setModularAnalysisProgress((prev) => {
-          const newMap = new Map(prev);
-          newMap.delete(videoId);
-          return newMap;
-        });
+        // TODO: Clear modular analysis progress in future enhancement
         await loadVideos(); // Refresh to get the new analysis
       } else {
         throw new Error(response.message || 'Failed to start modular analysis');
@@ -190,11 +173,7 @@ const VideoList: React.FC<VideoListProps> = ({
         newMap.delete(videoId);
         return newMap;
       });
-      setModularAnalysisProgress((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(videoId);
-        return newMap;
-      });
+      // TODO: Clear modular analysis progress in future enhancement
     }
   };
 
@@ -260,7 +239,9 @@ const VideoList: React.FC<VideoListProps> = ({
     }
   };
 
-  // Function to poll task status
+  // Legacy function to poll task status - not used in new modular approach
+  // TODO: Remove this function completely once legacy analysis is removed
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const pollTaskStatus = useCallback(
     async (taskId: number, videoId: number) => {
       const pollInterval = setInterval(async () => {
@@ -407,26 +388,15 @@ const VideoList: React.FC<VideoListProps> = ({
     async (videoId: number) => {
       const pollInterval = setInterval(async () => {
         try {
-          const results = await modularAnalysisApi.getComprehensiveResults(videoId);
-          
+          const results =
+            await modularAnalysisApi.getComprehensiveResults(videoId);
+
           // Update progress
-          setModularAnalysisProgress((prev) => {
-            const newMap = new Map(prev);
-            const currentProgress = newMap.get(videoId) || {};
-            
-            // Update individual service statuses
-            if (results.video_quality) {
-              currentProgress.video_quality = { status: 'completed' };
-            }
-            if (results.ball_detection) {
-              currentProgress.ball_detection = { status: 'completed' };
-            }
-            if (results.pose_detection) {
-              currentProgress.pose_detection = { status: 'completed' };
-            }
-            
-            newMap.set(videoId, currentProgress);
-            return newMap;
+          // TODO: Track individual service progress in future enhancement
+          console.log('Modular analysis progress:', {
+            video_quality: results.video_quality ? 'completed' : 'pending',
+            ball_detection: results.ball_detection ? 'completed' : 'pending',
+            pose_detection: results.pose_detection ? 'completed' : 'pending',
           });
 
           // If analysis is completed, clean up
@@ -437,11 +407,7 @@ const VideoList: React.FC<VideoListProps> = ({
               newMap.delete(videoId);
               return newMap;
             });
-            setModularAnalysisProgress((prev) => {
-              const newMap = new Map(prev);
-              newMap.delete(videoId);
-              return newMap;
-            });
+            // TODO: Clear modular analysis progress in future enhancement
             await loadVideos(); // Refresh to get the new analysis
           } else if (results.overall_status === 'failed') {
             clearInterval(pollInterval);
@@ -450,11 +416,7 @@ const VideoList: React.FC<VideoListProps> = ({
               newMap.delete(videoId);
               return newMap;
             });
-            setModularAnalysisProgress((prev) => {
-              const newMap = new Map(prev);
-              newMap.delete(videoId);
-              return newMap;
-            });
+            // TODO: Clear modular analysis progress in future enhancement
             setError(results.error || 'Modular analysis failed');
           }
         } catch (err) {
@@ -464,9 +426,12 @@ const VideoList: React.FC<VideoListProps> = ({
       }, 2000); // Poll every 2 seconds
 
       // Clean up interval after 5 minutes to prevent infinite polling
-      setTimeout(() => {
-        clearInterval(pollInterval);
-      }, 5 * 60 * 1000);
+      setTimeout(
+        () => {
+          clearInterval(pollInterval);
+        },
+        5 * 60 * 1000
+      );
     },
     [loadVideos]
   );
@@ -777,7 +742,9 @@ const VideoList: React.FC<VideoListProps> = ({
                       <div className="pose-analysis-progress">
                         <span>Pose Detection: Processing...</span>
                         <ProgressBar
-                          progress={activePoseTasks.get(video.id)?.progress || 0}
+                          progress={
+                            activePoseTasks.get(video.id)?.progress || 0
+                          }
                           status="processing"
                           size="small"
                           showPercentage={false}
