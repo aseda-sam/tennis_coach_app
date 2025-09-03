@@ -89,7 +89,6 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     from pathlib import Path
 
     from app.core.config import settings
-    from app.models.analysis import Analysis
 
     # Get video from database
     video = get_video_by_id(db, video_id)
@@ -101,21 +100,6 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     filename = video.filename
 
     try:
-        # Delete associated analysis files first (before cascade deletion)
-        analyses = db.query(Analysis).filter(Analysis.video_id == video_id).all()
-        for analysis in analyses:
-            # Delete annotated video files
-            if analysis.annotated_video_path:
-                annotated_path = Path(analysis.annotated_video_path)
-                if annotated_path.exists():
-                    try:
-                        annotated_path.unlink()
-                        logger.info(f"Deleted annotated video: {annotated_path}")
-                    except OSError as e:
-                        logger.warning(
-                            f"Failed to delete annotated video {annotated_path}: {e}"
-                        )
-
         # Delete video annotations
         from app.models.video_annotation import VideoAnnotation
 
@@ -170,11 +154,10 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
 
         # Delete from database (this will cascade delete all related records)
         # The cascade relationships will automatically delete:
-        # - Analysis records (legacy)
-        # - BallDetection records (new modular)
-        # - PoseDetection records (new modular)
-        # - BallContact records (new modular)
-        # - VideoAnnotation records (new modular)
+        # - BallDetection records
+        # - PoseDetection records
+        # - BallContact records
+        # - VideoAnnotation records
         if not delete_video_record(db, video_id):
             logger.error(f"Database deletion failed for video {video_id}")
             return False, filename, video_id

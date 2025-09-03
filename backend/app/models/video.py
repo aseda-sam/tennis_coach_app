@@ -44,11 +44,6 @@ class Video(Base):
     )  # 'excellent', 'good', 'fair', 'poor'
     quality_assessed_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Relationship to analyses with cascade deletion
-    analyses = relationship(
-        "Analysis", backref="video", cascade="all, delete-orphan", lazy="dynamic"
-    )
-
     # New granular analysis relationships
     ball_detections = relationship(
         "BallDetection", back_populates="video", cascade="all, delete-orphan"

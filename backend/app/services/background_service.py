@@ -13,11 +13,6 @@ from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.services.analysis_service import (
-    analyze_video,
-    create_analysis_record,
-    update_analysis_status,
-)
 from app.services.ball_detection import BallDetectionService
 from app.services.pose_detection import PoseDetectionService
 from app.services.video_service import get_video_by_id
@@ -151,29 +146,6 @@ class BackgroundTaskService:
                 if not video_path.exists():
                     raise ValueError(f"Video file not found: {video.file_path}")
 
-                # Check if analysis record already exists for this video
-                from app.services.analysis_service import get_analysis_by_video_id
-
-                existing_analysis = get_analysis_by_video_id(db, video_id)
-
-                if not existing_analysis:
-                    # Create initial analysis record with processing status
-                    from app.services.analysis_service import create_analysis_record
-
-                    create_analysis_record(
-                        db=db,
-                        video_id=video_id,
-                        video_filename=video.filename,
-                        analysis_type=analysis_type,
-                        analysis_results={},  # Empty for now
-                        processing_time=0.0,
-                        model_used="yolov8n+mediapipe"
-                        if include_pose_detection
-                        else "yolov8n",
-                        confidence_threshold=confidence_threshold,
-                        status="processing",
-                    )
-
                 # Update progress - frame extraction
                 with _task_lock:
                     if task_id in _active_tasks:
@@ -217,18 +189,10 @@ class BackgroundTaskService:
                         task_id=task_id,
                     )
                 else:
-                    # Fall back to legacy system for other types
-                    logger.warning(
-                        f"Task {task_id}: Using legacy analyze_video for analysis_type={analysis_type}"
-                    )
-                    result = analyze_video(
-                        db=db,
-                        video_id=video_id,
-                        analysis_type=analysis_type,
-                        confidence_threshold=confidence_threshold,
-                        include_pose_detection=include_pose_detection,
-                        task_id=task_id,
-                    )
+                    # Unsupported analysis type
+                    error_msg = f"Unsupported analysis type: {analysis_type}. Supported types: pose_only, ball_only, comprehensive"
+                    logger.error(f"Task {task_id}: {error_msg}")
+                    raise ValueError(error_msg)
                 logger.info(
                     f"Task {task_id}: analyze_video completed with result: "
                     f"{type(result)}"
@@ -280,12 +244,7 @@ class BackgroundTaskService:
                     _active_tasks[task_id]["error"] = str(e)
                     _active_tasks[task_id]["completed_at"] = datetime.now()
 
-            # Update database status with proper session management
-            try:
-                with get_background_db_session() as db:
-                    update_analysis_status(db, video_id, "failed", str(e))
-            except (OSError, ValueError, RuntimeError) as db_error:
-                logger.error(f"Failed to update database status: {db_error}")
+            # No need to update database status since we're not using legacy Analysis records
 
     def get_task_status(self, task_id: int) -> Optional[Dict[str, Any]]:
         """Get the status of a background task."""
@@ -440,31 +399,9 @@ class BackgroundTaskService:
                 task_id, "pose_detection", 80, "Creating legacy analysis record", 90
             )
 
-            # Create legacy Analysis record for backward compatibility
-            analysis_record = create_analysis_record(
-                db=db,
-                video_id=video_id,
-                video_filename=Path(video_path).name,
-                analysis_type="pose_only",
-                analysis_results={
-                    "pose_detections": pose_results.get("detection_data", []),
-                    "total_frames": pose_results.get("total_frames", 0),
-                    "frames_with_poses": pose_results.get("frames_with_poses", 0),
-                    "detection_rate": pose_results.get("detection_rate", 0.0),
-                },
-                processing_time=pose_results.get("processing_time_seconds", 0.0),
-                model_used="mediapipe",
-                confidence_threshold=confidence_threshold,
-                status="completed",
-            )
-
-            # Update analysis status
-            update_analysis_status(db, analysis_record.id, "completed")
-
             logger.info(f"Task {task_id}: Pose-only analysis completed successfully")
 
             return {
-                "analysis_id": analysis_record.id,
                 "processing_time": pose_results.get("processing_time_seconds", 0.0),
                 "analysis_summary": {
                     "total_frames": pose_results.get("total_frames", 0),
@@ -525,31 +462,9 @@ class BackgroundTaskService:
                 task_id, "ball_detection", 80, "Creating legacy analysis record", 90
             )
 
-            # Create legacy Analysis record for backward compatibility
-            analysis_record = create_analysis_record(
-                db=db,
-                video_id=video_id,
-                video_filename=Path(video_path).name,
-                analysis_type="ball_only",
-                analysis_results={
-                    "ball_detections": ball_results.get("detection_data", []),
-                    "total_frames": ball_results.get("total_frames", 0),
-                    "frames_with_balls": ball_results.get("frames_with_balls", 0),
-                    "detection_rate": ball_results.get("detection_rate", 0.0),
-                },
-                processing_time=ball_results.get("processing_time_seconds", 0.0),
-                model_used=ball_results.get("model_used", "yolov8n"),
-                confidence_threshold=confidence_threshold,
-                status="completed",
-            )
-
-            # Update analysis status
-            update_analysis_status(db, analysis_record.id, "completed")
-
             logger.info(f"Task {task_id}: Ball-only analysis completed successfully")
 
             return {
-                "analysis_id": analysis_record.id,
                 "processing_time": ball_results.get("processing_time_seconds", 0.0),
                 "analysis_summary": {
                     "total_frames": ball_results.get("total_frames", 0),
@@ -662,28 +577,11 @@ class BackgroundTaskService:
                 task_id, "comprehensive", 60, "Creating legacy analysis record", 90
             )
 
-            # Create legacy Analysis record for backward compatibility
-            analysis_record = create_analysis_record(
-                db=db,
-                video_id=video_id,
-                video_filename=Path(video_path).name,
-                analysis_type="comprehensive",
-                analysis_results=analysis_results,
-                processing_time=total_processing_time,
-                model_used="yolov8n+mediapipe" if include_pose_detection else "yolov8n",
-                confidence_threshold=confidence_threshold,
-                status="completed",
-            )
-
-            # Update analysis status
-            update_analysis_status(db, analysis_record.id, "completed")
-
             logger.info(
                 f"Task {task_id}: Comprehensive analysis completed successfully"
             )
 
             return {
-                "analysis_id": analysis_record.id,
                 "processing_time": total_processing_time,
                 "analysis_summary": {
                     "total_frames": analysis_results.get("total_frames", 0),

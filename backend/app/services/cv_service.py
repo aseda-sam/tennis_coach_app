@@ -805,13 +805,9 @@ class CVService:
             )
             # File is left at temp_path location for manual cleanup
 
-    def analyze_video(
-        self,
-        video_path: Path,
-        include_pose: bool = True,
-        confidence_threshold: Optional[float] = None,
-        video_quality_level: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    def _create_annotated_video(
+        self, original_video_path: Path, annotated_frames: List[np.ndarray]
+    ) -> Optional[Path]:
         """
         Perform comprehensive video analysis with ball detection and pose estimation.
 
