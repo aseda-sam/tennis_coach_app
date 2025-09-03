@@ -87,6 +87,24 @@ async def analyze_pose_detection(
             db, video_id, detection_results
         )
 
+        # Create annotated video if pose detection was successful
+        try:
+            from app.services.video_annotation import VideoAnnotationService
+
+            annotation_service = VideoAnnotationService()
+            annotation = annotation_service.create_pose_annotation(
+                db=db,
+                video_id=video_id,
+                pose_detection_id=pose_detection.id,
+                annotation_style="standard",
+            )
+            logger.info(f"Created pose annotation {annotation.id} for video {video_id}")
+        except Exception as e:
+            logger.warning(
+                f"Failed to create pose annotation for video {video_id}: {e}"
+            )
+            # Don't fail the entire operation if annotation creation fails
+
         return PoseDetectionStartResponse(
             pose_detection_id=pose_detection.id,
             video_filename=video.filename,
@@ -105,12 +123,18 @@ async def analyze_pose_detection(
 @router.get("/{video_id}", response_model=PoseDetectionResponse)
 async def get_pose_detection(
     video_id: int,
+    include_pose_data: bool = False,
     db: Session = Depends(get_db),
 ) -> PoseDetectionResponse:
     """
     Get pose detection results for a video.
 
     Returns the most recent pose detection analysis results for the specified video.
+
+    Args:
+        video_id: ID of the video
+        include_pose_data: If True, includes frame-by-frame pose keypoint data
+        db: Database session
     """
     try:
         # Verify video exists
@@ -147,11 +171,17 @@ async def get_pose_detection(
             frame_processing_rate=pose_detection.frame_processing_rate,
         )
 
+        # Get frame-by-frame pose data if requested
+        frame_data = None
+        if include_pose_data:
+            frame_data = pose_service.get_formatted_pose_data(pose_detection)
+
         # Build pose detection info
         pose_info = PoseDetectionInfo(
             id=pose_detection.id,
             video_id=pose_detection.video_id,
             metrics=metrics,
+            frame_data=frame_data,
             created_at=pose_detection.created_at,
             completed_at=pose_detection.completed_at,
             status=pose_detection.status,

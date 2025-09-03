@@ -3,6 +3,7 @@ Pose detection service using MediaPipe for independent pose analysis.
 """
 
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -11,7 +12,6 @@ import cv2
 import numpy as np
 from sqlalchemy.orm import Session
 
-import logging
 from app.models.pose_detection import PoseDetection
 
 logger = logging.getLogger(__name__)
@@ -324,6 +324,80 @@ class PoseDetectionService:
             .order_by(PoseDetection.created_at.desc())
             .first()
         )
+
+    def get_formatted_pose_data(
+        self, pose_detection: PoseDetection
+    ) -> Optional[List[Dict]]:
+        """
+        Deserialize and format pose data for API response.
+
+        Args:
+            pose_detection: PoseDetection database record
+
+        Returns:
+            List of formatted frame data, or None if no pose data exists
+        """
+        if not pose_detection.pose_data:
+            return None
+
+        try:
+            # Deserialize the JSON data
+            raw_pose_data = json.loads(pose_detection.pose_data)
+            confidence_scores = (
+                json.loads(pose_detection.confidence_scores)
+                if pose_detection.confidence_scores
+                else []
+            )
+
+            formatted_data = []
+
+            for frame_index, frame_pose_data in enumerate(raw_pose_data):
+                if frame_pose_data is None:
+                    # No pose detected in this frame
+                    formatted_data.append(
+                        {
+                            "frame_index": frame_index,
+                            "keypoints": [],
+                            "overall_confidence": 0.0,
+                        }
+                    )
+                    continue
+
+                # Convert MediaPipe keypoint format to our API format
+                keypoints = []
+                for keypoint_name, coordinates in frame_pose_data.items():
+                    if isinstance(coordinates, list) and len(coordinates) >= 2:
+                        keypoints.append(
+                            {
+                                "name": keypoint_name,
+                                "x": coordinates[0],
+                                "y": coordinates[1],
+                                "confidence": coordinates[2]
+                                if len(coordinates) > 2
+                                else None,
+                            }
+                        )
+
+                # Get overall confidence for this frame
+                overall_confidence = (
+                    confidence_scores[frame_index]
+                    if frame_index < len(confidence_scores)
+                    else None
+                )
+
+                formatted_data.append(
+                    {
+                        "frame_index": frame_index,
+                        "keypoints": keypoints,
+                        "overall_confidence": overall_confidence,
+                    }
+                )
+
+            return formatted_data
+
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            logger.error(f"Failed to deserialize pose data: {e}")
+            return None
 
     def _extract_frames(
         self, video_path: Path, max_frames: Optional[int] = None

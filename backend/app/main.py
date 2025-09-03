@@ -17,6 +17,7 @@ from app.api.routes import (
     ball_detection,
     pose_detection,
     video,
+    video_annotation,
     video_quality,
 )
 from app.core.config import settings
@@ -136,6 +137,15 @@ app.include_router(
 
 app.include_router(
     pose_detection.router,
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"},
+    },
+)
+
+app.include_router(
+    video_annotation.router,
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},
