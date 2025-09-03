@@ -273,8 +273,9 @@ Pose Detection   →   PoseDetection  → Combine as needed  → Create video
 **Final Result**: Clean, modular architecture with independent services and no legacy dependencies.
 
 **Architecture**: The backend now runs entirely on modular services:
+
 - `PoseDetectionService` → `pose_detections` table
-- `BallDetectionService` → `ball_detections` table  
+- `BallDetectionService` → `ball_detections` table
 - `VideoAnnotationService` → `video_annotations` table
 - `BackgroundTaskService` → manages all analysis workflows
 
