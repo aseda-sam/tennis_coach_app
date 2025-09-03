@@ -79,10 +79,10 @@ class TestPoseDetectionService:
         self, pose_service: PoseDetectionService, db_session: Session
     ) -> None:
         """Test saving pose detection results to database."""
-        # Create test video
+        # Create test video with unique filename
         video = Video(
-            filename="test_video.mp4",
-            file_path="/path/to/test_video.mp4",
+            filename="test_save_detection_video.mp4",
+            file_path="/path/to/test_save_detection_video.mp4",
             file_size=1000,
         )
         db_session.add(video)
@@ -121,10 +121,10 @@ class TestPoseDetectionService:
         self, pose_service: PoseDetectionService, db_session: Session
     ) -> None:
         """Test retrieving pose detection by video ID."""
-        # Create test video
+        # Create test video with unique filename
         video = Video(
-            filename="test_video.mp4",
-            file_path="/path/to/test_video.mp4",
+            filename="test_get_detection_video.mp4",
+            file_path="/path/to/test_get_detection_video.mp4",
             file_size=1000,
         )
         db_session.add(video)
@@ -184,9 +184,13 @@ class TestPoseDetectionAPI:
     @patch(
         "app.services.pose_detection.detection_service.PoseDetectionService.analyze_video_file"
     )
-    @patch("app.api.routes.pose_detection.Path.exists")
+    @patch("pathlib.Path.exists")
     def test_analyze_pose_detection_success(
-        self, mock_exists: Mock, mock_analyze: Mock, db_session: Session
+        self,
+        mock_exists: Mock,
+        mock_analyze: Mock,
+        client: TestClient,
+        db_session: Session,
     ) -> None:
         """Test successful pose detection analysis."""
         # Setup
@@ -199,10 +203,10 @@ class TestPoseDetectionAPI:
             "processing_time_seconds": 10.0,
         }
 
-        # Create test video
+        # Create test video with unique filename
         video = Video(
-            filename="test_video.mp4",
-            file_path="/path/to/test_video.mp4",
+            filename="test_analyze_pose_video.mp4",
+            file_path="/path/to/test_analyze_pose_video.mp4",
             file_size=1000,
         )
         db_session.add(video)
@@ -217,15 +221,18 @@ class TestPoseDetectionAPI:
         data = response.json()
         assert data["status"] == "completed"
         assert "pose_detection_id" in data
-        assert data["video_filename"] == "test_video.mp4"
+        assert data["video_filename"] == "test_analyze_pose_video.mp4"
 
 
 # Integration test helper
 def create_test_video_with_pose_detection(db: Session) -> tuple[Video, PoseDetection]:
     """Helper to create test video with pose detection for integration tests."""
+    import uuid
+
+    unique_id = str(uuid.uuid4())[:8]
     video = Video(
-        filename="integration_test.mp4",
-        file_path="/path/to/integration_test.mp4",
+        filename=f"integration_test_{unique_id}.mp4",
+        file_path=f"/path/to/integration_test_{unique_id}.mp4",
         file_size=2000,
     )
     db.add(video)
