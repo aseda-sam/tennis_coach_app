@@ -286,8 +286,22 @@ async def get_video_analysis_status(
             db.query(PoseDetection).filter(PoseDetection.video_id == video_id).first()
         )
         if pose_detection and pose_detection.status == "completed":
-            has_analysis = True
-            analysis_types.append("pose_detection")
+            # Check if the annotated video file actually exists
+            if pose_detection.annotated_video_path:
+                annotated_path = Path(pose_detection.annotated_video_path)
+                if annotated_path.exists():
+                    has_analysis = True
+                    analysis_types.append("pose_detection")
+            else:
+                # Check for legacy pose detection files
+                base_name = Path(db_video.filename).stem
+                processed_dir = Path(settings.PROCESSED_DIR)
+                legacy_annotated_filename = f"{base_name}_pose_annotated.mp4"
+                legacy_annotated_path = processed_dir / legacy_annotated_filename
+
+                if legacy_annotated_path.exists():
+                    has_analysis = True
+                    analysis_types.append("pose_detection")
 
         # Check for ball detection (when implemented)
         # from app.models.ball_detection import BallDetection
