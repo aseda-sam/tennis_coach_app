@@ -8,6 +8,7 @@ providing independent ball detection functionality.
 import json
 import logging
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -299,9 +300,7 @@ class BallDetectionService:
             ball_detection.max_confidence = stats.get("max")
 
         # Set completion timestamp
-        from sqlalchemy.sql import func
-
-        ball_detection.completed_at = func.now()
+        ball_detection.completed_at = datetime.utcnow()
 
         # Save to database
         db.add(ball_detection)
