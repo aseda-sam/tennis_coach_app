@@ -33,6 +33,7 @@ export const useTaskStatus = ({
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isPollingRef = useRef(false);
 
   // Function to fetch task status
   const fetchTaskStatus = useCallback(async () => {
@@ -51,6 +52,7 @@ export const useTaskStatus = ({
       // Check if task is completed and we should stop polling
       if (autoStop && (status.status === 'completed' || status.status === 'failed' || status.status === 'cancelled')) {
         setIsPolling(false);
+        isPollingRef.current = false;
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
@@ -73,6 +75,7 @@ export const useTaskStatus = ({
       
       // Stop polling on error
       setIsPolling(false);
+      isPollingRef.current = false;
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -84,9 +87,10 @@ export const useTaskStatus = ({
 
   // Function to start polling
   const startPolling = useCallback(() => {
-    if (!taskId || isPolling) return;
+    if (!taskId || isPollingRef.current) return;
 
     setIsPolling(true);
+    isPollingRef.current = true;
     
     // Fetch immediately
     fetchTaskStatus();
@@ -95,11 +99,12 @@ export const useTaskStatus = ({
     intervalRef.current = setInterval(() => {
       fetchTaskStatus();
     }, pollInterval);
-  }, [taskId, isPolling, fetchTaskStatus, pollInterval]);
+  }, [taskId, fetchTaskStatus, pollInterval]);
 
   // Function to stop polling
   const stopPolling = useCallback(() => {
     setIsPolling(false);
+    isPollingRef.current = false;
     
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
