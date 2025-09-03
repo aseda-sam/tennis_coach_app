@@ -64,8 +64,6 @@ const VideoList: React.FC<VideoListProps> = ({
     >
   >(new Map());
 
-
-
   // Ref to store verifyAnalysisData function to avoid circular dependency
   const verifyAnalysisDataRef = useRef<
     ((videoId: number) => Promise<void>) | null
