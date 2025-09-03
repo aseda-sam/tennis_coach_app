@@ -107,6 +107,11 @@ class PoseDetectionInfo(BaseModel):
         ..., description="Detection metrics and quality scores"
     )
 
+    # Frame-by-frame pose data (optional)
+    frame_data: Optional[List[PoseDetectionData]] = Field(
+        None, description="Frame-by-frame pose detection data"
+    )
+
     # Timestamps
     created_at: datetime = Field(..., description="When the analysis was created")
     completed_at: Optional[datetime] = Field(

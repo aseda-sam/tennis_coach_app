@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import { videoApi } from '../services/api';
+import poseDetectionApi from '../services/poseDetectionApi';
 import { VideoMetadata } from '../types/video';
 import './AnalysisDashboard.css';
 import AnalysisResults from './AnalysisResults';
@@ -27,6 +28,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   >('contain');
   const [video, setVideo] = useState<VideoMetadata | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [poseDetection, setPoseDetection] = useState<any>(null);
 
   // Fetch video data for quality metrics
   useEffect(() => {
@@ -41,6 +43,23 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     };
 
     fetchVideo();
+  }, [videoId]);
+
+  // Fetch pose detection data
+  useEffect(() => {
+    const fetchPoseDetection = async () => {
+      try {
+        const poseData = await poseDetectionApi.getResults(videoId);
+        if (poseData.pose_detection.status === 'completed') {
+          setPoseDetection(poseData.pose_detection);
+        }
+      } catch (error) {
+        console.debug('No pose detection data for video:', videoId);
+        setPoseDetection(null);
+      }
+    };
+
+    fetchPoseDetection();
   }, [videoId]);
 
   // Use the analysis manager hook for better state management
@@ -66,14 +85,20 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   // Smart video URL selection: use annotated video if available, otherwise original
   const getVideoUrl = () => {
-    if (analysis?.pose_detections && analysis.pose_detections.length > 0) {
+    // Check for pose detection data (new system) or legacy analysis
+    const hasPoseData =
+      poseDetection ||
+      (analysis?.pose_detections && analysis.pose_detections.length > 0);
+
+    if (hasPoseData) {
       // Use the new annotated video endpoint
       const baseUrl =
         process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
       const annotatedUrl = `${baseUrl}/videos/${videoId}/annotated/stream`;
       console.log('Using annotated video for:', videoFilename);
       console.log('Annotated video URL:', annotatedUrl);
-      console.log('Analysis data:', analysis);
+      console.log('Pose detection data:', poseDetection);
+      console.log('Legacy analysis data:', analysis);
       return annotatedUrl;
     }
     console.log('Using original video URL:', videoUrl);
@@ -125,13 +150,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               aspectRatioMode={aspectRatioMode}
               videoId={videoId}
             />
-            {analysis?.pose_detections &&
-              analysis.pose_detections.length > 0 && (
-                <div className="ai-analysis-badge">
-                  <span className="ai-icon">⚡</span>
-                  AI Analysis Active
-                </div>
-              )}
+            {(poseDetection ||
+              (analysis?.pose_detections &&
+                analysis.pose_detections.length > 0)) && (
+              <div className="ai-analysis-badge">
+                <span className="ai-icon">⚡</span>
+                AI Analysis Active
+              </div>
+            )}
           </div>
 
           {/* Video Details and Actions below video */}

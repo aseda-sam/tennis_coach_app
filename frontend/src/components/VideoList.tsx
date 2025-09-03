@@ -30,6 +30,9 @@ const VideoList: React.FC<VideoListProps> = ({
 }) => {
   const [videos, setVideos] = useState<VideoMetadata[]>([]);
   const [analyses, setAnalyses] = useState<AnalysisData[]>([]);
+  const [poseDetections, setPoseDetections] = useState<Map<number, any>>(
+    new Map()
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -79,6 +82,21 @@ const VideoList: React.FC<VideoListProps> = ({
       ]);
       setVideos(videosResponse.videos);
       setAnalyses(analysesResponse);
+
+      // Load pose detection data for each video
+      const poseDetectionMap = new Map<number, any>();
+      for (const video of videosResponse.videos) {
+        try {
+          const poseDetection = await poseDetectionApi.getResults(video.id);
+          if (poseDetection.pose_detection.status === 'completed') {
+            poseDetectionMap.set(video.id, poseDetection.pose_detection);
+          }
+        } catch (error) {
+          // No pose detection for this video, which is fine
+          console.debug(`No pose detection for video ${video.id}`);
+        }
+      }
+      setPoseDetections(poseDetectionMap);
     } catch (err: any) {
       setError('Failed to load videos. Please try again.');
       console.error('Error loading videos:', err);
@@ -510,6 +528,7 @@ const VideoList: React.FC<VideoListProps> = ({
 
   const getStatusTag = (analysis: AnalysisData | null, videoId: number) => {
     const activeTask = activeTasks.get(videoId);
+    const poseDetection = poseDetections.get(videoId);
 
     if (activeTask) {
       if (activeTask.status === 'processing') {
@@ -528,7 +547,7 @@ const VideoList: React.FC<VideoListProps> = ({
       }
     }
 
-    if (analysis) {
+    if (analysis || poseDetection) {
       return { text: 'Completed', color: 'completed' };
     }
 
@@ -645,6 +664,7 @@ const VideoList: React.FC<VideoListProps> = ({
         <div className={`video-grid ${viewMode}`}>
           {videos.map((video) => {
             const analysis = getAnalysisForVideo(video.id);
+            const poseDetection = poseDetections.get(video.id);
             const isAnalyzing = isVideoAnalyzing(video.id);
             const status = getStatusTag(analysis, video.id);
             const qualityStatus = getQualityStatus(video);
@@ -752,16 +772,24 @@ const VideoList: React.FC<VideoListProps> = ({
                     </div>
                   )}
 
-                  {analysis && (
-                    <>
-                      <button
-                        className="action-btn view-btn"
-                        onClick={() => handleViewAnalysis(video.id)}
-                      >
-                        <EyeIcon size={16} />
-                        View Analysis
-                      </button>
-                    </>
+                  {/* Always show View Video button */}
+                  <button
+                    className="action-btn view-btn"
+                    onClick={() => handleViewAnalysis(video.id)}
+                  >
+                    <PlayIcon size={16} />
+                    View Video
+                  </button>
+
+                  {/* Show View Analysis button when analysis OR pose detection exists */}
+                  {(analysis || poseDetection) && (
+                    <button
+                      className="action-btn analysis-btn"
+                      onClick={() => handleViewAnalysis(video.id)}
+                    >
+                      <EyeIcon size={16} />
+                      View Analysis
+                    </button>
                   )}
 
                   {isAnalyzing && (

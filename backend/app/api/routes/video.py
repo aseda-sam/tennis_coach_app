@@ -171,10 +171,56 @@ async def stream_annotated_video(
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Look for annotated video
-        annotated_filename = f"{Path(db_video.filename).stem}_annotated.mp4"
-        processed_dir = Path(settings.PROCESSED_DIR)
-        annotated_path = processed_dir / annotated_filename
+        # Look for annotated video using the new video annotation system
+        from app.models.video_annotation import VideoAnnotation
+
+        # First try to find a video annotation record
+        video_annotation = (
+            db.query(VideoAnnotation)
+            .filter(VideoAnnotation.video_id == video_id)
+            .order_by(VideoAnnotation.created_at.desc())
+            .first()
+        )
+
+        if video_annotation and video_annotation.annotated_video_path:
+            # Use the video annotation system
+            annotated_path = Path(video_annotation.annotated_video_path)
+            annotated_filename = annotated_path.name
+            logger.info(f"Using video annotation: {annotated_filename}")
+        else:
+            # Fallback to legacy system - handle cases where filename has suffixes like _2, _3
+            base_name = Path(db_video.filename).stem
+            processed_dir = Path(settings.PROCESSED_DIR)
+
+            # First try the standard naming pattern
+            annotated_filename = f"{base_name}_annotated.mp4"
+            annotated_path = processed_dir / annotated_filename
+
+            # If not found, search for files with suffixes (e.g., _2_annotated.mp4)
+            if not annotated_path.exists():
+                pattern = f"{base_name}_*_annotated.mp4"
+                matching_files = list(processed_dir.glob(pattern))
+                if matching_files:
+                    # Use the most recent file (in case there are multiple)
+                    annotated_path = max(
+                        matching_files, key=lambda p: p.stat().st_mtime
+                    )
+                    annotated_filename = annotated_path.name
+                    logger.info(
+                        f"Found annotated video with suffix: {annotated_filename}"
+                    )
+                else:
+                    # Fallback: search for any file containing the base name and "annotated"
+                    pattern = f"*{base_name}*annotated*.mp4"
+                    matching_files = list(processed_dir.glob(pattern))
+                    if matching_files:
+                        annotated_path = max(
+                            matching_files, key=lambda p: p.stat().st_mtime
+                        )
+                        annotated_filename = annotated_path.name
+                        logger.info(
+                            f"Found annotated video with flexible pattern: {annotated_filename}"
+                        )
 
         validate_file_exists(annotated_path, annotated_filename)
 

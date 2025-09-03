@@ -115,6 +115,25 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
                             f"Failed to delete annotated video {annotated_path}: {e}"
                         )
 
+        # Delete video annotations
+        from app.models.video_annotation import VideoAnnotation
+
+        video_annotations = (
+            db.query(VideoAnnotation).filter(VideoAnnotation.video_id == video_id).all()
+        )
+        for annotation in video_annotations:
+            # Delete annotated video files
+            if annotation.annotated_video_path:
+                annotated_path = Path(annotation.annotated_video_path)
+                if annotated_path.exists():
+                    try:
+                        annotated_path.unlink()
+                        logger.info(f"Deleted video annotation file: {annotated_path}")
+                    except OSError as e:
+                        logger.warning(
+                            f"Failed to delete video annotation file {annotated_path}: {e}"
+                        )
+
         # Delete original video file from file system
         upload_dir = Path(settings.UPLOAD_DIR)
         file_path = upload_dir / filename
