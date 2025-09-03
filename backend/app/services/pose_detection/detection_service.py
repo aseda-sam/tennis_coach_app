@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.pose_detection import PoseDetection
 
 logger = logging.getLogger(__name__)
@@ -38,8 +39,8 @@ class PoseDetectionService:
                 model_complexity=1,  # 0, 1, or 2 (1 is good balance)
                 smooth_landmarks=True,
                 enable_segmentation=False,
-                min_detection_confidence=0.5,
-                min_tracking_confidence=0.5,
+                min_detection_confidence=settings.POSE_DETECTION_CONFIDENCE,
+                min_tracking_confidence=settings.POSE_TRACKING_CONFIDENCE,
             )
             logger.info("✅ MediaPipe pose detection initialized successfully")
 
@@ -127,10 +128,8 @@ class PoseDetectionService:
 
                 if pose_keypoints is not None:
                     frames_with_poses += 1
-                    # Calculate average confidence (simplified for now)
-                    confidence_scores.append(
-                        0.8
-                    )  # MediaPipe doesn't expose per-frame confidence easily
+                    # Use configurable overall confidence score
+                    confidence_scores.append(settings.POSE_OVERALL_CONFIDENCE)
                 else:
                     confidence_scores.append(0.0)
 
