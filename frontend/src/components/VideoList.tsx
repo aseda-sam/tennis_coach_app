@@ -5,6 +5,13 @@ import {
   AnalysisStartResponse,
   videoApi,
 } from '../services/api';
+import poseDetectionApi, {
+  PoseDetectionStartResponse,
+} from '../services/poseDetectionApi';
+import modularAnalysisApi, {
+  ModularAnalysisRequest,
+  ModularAnalysisProgress,
+} from '../services/modularAnalysisApi';
 import { VideoMetadata } from '../types/video';
 import AnalysisModal from './AnalysisModal';
 import {
@@ -51,6 +58,23 @@ const VideoList: React.FC<VideoListProps> = ({
         stageMessage?: string;
       }
     >
+  >(new Map());
+
+  // Track active pose detection tasks
+  const [activePoseTasks, setActivePoseTasks] = useState<
+    Map<
+      number,
+      {
+        taskId: number;
+        progress: number;
+        status: string;
+      }
+    >
+  >(new Map());
+
+  // Track modular analysis progress
+  const [modularAnalysisProgress, setModularAnalysisProgress] = useState<
+    Map<number, ModularAnalysisProgress>
   >(new Map());
 
   // Ref to store verifyAnalysisData function to avoid circular dependency
@@ -104,40 +128,53 @@ const VideoList: React.FC<VideoListProps> = ({
           )
       );
 
-      const response: AnalysisStartResponse = await analysisApi.startAnalysis(
+      // Use new modular analysis instead of legacy analysis
+      const response = await modularAnalysisApi.startComprehensiveAnalysis(
         videoId,
         {
-          analysis_type: 'comprehensive',
-          confidence_threshold: 0.5,
+          include_video_quality: true,
+          include_ball_detection: true,
           include_pose_detection: true,
+          confidence_threshold: 0.5,
+          detection_threshold: 0.5,
         }
       );
 
-      if (response.status === 'completed' && response.analysis_id) {
-        // Analysis completed immediately
-        setActiveTasks((prev) => {
-          const newMap = new Map(prev);
-          newMap.delete(videoId);
-          return newMap;
-        });
-        await loadVideos(); // Refresh to get the new analysis
-      } else if (response.status === 'processing' && response.task_id) {
-        // Analysis started in background - track the task
+      if (response.status === 'processing') {
+        // Analysis started - track the progress
         setActiveTasks(
           (prev) =>
             new Map(
               prev.set(videoId, {
-                taskId: response.task_id || 0,
+                taskId: 0, // No task_id for modular analysis
                 progress: 0,
                 status: 'processing',
               })
             )
         );
 
-        // Start polling for this task
-        pollTaskStatus(response.task_id, videoId);
+        // Store modular analysis progress
+        setModularAnalysisProgress((prev) =>
+          new Map(prev.set(videoId, response.progress))
+        );
+
+        // Start polling for modular analysis results
+        pollModularAnalysisStatus(videoId);
+      } else if (response.status === 'completed') {
+        // Analysis completed immediately
+        setActiveTasks((prev) => {
+          const newMap = new Map(prev);
+          newMap.delete(videoId);
+          return newMap;
+        });
+        setModularAnalysisProgress((prev) => {
+          const newMap = new Map(prev);
+          newMap.delete(videoId);
+          return newMap;
+        });
+        await loadVideos(); // Refresh to get the new analysis
       } else {
-        throw new Error(response.message || 'Failed to start analysis');
+        throw new Error(response.message || 'Failed to start modular analysis');
       }
     } catch (err: any) {
       const errorMessage =
@@ -149,6 +186,73 @@ const VideoList: React.FC<VideoListProps> = ({
 
       // Remove from active tasks on error
       setActiveTasks((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(videoId);
+        return newMap;
+      });
+      setModularAnalysisProgress((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(videoId);
+        return newMap;
+      });
+    }
+  };
+
+  const handlePoseAnalyze = async (videoId: number) => {
+    try {
+      // Add task to active pose tasks map
+      setActivePoseTasks(
+        (prev) =>
+          new Map(
+            prev.set(videoId, { taskId: 0, progress: 0, status: 'starting' })
+          )
+      );
+
+      const response: PoseDetectionStartResponse =
+        await poseDetectionApi.startAnalysis(videoId, {
+          confidence_threshold: 0.5,
+          detection_threshold: 0.5,
+        });
+
+      if (response.status === 'completed' && response.pose_detection_id) {
+        // Pose detection completed immediately
+        setActivePoseTasks((prev) => {
+          const newMap = new Map(prev);
+          newMap.delete(videoId);
+          return newMap;
+        });
+        await loadVideos(); // Refresh to get the new pose detection
+      } else if (response.status === 'processing' && response.task_id) {
+        // Pose detection started in background - track the task
+        setActivePoseTasks(
+          (prev) =>
+            new Map(
+              prev.set(videoId, {
+                taskId: response.task_id || 0,
+                progress: 0,
+                status: 'processing',
+              })
+            )
+        );
+
+        // Start polling for this task (we'll need to create a pose-specific poller)
+        // For now, just show processing status
+        console.log(
+          `Pose detection started for video ${videoId}, task ${response.task_id}`
+        );
+      } else {
+        throw new Error(response.message || 'Failed to start pose detection');
+      }
+    } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.detail ||
+        err?.message ||
+        'Failed to start pose detection';
+      setError(errorMessage);
+      console.error('Error starting pose detection:', err);
+
+      // Remove from active pose tasks on error
+      setActivePoseTasks((prev) => {
         const newMap = new Map(prev);
         newMap.delete(videoId);
         return newMap;
@@ -298,6 +402,75 @@ const VideoList: React.FC<VideoListProps> = ({
   // Store the function in ref to avoid circular dependency
   verifyAnalysisDataRef.current = verifyAnalysisData;
 
+  // Function to poll modular analysis status
+  const pollModularAnalysisStatus = useCallback(
+    async (videoId: number) => {
+      const pollInterval = setInterval(async () => {
+        try {
+          const results = await modularAnalysisApi.getComprehensiveResults(videoId);
+          
+          // Update progress
+          setModularAnalysisProgress((prev) => {
+            const newMap = new Map(prev);
+            const currentProgress = newMap.get(videoId) || {};
+            
+            // Update individual service statuses
+            if (results.video_quality) {
+              currentProgress.video_quality = { status: 'completed' };
+            }
+            if (results.ball_detection) {
+              currentProgress.ball_detection = { status: 'completed' };
+            }
+            if (results.pose_detection) {
+              currentProgress.pose_detection = { status: 'completed' };
+            }
+            
+            newMap.set(videoId, currentProgress);
+            return newMap;
+          });
+
+          // If analysis is completed, clean up
+          if (results.overall_status === 'completed') {
+            clearInterval(pollInterval);
+            setActiveTasks((prev) => {
+              const newMap = new Map(prev);
+              newMap.delete(videoId);
+              return newMap;
+            });
+            setModularAnalysisProgress((prev) => {
+              const newMap = new Map(prev);
+              newMap.delete(videoId);
+              return newMap;
+            });
+            await loadVideos(); // Refresh to get the new analysis
+          } else if (results.overall_status === 'failed') {
+            clearInterval(pollInterval);
+            setActiveTasks((prev) => {
+              const newMap = new Map(prev);
+              newMap.delete(videoId);
+              return newMap;
+            });
+            setModularAnalysisProgress((prev) => {
+              const newMap = new Map(prev);
+              newMap.delete(videoId);
+              return newMap;
+            });
+            setError(results.error || 'Modular analysis failed');
+          }
+        } catch (err) {
+          console.error('Error polling modular analysis status:', err);
+          // Continue polling on error, but log it
+        }
+      }, 2000); // Poll every 2 seconds
+
+      // Clean up interval after 5 minutes to prevent infinite polling
+      setTimeout(() => {
+        clearInterval(pollInterval);
+      }, 5 * 60 * 1000);
+    },
+    [loadVideos]
+  );
+
   const handleViewAnalysis = (videoId: number) => {
     if (onViewAnalysis) {
       const video = videos.find((v) => v.id === videoId);
@@ -355,6 +528,10 @@ const VideoList: React.FC<VideoListProps> = ({
     }
 
     return analysis || null;
+  };
+
+  const isPoseAnalyzing = (videoId: number): boolean => {
+    return activePoseTasks.get(videoId) !== undefined;
   };
 
   const formatDuration = (seconds: number): string => {
@@ -577,13 +754,37 @@ const VideoList: React.FC<VideoListProps> = ({
 
                 <div className="video-actions-enhanced">
                   {!analysis && !isAnalyzing && (
-                    <button
-                      className="action-btn analyze-btn"
-                      onClick={() => handleAnalyze(video.id)}
-                    >
-                      <AnalyticsIcon size={16} />
-                      Analyze
-                    </button>
+                    <>
+                      <button
+                        className="action-btn analyze-btn"
+                        onClick={() => handleAnalyze(video.id)}
+                      >
+                        <AnalyticsIcon size={16} />
+                        Analyze
+                      </button>
+                      <button
+                        className="action-btn pose-btn"
+                        onClick={() => handlePoseAnalyze(video.id)}
+                      >
+                        <AnalyticsIcon size={16} />
+                        Pose Only
+                      </button>
+                    </>
+                  )}
+
+                  {isPoseAnalyzing(video.id) && (
+                    <div className="analysis-progress-container">
+                      <div className="pose-analysis-progress">
+                        <span>Pose Detection: Processing...</span>
+                        <ProgressBar
+                          progress={activePoseTasks.get(video.id)?.progress || 0}
+                          status="processing"
+                          size="small"
+                          showPercentage={false}
+                          showStatus={false}
+                        />
+                      </div>
+                    </div>
                   )}
 
                   {analysis && (
