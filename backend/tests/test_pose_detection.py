@@ -48,7 +48,7 @@ class TestPoseDetectionService:
         mock_cap.read.side_effect = [
             (True, Mock()),  # First frame
             (True, Mock()),  # Second frame
-            (False, None),   # End of video
+            (False, None),  # End of video
         ]
 
         frames = pose_service._extract_frames(mock_video_file, max_frames=2)
@@ -165,14 +165,18 @@ class TestPoseDetectionAPI:
         # Test with invalid confidence threshold
         response = client.post(
             "/v0/pose-detection/analyze/1",
-            json={"confidence_threshold": 2.0}  # Invalid: > 1.0
+            json={"confidence_threshold": 2.0},  # Invalid: > 1.0
         )
 
         assert response.status_code == 422  # Validation error
 
-    @patch("app.services.pose_detection.detection_service.PoseDetectionService.analyze_video_file")
+    @patch(
+        "app.services.pose_detection.detection_service.PoseDetectionService.analyze_video_file"
+    )
     @patch("app.api.routes.pose_detection.Path.exists")
-    def test_analyze_pose_detection_success(self, mock_exists, mock_analyze, db_session):
+    def test_analyze_pose_detection_success(
+        self, mock_exists, mock_analyze, db_session
+    ):
         """Test successful pose detection analysis."""
         # Setup
         mock_exists.return_value = True
@@ -195,8 +199,7 @@ class TestPoseDetectionAPI:
 
         # Test endpoint
         response = client.post(
-            f"/v0/pose-detection/analyze/{video.id}",
-            json={"confidence_threshold": 0.5}
+            f"/v0/pose-detection/analyze/{video.id}", json={"confidence_threshold": 0.5}
         )
 
         assert response.status_code == 200
