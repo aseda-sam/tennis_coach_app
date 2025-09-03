@@ -11,9 +11,9 @@ from app.models.video import Video
 from app.services.ball_contact_service import (
     ALLOWED_BALL_CONTACT_FIELDS,
     create_ball_contact,
+    detect_ball_contact,
     update_ball_contact,
 )
-from app.services.cv_service import detect_ball_contact
 
 
 def create_mock_detections() -> tuple[

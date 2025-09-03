@@ -281,8 +281,7 @@ backend/
 │   │   └── video.py         # Video metadata
 │   ├── services/            # Business logic
 │   │   ├── analysis_service.py  # Analysis pipeline
-│   │   ├── cv_service.py        # Computer vision
-│   │   └── video_service.py     # Video processing
+│   │   ├── video_service.py     # Video processing utilities
 │   └── main.py              # FastAPI app
 ├── alembic/                 # Database migrations
 ├── tests/                   # Test files

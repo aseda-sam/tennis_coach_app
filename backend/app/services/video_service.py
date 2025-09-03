@@ -1,7 +1,11 @@
 import logging
+import time
 from datetime import datetime
-from typing import List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+import cv2
+import numpy as np
 from sqlalchemy.orm import Session
 
 from app.models.video import Video
@@ -206,3 +210,123 @@ def update_video_quality(
         db.refresh(video)
         return video
     return None
+
+
+def extract_frames(
+    video_path: Path, max_frames: Optional[int] = None
+) -> List[np.ndarray]:
+    """
+    Extract frames from video file.
+
+    Args:
+        video_path: Path to video file
+        max_frames: Maximum number of frames to extract (None = extract all frames)
+
+    Returns:
+        List of frame arrays
+    """
+    start_time = time.time()
+    frames = []
+    try:
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            logger.error(f"Could not open video: {video_path}")
+            return frames
+
+        frame_count = 0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+
+        # Use FRAME_SKIP_RATIO from config for proper frame skipping
+        from app.core.config import env_limits
+
+        frame_skip_ratio = env_limits["frame_skip_ratio"]
+
+        # Calculate frame interval based on max_frames and frame_skip_ratio
+        if max_frames is None:
+            # If no max_frames specified, use frame_skip_ratio directly
+            interval = frame_skip_ratio
+        else:
+            # If max_frames specified, calculate interval to get max_frames
+            # but respect the minimum frame_skip_ratio
+            calculated_interval = (
+                total_frames // max_frames if total_frames > max_frames else 1
+            )
+            interval = max(calculated_interval, frame_skip_ratio)
+
+        # Log frame skipping status
+        if frame_skip_ratio > 1:
+            logger.info(
+                f"Frame skipping enabled: processing every {frame_skip_ratio} frames"
+            )
+        else:
+            logger.info("Frame skipping disabled: processing all frames")
+
+        logger.info(f"Extracting frames from {video_path}")
+        logger.info(
+            f"Total frames: {total_frames}, FPS: {fps}, Frame skip ratio: {frame_skip_ratio}, Interval: {interval}"
+        )
+
+        # Process frames with proper skipping
+        while frame_count < total_frames:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # Only keep frames at interval
+            if frame_count % interval == 0:
+                frames.append(frame)
+
+                # Stop if we've reached max_frames
+                if max_frames is not None and len(frames) >= max_frames:
+                    break
+
+            frame_count += interval
+
+            # Skip frames to maintain interval
+            if interval > 1:
+                for _ in range(interval - 1):
+                    cap.read()
+
+        cap.release()
+        logger.info(f"Extracted {len(frames)} frames using interval {interval}")
+
+    except (OSError, RuntimeError, ValueError) as e:
+        logger.error(f"Error extracting frames: {e}")
+
+    elapsed_time = time.time() - start_time
+    logger.info(f"⏱️ Frame Extraction completed in {elapsed_time:.3f}s")
+    return frames
+
+
+def get_video_metadata(video_path: Path) -> Dict[str, Any]:
+    """
+    Extract basic video metadata.
+
+    Args:
+        video_path: Path to video file
+
+    Returns:
+        Video metadata dictionary
+    """
+    try:
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            return {"error": "Could not open video file"}
+
+        metadata = {
+            "width": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            "height": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+            "fps": float(cap.get(cv2.CAP_PROP_FPS)),
+            "frame_count": int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
+            "duration": float(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            / float(cap.get(cv2.CAP_PROP_FPS)),
+            "codec": int(cap.get(cv2.CAP_PROP_FOURCC)),
+        }
+
+        cap.release()
+        return metadata
+
+    except (OSError, RuntimeError, ValueError) as e:
+        logger.error(f"Error extracting video metadata: {e}")
+        return {"error": str(e)}

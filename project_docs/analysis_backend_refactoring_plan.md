@@ -211,11 +211,15 @@ Pose Detection   →   PoseDetection  → Combine as needed  → Create video
    - ✅ Removed analysis router from `main.py`
    - ✅ Removed analysis schemas
 
-4. **✅ Clean Up CV Service**
+4. **✅ COMPLETE: Clean Up CV Service**
 
-   - ✅ Removed `analyze_video()` method from `cv_service.py`
-   - ✅ Removed redundant `_create_annotated_video` method
-   - ✅ Kept only utility methods (frame extraction, etc.)
+   - ✅ **COMPLETE**: `analyze_video()` method removed (340+ lines of legacy code)
+   - ✅ **COMPLETE**: All detection methods removed (detect_balls, detect_pose, etc.)
+   - ✅ **COMPLETE**: `_create_annotated_video` method removed
+   - ✅ **COMPLETE**: No references to CVService in production code
+   - ✅ **COMPLETE**: Contact detection functions moved to `ball_contact_service.py`
+   - ✅ **COMPLETE**: Utility functions moved to appropriate services
+   - ✅ **COMPLETE**: `cv_service.py` file completely deleted
 
 5. **✅ Update Background Service**
 
@@ -259,7 +263,7 @@ Pose Detection   →   PoseDetection  → Combine as needed  → Create video
 
 ## Summary
 
-**Status**: ✅ **COMPLETE** - Backend refactoring finished
+**Status**: ✅ **COMPLETE** - Backend refactoring fully finished
 
 **Completed**: All core services extracted and working independently
 
@@ -269,6 +273,7 @@ Pose Detection   →   PoseDetection  → Combine as needed  → Create video
 - ✅ Video Annotation Service
 - ✅ Background Service Integration
 - ✅ Legacy Analysis System Removal
+- ✅ **CVService Cleanup** (340+ lines of legacy code removed)
 
 **Final Result**: Clean, modular architecture with independent services and no legacy dependencies.
 
@@ -279,7 +284,7 @@ Pose Detection   →   PoseDetection  → Combine as needed  → Create video
 - `VideoAnnotationService` → `video_annotations` table
 - `BackgroundTaskService` → manages all analysis workflows
 
-**Code Reduction**: Removed 2000+ lines of legacy code, resulting in a cleaner, more maintainable codebase.
+**Code Reduction**: Removed 2000+ lines of legacy code, including the complete CVService cleanup (340+ lines), resulting in a cleaner, more maintainable codebase.
 
 ---
 
