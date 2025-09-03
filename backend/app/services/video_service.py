@@ -135,6 +135,25 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
                             f"Failed to delete video annotation file {annotated_path}: {e}"
                         )
 
+        # Delete pose detection annotated video files
+        from app.models.pose_detection import PoseDetection
+
+        pose_detections = (
+            db.query(PoseDetection).filter(PoseDetection.video_id == video_id).all()
+        )
+        for pose_detection in pose_detections:
+            # Delete annotated video files
+            if pose_detection.annotated_video_path:
+                annotated_path = Path(pose_detection.annotated_video_path)
+                if annotated_path.exists():
+                    try:
+                        annotated_path.unlink()
+                        logger.info(f"Deleted pose detection annotated video: {annotated_path}")
+                    except OSError as e:
+                        logger.warning(
+                            f"Failed to delete pose detection annotated video {annotated_path}: {e}"
+                        )
+
         # Delete original video file from file system
         upload_dir = Path(settings.UPLOAD_DIR)
         file_path = upload_dir / filename
@@ -147,7 +166,13 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
                 logger.error(f"Failed to delete video file {file_path}: {e}")
                 # Continue with database deletion even if file deletion fails
 
-        # Delete from database (this will cascade delete analyses)
+        # Delete from database (this will cascade delete all related records)
+        # The cascade relationships will automatically delete:
+        # - Analysis records (legacy)
+        # - BallDetection records (new modular)
+        # - PoseDetection records (new modular)
+        # - BallContact records (new modular)
+        # - VideoAnnotation records (new modular)
         if not delete_video_record(db, video_id):
             logger.error(f"Database deletion failed for video {video_id}")
             return False, filename, video_id
