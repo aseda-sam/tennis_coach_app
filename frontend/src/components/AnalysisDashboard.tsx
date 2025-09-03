@@ -1,12 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import { videoApi } from '../services/api';
-import poseDetectionApi from '../services/poseDetectionApi';
 import { VideoMetadata } from '../types/video';
 import './AnalysisDashboard.css';
-import AnalysisResults from './AnalysisResults';
-import ProgressBar from './ProgressBar';
-import StageProgress from './StageProgress';
 import VideoPlayer from './VideoPlayer';
 
 interface AnalysisDashboardProps {
@@ -26,9 +21,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [aspectRatioMode, setAspectRatioMode] = useState<
     'cover' | 'contain' | 'auto'
   >('contain');
-  const [video, setVideo] = useState<VideoMetadata | null>(null);
+  const [, setVideo] = useState<VideoMetadata | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
-  const [poseDetection, setPoseDetection] = useState<any>(null);
+  const [analysisStatus, setAnalysisStatus] = useState<{
+    has_analysis: boolean;
+    has_annotated_video: boolean;
+    analysis_types: string[];
+    annotated_video_available: boolean;
+  } | null>(null);
 
   // Fetch video data for quality metrics
   useEffect(() => {
@@ -45,60 +45,44 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     fetchVideo();
   }, [videoId]);
 
-  // Fetch pose detection data
+  // Fetch analysis status
   useEffect(() => {
-    const fetchPoseDetection = async () => {
+    const fetchAnalysisStatus = async () => {
       try {
-        const poseData = await poseDetectionApi.getResults(videoId);
-        if (poseData.pose_detection.status === 'completed') {
-          setPoseDetection(poseData.pose_detection);
-        }
+        const status = await videoApi.getVideoAnalysisStatus(videoId);
+        setAnalysisStatus(status);
       } catch (error) {
-        console.debug('No pose detection data for video:', videoId);
-        setPoseDetection(null);
+        console.debug('No analysis status available for video:', videoId);
+        setAnalysisStatus({
+          has_analysis: false,
+          has_annotated_video: false,
+          analysis_types: [],
+          annotated_video_available: false,
+        });
       }
     };
 
-    fetchPoseDetection();
+    fetchAnalysisStatus();
   }, [videoId]);
 
-  // Use the analysis manager hook for better state management
-  const { analysisState, refreshAnalysis, cancelAnalysis, isLoading } =
-    useAnalysisManager({
-      videoId,
-      autoRefresh: true,
-      onAnalysisComplete: (analysis) => {
-        console.log('Analysis completed:', analysis);
-      },
-      onAnalysisError: (error) => {
-        console.error('Analysis error:', error);
-      },
-    });
-
-  const { analysis, status, progress, error } = analysisState;
-
-  const formatDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  // Remove legacy analysis system - we now use pose detection only
+  // const { analysisState, refreshAnalysis, cancelAnalysis, isLoading } = useAnalysisManager({...});
+  // const { analysis, status, progress, error } = analysisState;
 
   // Smart video URL selection: use annotated video if available, otherwise original
   const getVideoUrl = () => {
-    // Check for pose detection data (new system) or legacy analysis
-    const hasPoseData =
-      poseDetection ||
-      (analysis?.pose_detections && analysis.pose_detections.length > 0);
-
-    if (hasPoseData) {
-      // Use the new annotated video endpoint
+    // Check if there's any analysis and annotated video is available
+    if (
+      analysisStatus?.has_analysis &&
+      analysisStatus?.annotated_video_available
+    ) {
+      // Use the annotated video endpoint
       const baseUrl =
         process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
       const annotatedUrl = `${baseUrl}/videos/${videoId}/annotated/stream`;
       console.log('Using annotated video for:', videoFilename);
       console.log('Annotated video URL:', annotatedUrl);
-      console.log('Pose detection data:', poseDetection);
-      console.log('Legacy analysis data:', analysis);
+      console.log('Analysis status:', analysisStatus);
       return annotatedUrl;
     }
     console.log('Using original video URL:', videoUrl);
@@ -142,7 +126,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             <VideoPlayer
               videoUrl={getVideoUrl()}
               title={
-                analysis?.pose_detections && analysis.pose_detections.length > 0
+                analysisStatus?.has_analysis &&
+                analysisStatus?.annotated_video_available
                   ? `${videoFilename} (Annotated)`
                   : videoFilename
               }
@@ -150,14 +135,13 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               aspectRatioMode={aspectRatioMode}
               videoId={videoId}
             />
-            {(poseDetection ||
-              (analysis?.pose_detections &&
-                analysis.pose_detections.length > 0)) && (
-              <div className="ai-analysis-badge">
-                <span className="ai-icon">⚡</span>
-                AI Analysis Active
-              </div>
-            )}
+            {analysisStatus?.has_analysis &&
+              analysisStatus?.annotated_video_available && (
+                <div className="ai-analysis-badge">
+                  <span className="ai-icon">⚡</span>
+                  AI Analysis Active
+                </div>
+              )}
           </div>
 
           {/* Video Details and Actions below video */}
@@ -178,37 +162,23 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   <span className="detail-value">{videoFilename}</span>
                 </div>
 
-                {analysis && (
+                {analysisStatus?.has_analysis && (
                   <>
                     <div className="detail-item">
-                      <span className="detail-label">Processing Time:</span>
+                      <span className="detail-label">Analysis Types:</span>
                       <span className="detail-value">
-                        {formatDuration(analysis.processing_time)}
+                        {analysisStatus.analysis_types.join(', ')}
                       </span>
                     </div>
 
                     <div className="detail-item">
-                      <span className="detail-label">Total Frames:</span>
+                      <span className="detail-label">Annotated Video:</span>
                       <span className="detail-value">
-                        {analysis.total_frames}
+                        {analysisStatus.annotated_video_available
+                          ? 'Available'
+                          : 'Not Available'}
                       </span>
                     </div>
-
-                    <div className="detail-item">
-                      <span className="detail-label">Analysis Type:</span>
-                      <span className="detail-value">
-                        {analysis.analysis_type}
-                      </span>
-                    </div>
-
-                    {analysis.model_used && (
-                      <div className="detail-item">
-                        <span className="detail-label">Model Used:</span>
-                        <span className="detail-value">
-                          {analysis.model_used}
-                        </span>
-                      </div>
-                    )}
                   </>
                 )}
               </div>
@@ -216,64 +186,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           </div>
         </div>
 
-        {/* Right Panel - Analysis Results */}
+        {/* Right Panel - Pose Detection Results */}
         <div className="right-panel">
           <div className="analysis-status-section">
-            {isLoading ||
-            status === 'starting' ||
-            status === 'processing' ||
-            status === 'finalizing' ? (
-              <div className="analysis-loading">
-                <div className="loading-header">
-                  <div className="loading-spinner"></div>
-                  <h3>Analyzing Tennis Video...</h3>
-                </div>
-
-                <div className="progress-section">
-                  {analysisState.currentStage ? (
-                    <StageProgress
-                      currentStage={analysisState.currentStage}
-                      stageProgress={analysisState.stageProgress || 0}
-                      stageMessage={
-                        analysisState.stageMessage || 'Processing...'
-                      }
-                      overallProgress={progress}
-                      size="large"
-                    />
-                  ) : (
-                    <ProgressBar
-                      progress={progress}
-                      status={status as any}
-                      size="large"
-                      showPercentage={true}
-                      showStatus={true}
-                    />
-                  )}
-                </div>
-
-                <p className="loading-note">
-                  This may take 2-3 minutes for longer videos. You can leave
-                  this page and return later.
-                </p>
-
-                {(status === 'processing' || status === 'starting') && (
-                  <button
-                    className="cancel-analysis-btn"
-                    onClick={cancelAnalysis}
-                  >
-                    Cancel Analysis
-                  </button>
-                )}
-              </div>
-            ) : error ? (
-              <div className="analysis-error">
-                <h3>❌ Analysis Error</h3>
-                <p>{error}</p>
-                <button className="retry-btn" onClick={refreshAnalysis}>
-                  Try Again
-                </button>
-              </div>
-            ) : videoError ? (
+            {videoError ? (
               <div className="analysis-error">
                 <h3>❌ Video Data Error</h3>
                 <p>{videoError}</p>
@@ -284,8 +200,22 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   Reload Page
                 </button>
               </div>
-            ) : analysis ? (
-              <AnalysisResults analysis={analysis} video={video} />
+            ) : analysisStatus?.has_analysis ? (
+              <div className="analysis-results">
+                <h3>📊 Analysis Results</h3>
+                <div className="analysis-summary">
+                  <p>
+                    <strong>Analysis Types:</strong>{' '}
+                    {analysisStatus.analysis_types.join(', ')}
+                  </p>
+                  <p>
+                    <strong>Annotated Video:</strong>{' '}
+                    {analysisStatus.annotated_video_available
+                      ? 'Available'
+                      : 'Not Available'}
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="analysis-empty">
                 <h3>📊 Analysis Results</h3>
