@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -190,10 +191,7 @@ def update_video_quality(
         video.lighting_score = lighting_score
         video.resolution_score = resolution_score
         video.quality_level = quality_level
-        # Set quality_assessed_at to current timestamp
-        from sqlalchemy.sql import func
-
-        video.quality_assessed_at = func.now()
+        video.quality_assessed_at = datetime.utcnow()
         db.commit()
         db.refresh(video)
         return video
