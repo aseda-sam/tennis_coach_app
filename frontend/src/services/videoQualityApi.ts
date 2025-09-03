@@ -48,7 +48,7 @@ class VideoQualityApi {
     request: VideoQualityRequest = {}
   ): Promise<VideoQualityStartResponse> {
     const response = await api.post(
-      `/v0/video-quality/analyze/${videoId}`,
+      `/video-quality/analyze/${videoId}`,
       request
     );
     return response.data;
@@ -58,7 +58,7 @@ class VideoQualityApi {
    * Get video quality results for a video
    */
   async getResults(videoId: number): Promise<VideoQualityResponse> {
-    const response = await api.get(`/v0/video-quality/${videoId}`);
+    const response = await api.get(`/video-quality/${videoId}`);
     return response.data;
   }
 
