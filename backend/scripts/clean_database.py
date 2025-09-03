@@ -13,16 +13,16 @@ from pathlib import Path
 backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from app.core.database import get_db
-from app.models.analysis import Analysis
-from app.models.ball_contact import BallContact
-from app.models.ball_detection import BallDetection
-from app.models.pose_detection import PoseDetection
-from app.models.video import Video
-from app.models.video_annotation import VideoAnnotation
+from app.core.database import get_db  # noqa: E402
+from app.models.analysis import Analysis  # noqa: E402
+from app.models.ball_contact import BallContact  # noqa: E402
+from app.models.ball_detection import BallDetection  # noqa: E402
+from app.models.pose_detection import PoseDetection  # noqa: E402
+from app.models.video import Video  # noqa: E402
+from app.models.video_annotation import VideoAnnotation  # noqa: E402
 
 
-def clean_database():
+def clean_database() -> None:
     """Delete all records from all tables."""
     print("🧹 Starting database cleanup...")
 
