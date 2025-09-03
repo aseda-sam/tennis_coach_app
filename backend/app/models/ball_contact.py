@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import (
     Column,
     DateTime,
@@ -7,7 +9,6 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import Base
 
@@ -33,8 +34,8 @@ class BallContact(Base):
     ball_position = Column(String, nullable=True)  # JSON: {"x": 0.5, "y": 0.3}
     player_position = Column(String, nullable=True)  # JSON: {"x": 0.5, "y": 0.3}
     description = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), onupdate=datetime.utcnow)
     detection_source = Column(
         String(20), nullable=False, default="automated"
     )  # 'automated' or 'manual'

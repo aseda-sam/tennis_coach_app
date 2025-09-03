@@ -19,6 +19,7 @@ export interface PoseDetectionInfo {
   id: number;
   video_id: number;
   metrics: PoseDetectionMetrics;
+  frame_data?: any; // Frame-by-frame pose data (optional)
   created_at: string;
   completed_at?: string;
   status: string;
