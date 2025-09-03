@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTaskStatus } from '../hooks/useTaskStatus';
-import { videoApi, TaskStatus } from '../services/api';
+import { TaskStatus, videoApi } from '../services/api';
 import poseDetectionApi, {
   PoseDetectionStartResponse,
 } from '../services/poseDetectionApi';
@@ -121,26 +121,30 @@ const VideoList: React.FC<VideoListProps> = ({
   }, [loadVideos]);
 
   // Get the current pose detection task ID for polling
-  const currentPoseTaskId =
-    activePoseTasks.size > 0
-      ? Array.from(activePoseTasks.values())[0]?.taskId || null
-      : null;
+  const currentPoseTaskId = useMemo(() => {
+    if (activePoseTasks.size === 0) return null;
+    const first = Array.from(activePoseTasks.values())[0];
+    return first && first.taskId && first.taskId > 0 ? first.taskId : null;
+  }, [activePoseTasks]);
 
   // Poll for pose detection task completion
   const { taskStatus: poseTaskStatus } = useTaskStatus({
     taskId: currentPoseTaskId,
     pollInterval: 2000,
     autoStop: true,
-    onComplete: useCallback(async (completedTask: TaskStatus) => {
-      // Task completed, refresh videos and clear active tasks
-      try {
-        await loadVideos();
-        setActivePoseTasks(new Map());
-      } catch (err) {
-        console.error('Error refreshing videos after pose detection:', err);
-        setActivePoseTasks(new Map());
-      }
-    }, [loadVideos]),
+    onComplete: useCallback(
+      async (completedTask: TaskStatus) => {
+        // Task completed, refresh videos and clear active tasks
+        try {
+          await loadVideos();
+          setActivePoseTasks(new Map());
+        } catch (err) {
+          console.error('Error refreshing videos after pose detection:', err);
+          setActivePoseTasks(new Map());
+        }
+      },
+      [loadVideos]
+    ),
     onError: useCallback((error: string) => {
       console.error('Pose detection task failed:', error);
       setError(error);
@@ -185,13 +189,8 @@ const VideoList: React.FC<VideoListProps> = ({
 
   const handlePoseAnalyze = async (videoId: number) => {
     try {
-      // Add task to active pose tasks map
-      setActivePoseTasks(
-        (prev) =>
-          new Map(
-            prev.set(videoId, { taskId: 0, progress: 0, status: 'starting' })
-          )
-      );
+      // Clear any previous error for a fresh start
+      setError(null);
 
       const response: PoseDetectionStartResponse =
         await poseDetectionApi.startAnalysis(videoId, {
@@ -213,7 +212,7 @@ const VideoList: React.FC<VideoListProps> = ({
           (prev) =>
             new Map(
               prev.set(videoId, {
-                taskId: response.task_id || 0,
+                taskId: response.task_id as number,
                 progress: 0,
                 status: 'processing',
               })
