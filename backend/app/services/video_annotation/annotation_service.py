@@ -184,8 +184,8 @@ class VideoAnnotationService:
 
         logger.info(f"Creating annotated video: {annotated_path}")
 
-        # Create video writer
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        # Create video writer with H.264 codec for browser compatibility
+        fourcc = cv2.VideoWriter_fourcc(*"H264")
         out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
 
         if not out.isOpened():
