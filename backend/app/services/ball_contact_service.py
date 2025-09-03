@@ -46,9 +46,11 @@ def create_ball_contact(
         video_id (int): ID of the associated video.
         video_timestamp (float): Timestamp in the video for the ball contact.
         contact_hand (Literal["left", "right"]): Hand used for the contact.
-        stroke_type (Optional[Literal["ground_stroke", "serve", "volley", "overhead"]]): Type of stroke.
+        stroke_type (Optional[Literal["ground_stroke", "serve", "volley", "overhead"]]):
+            Type of stroke.
         stroke_subtype (Optional[str]): Subtype of the stroke.
-        detection_source (Optional[Literal["automated", "manual"]]): Source of the detection.
+        detection_source (Optional[Literal["automated", "manual"]]):
+            Source of the detection.
     Returns:
         BallContact: The created BallContact database object.
     """
@@ -82,7 +84,8 @@ def create_ball_contact(
     )
     if existing_manual_detection:
         raise ValueError(
-            f"Manual contact already exists at timestamp {video_timestamp} (±{tolerance} seconds) for video {video_id}"
+            f"Manual contact already exists at timestamp {video_timestamp} "
+            f"(±{tolerance} seconds) for video {video_id}"
         )
 
     # Create new manual contact detection
@@ -155,7 +158,8 @@ def update_ball_contact(
         BallContact: The updated BallContact record.
 
     Raises:
-        ValueError: If the BallContact record is not found or invalid fields are provided.
+        ValueError: If the BallContact record is not found or invalid fields
+            are provided.
     """
     contact = db.query(BallContact).filter(BallContact.id == ball_contact_id).first()
     if not contact:

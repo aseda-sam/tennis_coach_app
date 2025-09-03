@@ -94,13 +94,19 @@ class BallDetectionRequest(BaseModel):
 
     confidence_threshold: Optional[float] = Field(
         None,
-        description="Confidence threshold for detections (0.0-1.0). If not provided, uses video quality-based threshold.",
+        description=(
+            "Confidence threshold for detections (0.0-1.0). "
+            "If not provided, uses video quality-based threshold."
+        ),
         ge=0.0,
         le=1.0,
     )
     max_frames: Optional[int] = Field(
         None,
-        description="Maximum number of frames to process. If not provided, processes all frames.",
+        description=(
+            "Maximum number of frames to process. "
+            "If not provided, processes all frames."
+        ),
         gt=0,
     )
     include_detection_data: bool = Field(

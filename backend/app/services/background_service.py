@@ -58,7 +58,8 @@ class BackgroundTaskService:
 
         Args:
             video_id: Video ID to analyze
-            analysis_type: Type of analysis (ball_tracking, pose_detection, comprehensive)
+            analysis_type: Type of analysis (ball_tracking, pose_detection,
+                comprehensive)
             confidence_threshold: YOLO confidence threshold
             include_pose_detection: Whether to include pose detection
 
@@ -98,7 +99,8 @@ class BackgroundTaskService:
             include_pose_detection,
         )
 
-        # Store future for potential cancellation (keep status as "queued" until processing starts)
+        # Store future for potential cancellation (keep status as "queued"
+        # until processing starts)
         with _task_lock:
             _active_tasks[task_id]["future"] = future
 
@@ -172,7 +174,8 @@ class BackgroundTaskService:
 
                 # Run analysis (this is the CPU-intensive part)
                 logger.info(
-                    f"Task {task_id}: Starting analyze_video with include_pose_detection={include_pose_detection}"
+                    f"Task {task_id}: Starting analyze_video with "
+                    f"include_pose_detection={include_pose_detection}"
                 )
                 result = analyze_video(
                     db=db,
@@ -183,7 +186,8 @@ class BackgroundTaskService:
                     task_id=task_id,
                 )
                 logger.info(
-                    f"Task {task_id}: analyze_video completed with result: {type(result)}"
+                    f"Task {task_id}: analyze_video completed with result: "
+                    f"{type(result)}"
                 )
                 if isinstance(result, dict) and "error" in result:
                     logger.error(
@@ -192,7 +196,8 @@ class BackgroundTaskService:
                 elif isinstance(result, dict) and "contact_timestamps" in result:
                     contact_count = len(result.get("contact_timestamps", []))
                     logger.info(
-                        f"Task {task_id}: Analysis completed with {contact_count} contacts detected"
+                        f"Task {task_id}: Analysis completed with {contact_count} "
+                        f"contacts detected"
                     )
                 else:
                     logger.info(f"Task {task_id}: Analysis completed successfully")

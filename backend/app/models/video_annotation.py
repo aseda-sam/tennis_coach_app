@@ -31,7 +31,8 @@ class VideoAnnotation(Base):
 
     # Source analysis references (optional - for tracking which analyses contributed)
     pose_detection_id = Column(Integer, ForeignKey("pose_detections.id"), nullable=True)
-    # ball_detection_id = Column(Integer, ForeignKey("ball_detections.id"), nullable=True)  # Future: when ball_detections table exists
+    # ball_detection_id = Column(Integer, ForeignKey("ball_detections.id"), nullable=True)
+    # Future: when ball_detections table exists
     analysis_id = Column(
         Integer, ForeignKey("analyses.id"), nullable=True
     )  # Legacy analysis reference
@@ -54,7 +55,8 @@ class VideoAnnotation(Base):
     # Relationships
     video = relationship("Video", back_populates="video_annotations")
     pose_detection = relationship("PoseDetection", back_populates="video_annotations")
-    # ball_detection = relationship("BallDetection", back_populates="video_annotations")  # Future
+    # ball_detection = relationship("BallDetection", back_populates="video_annotations")
+    # Future
     # analysis = relationship("Analysis", back_populates="video_annotations")  # Legacy
 
     def __repr__(self) -> str:
