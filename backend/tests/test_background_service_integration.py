@@ -29,19 +29,11 @@ class TestBackgroundServiceIntegration:
         db_session.commit()
 
         # Mock the modular services
-        with patch(
-            "app.services.background_service.PoseDetectionService"
-        ) as mock_pose_service:
-            with patch(
-                "app.services.background_service.create_analysis_record"
-            ) as mock_create:
-                with patch(
-                    "app.services.background_service.update_analysis_status"
-                ) as mock_update:
-                    with patch(
-                        "app.services.background_service.update_task_progress"
-                    ) as mock_progress:
-                        with patch("pathlib.Path.exists", return_value=True):
+        with patch("app.services.background_service.PoseDetectionService") as mock_pose_service, \
+             patch("app.services.background_service.create_analysis_record"), \
+             patch("app.services.background_service.update_analysis_status"), \
+             patch("app.services.background_service.update_task_progress"), \
+             patch("pathlib.Path.exists", return_value=True):
                             # Setup mock return values
                             mock_pose_instance = Mock()
                             mock_pose_service.return_value = mock_pose_instance
@@ -89,19 +81,11 @@ class TestBackgroundServiceIntegration:
         db_session.commit()
 
         # Mock the modular services
-        with patch(
-            "app.services.background_service.BallDetectionService"
-        ) as mock_ball_service:
-            with patch(
-                "app.services.background_service.create_analysis_record"
-            ) as mock_create:
-                with patch(
-                    "app.services.background_service.update_analysis_status"
-                ) as mock_update:
-                    with patch(
-                        "app.services.background_service.update_task_progress"
-                    ) as mock_progress:
-                        with patch("pathlib.Path.exists", return_value=True):
+        with patch("app.services.background_service.BallDetectionService") as mock_ball_service, \
+             patch("app.services.background_service.create_analysis_record"), \
+             patch("app.services.background_service.update_analysis_status"), \
+             patch("app.services.background_service.update_task_progress"), \
+             patch("pathlib.Path.exists", return_value=True):
                             # Setup mock return values
                             mock_ball_instance = Mock()
                             mock_ball_service.return_value = mock_ball_instance
@@ -149,22 +133,12 @@ class TestBackgroundServiceIntegration:
         db_session.commit()
 
         # Mock the modular services
-        with patch(
-            "app.services.background_service.PoseDetectionService"
-        ) as mock_pose_service:
-            with patch(
-                "app.services.background_service.BallDetectionService"
-            ) as mock_ball_service:
-                with patch(
-                    "app.services.background_service.create_analysis_record"
-                ) as mock_create:
-                    with patch(
-                        "app.services.background_service.update_analysis_status"
-                    ) as mock_update:
-                        with patch(
-                            "app.services.background_service.update_task_progress"
-                        ) as mock_progress:
-                            with patch("pathlib.Path.exists", return_value=True):
+        with patch("app.services.background_service.PoseDetectionService") as mock_pose_service, \
+             patch("app.services.background_service.BallDetectionService") as mock_ball_service, \
+             patch("app.services.background_service.create_analysis_record"), \
+             patch("app.services.background_service.update_analysis_status"), \
+             patch("app.services.background_service.update_task_progress"), \
+             patch("pathlib.Path.exists", return_value=True):
                                 # Setup mock return values
                                 mock_pose_instance = Mock()
                                 mock_ball_instance = Mock()
@@ -229,20 +203,11 @@ class TestBackgroundServiceIntegration:
         db_session.commit()
 
         # Mock the helper methods and video service
-        with patch.object(
-            BackgroundTaskService, "_run_pose_only_analysis"
-        ) as mock_pose:
-            with patch.object(
-                BackgroundTaskService, "_run_ball_only_analysis"
-            ) as mock_ball:
-                with patch.object(
-                    BackgroundTaskService, "_run_comprehensive_analysis"
-                ) as mock_comp:
-                    with patch(
-                        "app.services.background_service.get_video_by_id",
-                        return_value=video,
-                    ):
-                        with patch("pathlib.Path.exists", return_value=True):
+        with patch.object(BackgroundTaskService, "_run_pose_only_analysis") as mock_pose, \
+             patch.object(BackgroundTaskService, "_run_ball_only_analysis") as mock_ball, \
+             patch.object(BackgroundTaskService, "_run_comprehensive_analysis") as mock_comp, \
+             patch("app.services.background_service.get_video_by_id", return_value=video), \
+             patch("pathlib.Path.exists", return_value=True):
                             # Setup mock return values
                             mock_pose.return_value = {
                                 "pose_detection_id": 1,
