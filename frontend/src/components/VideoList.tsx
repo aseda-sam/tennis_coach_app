@@ -101,7 +101,7 @@ const VideoList: React.FC<VideoListProps> = ({
     if (poseTaskStatus && currentPoseTaskId) {
       setActivePoseTasks((prev) => {
         const newMap = new Map(prev);
-        for (const [videoId, task] of newMap.entries()) {
+        newMap.forEach((task, videoId) => {
           if (task.taskId === currentPoseTaskId) {
             newMap.set(videoId, {
               ...task,
@@ -109,7 +109,7 @@ const VideoList: React.FC<VideoListProps> = ({
               status: poseTaskStatus.status,
             });
           }
-        }
+        });
         return newMap;
       });
     }
