@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTaskStatus } from '../hooks/useTaskStatus';
 import { videoApi } from '../services/api';
 import poseDetectionApi, {
   PoseDetectionStartResponse,
 } from '../services/poseDetectionApi';
-import { useTaskStatus } from '../hooks/useTaskStatus';
 import { VideoMetadata } from '../types/video';
 import {
   AnalyticsIcon,
@@ -74,9 +74,10 @@ const VideoList: React.FC<VideoListProps> = ({
   >(new Map());
 
   // Get the current pose detection task ID for polling
-  const currentPoseTaskId = activePoseTasks.size > 0 
-    ? Array.from(activePoseTasks.values())[0]?.taskId || null 
-    : null;
+  const currentPoseTaskId =
+    activePoseTasks.size > 0
+      ? Array.from(activePoseTasks.values())[0]?.taskId || null
+      : null;
 
   // Poll for pose detection task completion
   const { taskStatus: poseTaskStatus } = useTaskStatus({
@@ -98,7 +99,7 @@ const VideoList: React.FC<VideoListProps> = ({
   // Update active pose tasks with progress from polling
   useEffect(() => {
     if (poseTaskStatus && currentPoseTaskId) {
-      setActivePoseTasks(prev => {
+      setActivePoseTasks((prev) => {
         const newMap = new Map(prev);
         for (const [videoId, task] of newMap.entries()) {
           if (task.taskId === currentPoseTaskId) {
