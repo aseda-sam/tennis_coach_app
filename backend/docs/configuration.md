@@ -40,6 +40,12 @@ The main configuration is defined in `backend/app/core/config.py` using the `Set
 - `CONFIDENCE_THRESHOLD` - General confidence threshold (default: 0.5)
 - `BALL_CONFIDENCE_THRESHOLD` - Ball detection confidence threshold (default: 0.7)
 
+### Pose Detection Configuration
+
+- `POSE_DETECTION_CONFIDENCE` - Minimum detection confidence for pose estimation (default: 0.5)
+- `POSE_TRACKING_CONFIDENCE` - Minimum tracking confidence for pose estimation (default: 0.5)
+- `POSE_OVERALL_CONFIDENCE` - Overall confidence score for pose detection results (default: 0.8)
+
 ### Ball Contact Detection Configuration
 
 - `BALL_CONTACT_TIMESTAMP_TOLERANCE` - Tolerance in seconds for duplicate contact detection (default: 0.1)

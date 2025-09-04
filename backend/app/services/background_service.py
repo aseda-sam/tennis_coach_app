@@ -7,14 +7,19 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.services.analysis_service import analyze_video, update_analysis_status
-from app.services.video_service import get_video_by_id
-from app.utils.progress_utils import set_task_storage
+from app.models.ball_detection import BallDetection
+from app.models.pose_detection import PoseDetection
+from app.services import video_service
+from app.services.ball_detection import BallDetectionService
+from app.services.pose_detection import PoseDetectionService
+from app.services.video_annotation.annotation_service import VideoAnnotationService
+from app.utils.progress_utils import set_task_storage, update_task_progress
 
 logger = logging.getLogger(__name__)
 
@@ -51,16 +56,14 @@ class BackgroundTaskService:
         video_id: int,
         analysis_type: str,
         confidence_threshold: float = 0.7,
-        include_pose_detection: bool = False,
     ) -> int:
         """
         Start a background analysis task.
 
         Args:
             video_id: Video ID to analyze
-            analysis_type: Type of analysis (ball_tracking, pose_detection, comprehensive)
+            analysis_type: Type of analysis (pose_only, ball_only, video_annotation_only)
             confidence_threshold: YOLO confidence threshold
-            include_pose_detection: Whether to include pose detection
 
         Returns:
             Task ID for tracking
@@ -78,7 +81,6 @@ class BackgroundTaskService:
                 "video_id": video_id,
                 "analysis_type": analysis_type,
                 "confidence_threshold": confidence_threshold,
-                "include_pose_detection": include_pose_detection,
                 "status": "queued",
                 "progress": 0,
                 "error": None,
@@ -95,10 +97,10 @@ class BackgroundTaskService:
             video_id,
             analysis_type,
             confidence_threshold,
-            include_pose_detection,
         )
 
-        # Store future for potential cancellation (keep status as "queued" until processing starts)
+        # Store future for potential cancellation (keep status as "queued"
+        # until processing starts)
         with _task_lock:
             _active_tasks[task_id]["future"] = future
 
@@ -111,7 +113,6 @@ class BackgroundTaskService:
         video_id: int,
         analysis_type: str,
         confidence_threshold: float,
-        include_pose_detection: bool,
     ) -> None:
         """Run the actual analysis task in a background thread."""
         try:
@@ -129,7 +130,7 @@ class BackgroundTaskService:
             # Use proper database session management
             with get_background_db_session() as db:
                 # Get video info
-                video = get_video_by_id(db, video_id)
+                video = video_service.get_video_by_id(db, video_id)
                 if not video:
                     raise ValueError(f"Video {video_id} not found")
 
@@ -137,28 +138,10 @@ class BackgroundTaskService:
                     f"Task {task_id}: Starting analysis for video {video.filename}"
                 )
 
-                # Check if analysis record already exists for this video
-                from app.services.analysis_service import get_analysis_by_video_id
-
-                existing_analysis = get_analysis_by_video_id(db, video_id)
-
-                if not existing_analysis:
-                    # Create initial analysis record with processing status
-                    from app.services.analysis_service import create_analysis_record
-
-                    create_analysis_record(
-                        db=db,
-                        video_id=video_id,
-                        video_filename=video.filename,
-                        analysis_type=analysis_type,
-                        analysis_results={},  # Empty for now
-                        processing_time=0.0,
-                        model_used="yolov8n+mediapipe"
-                        if include_pose_detection
-                        else "yolov8n",
-                        confidence_threshold=confidence_threshold,
-                        status="processing",
-                    )
+                # Get video file path
+                video_path = Path(video.file_path)
+                if not video_path.exists():
+                    raise ValueError(f"Video file not found: {video.file_path}")
 
                 # Update progress - frame extraction
                 with _task_lock:
@@ -170,20 +153,52 @@ class BackgroundTaskService:
                             "Extracting video frames for analysis"
                         )
 
-                # Run analysis (this is the CPU-intensive part)
+                # Run analysis using new modular services based on analysis_type
                 logger.info(
-                    f"Task {task_id}: Starting analyze_video with include_pose_detection={include_pose_detection}"
+                    f"Task {task_id}: Starting analysis with type={analysis_type}"
                 )
-                result = analyze_video(
-                    db=db,
-                    video_id=video_id,
-                    analysis_type=analysis_type,
-                    confidence_threshold=confidence_threshold,
-                    include_pose_detection=include_pose_detection,
-                    task_id=task_id,
-                )
+
+                # Route to appropriate modular service based on analysis_type
+                if analysis_type == "pose_only":
+                    result = self._run_pose_only_analysis(
+                        db=db,
+                        video_id=video_id,
+                        video_path=str(video_path),
+                        confidence_threshold=confidence_threshold,
+                        task_id=task_id,
+                    )
+                elif analysis_type == "ball_only":
+                    result = self._run_ball_only_analysis(
+                        db=db,
+                        video_id=video_id,
+                        video_path=str(video_path),
+                        confidence_threshold=confidence_threshold,
+                        task_id=task_id,
+                    )
+                elif analysis_type == "video_annotation_only":
+                    result = self._run_video_annotation_analysis(
+                        db=db,
+                        video_id=video_id,
+                        video_path=str(video_path),
+                        confidence_threshold=confidence_threshold,
+                        task_id=task_id,
+                    )
+                elif analysis_type == "pose_with_annotation":
+                    result = self._run_pose_with_annotation_analysis(
+                        db=db,
+                        video_id=video_id,
+                        video_path=str(video_path),
+                        confidence_threshold=confidence_threshold,
+                        task_id=task_id,
+                    )
+                else:
+                    # Unsupported analysis type
+                    error_msg = f"Unsupported analysis type: {analysis_type}. Supported types: pose_only, ball_only, video_annotation_only, pose_with_annotation"
+                    logger.error(f"Task {task_id}: {error_msg}")
+                    raise ValueError(error_msg)
                 logger.info(
-                    f"Task {task_id}: analyze_video completed with result: {type(result)}"
+                    f"Task {task_id}: analyze_video completed with result: "
+                    f"{type(result)}"
                 )
                 if isinstance(result, dict) and "error" in result:
                     logger.error(
@@ -192,7 +207,8 @@ class BackgroundTaskService:
                 elif isinstance(result, dict) and "contact_timestamps" in result:
                     contact_count = len(result.get("contact_timestamps", []))
                     logger.info(
-                        f"Task {task_id}: Analysis completed with {contact_count} contacts detected"
+                        f"Task {task_id}: Analysis completed with {contact_count} "
+                        f"contacts detected"
                     )
                 else:
                     logger.info(f"Task {task_id}: Analysis completed successfully")
@@ -231,12 +247,7 @@ class BackgroundTaskService:
                     _active_tasks[task_id]["error"] = str(e)
                     _active_tasks[task_id]["completed_at"] = datetime.now()
 
-            # Update database status with proper session management
-            try:
-                with get_background_db_session() as db:
-                    update_analysis_status(db, video_id, "failed", str(e))
-            except (OSError, ValueError, RuntimeError) as db_error:
-                logger.error(f"Failed to update database status: {db_error}")
+            # Update task progress to completion
 
     def get_task_status(self, task_id: int) -> Optional[Dict[str, Any]]:
         """Get the status of a background task."""
@@ -344,6 +355,296 @@ class BackgroundTaskService:
             "max_workers": self.max_workers,  # Use our stored value
             "active_workers": active_workers,
         }
+
+    def _run_pose_only_analysis(
+        self,
+        db: Session,
+        video_id: int,
+        video_path: str,
+        confidence_threshold: float,
+        task_id: int,
+    ) -> Dict[str, Any]:
+        """Run pose-only analysis using PoseDetectionService."""
+
+        logger.info(f"Task {task_id}: Starting pose-only analysis")
+
+        try:
+            # Update progress
+            update_task_progress(
+                task_id, "pose_detection", 0, "Starting pose detection analysis", 30
+            )
+
+            # Use PoseDetectionService
+            pose_service = PoseDetectionService()
+            pose_results = pose_service.analyze_video_file(
+                video_path=Path(video_path),
+                confidence_threshold=confidence_threshold,
+                detection_threshold=0.5,  # Default detection threshold
+                max_frames=None,  # Process all frames
+            )
+
+            # Check for errors
+            if "error" in pose_results:
+                raise RuntimeError(f"Pose detection failed: {pose_results['error']}")
+
+            # Update progress
+            update_task_progress(
+                task_id, "pose_detection", 50, "Saving pose detection results", 60
+            )
+
+            # Save results to PoseDetection table
+            pose_detection = pose_service.save_detection_results(
+                db=db, video_id=video_id, detection_results=pose_results
+            )
+
+            # Update progress
+            update_task_progress(
+                task_id, "pose_detection", 80, "Saving pose detection results", 90
+            )
+
+            logger.info(f"Task {task_id}: Pose-only analysis completed successfully")
+
+            return {
+                "processing_time": pose_results.get("processing_time_seconds", 0.0),
+                "analysis_summary": {
+                    "total_frames": pose_results.get("total_frames", 0),
+                    "frames_with_poses": pose_results.get("frames_with_poses", 0),
+                    "detection_rate": pose_results.get("detection_rate", 0.0),
+                },
+                "pose_detection_id": pose_detection.id,
+                "analysis_type": "pose_only",
+            }
+
+        except Exception as e:
+            logger.error(f"Task {task_id}: Pose-only analysis failed: {e}")
+            raise
+
+    def _run_ball_only_analysis(
+        self,
+        db: Session,
+        video_id: int,
+        video_path: str,
+        confidence_threshold: float,
+        task_id: int,
+    ) -> Dict[str, Any]:
+        """Run ball-only analysis using BallDetectionService."""
+
+        logger.info(f"Task {task_id}: Starting ball-only analysis")
+
+        try:
+            # Update progress
+            update_task_progress(
+                task_id, "ball_detection", 0, "Starting ball detection analysis", 30
+            )
+
+            # Use BallDetectionService
+            ball_service = BallDetectionService()
+            ball_results = ball_service.analyze_video_file(
+                video_path=Path(video_path),
+                confidence_threshold=confidence_threshold,
+                video_quality_level=None,  # Will be determined by service
+                max_frames=None,  # Process all frames
+            )
+
+            # Check for errors
+            if "error" in ball_results:
+                raise RuntimeError(f"Ball detection failed: {ball_results['error']}")
+
+            # Update progress
+            update_task_progress(
+                task_id, "ball_detection", 50, "Saving ball detection results", 60
+            )
+
+            # Save results to BallDetection table
+            ball_detection = ball_service.save_detection_results(
+                db=db, video_id=video_id, detection_results=ball_results
+            )
+
+            # Update progress
+            update_task_progress(
+                task_id, "ball_detection", 80, "Saving ball detection results", 90
+            )
+
+            logger.info(f"Task {task_id}: Ball-only analysis completed successfully")
+
+            return {
+                "processing_time": ball_results.get("processing_time_seconds", 0.0),
+                "analysis_summary": {
+                    "total_frames": ball_results.get("total_frames", 0),
+                    "frames_with_balls": ball_results.get("frames_with_balls", 0),
+                    "detection_rate": ball_results.get("detection_rate", 0.0),
+                },
+                "ball_detection_id": ball_detection.id,
+                "analysis_type": "ball_only",
+            }
+
+        except Exception as e:
+            logger.error(f"Task {task_id}: Ball-only analysis failed: {e}")
+            raise
+
+    def _run_video_annotation_analysis(
+        self,
+        db: Session,
+        video_id: int,
+        video_path: str,
+        confidence_threshold: float,
+        task_id: int,
+    ) -> Dict[str, Any]:
+        """Run video annotation analysis (requires existing ball or pose detections)."""
+
+        logger.info(f"Task {task_id}: Starting video annotation analysis")
+
+        try:
+            # Check for existing detections
+            update_task_progress(
+                task_id,
+                "checking_detections",
+                10,
+                "Checking for existing ball and pose detections",
+                20,
+            )
+
+            # Get the most recent ball detection for this video
+            ball_detection = (
+                db.query(BallDetection)
+                .filter(BallDetection.video_id == video_id)
+                .order_by(BallDetection.created_at.desc())
+                .first()
+            )
+
+            # Get the most recent pose detection for this video
+            pose_detection = (
+                db.query(PoseDetection)
+                .filter(PoseDetection.video_id == video_id)
+                .order_by(PoseDetection.created_at.desc())
+                .first()
+            )
+
+            if not ball_detection and not pose_detection:
+                raise ValueError(
+                    "No ball or pose detections found. Please run ball_only or pose_only analysis first."
+                )
+
+            # Run video annotation
+            update_task_progress(
+                task_id,
+                "video_annotation",
+                20,
+                "Creating annotated video",
+                90,
+            )
+
+            annotation_service = VideoAnnotationService()
+            annotation_result = annotation_service.create_pose_annotation(
+                db=db,
+                video_id=video_id,
+                pose_detection_id=pose_detection.id if pose_detection else None,
+            )
+
+            # Update final progress
+            update_task_progress(
+                task_id,
+                "completion",
+                100,
+                "Video annotation completed successfully",
+                100,
+            )
+
+            return {
+                "success": True,
+                "ball_detection_id": ball_detection.id if ball_detection else None,
+                "pose_detection_id": pose_detection.id if pose_detection else None,
+                "video_annotation_id": annotation_result.id,
+                "annotated_video_path": annotation_result.annotated_video_path,
+                "analysis_type": "video_annotation_only",
+            }
+
+        except Exception as e:
+            logger.error(f"Task {task_id}: Video annotation analysis failed: {e!s}")
+            raise
+
+    def _run_pose_with_annotation_analysis(
+        self,
+        db: Session,
+        video_id: int,
+        video_path: str,
+        confidence_threshold: float,
+        task_id: int,
+    ) -> Dict[str, Any]:
+        """Run pose detection followed by video annotation in one task."""
+
+        logger.info(f"Task {task_id}: Starting pose detection with annotation")
+
+        try:
+            # Step 1: Run pose detection
+            update_task_progress(
+                task_id, "pose_detection", 0, "Starting pose detection analysis", 50
+            )
+
+            # Use PoseDetectionService
+            pose_service = PoseDetectionService()
+            pose_results = pose_service.analyze_video_file(
+                video_path=Path(video_path),
+                confidence_threshold=confidence_threshold,
+                detection_threshold=0.5,  # Default detection threshold
+                max_frames=None,  # Process all frames
+            )
+
+            # Check for errors
+            if "error" in pose_results:
+                raise RuntimeError(f"Pose detection failed: {pose_results['error']}")
+
+            # Save pose detection results
+            update_task_progress(
+                task_id, "pose_detection", 40, "Saving pose detection results", 50
+            )
+
+            pose_detection = pose_service.save_detection_results(
+                db=db, video_id=video_id, detection_results=pose_results
+            )
+
+            logger.info(
+                f"Task {task_id}: Pose detection completed, starting video annotation"
+            )
+
+            # Step 2: Run video annotation
+            update_task_progress(
+                task_id, "video_annotation", 50, "Creating annotated video", 90
+            )
+
+            # Use VideoAnnotationService
+            annotation_service = VideoAnnotationService()
+            annotation_result = annotation_service.create_pose_annotation(
+                db=db,
+                video_id=video_id,
+                pose_detection_id=pose_detection.id,
+            )
+
+            # Update final progress
+            update_task_progress(
+                task_id, "completion", 90, "Analysis completed successfully", 100
+            )
+
+            logger.info(
+                f"Task {task_id}: Pose detection with annotation completed successfully"
+            )
+
+            return {
+                "processing_time": pose_results.get("processing_time_seconds", 0.0),
+                "analysis_summary": {
+                    "total_frames": pose_results.get("total_frames", 0),
+                    "frames_with_poses": pose_results.get("frames_with_poses", 0),
+                    "detection_rate": pose_results.get("detection_rate", 0.0),
+                },
+                "pose_detection_id": pose_detection.id,
+                "video_annotation_id": annotation_result.id,
+                "annotated_video_path": annotation_result.annotated_video_path,
+                "analysis_type": "pose_with_annotation",
+            }
+
+        except Exception as e:
+            logger.error(f"Task {task_id}: Pose detection with annotation failed: {e}")
+            raise
 
 
 # Global instance
