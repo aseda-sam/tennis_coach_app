@@ -32,10 +32,7 @@ class ApiService {
     };
   }
 
-  async request<T>(
-    endpoint: string,
-    options: RequestOptions = {}
-  ): Promise<T> {
+  async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const config: RequestInit = {
       ...options,
@@ -47,7 +44,7 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         throw new ApiError(response.status, await response.text());
       }
@@ -178,7 +175,9 @@ export const getAnalysis = async (analysisId: number): Promise<Analysis> => {
 #### Get Analysis Status
 
 ```typescript
-export const getAnalysisStatus = async (analysisId: number): Promise<AnalysisStatus> => {
+export const getAnalysisStatus = async (
+  analysisId: number
+): Promise<AnalysisStatus> => {
   return api.request<AnalysisStatus>(`/v0/analysis/status/${analysisId}`);
 };
 ```
@@ -202,7 +201,9 @@ export const createBallContact = async (
 #### Get Ball Contacts
 
 ```typescript
-export const getBallContacts = async (videoId: number): Promise<BallContact[]> => {
+export const getBallContacts = async (
+  videoId: number
+): Promise<BallContact[]> => {
   return api.request<BallContact[]>(`/v0/ball-contacts/video/${videoId}`);
 };
 ```
@@ -367,7 +368,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess, onUploadErro
     try {
       setUploading(true);
       setError(null);
-      
+
       const response = await uploadVideo(file);
       onUploadSuccess(response);
     } catch (err) {
@@ -492,7 +493,7 @@ export class WebSocketService {
 
   connect() {
     this.ws = new WebSocket('ws://localhost:8000/ws');
-    
+
     this.ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       this.notifyListeners(data.type, data.payload);
@@ -508,7 +509,7 @@ export class WebSocketService {
 
   private notifyListeners(eventType: string, payload: any) {
     const callbacks = this.listeners.get(eventType) || [];
-    callbacks.forEach(callback => callback(payload));
+    callbacks.forEach((callback) => callback(payload));
   }
 }
 ```
@@ -557,7 +558,7 @@ export const apiCache = new ApiCache();
 export const getCachedVideos = async (): Promise<Video[]> => {
   const cacheKey = 'videos';
   const cached = apiCache.get(cacheKey);
-  
+
   if (cached) {
     return cached;
   }
@@ -606,7 +607,7 @@ jest.mock('../../services/api', () => mockApi);
 describe('VideoList', () => {
   it('should display videos', async () => {
     render(<VideoList />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('test.mp4')).toBeInTheDocument();
     });
