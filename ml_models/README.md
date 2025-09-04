@@ -14,6 +14,7 @@ The application uses two main types of computer vision models:
 ### Available Models
 
 #### YOLOv8n (Nano) - `yolov8n.pt`
+
 - **Size**: ~6.5MB
 - **Speed**: Fastest processing
 - **Accuracy**: Good for real-time applications
@@ -21,6 +22,7 @@ The application uses two main types of computer vision models:
 - **Performance**: ~30-50 FPS on modern hardware
 
 #### YOLOv8s (Small) - `yolov8s.pt`
+
 - **Size**: ~22.6MB
 - **Speed**: Moderate processing
 - **Accuracy**: Better detection accuracy
@@ -131,16 +133,19 @@ pip install --upgrade mediapipe
 The application uses different models based on the environment:
 
 #### Local Development
+
 - **YOLO Model**: `yolov8n.pt` (nano)
 - **Frame Skip**: 1 (process every frame)
 - **Confidence Threshold**: 0.7
 
 #### Docker Environment
+
 - **YOLO Model**: `yolov8n.pt` (nano)
 - **Frame Skip**: 3 (process every 3rd frame)
 - **Confidence Threshold**: 0.7
 
 #### Production Environment
+
 - **YOLO Model**: `yolov8s.pt` (small)
 - **Frame Skip**: 4 (process every 4th frame)
 - **Confidence Threshold**: 0.8
@@ -171,12 +176,12 @@ class ModelManager:
     def __init__(self):
         self.yolo_model = None
         self.pose_model = None
-    
+
     def get_yolo_model(self):
         if self.yolo_model is None:
             self.yolo_model = YOLO('ml_models/yolov8n.pt')
         return self.yolo_model
-    
+
     def get_pose_model(self):
         if self.pose_model is None:
             self.pose_model = mp_pose.Pose()
@@ -188,11 +193,13 @@ class ModelManager:
 ### YOLO Ball Detection
 
 #### Performance Metrics
+
 - **Precision**: 85-95% (depending on video quality)
 - **Recall**: 80-90% (depending on ball visibility)
 - **False Positive Rate**: 5-15% (depending on scene complexity)
 
 #### Factors Affecting Accuracy
+
 - **Video Quality**: Higher resolution = better detection
 - **Lighting Conditions**: Good lighting improves accuracy
 - **Ball Size**: Larger balls are detected more reliably
@@ -202,11 +209,13 @@ class ModelManager:
 ### MediaPipe Pose Estimation
 
 #### Performance Metrics
+
 - **Keypoint Accuracy**: 90-95% for visible body parts
 - **Tracking Consistency**: 85-90% across frames
 - **Occlusion Handling**: 70-80% when body parts are partially hidden
 
 #### Factors Affecting Accuracy
+
 - **Player Visibility**: Full body visibility improves accuracy
 - **Clothing**: Tight-fitting clothes work better
 - **Lighting**: Good lighting improves keypoint detection
@@ -253,11 +262,13 @@ export CUDA_VISIBLE_DEVICES=""
 #### Slow Inference
 
 1. **Reduce input resolution**:
+
    ```python
    model.predict(source, imgsz=640)  # Instead of 1280
    ```
 
 2. **Increase frame skip ratio**:
+
    ```python
    FRAME_SKIP_RATIO = 4  # Process every 4th frame
    ```
@@ -270,11 +281,13 @@ export CUDA_VISIBLE_DEVICES=""
 #### High Memory Usage
 
 1. **Enable model optimization**:
+
    ```python
    model.half()  # Use half precision
    ```
 
 2. **Process videos in batches**:
+
    ```python
    BATCH_SIZE = 1  # Process one video at a time
    ```

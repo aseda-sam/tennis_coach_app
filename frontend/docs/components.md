@@ -13,6 +13,7 @@ The frontend is built with React and TypeScript, using functional components wit
 **Purpose**: Main application component that orchestrates the entire frontend experience.
 
 **Key Features**:
+
 - Application routing and navigation
 - Global state management
 - Error boundary implementation
@@ -21,6 +22,7 @@ The frontend is built with React and TypeScript, using functional components wit
 **Props**: None (root component)
 
 **State**:
+
 - `videos`: Array of video objects
 - `selectedVideo`: Currently selected video for analysis
 - `loading`: Global loading state
@@ -31,6 +33,7 @@ The frontend is built with React and TypeScript, using functional components wit
 **Purpose**: Handles video file uploads with drag-and-drop functionality.
 
 **Key Features**:
+
 - Drag-and-drop file upload interface
 - File validation (size, format, type)
 - Upload progress tracking
@@ -38,6 +41,7 @@ The frontend is built with React and TypeScript, using functional components wit
 - Support for multiple video formats (MP4, MOV, AVI)
 
 **Props**:
+
 ```typescript
 interface VideoUploadProps {
   onUploadSuccess: (video: Video) => void;
@@ -48,11 +52,13 @@ interface VideoUploadProps {
 ```
 
 **State**:
+
 - `isDragOver`: Boolean for drag state
 - `uploading`: Boolean for upload progress
 - `uploadProgress`: Number for progress percentage
 
 **Usage**:
+
 ```typescript
 <VideoUpload
   onUploadSuccess={(video) => setVideos([...videos, video])}
@@ -67,6 +73,7 @@ interface VideoUploadProps {
 **Purpose**: Displays a grid of uploaded videos with metadata and management options.
 
 **Key Features**:
+
 - Grid layout with responsive design
 - Video metadata display (size, duration, resolution)
 - Analysis status indicators
@@ -74,6 +81,7 @@ interface VideoUploadProps {
 - Video selection for analysis
 
 **Props**:
+
 ```typescript
 interface VideoListProps {
   videos: Video[];
@@ -84,11 +92,13 @@ interface VideoListProps {
 ```
 
 **State**:
+
 - `deleteConfirmId`: ID of video pending deletion
 - `sortBy`: Sort criteria for video list
 - `filterBy`: Filter criteria for video list
 
 **Usage**:
+
 ```typescript
 <VideoList
   videos={videos}
@@ -103,6 +113,7 @@ interface VideoListProps {
 **Purpose**: HTML5 video player with custom controls and tennis-specific features.
 
 **Key Features**:
+
 - Custom video controls (play, pause, seek, volume, fullscreen)
 - Automatic annotated video selection when available
 - Ball contact timeline markers
@@ -111,6 +122,7 @@ interface VideoListProps {
 - Responsive design for mobile and desktop
 
 **Props**:
+
 ```typescript
 interface VideoPlayerProps {
   video: Video;
@@ -123,6 +135,7 @@ interface VideoPlayerProps {
 ```
 
 **State**:
+
 - `currentTime`: Current playback time
 - `duration`: Total video duration
 - `isPlaying`: Playback state
@@ -131,6 +144,7 @@ interface VideoPlayerProps {
 - `error`: Playback error state
 
 **Usage**:
+
 ```typescript
 <VideoPlayer
   video={selectedVideo}
@@ -147,6 +161,7 @@ interface VideoPlayerProps {
 **Purpose**: Main analysis interface combining video player and results display.
 
 **Key Features**:
+
 - Integrated video player and analysis results
 - Analysis trigger button with loading states
 - Progress tracking for ongoing analyses
@@ -154,6 +169,7 @@ interface VideoPlayerProps {
 - Real-time status updates
 
 **Props**:
+
 ```typescript
 interface AnalysisDashboardProps {
   video: Video;
@@ -164,11 +180,13 @@ interface AnalysisDashboardProps {
 ```
 
 **State**:
+
 - `showDetails`: Boolean for details panel visibility
 - `analysisProgress`: Number for analysis progress
 - `isAnalyzing`: Boolean for analysis state
 
 **Usage**:
+
 ```typescript
 <AnalysisDashboard
   video={selectedVideo}
@@ -183,6 +201,7 @@ interface AnalysisDashboardProps {
 **Purpose**: Displays analysis results with detailed metrics and visualizations.
 
 **Key Features**:
+
 - Ball detection metrics and statistics
 - Pose estimation results and keypoints
 - Processing time and model information
@@ -191,6 +210,7 @@ interface AnalysisDashboardProps {
 - Export functionality for results
 
 **Props**:
+
 ```typescript
 interface AnalysisResultsProps {
   analysis: Analysis;
@@ -201,10 +221,12 @@ interface AnalysisResultsProps {
 ```
 
 **State**:
+
 - `expandedSections`: Set of expanded section IDs
 - `exporting`: Boolean for export state
 
 **Usage**:
+
 ```typescript
 <AnalysisResults
   analysis={analysis}
@@ -219,6 +241,7 @@ interface AnalysisResultsProps {
 **Purpose**: Modal dialog for displaying analysis results in a focused view.
 
 **Key Features**:
+
 - Full-screen analysis results display
 - Close and minimize functionality
 - Responsive design for different screen sizes
@@ -226,6 +249,7 @@ interface AnalysisResultsProps {
 - Print-friendly layout
 
 **Props**:
+
 ```typescript
 interface AnalysisModalProps {
   isOpen: boolean;
@@ -236,10 +260,12 @@ interface AnalysisModalProps {
 ```
 
 **State**:
+
 - `isMinimized`: Boolean for minimized state
 - `currentSection`: String for active section
 
 **Usage**:
+
 ```typescript
 <AnalysisModal
   isOpen={showAnalysisModal}
@@ -256,12 +282,14 @@ interface AnalysisModalProps {
 **Purpose**: Centralized SVG icon components for consistent iconography.
 
 **Key Features**:
+
 - Custom SVG icons for tennis-specific actions
 - Consistent sizing and styling
 - Accessibility support with ARIA labels
 - Easy to extend with new icons
 
 **Available Icons**:
+
 - `PlayIcon`: Video playback
 - `PauseIcon`: Video pause
 - `UploadIcon`: File upload
@@ -272,6 +300,7 @@ interface AnalysisModalProps {
 - `ContactIcon`: Ball contact markers
 
 **Usage**:
+
 ```typescript
 import { PlayIcon, UploadIcon } from './Icons';
 
@@ -319,10 +348,13 @@ useEffect(() => {
 Use useCallback for optimized event handlers:
 
 ```typescript
-const handleClick = useCallback((event: React.MouseEvent) => {
-  // Handle click
-  onItemClick(item);
-}, [item, onItemClick]);
+const handleClick = useCallback(
+  (event: React.MouseEvent) => {
+    // Handle click
+    onItemClick(item);
+  },
+  [item, onItemClick]
+);
 ```
 
 ### Custom Hooks
@@ -334,17 +366,20 @@ const useVideoAnalysis = (videoId: number) => {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const startAnalysis = useCallback(async (analysisType: string) => {
-    setLoading(true);
-    try {
-      const result = await api.startAnalysis(videoId, analysisType);
-      setAnalysis(result);
-    } catch (error) {
-      console.error('Analysis failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [videoId]);
+  const startAnalysis = useCallback(
+    async (analysisType: string) => {
+      setLoading(true);
+      try {
+        const result = await api.startAnalysis(videoId, analysisType);
+        setAnalysis(result);
+      } catch (error) {
+        console.error('Analysis failed:', error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [videoId]
+  );
 
   return { analysis, loading, startAnalysis };
 };
@@ -410,17 +445,17 @@ describe('VideoPlayer', () => {
   it('should render video element', () => {
     const video = { id: 1, filename: 'test.mp4' };
     render(<VideoPlayer video={video} />);
-    
+
     expect(screen.getByRole('video')).toBeInTheDocument();
   });
 
   it('should handle play button click', () => {
     const video = { id: 1, filename: 'test.mp4' };
     render(<VideoPlayer video={video} />);
-    
+
     const playButton = screen.getByRole('button', { name: /play/i });
     fireEvent.click(playButton);
-    
+
     // Assert expected behavior
   });
 });
@@ -435,12 +470,12 @@ describe('VideoUpload Integration', () => {
   it('should upload video and update video list', async () => {
     const onUploadSuccess = jest.fn();
     render(<VideoUpload onUploadSuccess={onUploadSuccess} />);
-    
+
     const file = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
     const input = screen.getByLabelText(/upload/i);
-    
+
     fireEvent.change(input, { target: { files: [file] } });
-    
+
     await waitFor(() => {
       expect(onUploadSuccess).toHaveBeenCalledWith(
         expect.objectContaining({ filename: 'test.mp4' })

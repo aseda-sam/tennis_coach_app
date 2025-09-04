@@ -30,6 +30,7 @@ docker compose up --build
 ```
 
 **Access the app:**
+
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
@@ -63,6 +64,7 @@ tennis_coach_app/
 ```
 
 **Tech Stack:**
+
 - **Backend**: FastAPI, SQLAlchemy, YOLO, MediaPipe
 - **Frontend**: React, TypeScript, HTML5 Video
 - **Database**: SQLite (dev) → PostgreSQL (prod)
@@ -71,10 +73,12 @@ tennis_coach_app/
 ## 📚 Documentation
 
 ### Development Guides
+
 - **[Backend Setup](backend/README.md)** - Backend development and API
 - **[Frontend Setup](frontend/README.md)** - Frontend development and components
 
 ### Detailed Documentation
+
 - **[Backend API](backend/docs/api.md)** - Complete API reference
 - **[Backend Database](backend/docs/database.md)** - Database schema and models
 - **[Backend Configuration](backend/docs/configuration.md)** - Environment variables
@@ -84,9 +88,11 @@ tennis_coach_app/
 - **[ML Models](ml_models/README.md)** - Machine learning models and usage
 
 ### Project Documentation
+
 - **[Architecture](project_docs/backend_architecture_improvements.md)** - System architecture and improvements
 
 ### Interactive API Documentation
+
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
