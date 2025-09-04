@@ -11,6 +11,8 @@ from app.api.schemas.ball_contact import (
     BallContactInfo,
     BallContactListItem,
     BallContactUpdate,
+    PostureAnalysisRequest,
+    PostureAnalysisResponse,
 )
 from app.core.database import get_db
 from app.services.ball_contact_service import (
@@ -20,6 +22,7 @@ from app.services.ball_contact_service import (
     get_ball_contacts_by_video_id,
     update_ball_contact,
 )
+from app.services.posture_analysis import analyze_and_store_contact_posture
 
 router = APIRouter(tags=["ball-contacts"])
 
@@ -132,4 +135,102 @@ def delete_ball_contact_endpoint(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
+        ) from e
+
+
+@router.post(
+    "/{ball_contact_id}/analyze-posture", response_model=PostureAnalysisResponse
+)
+def analyze_ball_contact_posture(
+    ball_contact_id: int,
+    request: PostureAnalysisRequest,
+    db: Session = Depends(get_db),
+) -> PostureAnalysisResponse:
+    """Analyze posture for a specific ball contact."""
+    try:
+        result = analyze_and_store_contact_posture(
+            db=db,
+            ball_contact_id=ball_contact_id,
+            force_reanalysis=request.force_reanalysis,
+        )
+        return PostureAnalysisResponse(**result)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Posture analysis failed: {e!s}",
+        ) from e
+
+
+@router.get(
+    "/{ball_contact_id}/posture-analysis", response_model=PostureAnalysisResponse
+)
+def get_ball_contact_posture_analysis(
+    ball_contact_id: int, db: Session = Depends(get_db)
+) -> PostureAnalysisResponse:
+    """Get posture analysis results for a specific ball contact."""
+    try:
+        ball_contact = get_ball_contact_by_id(db, ball_contact_id)
+
+        if ball_contact.elbow_angle is not None:
+            return PostureAnalysisResponse(
+                ball_contact_id=ball_contact_id,
+                elbow_angle=ball_contact.elbow_angle,
+                analysis_status="success",
+                message="Posture analysis completed",
+            )
+        else:
+            return PostureAnalysisResponse(
+                ball_contact_id=ball_contact_id,
+                elbow_angle=None,
+                analysis_status="no_pose_data",
+                message="No posture analysis available",
+            )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+
+
+@router.post(
+    "/video/{video_id}/analyze-posture", response_model=List[PostureAnalysisResponse]
+)
+def analyze_video_posture(
+    video_id: int,
+    request: PostureAnalysisRequest,
+    db: Session = Depends(get_db),
+) -> List[PostureAnalysisResponse]:
+    """Analyze posture for all ball contacts in a video."""
+    try:
+        # Get all ball contacts for the video
+        ball_contacts = get_ball_contacts_by_video_id(db, video_id)
+
+        if not ball_contacts:
+            return []
+
+        # Analyze each ball contact
+        results = []
+        for contact in ball_contacts:
+            result = analyze_and_store_contact_posture(
+                db=db,
+                ball_contact_id=contact.id,
+                force_reanalysis=request.force_reanalysis,
+            )
+            results.append(PostureAnalysisResponse(**result))
+
+        return results
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Batch posture analysis failed: {e!s}",
         ) from e

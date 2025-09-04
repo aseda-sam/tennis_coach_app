@@ -246,3 +246,99 @@ def analyze_contact_posture(db: Session, ball_contact_id: int) -> Optional[float
     except (ValueError, KeyError, AttributeError) as e:
         logger.error(f"Error analyzing contact posture: {e}")
         return None
+
+
+def analyze_and_store_contact_posture(
+    db: Session, ball_contact_id: int, force_reanalysis: bool = False
+) -> dict:
+    """
+    Analyze posture for a specific ball contact and store results in database.
+
+    Args:
+        db: Database session
+        ball_contact_id: ID of the ball contact to analyze
+        force_reanalysis: Whether to reanalyze even if already analyzed
+
+    Returns:
+        Dictionary with analysis results and status
+    """
+    try:
+        # Fetch ball contact
+        ball_contact = (
+            db.query(BallContact).filter(BallContact.id == ball_contact_id).first()
+        )
+
+        if not ball_contact:
+            return {
+                "ball_contact_id": ball_contact_id,
+                "elbow_angle": None,
+                "analysis_status": "failed",
+                "message": "Ball contact not found",
+            }
+
+        # Check if already analyzed (unless forcing reanalysis)
+        if not force_reanalysis and ball_contact.elbow_angle is not None:
+            return {
+                "ball_contact_id": ball_contact_id,
+                "elbow_angle": ball_contact.elbow_angle,
+                "analysis_status": "success",
+                "message": "Analysis already completed",
+            }
+
+        # Perform posture analysis
+        elbow_angle = analyze_contact_posture(db, ball_contact_id)
+
+        if elbow_angle is not None:
+            # Validate angle is within reasonable range (0-180 degrees)
+            if not (0.0 <= elbow_angle <= 180.0):
+                logger.warning(
+                    f"Elbow angle {elbow_angle:.1f}° is outside valid range (0-180°)"
+                )
+                return {
+                    "ball_contact_id": ball_contact_id,
+                    "elbow_angle": None,
+                    "analysis_status": "failed",
+                    "message": f"Invalid elbow angle: {elbow_angle:.1f}° (must be 0-180°)",
+                }
+
+            # Store result in database
+            ball_contact.elbow_angle = elbow_angle
+            db.commit()
+
+            return {
+                "ball_contact_id": ball_contact_id,
+                "elbow_angle": elbow_angle,
+                "analysis_status": "success",
+                "message": f"Elbow angle calculated: {elbow_angle:.1f}°",
+            }
+        else:
+            # Determine failure reason
+            if not ball_contact.contact_hand:
+                status = "failed"
+                message = "No contact hand specified"
+            elif ball_contact.stroke_type and ball_contact.stroke_type.lower() not in [
+                "forehand",
+                "ground_stroke",
+            ]:
+                status = "invalid_stroke"
+                message = f"Stroke type '{ball_contact.stroke_type}' not supported for posture analysis"
+            else:
+                status = "no_pose_data"
+                message = "No pose data available for analysis"
+
+            return {
+                "ball_contact_id": ball_contact_id,
+                "elbow_angle": None,
+                "analysis_status": status,
+                "message": message,
+            }
+
+    except (ValueError, KeyError, AttributeError, RuntimeError) as e:
+        logger.error(f"Error in analyze_and_store_contact_posture: {e}")
+        db.rollback()
+        return {
+            "ball_contact_id": ball_contact_id,
+            "elbow_angle": None,
+            "analysis_status": "failed",
+            "message": f"Analysis failed: {e!s}",
+        }
