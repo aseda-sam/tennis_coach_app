@@ -159,11 +159,12 @@ PUT /v0/ball-contacts/{ball_contact_id} - Update ball contact
 DELETE /v0/ball-contacts/{ball_contact_id} - Delete ball contact
 ```
 
-**New Posture Analysis Endpoints (to be added):**
+**New Posture Analysis Endpoints (IMPLEMENTED):**
 
 ```
 GET /v0/ball-contacts/{ball_contact_id}/posture-analysis - Get elbow angle data
-POST /v0/ball-contacts/{ball_contact_id}/analyze-posture - Trigger posture analysis
+POST /v0/ball-contacts/{ball_contact_id}/analyze-posture - Trigger posture analysis for single contact
+POST /v0/ball-contacts/video/{video_id}/analyze-posture - Analyze all ball contacts in video
 ```
 
 #### 3. Frontend Integration
@@ -203,8 +204,11 @@ POST /v0/ball-contacts/{ball_contact_id}/analyze-posture - Trigger posture analy
 
 ### Success Criteria
 
-- [ ] Elbow angle stored in database after analysis
-- [ ] API endpoints return posture analysis data
+- [x] Elbow angle stored in database after analysis
+- [x] API endpoints return posture analysis data
+- [x] Angle validation (0-180° range) implemented
+- [x] Single contact analysis endpoint working
+- [x] Batch analysis endpoint for all video contacts
 - [ ] Frontend displays elbow angles in ball contact markers
 - [ ] Analysis sidebar shows list of all analyzed contacts
 - [ ] Users can trigger analysis from frontend
