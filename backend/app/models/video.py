@@ -1,6 +1,7 @@
+from datetime import datetime
+
 from sqlalchemy import Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import Base
 
@@ -24,8 +25,8 @@ class Video(Base):
     frame_count = Column(Integer, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), onupdate=datetime.utcnow)
 
     # Processing status
     status = Column(
@@ -43,7 +44,16 @@ class Video(Base):
     )  # 'excellent', 'good', 'fair', 'poor'
     quality_assessed_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Relationship to analyses with cascade deletion
-    analyses = relationship(
-        "Analysis", backref="video", cascade="all, delete-orphan", lazy="dynamic"
+    # New granular analysis relationships
+    ball_detections = relationship(
+        "BallDetection", back_populates="video", cascade="all, delete-orphan"
+    )
+    pose_detections = relationship(
+        "PoseDetection", back_populates="video", cascade="all, delete-orphan"
+    )
+    ball_contacts = relationship(
+        "BallContact", back_populates="video", cascade="all, delete-orphan"
+    )
+    video_annotations = relationship(
+        "VideoAnnotation", back_populates="video", cascade="all, delete-orphan"
     )

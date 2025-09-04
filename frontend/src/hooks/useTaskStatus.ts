@@ -30,9 +30,10 @@ export const useTaskStatus = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
-  
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isPollingRef = useRef(false);
 
   // Function to fetch task status
   const fetchTaskStatus = useCallback(async () => {
@@ -41,41 +42,107 @@ export const useTaskStatus = ({
     try {
       setLoading(true);
       setError(null);
-      
+
       // Create new abort controller for this request
       abortControllerRef.current = new AbortController();
-      
+
       const status = await analysisApi.getTaskStatus(taskId);
       setTaskStatus(status);
 
       // Check if task is completed and we should stop polling
-      if (autoStop && (status.status === 'completed' || status.status === 'failed' || status.status === 'cancelled')) {
+      if (
+        autoStop &&
+        (status.status === 'completed' ||
+          status.status === 'failed' ||
+          status.status === 'cancelled')
+      ) {
         setIsPolling(false);
+        isPollingRef.current = false;
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
         }
-        
+
         // Call completion callback
         if (status.status === 'completed' && onComplete) {
           onComplete(status);
-        } else if ((status.status === 'failed' || status.status === 'cancelled') && onError) {
+        } else if (
+          (status.status === 'failed' || status.status === 'cancelled') &&
+          onError
+        ) {
           onError(status.error || `Task ${status.status}`);
         }
       }
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to fetch task status';
-      setError(errorMessage);
-      
-      if (onError) {
-        onError(errorMessage);
-      }
-      
-      // Stop polling on error
-      setIsPolling(false);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      const errorMessage =
+        err?.response?.data?.detail ||
+        err?.message ||
+        'Failed to fetch task status';
+
+      // If task not found (404), treat it as completed/cancelled
+      if (err?.response?.status === 404) {
+        console.log(`Task ${taskId} not found, treating as completed`);
+        setTaskStatus({
+          task_id: taskId,
+          video_id: 0,
+          analysis_type: 'unknown',
+          status: 'completed',
+          progress: 100,
+          current_stage: null,
+          stage_progress: null,
+          stage_message: null,
+          estimated_time_remaining: null,
+          frames_processed: null,
+          total_frames: null,
+          error: null,
+          result: null,
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+        });
+
+        // Stop polling
+        setIsPolling(false);
+        isPollingRef.current = false;
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+
+        // Call completion callback
+        if (onComplete) {
+          onComplete({
+            task_id: taskId,
+            video_id: 0,
+            analysis_type: 'unknown',
+            status: 'completed',
+            progress: 100,
+            current_stage: null,
+            stage_progress: null,
+            stage_message: null,
+            estimated_time_remaining: null,
+            frames_processed: null,
+            total_frames: null,
+            error: null,
+            result: null,
+            started_at: new Date().toISOString(),
+            completed_at: new Date().toISOString(),
+          });
+        }
+      } else {
+        // Handle other errors normally
+        setError(errorMessage);
+
+        if (onError) {
+          onError(errorMessage);
+        }
+
+        // Stop polling on error
+        setIsPolling(false);
+        isPollingRef.current = false;
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
       }
     } finally {
       setLoading(false);
@@ -84,28 +151,30 @@ export const useTaskStatus = ({
 
   // Function to start polling
   const startPolling = useCallback(() => {
-    if (!taskId || isPolling) return;
+    if (!taskId || isPollingRef.current) return;
 
     setIsPolling(true);
-    
+    isPollingRef.current = true;
+
     // Fetch immediately
     fetchTaskStatus();
-    
+
     // Set up interval for polling
     intervalRef.current = setInterval(() => {
       fetchTaskStatus();
     }, pollInterval);
-  }, [taskId, isPolling, fetchTaskStatus, pollInterval]);
+  }, [taskId, fetchTaskStatus, pollInterval]);
 
   // Function to stop polling
   const stopPolling = useCallback(() => {
     setIsPolling(false);
-    
+    isPollingRef.current = false;
+
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    
+
     // Abort any ongoing request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();

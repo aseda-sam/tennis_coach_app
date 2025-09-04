@@ -1,6 +1,11 @@
 import logging
-from typing import List, Optional
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+import cv2
+import numpy as np
 from sqlalchemy.orm import Session
 
 from app.models.video import Video
@@ -88,7 +93,6 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     from pathlib import Path
 
     from app.core.config import settings
-    from app.models.analysis import Analysis
 
     # Get video from database
     video = get_video_by_id(db, video_id)
@@ -100,19 +104,44 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     filename = video.filename
 
     try:
-        # Delete associated analysis files first (before cascade deletion)
-        analyses = db.query(Analysis).filter(Analysis.video_id == video_id).all()
-        for analysis in analyses:
+        # Delete video annotations
+        from app.models.video_annotation import VideoAnnotation
+
+        video_annotations = (
+            db.query(VideoAnnotation).filter(VideoAnnotation.video_id == video_id).all()
+        )
+        for annotation in video_annotations:
             # Delete annotated video files
-            if analysis.annotated_video_path:
-                annotated_path = Path(analysis.annotated_video_path)
+            if annotation.annotated_video_path:
+                annotated_path = Path(annotation.annotated_video_path)
                 if annotated_path.exists():
                     try:
                         annotated_path.unlink()
-                        logger.info(f"Deleted annotated video: {annotated_path}")
+                        logger.info(f"Deleted video annotation file: {annotated_path}")
                     except OSError as e:
                         logger.warning(
-                            f"Failed to delete annotated video {annotated_path}: {e}"
+                            f"Failed to delete video annotation file {annotated_path}: {e}"
+                        )
+
+        # Delete pose detection annotated video files
+        from app.models.pose_detection import PoseDetection
+
+        pose_detections = (
+            db.query(PoseDetection).filter(PoseDetection.video_id == video_id).all()
+        )
+        for pose_detection in pose_detections:
+            # Delete annotated video files
+            if pose_detection.annotated_video_path:
+                annotated_path = Path(pose_detection.annotated_video_path)
+                if annotated_path.exists():
+                    try:
+                        annotated_path.unlink()
+                        logger.info(
+                            f"Deleted pose detection annotated video: {annotated_path}"
+                        )
+                    except OSError as e:
+                        logger.warning(
+                            f"Failed to delete pose detection annotated video {annotated_path}: {e}"
                         )
 
         # Delete original video file from file system
@@ -127,7 +156,12 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
                 logger.error(f"Failed to delete video file {file_path}: {e}")
                 # Continue with database deletion even if file deletion fails
 
-        # Delete from database (this will cascade delete analyses)
+        # Delete from database (this will cascade delete all related records)
+        # The cascade relationships will automatically delete:
+        # - BallDetection records
+        # - PoseDetection records
+        # - BallContact records
+        # - VideoAnnotation records
         if not delete_video_record(db, video_id):
             logger.error(f"Database deletion failed for video {video_id}")
             return False, filename, video_id
@@ -171,11 +205,128 @@ def update_video_quality(
         video.lighting_score = lighting_score
         video.resolution_score = resolution_score
         video.quality_level = quality_level
-        # Set quality_assessed_at to current timestamp
-        from sqlalchemy.sql import func
-
-        video.quality_assessed_at = func.now()
+        video.quality_assessed_at = datetime.utcnow()
         db.commit()
         db.refresh(video)
         return video
     return None
+
+
+def extract_frames(
+    video_path: Path, max_frames: Optional[int] = None
+) -> List[np.ndarray]:
+    """
+    Extract frames from video file.
+
+    Args:
+        video_path: Path to video file
+        max_frames: Maximum number of frames to extract (None = extract all frames)
+
+    Returns:
+        List of frame arrays
+    """
+    start_time = time.time()
+    frames = []
+    try:
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            logger.error(f"Could not open video: {video_path}")
+            return frames
+
+        frame_count = 0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+
+        # Use FRAME_SKIP_RATIO from config for proper frame skipping
+        from app.core.config import env_limits
+
+        frame_skip_ratio = env_limits["frame_skip_ratio"]
+
+        # Calculate frame interval based on max_frames and frame_skip_ratio
+        if max_frames is None:
+            # If no max_frames specified, use frame_skip_ratio directly
+            interval = frame_skip_ratio
+        else:
+            # If max_frames specified, calculate interval to get max_frames
+            # but respect the minimum frame_skip_ratio
+            calculated_interval = (
+                total_frames // max_frames if total_frames > max_frames else 1
+            )
+            interval = max(calculated_interval, frame_skip_ratio)
+
+        # Log frame skipping status
+        if frame_skip_ratio > 1:
+            logger.info(
+                f"Frame skipping enabled: processing every {frame_skip_ratio} frames"
+            )
+        else:
+            logger.info("Frame skipping disabled: processing all frames")
+
+        logger.info(f"Extracting frames from {video_path}")
+        logger.info(
+            f"Total frames: {total_frames}, FPS: {fps}, Frame skip ratio: {frame_skip_ratio}, Interval: {interval}"
+        )
+
+        # Process frames with proper skipping
+        while frame_count < total_frames:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # Only keep frames at interval
+            if frame_count % interval == 0:
+                frames.append(frame)
+
+                # Stop if we've reached max_frames
+                if max_frames is not None and len(frames) >= max_frames:
+                    break
+
+            frame_count += interval
+
+            # Skip frames to maintain interval
+            if interval > 1:
+                for _ in range(interval - 1):
+                    cap.read()
+
+        cap.release()
+        logger.info(f"Extracted {len(frames)} frames using interval {interval}")
+
+    except (OSError, RuntimeError, ValueError) as e:
+        logger.error(f"Error extracting frames: {e}")
+
+    elapsed_time = time.time() - start_time
+    logger.info(f"⏱️ Frame Extraction completed in {elapsed_time:.3f}s")
+    return frames
+
+
+def get_video_metadata(video_path: Path) -> Dict[str, Any]:
+    """
+    Extract basic video metadata.
+
+    Args:
+        video_path: Path to video file
+
+    Returns:
+        Video metadata dictionary
+    """
+    try:
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            return {"error": "Could not open video file"}
+
+        metadata = {
+            "width": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            "height": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+            "fps": float(cap.get(cv2.CAP_PROP_FPS)),
+            "frame_count": int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
+            "duration": float(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            / float(cap.get(cv2.CAP_PROP_FPS)),
+            "codec": int(cap.get(cv2.CAP_PROP_FOURCC)),
+        }
+
+        cap.release()
+        return metadata
+
+    except (OSError, RuntimeError, ValueError) as e:
+        logger.error(f"Error extracting video metadata: {e}")
+        return {"error": str(e)}

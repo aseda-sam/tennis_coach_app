@@ -62,63 +62,6 @@ class TestVideoProcessing:
         response = client.delete(f"/v0/videos/{video_id}")
         assert response.status_code == 200
 
-    def test_video_analysis_workflow(
-        self,
-        client: TestClient,
-        test_video_path: Path,
-        cleanup_test_files: Generator[None, None, None],
-    ) -> None:
-        """Test complete video analysis workflow with real video."""
-        if not test_video_path.exists():
-            pytest.skip("Real test video not available")
-
-        # Upload video
-        with open(test_video_path, "rb") as f:
-            files = {"file": ("test_tennis_video.mp4", f, "video/mp4")}
-            response = client.post("/v0/videos/upload", files=files)
-
-        assert response.status_code == 200
-        video_id = response.json()["video_id"]
-
-        # Start analysis
-        analysis_request = {
-            "analysis_type": "comprehensive",
-            "confidence_threshold": 0.7,
-            "include_pose_detection": False,
-        }
-
-        response = client.post(f"/v0/analysis/videos/{video_id}", json=analysis_request)
-
-        # Analysis should either complete or fail gracefully
-        assert response.status_code in [200, 500]
-
-        if response.status_code == 200:
-            analysis_data = response.json()
-            assert "analysis_id" in analysis_data
-            assert "status" in analysis_data
-
-            # Get analysis results
-            analysis_id = analysis_data["analysis_id"]
-            response = client.get(f"/v0/analysis/{analysis_id}")
-
-            if response.status_code == 200:
-                results = response.json()
-                # Check for expected fields in analysis results
-                assert "analysis_type" in results
-                assert "ball_detections" in results
-                assert (
-                    "detection_rate" in results
-                    or "average_detections_per_frame" in results
-                )
-
-                # Clean up analysis
-                response = client.delete(f"/v0/analysis/{analysis_id}")
-                assert response.status_code == 200
-
-        # Clean up video
-        response = client.delete(f"/v0/videos/{video_id}")
-        assert response.status_code == 200
-
     def test_video_stream_endpoints(
         self,
         client: TestClient,
