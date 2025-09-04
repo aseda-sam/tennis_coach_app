@@ -8,296 +8,118 @@
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-4B8BBE.svg)](https://github.com/astral-sh/ruff)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A computer vision-based tennis coaching platform. Currently implements a backend for video upload, analysis and management, with a React frontend for user interaction.
+A computer vision-based tennis coaching platform that analyzes your tennis videos to provide insights on ball tracking, pose estimation, and stroke analysis.
 
-## Features
+## 🎾 What It Does
 
-- **Video Upload & Playback**: Upload tennis videos and watch them directly in the browser
-- **Video Library Management**: Organize and manage your tennis video collection with easy browsing
-- **Ball Detection Analysis**: Automatically detect and track tennis balls in your videos using YOLO
-- **Pose Estimation**: Advanced player pose detection using MediaPipe for stroke analysis
-- **Annotated Video Creation**: Generate videos with pose and ball detection overlays
-- **Smart Video Player**: Automatically displays annotated videos when analysis is available
-- **Analysis Dashboard**: View detailed statistics about ball and pose detection performance
-- **Progress Tracking**: Monitor analysis progress and completion status in real-time
+- **Upload tennis videos** and get instant analysis
+- **Ball detection** using YOLO computer vision
+- **Pose estimation** with MediaPipe for stroke analysis
+- **Manual ball contact marking** for precise timing analysis
+- **Annotated video generation** with AI overlays
+- **Real-time analysis dashboard** with progress tracking
 
-## Quick Start
+## 🚀 Quick Start
 
-### Option 1: Docker Development (Recommended)
-
-**Prerequisites**: Docker and Docker Compose
-
-1. **Clone and Setup**
+### Option 1: Docker (Recommended)
 
 ```bash
 git clone https://github.com/aseda-sam/tennis_coach_app.git
 cd tennis_coach_app
-```
-
-2. **Start All Services**
-
-```bash
 docker compose up --build
 ```
 
-3. **Access the Application**
-
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
+**Access the app:**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
 
 ### Option 2: Local Development
 
-**Prerequisites**: Python 3.11+, Node.js 16+, FFmpeg
-
-1. **Install FFmpeg** (required for video processing):
+**Prerequisites:** Python 3.11+, Node.js 16+, FFmpeg
 
 ```bash
-# macOS
-brew install ffmpeg
-
-# Ubuntu/Debian
-sudo apt install ffmpeg
-
-# Windows (using chocolatey)
-choco install ffmpeg
-```
-
-2. **Setup Backend**
-
-```bash
-# Create Python virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install backend dependencies
+# Backend
 cd backend
+python -m venv venv
+source venv/bin/activate
 pip install -e .
-cd ..
-```
+python -m uvicorn app.main:app --reload
 
-3. **Setup Frontend**
-
-```bash
-# Install frontend dependencies
+# Frontend (new terminal)
 cd frontend
 npm install
-cd ..
-```
-
-4. **Run Backend Server**
-
-```bash
-cd backend
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-5. **Run Frontend Development Server** (in a new terminal)
-
-```bash
-cd frontend
 npm start
 ```
 
-6. **Access the Application**
-
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
-
-## Project Structure
+## 🏗️ Architecture
 
 ```
 tennis_coach_app/
-├── backend/                 # FastAPI backend
-│   ├── app/
-│   │   ├── api/            # API routes and schemas
-│   │   ├── core/           # Configuration and database
-│   │   ├── services/       # Business logic
-│   │   └── models/         # Database models
-│   ├── pyproject.toml      # Python project configuration
-│   ├── tests/              # Backend tests
-│   └── README.md           # Backend documentation
-├── frontend/               # React frontend
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── services/       # API service layer
-│   │   └── types/          # TypeScript type definitions
-│   ├── public/             # Static assets
-│   └── README.md           # Frontend documentation
-├── project_docs/           # Project documentation
-├── docker-compose.yml      # Docker development setup
-├── Dockerfile              # Backend container
-└── README.md               # This file
+├── backend/          # FastAPI + Computer Vision
+├── frontend/         # React + TypeScript
+├── ml_models/        # YOLO models
+└── project_docs/     # Project documentation
 ```
 
-## Tech Stack
+**Tech Stack:**
+- **Backend**: FastAPI, SQLAlchemy, YOLO, MediaPipe
+- **Frontend**: React, TypeScript, HTML5 Video
+- **Database**: SQLite (dev) → PostgreSQL (prod)
+- **Deployment**: Docker, GitHub Actions
 
-- **Backend**: FastAPI (Python)
-- **Frontend**: React with TypeScript
-- **Database**: SQLite with SQLAlchemy ORM
-- **Computer Vision**: YOLO (ball detection) + MediaPipe (pose estimation)
-- **File Storage**: Local file system
-- **Validation**: Pydantic models
-- **Code Quality**: Ruff linting and formatting
-- **Video Processing**: OpenCV with H.264 codec
-
-## Analysis Capabilities
-
-### Ball Detection
-
-- **YOLO Integration**: Uses YOLOv8n for efficient ball detection
-- **Real-time Processing**: Processes video frames for ball tracking
-- **Detection Metrics**: Tracks total detections, frames with balls, detection rate
-- **Visual Overlays**: Red bounding boxes around detected balls
-
-### Pose Estimation
-
-- **MediaPipe Integration**: Advanced pose detection with 33 keypoints
-- **Tennis-Focused**: Extracts 11 relevant keypoints (shoulders, elbows, wrists, hips, knees, ankles)
-- **Stroke Analysis**: Tracks upper body mechanics and lower body positioning
-- **Visual Overlays**: Green skeleton lines and blue joint markers
-
-### Progress Tracking
-
-- **Status Monitoring**: Track analysis progress (processing/completed/failed)
-- **Progress Percentage**: Real-time completion percentage (0-100)
-- **Timing Information**: Creation and completion timestamps
-- **API Endpoint**: `GET /v0/analysis/status/{analysis_id}` for status updates
-
-### Ball Contact System ⚡ **NEW**
-
-- **Manual Contact Marking**: Add ball contact markers directly on video timeline
-- **Automated Detection**: AI-powered ball contact detection with configurable tolerance
-- **Contact Management**: Create, edit, and delete ball contact markers
-- **Stroke Classification**: Categorize contacts by stroke type (ground_stroke, serve, volley, overhead)
-- **Hand Detection**: Track which hand (left/right) was used for contact
-- **Timestamp Precision**: Configurable tolerance for duplicate detection (default: 0.1 seconds)
-- **Source Attribution**: Distinguish between automated and manual contact detections
-- **Real-time Validation**: Frontend validation prevents invalid timestamp inputs
-
-### Annotated Videos
-
-- **Combined Overlays**: Pose and ball detection on same video
-- **H.264 Codec**: Browser-compatible video format
-- **Smart Playback**: Automatically shows annotated version when available
-- **No Audio**: Silent videos optimized for analysis
-
-## Documentation
+## 📚 Documentation
 
 ### Development Guides
+- **[Backend Setup](backend/README.md)** - Backend development and API
+- **[Frontend Setup](frontend/README.md)** - Frontend development and components
 
-- **[Backend Guide](backend/README.md)** - Setup, API, testing, deployment
-- **[Frontend Guide](frontend/README.md)** - Components, testing, build process
+### Detailed Documentation
+- **[Backend API](backend/docs/api.md)** - Complete API reference
+- **[Backend Database](backend/docs/database.md)** - Database schema and models
+- **[Backend Configuration](backend/docs/configuration.md)** - Environment variables
+- **[Backend Deployment](backend/docs/deployment.md)** - Production deployment
+- **[Frontend Components](frontend/docs/components.md)** - Component documentation
+- **[Frontend API Integration](frontend/docs/api-integration.md)** - API communication
+- **[ML Models](ml_models/README.md)** - Machine learning models and usage
 
 ### Project Documentation
+- **[Architecture](project_docs/backend_architecture_improvements.md)** - System architecture and improvements
 
-- **[API Reference](project_docs/api_reference.md)** - API endpoints and usage guide
-- **[Database Schema](project_docs/database_schema.md)** - Database models and relationships
-- **[Configuration Guide](project_docs/configuration.md)** - Environment variables and settings
-- **[Deployment Guide](project_docs/deployment_guide.md)** - Production deployment instructions
-- **[Project Roadmap](project_docs/project_plan.md)** - Development phases and future plans
-- **[Ball Contact Migration](project_docs/ball_contact_migration.md)** - Ball contact system implementation details
-- **[Contact Detection Improvements](project_docs/contact_detection_improvements.md)** - Ball-racket contact detection enhancement details
-- **[Pose Estimation Comparison](project_docs/pose_estimation_comparison.md)** - Technology decision record
+### Interactive API Documentation
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
 
-## Development
-
-### Docker Development (Recommended)
+## 🧪 Development
 
 ```bash
-# Start all services
+# Run tests
+cd backend && pytest
+cd frontend && npm test
+
+# Code quality
+cd backend && ruff check . && ruff format .
+cd frontend && npm run lint
+
+# Docker development
 docker compose up --build
-
-# Start in background
-docker compose up -d
-
-# View logs
-docker compose logs -f
-
-# Stop services
-docker compose down
-
-# Rebuild and restart
-docker compose up --build --force-recreate
-
-# Run backend tests
 docker compose exec backend pytest
-
-# Run frontend tests
 docker compose exec frontend npm test
-
-# Access backend shell
-docker compose exec backend bash
-
-# Access frontend shell
-docker compose exec frontend sh
 ```
 
-### Local Development
-
-#### Backend Development
-
-```bash
-cd backend
-
-# Run development server
-python -m uvicorn app.main:app --reload
-
-# Run code formatting
-ruff format .
-
-# Run linting
-ruff check .
-
-# Run tests
-pytest
-```
-
-#### Frontend Development
-
-```bash
-cd frontend
-
-# Run development server
-npm start
-
-# Build for production
-npm run build
-
-# Run tests
-npm test
-```
-
-### Database Operations
-
-```bash
-# Database is automatically created on startup
-# Located at: data/database/tennis_coach.db
-
-# Manual database operations (if needed)
-cd backend
-alembic upgrade head  # Apply migrations
-alembic revision --autogenerate -m "Description"  # Create new migration
-```
-
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests if applicable
-5. Run code quality checks:
-   - Backend: `ruff check . && ruff format .`
-   - Frontend: `npm run lint && npm test`
+5. Run code quality checks
 6. Submit a pull request
 
-## License
+## 📄 License
 
 MIT License
 
 ---
 
-**Built with Aseda's ❤️ for tennis and software engineering**
+**Built with ❤️ for tennis and software engineering**

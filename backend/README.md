@@ -2,21 +2,6 @@
 
 FastAPI backend for the tennis analysis system with computer vision capabilities for ball detection and pose estimation.
 
-## Features
-
-- **Video Upload & Management**: Secure file upload with validation and metadata extraction
-- **Computer Vision Analysis**: YOLO ball detection + MediaPipe pose estimation
-- **Annotated Video Creation**: Generate videos with detection overlays
-- **Ball Contact System**: Manual and automated ball contact detection with configurable tolerance
-- **Contact Management**: Create, edit, and delete ball contact markers with stroke classification
-- **RESTful API**: FastAPI with automatic OpenAPI documentation and versioning
-- **Database Integration**: SQLite with SQLAlchemy ORM
-- **Code Quality**: Ruff linting and formatting
-- **Comprehensive Testing**: Unit and integration tests with schema validation
-- **Standardized Error Handling**: Consistent error responses across all endpoints
-- **API Versioning**: Versioned endpoints for future compatibility
-- **Request Monitoring**: Processing time and request ID tracking
-
 ## Quick Start
 
 ### Prerequisites
@@ -126,7 +111,7 @@ CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 
 ### Optional Environment Variables
 
-````bash
+```bash
 # Processing Configuration
 MAX_WORKERS=4
 BATCH_SIZE=10
@@ -137,20 +122,7 @@ BALL_CONTACT_TIMESTAMP_TOLERANCE=0.1  # Tolerance in seconds for duplicate detec
 
 # Security (for production)
 SECRET_KEY=your-secret-key-here
-
-## Model Files
-
-The application uses YOLO models for ball detection. These are automatically downloaded when needed:
-
-- **yolov8n.pt** (~6.5MB): Nano model - faster processing, good for real-time
-- **yolov8s.pt** (~22.6MB): Small model - better accuracy, slower processing
-
-### Model Management
-
-- Models are downloaded automatically on first use
-- Models are cached locally in the working directory
-- Model files are ignored by Git (see `.gitignore`)
-- You can pre-download models using: `python scripts/download_models.py`
+```
 
 ## Development
 
@@ -171,7 +143,7 @@ ruff format .
 # Check specific files
 ruff check app/api/routes/
 ruff format app/services/
-````
+```
 
 ### Testing
 
@@ -225,45 +197,7 @@ alembic downgrade -1
 alembic history
 ```
 
-### Database Schema
-
-#### Analysis Table
-
-- `id` (Integer, Primary Key) - Unique analysis identifier
-- `video_id` (Integer, Foreign Key) - Reference to videos table
-- `video_filename` (String) - Original video filename
-- `analysis_type` (String) - Type of analysis performed
-- `status` (String) - Processing status (processing/completed/failed)
-- `progress` (Integer) - Analysis completion percentage (0-100)
-- `total_frames` (Integer) - Total frames in video
-- `frames_with_balls` (Integer) - Frames containing ball detections
-- `total_ball_detections` (Integer) - Total ball detections found
-- `detection_rate` (Float) - Percentage of frames with detections
-- `processing_time` (Float) - Analysis duration in seconds
-- `model_used` (String) - YOLO model version used
-- `confidence_threshold` (Float) - Detection confidence threshold
-- `created_at` (DateTime) - Analysis creation timestamp
-- `updated_at` (DateTime) - Last update timestamp
-- `completed_at` (DateTime) - Analysis completion timestamp (nullable)
-
-#### Video Table
-
-- `id` (Integer, Primary Key) - Unique video identifier
-- `filename` (String) - Original filename
-- `file_path` (String) - Storage path
-- `file_size` (Integer) - File size in bytes
-- `content_type` (String) - MIME type
-- `duration` (Float) - Video duration in seconds
-- `fps` (Float) - Frames per second
-- `width` (Integer) - Video width in pixels
-- `height` (Integer) - Video height in pixels
-- `frame_count` (Integer) - Total number of frames
-- `status` (String) - Processing status
-- `error_message` (Text) - Error details if processing failed
-- `created_at` (DateTime) - Upload timestamp
-- `updated_at` (DateTime) - Last update timestamp
-
-### Project Structure
+## Project Structure
 
 ```
 backend/
@@ -283,57 +217,31 @@ backend/
 │   │   ├── analysis_service.py  # Analysis pipeline
 │   │   ├── video_service.py     # Video processing utilities
 │   └── main.py              # FastAPI app
+├── docs/                    # Detailed documentation
+│   ├── api.md              # API reference
+│   ├── database.md         # Database schema
+│   ├── configuration.md    # Environment configuration
+│   └── deployment.md       # Production deployment
 ├── alembic/                 # Database migrations
 ├── tests/                   # Test files
 ├── pyproject.toml           # Project configuration
 └── README.md               # This file
 ```
 
-## API Overview
+## Features
 
-### API Versioning
-
-The API uses versioned endpoints for stability and backward compatibility:
-
-- **Current**: `/v0/` - Alpha version (under development)
-- **Future**: `/v1/` - Stable version (when ready for production)
-
-### Health & Status
-
-- `GET /health` - Health check endpoint
-- `GET /` - API root information
-- `GET /v0` - Version 0 API information
-
-### Video Management
-
-- `POST /v0/videos/upload` - Upload video file
-- `GET /v0/videos/` - List all videos
-- `GET /v0/videos/{video_id}` - Get video details by ID
-- `GET /v0/videos/{video_id}/stream` - Stream original video
-- `GET /v0/videos/{video_id}/annotated/stream` - Stream annotated video
-- `DELETE /v0/videos/{video_id}` - Delete video
-
-### Analysis
-
-- `POST /v0/analysis/videos/{video_id}` - Start analysis
-- `GET /v0/analysis/{analysis_id}` - Get analysis results by ID
-- `GET /v0/analysis/` - List all analyses
-- `GET /v0/analysis/status/{analysis_id}` - Get analysis processing status
-- `DELETE /v0/analysis/{analysis_id}` - Delete analysis
-
-### Ball Contacts
-
-- `POST /v0/ball-contacts/` - Create a new ball contact marker
-- `GET /v0/ball-contacts/video/{video_id}` - Get all ball contacts for a video
-- `GET /v0/ball-contacts/video/{video_id}/timestamps` - Get ball contact timestamps for a video
-- `GET /v0/ball-contacts/{ball_contact_id}` - Get a specific ball contact by ID
-- `PUT /v0/ball-contacts/{ball_contact_id}` - Update a ball contact
-- `DELETE /v0/ball-contacts/{ball_contact_id}` - Delete a ball contact
-
-### Interactive Documentation
-
-- Visit http://localhost:8000/docs for Swagger UI
-- Visit http://localhost:8000/redoc for ReDoc
+- **Video Upload & Management**: Secure file upload with validation and metadata extraction
+- **Computer Vision Analysis**: YOLO ball detection + MediaPipe pose estimation
+- **Annotated Video Creation**: Generate videos with detection overlays
+- **Ball Contact System**: Manual and automated ball contact detection with configurable tolerance
+- **Contact Management**: Create, edit, and delete ball contact markers with stroke classification
+- **RESTful API**: FastAPI with automatic OpenAPI documentation and versioning
+- **Database Integration**: SQLite with SQLAlchemy ORM
+- **Code Quality**: Ruff linting and formatting
+- **Comprehensive Testing**: Unit and integration tests with schema validation
+- **Standardized Error Handling**: Consistent error responses across all endpoints
+- **API Versioning**: Versioned endpoints for future compatibility
+- **Request Monitoring**: Processing time and request ID tracking
 
 ## Computer Vision Features
 
@@ -418,47 +326,12 @@ export LOG_LEVEL=DEBUG
 uvicorn app.main:app --reload --log-level debug
 ```
 
-## Production Deployment
-
-### Docker Deployment
-
-```bash
-# Build production image
-docker build -t tennis-backend:latest .
-
-# Run with environment variables
-docker run -p 8000:8000 \
-  -e DATABASE_URL=sqlite:///./data/database/tennis_coach.db \
-  -e MAX_FILE_SIZE=104857600 \
-  tennis-backend:latest
-```
-
-### Environment Variables for Production
-
-```bash
-# Database (consider PostgreSQL for production)
-DATABASE_URL=postgresql://user:password@host:5432/tennis_analysis
-
-# Security
-DEBUG=False
-SECRET_KEY=your-production-secret-key
-
-# CORS
-CORS_ORIGINS=https://yourdomain.com
-
-# Storage (consider S3 for production)
-STORAGE_TYPE=s3
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
-AWS_S3_BUCKET=tennis-analysis-videos
-```
-
 ## Documentation
 
-- **[API Reference](../project_docs/api_reference.md)** - Complete API documentation
-- **[Database Schema](../project_docs/database_schema.md)** - Database models and relationships
-- **[Deployment Guide](../project_docs/deployment_guide.md)** - Production deployment
-- **[Project Roadmap](../project_docs/project_plan.md)** - Development phases
+- **[API Reference](docs/api.md)** - Complete API documentation
+- **[Database Schema](docs/database.md)** - Database models and relationships
+- **[Configuration Guide](docs/configuration.md)** - Environment variables and settings
+- **[Deployment Guide](docs/deployment.md)** - Production deployment
 
 ## Contributing
 
@@ -472,7 +345,7 @@ AWS_S3_BUCKET=tennis-analysis-videos
 
 MIT License
 
-## Code quality
+## Code Quality
 
 Run ruff locally before committing:
 
