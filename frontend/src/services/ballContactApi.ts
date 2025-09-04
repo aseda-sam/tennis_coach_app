@@ -9,6 +9,7 @@ export interface BallContact {
   contact_hand: 'left' | 'right';
   stroke_type?: 'ground_stroke' | 'serve' | 'volley' | 'overhead';
   stroke_subtype?: string;
+  elbow_angle?: number; // Posture analysis: elbow angle in degrees (0-180°)
   detection_source: 'automated' | 'manual';
   created_at: string;
   updated_at?: string;
@@ -30,6 +31,18 @@ export interface BallContactUpdate {
   stroke_subtype?: string;
 }
 
+// Posture Analysis Interfaces
+export interface PostureAnalysisResponse {
+  ball_contact_id: number;
+  elbow_angle?: number; // 0-180° range
+  analysis_status: 'success' | 'failed' | 'no_pose_data' | 'invalid_stroke';
+  message?: string;
+}
+
+export interface PostureAnalysisRequest {
+  force_reanalysis?: boolean;
+}
+
 export const ballContactApi = {
   // Get all ball contacts for a video
   getContacts: async (videoId: number): Promise<BallContact[]> => {
@@ -39,7 +52,9 @@ export const ballContactApi = {
 
   // Get contact timestamps for video player markers
   getContactTimestamps: async (videoId: number): Promise<number[]> => {
-    const response = await api.get(`/ball-contacts/video/${videoId}/timestamps`);
+    const response = await api.get(
+      `/ball-contacts/video/${videoId}/timestamps`
+    );
     return response.data;
   },
 
@@ -67,5 +82,40 @@ export const ballContactApi = {
   // Delete a ball contact
   deleteContact: async (contactId: number): Promise<void> => {
     await api.delete(`/ball-contacts/${contactId}`);
+  },
+
+  // Posture Analysis Methods
+  // Get posture analysis for a specific ball contact
+  getPostureAnalysis: async (
+    contactId: number
+  ): Promise<PostureAnalysisResponse> => {
+    const response = await api.get(
+      `/ball-contacts/${contactId}/posture-analysis`
+    );
+    return response.data;
+  },
+
+  // Analyze posture for a specific ball contact
+  analyzePosture: async (
+    contactId: number,
+    request: PostureAnalysisRequest = {}
+  ): Promise<PostureAnalysisResponse> => {
+    const response = await api.post(
+      `/ball-contacts/${contactId}/analyze-posture`,
+      request
+    );
+    return response.data;
+  },
+
+  // Analyze posture for all ball contacts in a video
+  analyzeVideoPosture: async (
+    videoId: number,
+    request: PostureAnalysisRequest = {}
+  ): Promise<PostureAnalysisResponse[]> => {
+    const response = await api.post(
+      `/ball-contacts/video/${videoId}/analyze-posture`,
+      request
+    );
+    return response.data;
   },
 };
