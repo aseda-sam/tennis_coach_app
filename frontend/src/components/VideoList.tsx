@@ -1,12 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  analysisApi,
-  AnalysisData,
-  AnalysisStartResponse,
-  videoApi,
-} from '../services/api';
+  AnalysisProgress,
+  useAnalysisProgress,
+} from '../hooks/useAnalysisProgress';
+import { videoApi } from '../services/api';
+import unifiedAnalysisApi from '../services/unifiedAnalysisApi';
 import { VideoMetadata } from '../types/video';
-import AnalysisModal from './AnalysisModal';
 import {
   AnalyticsIcon,
   DeleteIcon,
@@ -17,7 +16,6 @@ import {
   VideoIcon,
 } from './Icons';
 import ProgressBar from './ProgressBar';
-import StageProgress from './StageProgress';
 import './VideoList.css';
 
 interface VideoListProps {
@@ -30,44 +28,64 @@ const VideoList: React.FC<VideoListProps> = ({
   onViewAnalysis,
 }) => {
   const [videos, setVideos] = useState<VideoMetadata[]>([]);
-  const [analyses, setAnalyses] = useState<AnalysisData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-
-  // Track active analysis tasks
-  const [activeTasks, setActiveTasks] = useState<
+  const [analysisStatuses, setAnalysisStatuses] = useState<
     Map<
       number,
       {
-        taskId: number;
-        progress: number;
-        status: string;
-        currentStage?: string;
-        stageProgress?: number;
-        stageMessage?: string;
+        has_analysis: boolean;
+        has_annotated_video: boolean;
+        analysis_types: string[];
+        annotated_video_available: boolean;
       }
     >
   >(new Map());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [, setModalOpen] = useState(false);
+  const [, setSelectedVideo] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  // Ref to store verifyAnalysisData function to avoid circular dependency
-  const verifyAnalysisDataRef = useRef<
-    ((videoId: number) => Promise<void>) | null
-  >(null);
+  // Track active analysis tasks using the unified system
+  const [activeAnalysisTasks, setActiveAnalysisTasks] = useState<
+    Map<number, number> // videoId -> taskId
+  >(new Map());
+
+  // Removed legacy analysis verification
 
   const loadVideos = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const [videosResponse, analysesResponse] = await Promise.all([
-        videoApi.getVideos(),
-        analysisApi.getAllAnalyses(),
-      ]);
+      const videosResponse = await videoApi.getVideos();
       setVideos(videosResponse.videos);
-      setAnalyses(analysesResponse);
+
+      // Load analysis status for each video
+      const analysisStatusMap = new Map<
+        number,
+        {
+          has_analysis: boolean;
+          has_annotated_video: boolean;
+          analysis_types: string[];
+          annotated_video_available: boolean;
+        }
+      >();
+      for (const video of videosResponse.videos) {
+        try {
+          const status = await videoApi.getVideoAnalysisStatus(video.id);
+          analysisStatusMap.set(video.id, status);
+        } catch (error) {
+          // No analysis status for this video, which is fine
+          console.debug(`No analysis status for video ${video.id}`);
+          analysisStatusMap.set(video.id, {
+            has_analysis: false,
+            has_annotated_video: false,
+            analysis_types: [],
+            annotated_video_available: false,
+          });
+        }
+      }
+      setAnalysisStatuses(analysisStatusMap);
     } catch (err: any) {
       setError('Failed to load videos. Please try again.');
       console.error('Error loading videos:', err);
@@ -79,6 +97,28 @@ const VideoList: React.FC<VideoListProps> = ({
   useEffect(() => {
     loadVideos();
   }, [loadVideos]);
+
+  // Use the unified analysis progress system
+  const { progress: analysisProgress, startPolling } = useAnalysisProgress({
+    onComplete: useCallback(
+      async (progress: AnalysisProgress) => {
+        // Task completed, refresh videos and clear active tasks
+        try {
+          await loadVideos();
+          setActiveAnalysisTasks(new Map());
+        } catch (err) {
+          console.error('Error refreshing videos after analysis:', err);
+          setActiveAnalysisTasks(new Map());
+        }
+      },
+      [loadVideos]
+    ),
+    onError: useCallback((error: string) => {
+      console.error('Analysis task failed:', error);
+      setError(error);
+      setActiveAnalysisTasks(new Map());
+    }, []),
+  });
 
   const handleDelete = async (videoId: number) => {
     try {
@@ -94,61 +134,38 @@ const VideoList: React.FC<VideoListProps> = ({
     }
   };
 
-  const handleAnalyze = async (videoId: number) => {
+  // Removed handleAnalyze - we now only use pose detection
+
+  const handlePoseAnalyze = async (videoId: number) => {
     try {
-      // Add task to active tasks map
-      setActiveTasks(
-        (prev) =>
-          new Map(
-            prev.set(videoId, { taskId: 0, progress: 0, status: 'starting' })
-          )
-      );
+      // Clear any previous error for a fresh start
+      setError(null);
 
-      const response: AnalysisStartResponse = await analysisApi.startAnalysis(
+      // Use the new pose_with_annotation analysis type
+      const response = await unifiedAnalysisApi.startPoseWithAnnotation(
         videoId,
-        {
-          analysis_type: 'comprehensive',
-          confidence_threshold: 0.5,
-          include_pose_detection: true,
-        }
+        0.5
       );
 
-      if (response.status === 'completed' && response.analysis_id) {
-        // Analysis completed immediately
-        setActiveTasks((prev) => {
-          const newMap = new Map(prev);
-          newMap.delete(videoId);
-          return newMap;
-        });
-        await loadVideos(); // Refresh to get the new analysis
-      } else if (response.status === 'processing' && response.task_id) {
-        // Analysis started in background - track the task
-        setActiveTasks(
-          (prev) =>
-            new Map(
-              prev.set(videoId, {
-                taskId: response.task_id || 0,
-                progress: 0,
-                status: 'processing',
-              })
-            )
-        );
+      // Analysis started in background - track the task
+      setActiveAnalysisTasks((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(videoId, response.task_id);
+        return newMap;
+      });
 
-        // Start polling for this task
-        pollTaskStatus(response.task_id, videoId);
-      } else {
-        throw new Error(response.message || 'Failed to start analysis');
-      }
+      // Start polling for progress
+      startPolling(response.task_id);
     } catch (err: any) {
       const errorMessage =
         err?.response?.data?.detail ||
         err?.message ||
-        'Failed to start analysis';
+        'Failed to start pose detection';
       setError(errorMessage);
-      console.error('Error starting analysis:', err);
+      console.error('Error starting pose analysis with annotation:', err);
 
       // Remove from active tasks on error
-      setActiveTasks((prev) => {
+      setActiveAnalysisTasks((prev) => {
         const newMap = new Map(prev);
         newMap.delete(videoId);
         return newMap;
@@ -156,147 +173,11 @@ const VideoList: React.FC<VideoListProps> = ({
     }
   };
 
-  // Function to poll task status
-  const pollTaskStatus = useCallback(
-    async (taskId: number, videoId: number) => {
-      const pollInterval = setInterval(async () => {
-        try {
-          const taskStatus = await analysisApi.getTaskStatus(taskId);
+  // Removed pollTaskStatus - legacy function no longer needed
 
-          // Update active tasks with new progress and stage information
-          setActiveTasks((prev) => {
-            const newMap = new Map(prev);
-            newMap.set(videoId, {
-              taskId,
-              progress: taskStatus.progress,
-              status: taskStatus.status,
-              currentStage: taskStatus.current_stage || undefined,
-              stageProgress: taskStatus.stage_progress || undefined,
-              stageMessage: taskStatus.stage_message || undefined,
-            });
-            return newMap;
-          });
+  // Removed verifyAnalysisData - we now use generic analysis status
 
-          // If task is completed, start verification process
-          if (taskStatus.status === 'completed') {
-            clearInterval(pollInterval);
-
-            // Keep task in "finalizing" state while verifying analysis data
-            setActiveTasks((prev) => {
-              const newMap = new Map(prev);
-              newMap.set(videoId, {
-                taskId,
-                progress: 100,
-                status: 'finalizing',
-              });
-              return newMap;
-            });
-
-            // Verify analysis data is available with retries
-            if (verifyAnalysisDataRef.current) {
-              await verifyAnalysisDataRef.current(videoId);
-            }
-          } else if (
-            taskStatus.status === 'failed' ||
-            taskStatus.status === 'cancelled'
-          ) {
-            clearInterval(pollInterval);
-
-            // Remove from active tasks
-            setActiveTasks((prev) => {
-              const newMap = new Map(prev);
-              newMap.delete(videoId);
-              return newMap;
-            });
-          }
-        } catch (err) {
-          console.error('Error polling task status:', err);
-          clearInterval(pollInterval);
-
-          // Remove from active tasks on error
-          setActiveTasks((prev) => {
-            const newMap = new Map(prev);
-            newMap.delete(videoId);
-            return newMap;
-          });
-        }
-      }, 2000); // Poll every 2 seconds
-
-      // Cleanup function
-      return () => clearInterval(pollInterval);
-    },
-    []
-  );
-
-  // Function to verify analysis data is available
-  const verifyAnalysisData = useCallback(
-    async (videoId: number) => {
-      const maxRetries = 5;
-      const retryDelay = 2000; // 2 seconds
-
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          // Try to get analysis data
-          const analysis = await analysisApi.getAnalysisByVideo(videoId);
-
-          // Check if analysis has the required data for annotated video
-          if (
-            analysis &&
-            analysis.pose_detections &&
-            analysis.pose_detections.length > 0
-          ) {
-            // Analysis data is complete, remove from active tasks
-            setActiveTasks((prev) => {
-              const newMap = new Map(prev);
-              newMap.delete(videoId);
-              return newMap;
-            });
-
-            // Refresh the analyses list
-            await loadVideos();
-            return;
-          }
-
-          // If we're on the last attempt, still remove from active tasks
-          if (attempt === maxRetries) {
-            setActiveTasks((prev) => {
-              const newMap = new Map(prev);
-              newMap.delete(videoId);
-              return newMap;
-            });
-            await loadVideos();
-            return;
-          }
-
-          // Wait before next retry
-          await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        } catch (err) {
-          console.error(
-            `Error verifying analysis data (attempt ${attempt}):`,
-            err
-          );
-
-          // If we're on the last attempt, remove from active tasks
-          if (attempt === maxRetries) {
-            setActiveTasks((prev) => {
-              const newMap = new Map(prev);
-              newMap.delete(videoId);
-              return newMap;
-            });
-            await loadVideos();
-            return;
-          }
-
-          // Wait before next retry
-          await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        }
-      }
-    },
-    [loadVideos]
-  );
-
-  // Store the function in ref to avoid circular dependency
-  verifyAnalysisDataRef.current = verifyAnalysisData;
+  // Removed pollModularAnalysisStatus - we now use pose detection only
 
   const handleViewAnalysis = (videoId: number) => {
     if (onViewAnalysis) {
@@ -310,51 +191,12 @@ const VideoList: React.FC<VideoListProps> = ({
     }
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setSelectedVideo(null);
-  };
+  // Removed handleCancelAnalysis - we now only use pose detection
 
-  const handleCancelAnalysis = async (videoId: number) => {
-    const activeTask = activeTasks.get(videoId);
-    if (!activeTask || !activeTask.taskId) return;
+  // Removed getAnalysisForVideo - we now only use pose detection
 
-    try {
-      await analysisApi.cancelTask(activeTask.taskId);
-
-      // Remove from active tasks
-      setActiveTasks((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(videoId);
-        return newMap;
-      });
-
-      setError('Analysis cancelled successfully');
-    } catch (err: any) {
-      const errorMessage =
-        err?.response?.data?.detail ||
-        err?.message ||
-        'Failed to cancel analysis';
-      setError(errorMessage);
-      console.error('Error cancelling analysis:', err);
-    }
-  };
-
-  const getAnalysisForVideo = (videoId: number): AnalysisData | null => {
-    const video = videos.find((v) => v.id === videoId);
-    if (!video) return null;
-
-    // First try to find by video_id (stronger relationship)
-    let analysis = analyses.find((analysis) => analysis.video_id === videoId);
-
-    // Fallback to filename matching (for backward compatibility)
-    if (!analysis) {
-      analysis = analyses.find(
-        (analysis) => analysis.video_filename === video.filename
-      );
-    }
-
-    return analysis || null;
+  const isAnalyzing = (videoId: number): boolean => {
+    return activeAnalysisTasks.has(videoId);
   };
 
   const formatDuration = (seconds: number): string => {
@@ -368,27 +210,26 @@ const VideoList: React.FC<VideoListProps> = ({
     return `${mb.toFixed(2)} MB`;
   };
 
-  const getStatusTag = (analysis: AnalysisData | null, videoId: number) => {
-    const activeTask = activeTasks.get(videoId);
+  const getStatusTag = (analysis: any, videoId: number) => {
+    const analysisStatus = analysisStatuses.get(videoId);
+    const isCurrentlyAnalyzing = isAnalyzing(videoId);
 
-    if (activeTask) {
-      if (activeTask.status === 'processing') {
+    if (isCurrentlyAnalyzing && analysisProgress) {
+      if (analysisProgress.status === 'processing') {
         return {
-          text: `Processing (${activeTask.progress}%)`,
+          text: `Processing (${analysisProgress.progress}%)`,
           color: 'processing',
         };
-      } else if (activeTask.status === 'starting') {
-        return { text: 'Starting...', color: 'processing' };
-      } else if (activeTask.status === 'finalizing') {
-        return { text: 'Finalizing...', color: 'processing' };
-      } else if (activeTask.status === 'failed') {
+      } else if (analysisProgress.status === 'queued') {
+        return { text: 'Queued...', color: 'processing' };
+      } else if (analysisProgress.status === 'failed') {
         return { text: 'Failed', color: 'error' };
-      } else if (activeTask.status === 'cancelled') {
+      } else if (analysisProgress.status === 'cancelled') {
         return { text: 'Cancelled', color: 'error' };
       }
     }
 
-    if (analysis) {
+    if (analysisStatus?.has_analysis) {
       return { text: 'Completed', color: 'completed' };
     }
 
@@ -431,16 +272,6 @@ const VideoList: React.FC<VideoListProps> = ({
       default:
         return 'Quality not assessed yet';
     }
-  };
-
-  const isVideoAnalyzing = (videoId: number): boolean => {
-    const activeTask = activeTasks.get(videoId);
-    return (
-      activeTask !== undefined &&
-      (activeTask.status === 'starting' ||
-        activeTask.status === 'processing' ||
-        activeTask.status === 'finalizing')
-    );
   };
 
   if (loading) {
@@ -504,9 +335,9 @@ const VideoList: React.FC<VideoListProps> = ({
       ) : (
         <div className={`video-grid ${viewMode}`}>
           {videos.map((video) => {
-            const analysis = getAnalysisForVideo(video.id);
-            const isAnalyzing = isVideoAnalyzing(video.id);
-            const status = getStatusTag(analysis, video.id);
+            const analysisStatus = analysisStatuses.get(video.id);
+            const isCurrentlyAnalyzing = isAnalyzing(video.id);
+            const status = getStatusTag(null, video.id); // No legacy analysis
             const qualityStatus = getQualityStatus(video);
 
             return (
@@ -576,67 +407,52 @@ const VideoList: React.FC<VideoListProps> = ({
                 </div>
 
                 <div className="video-actions-enhanced">
-                  {!analysis && !isAnalyzing && (
+                  {!analysisStatus?.has_analysis && !isCurrentlyAnalyzing && (
                     <button
-                      className="action-btn analyze-btn"
-                      onClick={() => handleAnalyze(video.id)}
+                      className="action-btn pose-btn"
+                      onClick={() => handlePoseAnalyze(video.id)}
                     >
                       <AnalyticsIcon size={16} />
-                      Analyze
+                      Pose Only
                     </button>
                   )}
 
-                  {analysis && (
-                    <>
-                      <button
-                        className="action-btn view-btn"
-                        onClick={() => handleViewAnalysis(video.id)}
-                      >
-                        <EyeIcon size={16} />
-                        View Analysis
-                      </button>
-                    </>
-                  )}
-
-                  {isAnalyzing && (
+                  {isCurrentlyAnalyzing && analysisProgress && (
                     <div className="analysis-progress-container">
-                      {activeTasks.get(video.id)?.currentStage ? (
-                        <StageProgress
-                          currentStage={
-                            activeTasks.get(video.id)?.currentStage ||
-                            'processing'
-                          }
-                          stageProgress={
-                            activeTasks.get(video.id)?.stageProgress || 0
-                          }
-                          stageMessage={
-                            activeTasks.get(video.id)?.stageMessage ||
-                            'Processing...'
-                          }
-                          overallProgress={
-                            activeTasks.get(video.id)?.progress || 0
-                          }
-                          size="small"
-                        />
-                      ) : (
+                      <div className="pose-analysis-progress">
+                        <span>
+                          Pose Detection:{' '}
+                          {analysisProgress.currentStage || 'Processing...'}
+                        </span>
                         <ProgressBar
-                          progress={activeTasks.get(video.id)?.progress || 0}
-                          status={
-                            (activeTasks.get(video.id)?.status as any) ||
-                            'processing'
-                          }
+                          progress={analysisProgress.progress}
+                          status="processing"
                           size="small"
                           showPercentage={false}
                           showStatus={false}
                         />
-                      )}
-                      <button
-                        className="action-btn cancel-btn"
-                        onClick={() => handleCancelAnalysis(video.id)}
-                      >
-                        Cancel
-                      </button>
+                      </div>
                     </div>
+                  )}
+
+                  {/* Always show View Video button */}
+                  <button
+                    className="action-btn view-btn"
+                    onClick={() => handleViewAnalysis(video.id)}
+                  >
+                    <PlayIcon size={16} />
+                    View Video
+                  </button>
+
+                  {/* Show View Analysis button when analysis exists */}
+                  {analysisStatus?.has_analysis && (
+                    <button
+                      className="action-btn analysis-btn"
+                      onClick={() => handleViewAnalysis(video.id)}
+                    >
+                      <EyeIcon size={16} />
+                      View Analysis
+                    </button>
                   )}
 
                   <button
@@ -654,13 +470,7 @@ const VideoList: React.FC<VideoListProps> = ({
         </div>
       )}
 
-      {modalOpen && selectedVideo && (
-        <AnalysisModal
-          isOpen={modalOpen}
-          onClose={handleCloseModal}
-          videoId={selectedVideo}
-        />
-      )}
+      {/* Removed AnalysisModal - we now use pose detection only */}
     </div>
   );
 };
