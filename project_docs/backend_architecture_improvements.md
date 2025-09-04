@@ -42,7 +42,86 @@ This document outlines critical and important improvements needed for the FastAP
 2. Add proper field validation and documentation
 3. Ensure backward compatibility for existing API consumers
 
-### 2. Background Task Response Schema Mismatches
+### 2. Pose Detection Special Treatment in Background Service
+
+**Problem**: Pose detection receives special treatment in the background service architecture, creating inconsistencies and violating the modular design principles.
+
+**Impact**:
+
+- Inconsistent API design with pose-specific parameters
+- Confusing "comprehensive" analysis behavior
+- Violates the principle that all analysis types should be treated equally
+- Makes the system harder to extend with new analysis types
+
+**Examples**:
+
+```python
+# Background service has pose-specific parameter:
+def start_analysis_task(
+    self,
+    video_id: int,
+    analysis_type: str,
+    confidence_threshold: float = 0.7,
+    include_pose_detection: bool = False,  # ❌ SPECIAL TREATMENT
+) -> int:
+
+# Comprehensive analysis treats pose as optional:
+if include_pose_detection:  # ❌ SPECIAL TREATMENT
+    # ... pose detection logic
+
+# API routes have redundant parameters:
+task_id = background_service.start_analysis_task(
+    video_id=video_id,
+    analysis_type="pose_only",
+    confidence_threshold=request.confidence_threshold,
+    include_pose_detection=True,  # ❌ REDUNDANT AND CONFUSING
+)
+```
+
+**Required Actions**:
+
+1. Remove `include_pose_detection` parameter from `start_analysis_task()`
+2. Remove comprehensive analysis (too complex with dependencies)
+3. Update API routes to remove redundant pose-specific parameters
+4. Add missing analysis type support (video_annotation_only, ball_contact_only)
+5. Ensure all analysis types are treated equally in the architecture
+6. Keep video quality assessment out of background tasks (runs during upload)
+
+### 3. Simplified Analysis Architecture
+
+**Problem**: The current "comprehensive" analysis approach is overly complex due to analysis dependencies and sequencing requirements.
+
+**Impact**:
+
+- Complex dependency management between analysis types
+- Confusing "comprehensive" behavior that may not include all analyses
+- Difficult to extend with new analysis types
+- Unclear sequencing requirements
+
+**Proposed Solution**:
+
+```python
+# Background Task Analysis Types (Simple & Independent):
+- "pose_only"           # MediaPipe pose detection (independent)
+- "ball_only"           # YOLO ball detection (independent)
+- "video_annotation_only" # Create annotated videos (requires existing detections)
+
+# Non-Background (Immediate):
+- Video quality assessment (runs during upload, ~5 seconds)
+
+# Future (when dependencies are ready):
+- "ball_contact_only"   # When racket detection is implemented
+- "comprehensive"       # When all dependencies are clear
+```
+
+**Benefits**:
+
+- Each analysis type is independent or has clear, simple dependencies
+- Users can run analyses in any order they want
+- Easy to add new analysis types without complex coordination
+- No confusing "comprehensive" that may or may not include everything
+
+### 4. Background Task Response Schema Mismatches
 
 **Problem**: Background task API responses don't match the declared response schemas, causing runtime errors and inconsistent API contracts.
 
@@ -69,42 +148,6 @@ return BallDetectionResponse(
 1. Create unified task response base schemas
 2. Update all background task endpoints to use consistent response patterns
 3. Add proper task tracking fields to all response schemas
-
-### 3. Memory-Based Task Storage (Non-Persistent)
-
-**Problem**: Background tasks use in-memory storage that doesn't persist across server restarts.
-
-**Impact**:
-
-- Task progress lost on server restart
-- No task history or audit trail
-- Cannot scale to multiple server instances
-- No way to recover from server crashes
-
-**Current Implementation**:
-
-```python
-# Global task storage - will not scale or persist
-_active_tasks: Dict[int, Dict[str, Any]] = {}
-```
-
-**Recommended Solution**: **Redis Integration**
-
-Since you plan to move to Redis for task storage, the current in-memory implementation is acceptable for now. Redis will provide:
-
-- Task persistence across restarts
-- Distributed task tracking
-- Built-in expiration and cleanup
-- Better performance than database storage
-
-**Required Actions** (When implementing Redis):
-
-1. Replace in-memory storage with Redis backend
-2. Add Redis connection management and error handling
-3. Implement task expiration and cleanup policies
-4. Add Redis health checks and fallback mechanisms
-
-**Note**: This is not a breaking issue for current functionality, so can be deferred until Redis implementation.
 
 ## ⚠️ Important Issues (Next Phase)
 
@@ -224,19 +267,27 @@ pose_service = PoseDetectionService()  # No DI
 
 ### Phase 1: Critical Fixes (Immediate - 1-2 weeks)
 
-1. **Fix Schema/Model Consistency**
+1. **Fix Pose Detection Special Treatment**
+
+   - Remove `include_pose_detection` parameter from background service
+   - Remove comprehensive analysis (too complex with dependencies)
+   - Update API routes to remove redundant pose-specific parameters
+   - Add missing analysis type support (video_annotation_only, ball_contact_only)
+   - Keep video quality assessment out of background tasks (runs during upload)
+
+2. **Fix Schema/Model Consistency**
 
    - Update all API schemas to include missing database fields
    - Add proper field validation and documentation
    - Test backward compatibility
 
-2. **Fix Background Task Response Schemas**
+3. **Fix Background Task Response Schemas**
 
    - Create unified task response base schemas
    - Update all background task endpoints
    - Ensure API documentation accuracy
 
-3. **Redis Task Storage** (When ready to implement)
+4. **Redis Task Storage** (When ready to implement)
 
    - Replace in-memory storage with Redis backend
    - Add Redis connection management
@@ -265,6 +316,9 @@ pose_service = PoseDetectionService()  # No DI
 
 ### Critical Issues Resolution:
 
+- ✅ Pose detection treated equally with other analysis types
+- ✅ Simplified analysis types (removed complex comprehensive analysis)
+- ✅ Video quality assessment kept out of background tasks (runs during upload)
 - ✅ All database fields accessible via API schemas
 - ✅ API responses match declared schemas
 - ✅ No data loss in multi-step operations

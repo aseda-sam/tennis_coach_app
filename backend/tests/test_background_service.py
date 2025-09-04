@@ -56,9 +56,8 @@ class TestBackgroundTaskService:
 
         task_id = self.service.start_analysis_task(
             video_id=1,
-            analysis_type="ball_tracking",
+            analysis_type="ball_only",
             confidence_threshold=0.7,
-            include_pose_detection=False,
         )
 
         assert task_id == 1
@@ -66,9 +65,8 @@ class TestBackgroundTaskService:
 
         task = _active_tasks[task_id]
         assert task["video_id"] == 1
-        assert task["analysis_type"] == "ball_tracking"
+        assert task["analysis_type"] == "ball_only"
         assert task["confidence_threshold"] == 0.7
-        assert task["include_pose_detection"] is False
         assert task["status"] == "processing"
         # Progress starts at 5, not 0
         assert task["progress"] >= 0
