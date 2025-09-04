@@ -240,15 +240,13 @@ export const analysisApi = {
   // New methods for task status tracking
   // Get task status by task ID
   getTaskStatus: async (taskId: number): Promise<TaskStatus> => {
-    const response = await api.get<TaskStatus>(
-      `/analysis/tasks/${taskId}/status`
-    );
+    const response = await api.get<TaskStatus>(`/analysis/status/${taskId}`);
     return response.data;
   },
 
   // Get all active tasks
   getAllTasks: async (): Promise<TaskListResponse> => {
-    const response = await api.get<TaskListResponse>('/analysis/tasks/');
+    const response = await api.get<TaskListResponse>('/analysis/tasks');
     return response.data;
   },
 

@@ -4,7 +4,11 @@ import unifiedAnalysisApi, { TaskStatus } from '../services/unifiedAnalysisApi';
 export interface AnalysisProgress {
   taskId: number;
   videoId: number;
-  analysisType: 'pose_only' | 'ball_only' | 'video_annotation_only';
+  analysisType:
+    | 'pose_only'
+    | 'ball_only'
+    | 'video_annotation_only'
+    | 'pose_with_annotation';
   status: TaskStatus['status'];
   progress: number;
   currentStage?: string;

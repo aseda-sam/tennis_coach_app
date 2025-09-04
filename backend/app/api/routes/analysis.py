@@ -35,6 +35,7 @@ async def start_analysis(
     - pose_only: Extract player pose keypoints using MediaPipe
     - ball_only: Detect tennis balls using YOLO
     - video_annotation_only: Create annotated videos with detection overlays
+    - pose_with_annotation: Extract pose keypoints AND create annotated video
 
     Args:
         video_id: ID of the video to analyze
@@ -215,5 +216,6 @@ def _get_estimated_duration(analysis_type: str) -> float:
         "pose_only": 120.0,  # 2 minutes
         "ball_only": 180.0,  # 3 minutes
         "video_annotation_only": 90.0,  # 1.5 minutes
+        "pose_with_annotation": 210.0,  # 3.5 minutes (pose + annotation)
     }
     return estimates.get(analysis_type, 180.0)

@@ -28,7 +28,11 @@ analysisApi.interceptors.response.use(
 
 // Types for the new unified analysis API
 export interface AnalysisRequest {
-  analysis_type: 'pose_only' | 'ball_only' | 'video_annotation_only';
+  analysis_type:
+    | 'pose_only'
+    | 'ball_only'
+    | 'video_annotation_only'
+    | 'pose_with_annotation';
   confidence_threshold?: number;
 }
 
@@ -44,7 +48,11 @@ export interface AnalysisResponse {
 export interface TaskStatus {
   task_id: number;
   video_id: number;
-  analysis_type: 'pose_only' | 'ball_only' | 'video_annotation_only';
+  analysis_type:
+    | 'pose_only'
+    | 'ball_only'
+    | 'video_annotation_only'
+    | 'pose_with_annotation';
   status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   current_stage?: string;
@@ -96,7 +104,7 @@ class UnifiedAnalysisApi {
    */
   async getTaskStatus(taskId: number): Promise<TaskStatus> {
     const response = await analysisApi.get<TaskStatus>(
-      `/analysis/tasks/${taskId}`
+      `/analysis/status/${taskId}`
     );
     return response.data;
   }
@@ -164,6 +172,19 @@ class UnifiedAnalysisApi {
   ): Promise<AnalysisResponse> {
     return this.startAnalysis(videoId, {
       analysis_type: 'video_annotation_only',
+      confidence_threshold: confidenceThreshold,
+    });
+  }
+
+  /**
+   * Start pose detection with video annotation (recommended for pose analysis)
+   */
+  async startPoseWithAnnotation(
+    videoId: number,
+    confidenceThreshold: number = 0.5
+  ): Promise<AnalysisResponse> {
+    return this.startAnalysis(videoId, {
+      analysis_type: 'pose_with_annotation',
       confidence_threshold: confidenceThreshold,
     });
   }
