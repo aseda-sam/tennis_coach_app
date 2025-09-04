@@ -11,9 +11,9 @@ class TaskStatus(BaseModel):
 
     task_id: int = Field(description="Unique task identifier")
     video_id: int = Field(description="Video ID being analyzed")
-    analysis_type: Literal["pose_only", "ball_only", "video_annotation_only"] = Field(
-        description="Type of analysis being performed"
-    )
+    analysis_type: Literal[
+        "pose_only", "ball_only", "video_annotation_only", "pose_with_annotation"
+    ] = Field(description="Type of analysis being performed")
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
         description="Current task status"
     )
@@ -44,9 +44,9 @@ class TaskStartResponse(BaseModel):
 
     task_id: int = Field(description="Unique task identifier")
     video_id: int = Field(description="Video ID being analyzed")
-    analysis_type: Literal["pose_only", "ball_only", "video_annotation_only"] = Field(
-        description="Type of analysis being performed"
-    )
+    analysis_type: Literal[
+        "pose_only", "ball_only", "video_annotation_only", "pose_with_annotation"
+    ] = Field(description="Type of analysis being performed")
     status: Literal["queued"] = Field(description="Initial task status")
     message: str = Field(description="Confirmation message")
     estimated_duration: Optional[float] = Field(
@@ -77,9 +77,9 @@ class TaskStatsResponse(BaseModel):
 class AnalysisRequest(BaseModel):
     """Request model for starting analysis."""
 
-    analysis_type: Literal["pose_only", "ball_only", "video_annotation_only"] = Field(
-        description="Type of analysis to perform"
-    )
+    analysis_type: Literal[
+        "pose_only", "ball_only", "video_annotation_only", "pose_with_annotation"
+    ] = Field(description="Type of analysis to perform")
     confidence_threshold: float = Field(
         default=0.7, ge=0.0, le=1.0, description="YOLO confidence threshold"
     )
@@ -90,9 +90,9 @@ class AnalysisResponse(BaseModel):
 
     task_id: int = Field(description="Background task identifier")
     video_id: int = Field(description="Video ID being analyzed")
-    analysis_type: Literal["pose_only", "ball_only", "video_annotation_only"] = Field(
-        description="Type of analysis being performed"
-    )
+    analysis_type: Literal[
+        "pose_only", "ball_only", "video_annotation_only", "pose_with_annotation"
+    ] = Field(description="Type of analysis being performed")
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
         description="Current task status"
     )
