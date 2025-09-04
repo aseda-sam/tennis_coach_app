@@ -42,8 +42,8 @@ def calculate_elbow_angle(pose_landmarks: Dict) -> Optional[float]:
         if all([right_shoulder, right_elbow, right_wrist]):
             return _calculate_angle_between_points(
                 right_shoulder[:2],  # [x, y]
-                right_elbow[:2],     # [x, y]
-                right_wrist[:2]      # [x, y]
+                right_elbow[:2],  # [x, y]
+                right_wrist[:2],  # [x, y]
             )
 
         # Fallback to left arm if right arm not available
@@ -54,8 +54,8 @@ def calculate_elbow_angle(pose_landmarks: Dict) -> Optional[float]:
         if all([left_shoulder, left_elbow, left_wrist]):
             return _calculate_angle_between_points(
                 left_shoulder[:2],  # [x, y]
-                left_elbow[:2],     # [x, y]
-                left_wrist[:2]      # [x, y]
+                left_elbow[:2],  # [x, y]
+                left_wrist[:2],  # [x, y]
             )
 
         logger.warning("Insufficient keypoints for elbow angle calculation")
@@ -67,9 +67,7 @@ def calculate_elbow_angle(pose_landmarks: Dict) -> Optional[float]:
 
 
 def _calculate_angle_between_points(
-    point1: List[float],
-    point2: List[float],
-    point3: List[float]
+    point1: List[float], point2: List[float], point3: List[float]
 ) -> float:
     """
     Calculate angle between three points using vector math.
@@ -105,8 +103,7 @@ def _calculate_angle_between_points(
 
 
 def get_pose_at_contact(
-    ball_contact: BallContact,
-    pose_detection: PoseDetection
+    ball_contact: BallContact, pose_detection: PoseDetection
 ) -> Optional[Dict]:
     """
     Get pose data for the frame closest to ball contact timestamp.
@@ -152,10 +149,14 @@ def get_pose_at_contact(
                 if 0 <= frame_idx < len(raw_pose_data):
                     frame_data = raw_pose_data[frame_idx]
                     if frame_data is not None:
-                        logger.info(f"Using frame {frame_idx} (offset {offset * direction}) for contact at {ball_contact.video_timestamp}s")
+                        logger.info(
+                            f"Using frame {frame_idx} (offset {offset * direction}) for contact at {ball_contact.video_timestamp}s"
+                        )
                         return frame_data
 
-        logger.warning(f"No pose data found near timestamp {ball_contact.video_timestamp}s")
+        logger.warning(
+            f"No pose data found near timestamp {ball_contact.video_timestamp}s"
+        )
         return None
 
     except (json.JSONDecodeError, ValueError, KeyError) as e:
@@ -163,10 +164,7 @@ def get_pose_at_contact(
         return None
 
 
-def analyze_contact_posture(
-    db: Session,
-    ball_contact_id: int
-) -> Optional[float]:
+def analyze_contact_posture(db: Session, ball_contact_id: int) -> Optional[float]:
     """
     Analyze posture for a specific ball contact.
 
@@ -179,22 +177,28 @@ def analyze_contact_posture(
     """
     try:
         # Fetch ball contact
-        ball_contact = db.query(BallContact).filter(
-            BallContact.id == ball_contact_id
-        ).first()
+        ball_contact = (
+            db.query(BallContact).filter(BallContact.id == ball_contact_id).first()
+        )
 
         if not ball_contact:
             logger.error(f"Ball contact {ball_contact_id} not found")
             return None
 
         # Fetch pose detection for the same video
-        pose_detection = db.query(PoseDetection).filter(
-            PoseDetection.video_id == ball_contact.video_id,
-            PoseDetection.status == "completed"
-        ).first()
+        pose_detection = (
+            db.query(PoseDetection)
+            .filter(
+                PoseDetection.video_id == ball_contact.video_id,
+                PoseDetection.status == "completed",
+            )
+            .first()
+        )
 
         if not pose_detection:
-            logger.error(f"No completed pose detection found for video {ball_contact.video_id}")
+            logger.error(
+                f"No completed pose detection found for video {ball_contact.video_id}"
+            )
             return None
 
         # Get pose data at contact moment
@@ -208,9 +212,13 @@ def analyze_contact_posture(
         elbow_angle = calculate_elbow_angle(pose_landmarks)
 
         if elbow_angle is not None:
-            logger.info(f"Calculated elbow angle {elbow_angle:.1f}° for contact {ball_contact_id}")
+            logger.info(
+                f"Calculated elbow angle {elbow_angle:.1f}° for contact {ball_contact_id}"
+            )
         else:
-            logger.warning(f"Failed to calculate elbow angle for contact {ball_contact_id}")
+            logger.warning(
+                f"Failed to calculate elbow angle for contact {ball_contact_id}"
+            )
 
         return elbow_angle
 

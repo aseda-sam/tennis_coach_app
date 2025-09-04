@@ -25,8 +25,8 @@ def test_elbow_angle_calculation() -> bool:
     # Create synthetic pose landmarks (normalized coordinates 0-1)
     pose_landmarks = {
         "right_shoulder": [0.3, 0.2, 0.9],  # [x, y, confidence]
-        "right_elbow": [0.4, 0.4, 0.8],     # [x, y, confidence]
-        "right_wrist": [0.5, 0.6, 0.7],     # [x, y, confidence]
+        "right_elbow": [0.4, 0.4, 0.8],  # [x, y, confidence]
+        "right_wrist": [0.5, 0.6, 0.7],  # [x, y, confidence]
         "left_shoulder": [0.7, 0.2, 0.9],
         "left_elbow": [0.6, 0.4, 0.8],
         "left_wrist": [0.5, 0.6, 0.7],
@@ -134,8 +134,8 @@ def test_angle_calculation_accuracy() -> bool:
     # Test with a 90-degree angle (right angle)
     pose_landmarks = {
         "right_shoulder": [0.0, 0.0, 1.0],  # Origin
-        "right_elbow": [1.0, 0.0, 1.0],     # Point on x-axis
-        "right_wrist": [1.0, 1.0, 1.0],     # Point creating 90° angle
+        "right_elbow": [1.0, 0.0, 1.0],  # Point on x-axis
+        "right_wrist": [1.0, 1.0, 1.0],  # Point creating 90° angle
     }
 
     angle = calculate_elbow_angle(pose_landmarks)
