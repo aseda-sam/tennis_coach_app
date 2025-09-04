@@ -140,22 +140,23 @@ Complete the elbow angle analysis pipeline from backend storage to frontend disp
 #### 1. Data Model Updates
 
 **Add to BallContact model:**
+
 ```python
 class BallContact(Base):
     # ... existing fields ...
     elbow_angle = Column(Float, nullable=True)
-    analysis_status = Column(String(20), default="pending")  # pending, completed, failed
-    analyzed_at = Column(DateTime(timezone=True), nullable=True)
 ```
 
 #### 2. API Endpoints
 
 **Ball Contact Info:**
+
 ```
 GET /api/ball-contacts/{id} - Basic ball contact data
 ```
 
 **Posture Analysis:**
+
 ```
 GET /api/ball-contacts/{id}/posture-analysis - Elbow angle and analysis data
 POST /api/ball-contacts/{id}/analyze-posture - Trigger posture analysis
@@ -164,26 +165,30 @@ POST /api/ball-contacts/{id}/analyze-posture - Trigger posture analysis
 #### 3. Frontend Integration
 
 **Ball Contact Marker View:**
+
 - Display elbow angle when available
-- Show analysis status (pending/completed/failed)
 - Visual indicator for analyzed contacts
 
 **Analysis Sidebar:**
+
 - List of all ball contacts with their elbow angles
-- Sortable by angle, timestamp, or analysis status
+- Sortable by angle or timestamp
 - Click to jump to specific contact in video
 
 ### Implementation Steps
 
 1. **Database Schema Update**
-   - Add elbow_angle, analysis_status, analyzed_at columns to BallContact
+
+   - Add elbow_angle column to BallContact
    - Create migration script
 
 2. **Update Posture Analysis Service**
+
    - Modify analyze_contact_posture to store results in database
-   - Add status tracking and error handling
+   - Add error handling for failed analysis
 
 3. **Create API Endpoints**
+
    - POST /api/ball-contacts/{id}/analyze-posture
    - GET /api/ball-contacts/{id}/posture-analysis
    - Update existing ball contact endpoint
@@ -191,7 +196,6 @@ POST /api/ball-contacts/{id}/analyze-posture - Trigger posture analysis
 4. **Frontend Components**
    - Update ball contact marker to show elbow angle
    - Create analysis sidebar component
-   - Add analysis status indicators
 
 ### Success Criteria
 
@@ -200,14 +204,13 @@ POST /api/ball-contacts/{id}/analyze-posture - Trigger posture analysis
 - [ ] Frontend displays elbow angles in ball contact markers
 - [ ] Analysis sidebar shows list of all analyzed contacts
 - [ ] Users can trigger analysis from frontend
-- [ ] Analysis status is clearly indicated
 
 ## Phase 3: Additional Metrics (Future)
 
 ### Additional Posture Metrics
 
 - Shoulder alignment
-- Hip rotation  
+- Hip rotation
 - Wrist angle
 - Stance width
 - Racket head position
@@ -252,18 +255,22 @@ POST /api/ball-contacts/{id}/analyze-posture - Trigger posture analysis
 ### Phase 2 Files (TO CREATE)
 
 **Database:**
+
 - `backend/alembic/versions/add_posture_analysis_to_ball_contact.py` - Migration script
 
 **Backend:**
+
 - `backend/app/api/routes/posture_analysis.py` - New API endpoints
 - `backend/app/api/schemas/posture_analysis.py` - Pydantic schemas
 
 **Frontend:**
+
 - `frontend/src/components/PostureAnalysisSidebar.tsx` - Analysis sidebar
 - `frontend/src/components/BallContactMarker.tsx` - Updated marker component
 - `frontend/src/hooks/usePostureAnalysis.ts` - Analysis hook
 
 **Modified Files:**
+
 - `backend/app/models/ball_contact.py` - Add posture analysis columns
 - `backend/app/services/posture_analysis.py` - Add database storage
 - `frontend/src/components/VideoPlayer.tsx` - Integration with analysis sidebar
