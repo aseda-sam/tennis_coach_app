@@ -33,7 +33,9 @@ class BallContact(Base):
     detection_source = Column(
         String(20), nullable=False, default="manual"
     )  # 'automated' or 'manual'
-    elbow_angle = Column(Float, nullable=True)  # Posture analysis: elbow angle in degrees
+    elbow_angle = Column(
+        Float, nullable=True
+    )  # Posture analysis: elbow angle in degrees
 
     # Foreign key to video
     video_id = Column(
