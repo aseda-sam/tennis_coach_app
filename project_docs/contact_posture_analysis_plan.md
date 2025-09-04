@@ -17,13 +17,13 @@ Start with the simplest possible implementation: calculate elbow angle from pose
 ```python
 # app/services/posture_analysis.py (IMPLEMENTED)
 def calculate_elbow_angle(
-    pose_landmarks: Dict, 
-    contact_hand: str, 
+    pose_landmarks: Dict,
+    contact_hand: str,
     stroke_type: Optional[str] = None
 ) -> Optional[float]:
     """
     Calculate elbow angle from pose landmarks for the contact hand.
-    
+
     Features:
     - Uses actual contact hand (left/right) from ball contact data
     - Focuses on forehands only (single-handed strokes)
@@ -32,13 +32,13 @@ def calculate_elbow_angle(
     """
 
 def get_pose_at_contact(
-    ball_contact: BallContact, 
-    pose_detection: PoseDetection, 
+    ball_contact: BallContact,
+    pose_detection: PoseDetection,
     video: Video
 ) -> Optional[Dict]:
     """
     Get pose data for the frame closest to ball contact timestamp.
-    
+
     Features:
     - Uses actual video FPS for accurate frame calculation
     - Searches for nearest frame with pose data
@@ -48,7 +48,7 @@ def get_pose_at_contact(
 def analyze_contact_posture(db: Session, ball_contact_id: int) -> Optional[float]:
     """
     Analyze posture for a specific ball contact.
-    
+
     Features:
     - Fetches ball contact, video, and pose detection data
     - Uses contact hand and stroke type for analysis
@@ -107,6 +107,7 @@ def analyze_contact_posture(db: Session, ball_contact_id: int) -> Optional[float
 The minimal viable implementation has been successfully completed with the following features:
 
 #### Core Functionality
+
 - **Elbow Angle Calculation**: Accurate calculation using numpy vector math
 - **Contact Hand Detection**: Uses actual contact hand from ball contact data (left/right)
 - **Forehand Focus**: Constrains analysis to single-handed strokes only
@@ -114,34 +115,109 @@ The minimal viable implementation has been successfully completed with the follo
 - **Robust Error Handling**: Comprehensive validation and logging
 
 #### Key Improvements Made
+
 1. **Enhanced Accuracy**: Uses actual video FPS instead of hardcoded 30fps assumption
 2. **Player Agnostic**: Works for both left and right-handed players
 3. **Stroke Specific**: Focuses on forehands, ready for future backhand support
 4. **Real Data Testing**: Comprehensive testing with actual tennis video data
 
 #### Test Results
+
 - ✅ All tests passing with real video data
 - ✅ Accurate frame-to-timestamp conversion
 - ✅ Proper contact hand detection
 - ✅ Forehand constraint working correctly
 - ✅ Error handling for edge cases
 
-## Phase 2: Enhanced Analysis (Future)
+## Phase 2: End-to-End Elbow Angle Analysis
 
-### Additional Metrics
+### Goal
+
+Complete the elbow angle analysis pipeline from backend storage to frontend display, focusing on a single metric before expanding to additional posture measurements.
+
+### Core Components
+
+#### 1. Data Model Updates
+
+**Add to BallContact model:**
+```python
+class BallContact(Base):
+    # ... existing fields ...
+    elbow_angle = Column(Float, nullable=True)
+    analysis_status = Column(String(20), default="pending")  # pending, completed, failed
+    analyzed_at = Column(DateTime(timezone=True), nullable=True)
+```
+
+#### 2. API Endpoints
+
+**Ball Contact Info:**
+```
+GET /api/ball-contacts/{id} - Basic ball contact data
+```
+
+**Posture Analysis:**
+```
+GET /api/ball-contacts/{id}/posture-analysis - Elbow angle and analysis data
+POST /api/ball-contacts/{id}/analyze-posture - Trigger posture analysis
+```
+
+#### 3. Frontend Integration
+
+**Ball Contact Marker View:**
+- Display elbow angle when available
+- Show analysis status (pending/completed/failed)
+- Visual indicator for analyzed contacts
+
+**Analysis Sidebar:**
+- List of all ball contacts with their elbow angles
+- Sortable by angle, timestamp, or analysis status
+- Click to jump to specific contact in video
+
+### Implementation Steps
+
+1. **Database Schema Update**
+   - Add elbow_angle, analysis_status, analyzed_at columns to BallContact
+   - Create migration script
+
+2. **Update Posture Analysis Service**
+   - Modify analyze_contact_posture to store results in database
+   - Add status tracking and error handling
+
+3. **Create API Endpoints**
+   - POST /api/ball-contacts/{id}/analyze-posture
+   - GET /api/ball-contacts/{id}/posture-analysis
+   - Update existing ball contact endpoint
+
+4. **Frontend Components**
+   - Update ball contact marker to show elbow angle
+   - Create analysis sidebar component
+   - Add analysis status indicators
+
+### Success Criteria
+
+- [ ] Elbow angle stored in database after analysis
+- [ ] API endpoints return posture analysis data
+- [ ] Frontend displays elbow angles in ball contact markers
+- [ ] Analysis sidebar shows list of all analyzed contacts
+- [ ] Users can trigger analysis from frontend
+- [ ] Analysis status is clearly indicated
+
+## Phase 3: Additional Metrics (Future)
+
+### Additional Posture Metrics
 
 - Shoulder alignment
-- Hip rotation
+- Hip rotation  
 - Wrist angle
 - Stance width
+- Racket head position
 
 ### Advanced Features
 
-- Background task processing
-- Multiple posture metrics
+- Background task processing for batch analysis
 - Posture scoring system
-- Frontend visualization
-- Batch analysis for all contacts
+- Coaching recommendations
+- Historical analysis trends
 
 ## Technical Details
 
@@ -168,14 +244,29 @@ The minimal viable implementation has been successfully completed with the follo
 
 ## Files to Create/Modify
 
-### New Files (CREATED)
+### Phase 1 Files (COMPLETED)
 
 - ✅ `backend/app/services/posture_analysis.py` - Core analysis functions
 - ✅ `backend/test_real_posture_analysis.py` - Real data testing script
 
-### Modified Files
+### Phase 2 Files (TO CREATE)
 
-- ✅ None for MVP (kept it simple as planned!)
+**Database:**
+- `backend/alembic/versions/add_posture_analysis_to_ball_contact.py` - Migration script
+
+**Backend:**
+- `backend/app/api/routes/posture_analysis.py` - New API endpoints
+- `backend/app/api/schemas/posture_analysis.py` - Pydantic schemas
+
+**Frontend:**
+- `frontend/src/components/PostureAnalysisSidebar.tsx` - Analysis sidebar
+- `frontend/src/components/BallContactMarker.tsx` - Updated marker component
+- `frontend/src/hooks/usePostureAnalysis.ts` - Analysis hook
+
+**Modified Files:**
+- `backend/app/models/ball_contact.py` - Add posture analysis columns
+- `backend/app/services/posture_analysis.py` - Add database storage
+- `frontend/src/components/VideoPlayer.tsx` - Integration with analysis sidebar
 
 ## Testing Strategy
 
