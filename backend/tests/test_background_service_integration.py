@@ -58,10 +58,8 @@ class TestBackgroundServiceIntegration:
             BackgroundTaskService, "_run_pose_only_analysis"
         ) as mock_pose, patch.object(
             BackgroundTaskService, "_run_ball_only_analysis"
-        ) as mock_ball, patch.object(
-            BackgroundTaskService, "_run_comprehensive_analysis"
-        ) as mock_comp, patch(
-            "app.services.background_service.get_video_by_id", return_value=video
+        ) as mock_ball, patch(
+            "app.services.video_service.get_video_by_id", return_value=video
         ), patch("pathlib.Path.exists", return_value=True):
             # Setup mock return values
             mock_pose.return_value = {
@@ -71,11 +69,6 @@ class TestBackgroundServiceIntegration:
             mock_ball.return_value = {
                 "ball_detection_id": 1,
                 "analysis_type": "ball_only",
-            }
-            mock_comp.return_value = {
-                "pose_detection_id": 1,
-                "ball_detection_id": 2,
-                "analysis_type": "comprehensive",
             }
 
             # Create background service instance
@@ -90,12 +83,10 @@ class TestBackgroundServiceIntegration:
             )
             mock_pose.assert_called_once()
             mock_ball.assert_not_called()
-            mock_comp.assert_not_called()
 
             # Reset mocks
             mock_pose.reset_mock()
             mock_ball.reset_mock()
-            mock_comp.reset_mock()
 
             # Test ball_only routing
             bg_service._run_analysis_task(
@@ -106,12 +97,10 @@ class TestBackgroundServiceIntegration:
             )
             mock_ball.assert_called_once()
             mock_pose.assert_not_called()
-            mock_comp.assert_not_called()
 
             # Reset mocks
             mock_pose.reset_mock()
             mock_ball.reset_mock()
-            mock_comp.reset_mock()
 
             # Test video_annotation_only routing
             bg_service._run_analysis_task(

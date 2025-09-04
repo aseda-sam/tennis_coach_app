@@ -527,17 +527,11 @@ class BackgroundTaskService:
             )
 
             annotation_service = VideoAnnotationService()
-            annotation_results = annotation_service.create_annotated_video(
+            annotation_result = annotation_service.create_pose_annotation(
+                db=db,
                 video_id=video_id,
-                video_path=Path(video_path),
-                ball_detection_id=ball_detection.id if ball_detection else None,
                 pose_detection_id=pose_detection.id if pose_detection else None,
             )
-
-            if "error" in annotation_results:
-                raise RuntimeError(
-                    f"Video annotation failed: {annotation_results['error']}"
-                )
 
             # Update final progress
             update_task_progress(
@@ -552,8 +546,9 @@ class BackgroundTaskService:
                 "success": True,
                 "ball_detection_id": ball_detection.id if ball_detection else None,
                 "pose_detection_id": pose_detection.id if pose_detection else None,
-                "annotated_video_path": annotation_results.get("annotated_video_path"),
-                "message": "Video annotation completed successfully",
+                "video_annotation_id": annotation_result.id,
+                "annotated_video_path": annotation_result.annotated_video_path,
+                "analysis_type": "video_annotation_only",
             }
 
         except Exception as e:
