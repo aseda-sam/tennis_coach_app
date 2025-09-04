@@ -2,16 +2,6 @@
 
 React frontend for the tennis analysis system with video upload, playback, and analysis visualization capabilities.
 
-## Features
-
-- **Video Upload**: Drag-and-drop file upload with validation
-- **Video Library**: Browse and manage uploaded videos
-- **Video Playback**: HTML5 video player with controls and fullscreen
-- **Analysis Results**: Display ball detection and pose estimation metrics
-- **Annotated Videos**: Automatic playback of videos with AI overlays
-- **Responsive Design**: Works on desktop and mobile devices
-- **TypeScript**: Full type safety and IntelliSense support
-
 ## Quick Start
 
 ### Prerequisites
@@ -125,10 +115,23 @@ frontend/
 │   ├── App.css                     # App styles
 │   ├── index.tsx                   # App entry point
 │   └── index.css                   # Global styles
+├── docs/                          # Detailed documentation
+│   ├── components.md              # Component documentation
+│   └── api-integration.md         # How frontend talks to backend
 ├── package.json                    # Dependencies and scripts
 ├── tsconfig.json                   # TypeScript configuration
 └── README.md                      # This file
 ```
+
+## Features
+
+- **Video Upload**: Drag-and-drop file upload with validation
+- **Video Library**: Browse and manage uploaded videos
+- **Video Playback**: HTML5 video player with controls and fullscreen
+- **Analysis Results**: Display ball detection and pose estimation metrics
+- **Annotated Videos**: Automatic playback of videos with AI overlays
+- **Responsive Design**: Works on desktop and mobile devices
+- **TypeScript**: Full type safety and IntelliSense support
 
 ## Components Overview
 
@@ -371,6 +374,11 @@ REACT_APP_DEBUG=true npm start
 - Use appropriate video quality settings
 - Consider video compression for storage
 - Implement video caching strategies
+
+## Documentation
+
+- **[Component Guide](docs/components.md)** - Detailed component documentation
+- **[API Integration](docs/api-integration.md)** - How frontend communicates with backend
 
 ## Contributing
 
