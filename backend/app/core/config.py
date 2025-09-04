@@ -44,6 +44,17 @@ class Settings(BaseSettings):
     CONFIDENCE_THRESHOLD: float = 0.5
     BALL_CONFIDENCE_THRESHOLD: float = 0.7
 
+    # Pose Detection Configuration
+    POSE_DETECTION_CONFIDENCE: float = (
+        0.5  # Minimum detection confidence for pose estimation
+    )
+    POSE_TRACKING_CONFIDENCE: float = (
+        0.5  # Minimum tracking confidence for pose estimation
+    )
+    POSE_OVERALL_CONFIDENCE: float = (
+        0.8  # Overall confidence score for pose detection results
+    )
+
     # Ball Contact Detection
     BALL_CONTACT_TIMESTAMP_TOLERANCE: float = (
         0.1  # Tolerance in seconds for duplicate contact detection
