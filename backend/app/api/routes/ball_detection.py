@@ -73,7 +73,6 @@ async def analyze_video_ball_detection(
             video_id=video_id,
             analysis_type="ball_only",
             confidence_threshold=request.confidence_threshold,
-            include_pose_detection=False,
         )
 
         logger.info(

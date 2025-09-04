@@ -71,7 +71,6 @@ async def analyze_pose_detection(
             video_id=video_id,
             analysis_type="pose_only",
             confidence_threshold=request.confidence_threshold,
-            include_pose_detection=True,
         )
 
         return PoseDetectionStartResponse(
