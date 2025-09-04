@@ -15,10 +15,10 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models.ball_detection import BallDetection
 from app.models.pose_detection import PoseDetection
+from app.services import video_service
 from app.services.ball_detection import BallDetectionService
 from app.services.pose_detection import PoseDetectionService
 from app.services.video_annotation.annotation_service import VideoAnnotationService
-from app.services.video_service import get_video_by_id
 from app.utils.progress_utils import set_task_storage, update_task_progress
 
 logger = logging.getLogger(__name__)
@@ -130,7 +130,7 @@ class BackgroundTaskService:
             # Use proper database session management
             with get_background_db_session() as db:
                 # Get video info
-                video = get_video_by_id(db, video_id)
+                video = video_service.get_video_by_id(db, video_id)
                 if not video:
                     raise ValueError(f"Video {video_id} not found")
 

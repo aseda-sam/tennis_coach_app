@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.ball_detection import BallDetection
 from app.models.pose_detection import PoseDetection
 from app.models.video import Video
-from app.services.video_service import delete_video_with_analyses
+from app.services import video_service
 
 
 class TestVideoCascadeDeletion:
@@ -48,7 +48,7 @@ class TestVideoCascadeDeletion:
         assert pose_detection.video_id == video.id
 
         # Delete the video
-        success, filename, deleted_video_id = delete_video_with_analyses(
+        success, filename, deleted_video_id = video_service.delete_video_with_analyses(
             db_session, video.id
         )
 
@@ -105,7 +105,7 @@ class TestVideoCascadeDeletion:
         assert ball_detection.video_id == video.id
 
         # Delete the video
-        success, filename, deleted_video_id = delete_video_with_analyses(
+        success, filename, deleted_video_id = video_service.delete_video_with_analyses(
             db_session, video.id
         )
 
@@ -177,7 +177,7 @@ class TestVideoCascadeDeletion:
         assert ball_detection.id is not None
 
         # Delete the video
-        success, filename, deleted_video_id = delete_video_with_analyses(
+        success, filename, deleted_video_id = video_service.delete_video_with_analyses(
             db_session, video.id
         )
 
