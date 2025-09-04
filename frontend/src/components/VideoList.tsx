@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTaskStatus } from '../hooks/useTaskStatus';
 import { TaskStatus, videoApi } from '../services/api';
-import poseDetectionApi, {
-  PoseDetectionStartResponse,
-} from '../services/poseDetectionApi';
+import unifiedAnalysisApi, { AnalysisRequest } from '../services/unifiedAnalysisApi';
 import { VideoMetadata } from '../types/video';
 import {
   AnalyticsIcon,
@@ -192,37 +190,26 @@ const VideoList: React.FC<VideoListProps> = ({
       // Clear any previous error for a fresh start
       setError(null);
 
-      const response: PoseDetectionStartResponse =
-        await poseDetectionApi.startAnalysis(videoId, {
-          confidence_threshold: 0.5,
-          detection_threshold: 0.5,
-        });
+      const request: AnalysisRequest = {
+        analysis_type: 'pose_only',
+        confidence_threshold: 0.5,
+      };
 
-      if (response.status === 'completed' && response.pose_detection_id) {
-        // Pose detection completed immediately
-        setActivePoseTasks((prev) => {
-          const newMap = new Map(prev);
-          newMap.delete(videoId);
-          return newMap;
-        });
-        await loadVideos(); // Refresh to get the new pose detection
-      } else if (response.status === 'processing' && response.task_id) {
-        // Pose detection started in background - track the task
-        setActivePoseTasks(
-          (prev) =>
-            new Map(
-              prev.set(videoId, {
-                taskId: response.task_id as number,
-                progress: 0,
-                status: 'processing',
-              })
-            )
-        );
+      const response = await unifiedAnalysisApi.startAnalysis(videoId, request);
 
-        // Polling is now handled by useTaskStatus hook above
-      } else {
-        throw new Error(response.message || 'Failed to start pose detection');
-      }
+      // Analysis started in background - track the task
+      setActivePoseTasks(
+        (prev) =>
+          new Map(
+            prev.set(videoId, {
+              taskId: response.task_id,
+              progress: 0,
+              status: 'processing',
+            })
+          )
+      );
+
+      // Polling is now handled by useTaskStatus hook above
     } catch (err: any) {
       const errorMessage =
         err?.response?.data?.detail ||
