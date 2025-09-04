@@ -84,7 +84,7 @@ def test_with_real_data(video_id: int = 1) -> None:
             print(f"   Stroke: {contact.stroke_type}")
 
             # Test pose lookup
-            pose_landmarks = get_pose_at_contact(contact, pose_detection)
+            pose_landmarks = get_pose_at_contact(contact, pose_detection, video)
 
             if pose_landmarks:
                 print("   ✅ Found pose data at contact moment")
