@@ -91,7 +91,11 @@ def test_with_real_data(video_id: int = 1) -> None:
                 print(f"   Keypoints available: {list(pose_landmarks.keys())}")
 
                 # Test elbow angle calculation
-                elbow_angle = calculate_elbow_angle(pose_landmarks)
+                elbow_angle = calculate_elbow_angle(
+                    pose_landmarks,
+                    contact.contact_hand or "right",
+                    contact.stroke_type or "forehand",
+                )
 
                 if elbow_angle is not None:
                     print(f"   🎯 Elbow angle: {elbow_angle:.1f}°")

@@ -18,48 +18,60 @@ from app.models.pose_detection import PoseDetection
 logger = logging.getLogger(__name__)
 
 
-def calculate_elbow_angle(pose_landmarks: Dict) -> Optional[float]:
+def calculate_elbow_angle(
+    pose_landmarks: Dict, contact_hand: str, stroke_type: Optional[str] = None
+) -> Optional[float]:
     """
-    Calculate elbow angle from pose landmarks.
+    Calculate elbow angle from pose landmarks for the contact hand.
 
     Args:
         pose_landmarks: Dictionary with keypoint coordinates (x, y, confidence)
                        Expected format: {"left_elbow": [x, y, confidence], ...}
+        contact_hand: Which hand made contact ('left' or 'right')
+        stroke_type: Type of stroke (optional, for future use)
 
     Returns:
-        Elbow angle in degrees, or None if keypoints missing
+        Elbow angle in degrees, or None if keypoints missing or invalid stroke type
     """
     try:
-        # Extract keypoint coordinates
-        # For tennis, we'll use the dominant hand (right hand for most players)
-        # TODO: Make this configurable based on player's dominant hand
-
-        # Try right arm first (right-handed players)
-        right_shoulder = pose_landmarks.get("right_shoulder")
-        right_elbow = pose_landmarks.get("right_elbow")
-        right_wrist = pose_landmarks.get("right_wrist")
-
-        if all([right_shoulder, right_elbow, right_wrist]):
-            return _calculate_angle_between_points(
-                right_shoulder[:2],  # [x, y]
-                right_elbow[:2],  # [x, y]
-                right_wrist[:2],  # [x, y]
+        # For now, focus on forehands only (single-handed strokes)
+        # Backhands with both hands on racket are more complex and will be handled later
+        if stroke_type and stroke_type.lower() not in ["forehand", "ground_stroke"]:
+            logger.info(
+                f"Skipping elbow angle calculation for stroke type: {stroke_type}"
             )
+            return None
 
-        # Fallback to left arm if right arm not available
-        left_shoulder = pose_landmarks.get("left_shoulder")
-        left_elbow = pose_landmarks.get("left_elbow")
-        left_wrist = pose_landmarks.get("left_wrist")
-
-        if all([left_shoulder, left_elbow, left_wrist]):
-            return _calculate_angle_between_points(
-                left_shoulder[:2],  # [x, y]
-                left_elbow[:2],  # [x, y]
-                left_wrist[:2],  # [x, y]
+        # Validate contact hand
+        if contact_hand not in ["left", "right"]:
+            logger.warning(
+                f"Invalid contact hand: {contact_hand}. Expected 'left' or 'right'"
             )
+            return None
 
-        logger.warning("Insufficient keypoints for elbow angle calculation")
-        return None
+        # Extract keypoint coordinates for the contact hand
+        if contact_hand == "right":
+            shoulder = pose_landmarks.get("right_shoulder")
+            elbow = pose_landmarks.get("right_elbow")
+            wrist = pose_landmarks.get("right_wrist")
+        else:  # left
+            shoulder = pose_landmarks.get("left_shoulder")
+            elbow = pose_landmarks.get("left_elbow")
+            wrist = pose_landmarks.get("left_wrist")
+
+        # Check if all required keypoints are available
+        if not all([shoulder, elbow, wrist]):
+            logger.warning(
+                f"Insufficient keypoints for {contact_hand} arm elbow angle calculation"
+            )
+            return None
+
+        # Calculate elbow angle
+        return _calculate_angle_between_points(
+            shoulder[:2],  # [x, y]
+            elbow[:2],  # [x, y]
+            wrist[:2],  # [x, y]
+        )
 
     except (ValueError, KeyError, IndexError) as e:
         logger.error(f"Error calculating elbow angle: {e}")
@@ -208,16 +220,18 @@ def analyze_contact_posture(db: Session, ball_contact_id: int) -> Optional[float
             logger.error(f"No pose data found for contact {ball_contact_id}")
             return None
 
-        # Calculate elbow angle
-        elbow_angle = calculate_elbow_angle(pose_landmarks)
+        # Calculate elbow angle using contact hand and stroke type
+        elbow_angle = calculate_elbow_angle(
+            pose_landmarks, ball_contact.contact_hand, ball_contact.stroke_type
+        )
 
         if elbow_angle is not None:
             logger.info(
-                f"Calculated elbow angle {elbow_angle:.1f}° for contact {ball_contact_id}"
+                f"Calculated elbow angle {elbow_angle:.1f}° for {ball_contact.contact_hand}-handed {ball_contact.stroke_type or 'stroke'} contact {ball_contact_id}"
             )
         else:
             logger.warning(
-                f"Failed to calculate elbow angle for contact {ball_contact_id}"
+                f"Failed to calculate elbow angle for contact {ball_contact_id} (hand: {ball_contact.contact_hand}, stroke: {ball_contact.stroke_type})"
             )
 
         return elbow_angle
