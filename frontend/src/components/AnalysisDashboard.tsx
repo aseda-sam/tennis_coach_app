@@ -3,6 +3,7 @@ import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import './AnalysisDashboard.css';
 import VideoPlayer from './VideoPlayer';
+import AnalysisPanel from './AnalysisPanel';
 
 interface AnalysisDashboardProps {
   videoId: number;
@@ -65,9 +66,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     fetchAnalysisStatus();
   }, [videoId]);
 
-  // Remove legacy analysis system - we now use pose detection only
-  // const { analysisState, refreshAnalysis, cancelAnalysis, isLoading } = useAnalysisManager({...});
-  // const { analysis, status, progress, error } = analysisState;
+  // Analysis state for the new unified system
+  const [, setAnalysisResult] = useState<any>(null);
+  const [, setAnalysisError] = useState<string | null>(null);
 
   // Smart video URL selection: use annotated video if available, otherwise original
   const getVideoUrl = () => {
@@ -186,7 +187,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           </div>
         </div>
 
-        {/* Right Panel - Pose Detection Results */}
+        {/* Right Panel - Analysis Panel */}
         <div className="right-panel">
           <div className="analysis-status-section">
             {videoError ? (
@@ -200,29 +201,28 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   Reload Page
                 </button>
               </div>
-            ) : analysisStatus?.has_analysis ? (
-              <div className="analysis-results">
-                <h3>📊 Analysis Results</h3>
-                <div className="analysis-summary">
-                  <p>
-                    <strong>Analysis Types:</strong>{' '}
-                    {analysisStatus.analysis_types.join(', ')}
-                  </p>
-                  <p>
-                    <strong>Annotated Video:</strong>{' '}
-                    {analysisStatus.annotated_video_available
-                      ? 'Available'
-                      : 'Not Available'}
-                  </p>
-                </div>
-              </div>
             ) : (
-              <div className="analysis-empty">
-                <h3>📊 Analysis Results</h3>
-                <p>
-                  No analysis data available. Start an analysis to see results.
-                </p>
-              </div>
+              <AnalysisPanel
+                videoId={videoId}
+                onAnalysisComplete={(result) => {
+                  setAnalysisResult(result);
+                  setAnalysisError(null);
+                  // Refresh analysis status after completion
+                  const fetchAnalysisStatus = async () => {
+                    try {
+                      const status = await videoApi.getVideoAnalysisStatus(videoId);
+                      setAnalysisStatus(status);
+                    } catch (error) {
+                      console.debug('No analysis status available for video:', videoId);
+                    }
+                  };
+                  fetchAnalysisStatus();
+                }}
+                onAnalysisError={(error) => {
+                  setAnalysisError(error);
+                  setAnalysisResult(null);
+                }}
+              />
             )}
           </div>
         </div>

@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import { analysisApi, AnalysisData, AnalysisStartResponse, TaskStatus } from '../services/api';
-import { useTaskStatus } from './useTaskStatus';
+import { useCallback, useState } from 'react';
+import unifiedAnalysisApi, { AnalysisRequest } from '../services/unifiedAnalysisApi';
+import { useAnalysisProgress } from './useAnalysisProgress';
 
 interface AnalysisState {
   videoId: number;
-  analysis: AnalysisData | null;
   taskId: number | null;
-  status: 'idle' | 'starting' | 'processing' | 'finalizing' | 'completed' | 'failed' | 'cancelled';
+  status: 'idle' | 'starting' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   currentStage?: string;
   stageProgress?: number;
@@ -17,17 +16,13 @@ interface AnalysisState {
 interface UseAnalysisManagerOptions {
   videoId: number;
   autoRefresh?: boolean;
-  onAnalysisComplete?: (analysis: AnalysisData) => void;
+  onAnalysisComplete?: (result: any) => void;
   onAnalysisError?: (error: string) => void;
 }
 
 interface UseAnalysisManagerResult {
   analysisState: AnalysisState;
-  startAnalysis: (analysisRequest: {
-    analysis_type: string;
-    confidence_threshold?: number;
-    include_pose_detection?: boolean;
-  }) => Promise<void>;
+  startAnalysis: (analysisRequest: AnalysisRequest) => Promise<void>;
   refreshAnalysis: () => Promise<void>;
   cancelAnalysis: () => Promise<void>;
   isLoading: boolean;
@@ -41,89 +36,50 @@ export const useAnalysisManager = ({
 }: UseAnalysisManagerOptions): UseAnalysisManagerResult => {
   const [analysisState, setAnalysisState] = useState<AnalysisState>({
     videoId,
-    analysis: null,
     taskId: null,
     status: 'idle',
     progress: 0,
     error: null,
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
-  // Task status polling hook
-           const {
-           taskStatus,
-           loading: taskLoading,
-         } = useTaskStatus({
-    taskId: analysisState.taskId,
-    pollInterval: 2000,
-    autoStop: true,
-    onComplete: (completedTask: TaskStatus) => {
-      // Task completed, refresh analysis data
-      refreshAnalysis();
+  // Use the new unified analysis progress hook
+  const { startPolling, stopPolling, isPolling } = useAnalysisProgress({
+    onComplete: (progress) => {
+      setAnalysisState(prev => ({
+        ...prev,
+        status: 'completed',
+        progress: 100,
+        taskId: null,
+        error: null,
+      }));
+      onAnalysisComplete?.(progress.result);
     },
-    onError: (error: string) => {
+    onError: (error) => {
       setAnalysisState(prev => ({
         ...prev,
         status: 'failed',
         error,
         progress: 0,
+        taskId: null,
       }));
-      if (onAnalysisError) {
-        onAnalysisError(error);
-      }
+      onAnalysisError?.(error);
+    },
+    onProgress: (progress) => {
+      setAnalysisState(prev => ({
+        ...prev,
+        status: progress.status as AnalysisState['status'],
+        progress: progress.progress,
+        currentStage: progress.currentStage,
+        stageProgress: progress.stageProgress,
+        stageMessage: progress.stageMessage,
+        error: null,
+      }));
     },
   });
 
-  // Function to load existing analysis
-  const loadAnalysis = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const analysis = await analysisApi.getAnalysisByVideo(videoId);
-      setAnalysisState(prev => ({
-        ...prev,
-        analysis,
-        status: 'completed',
-        progress: 100,
-        error: null,
-      }));
-    } catch (err: any) {
-      // Analysis not found or other error - this is normal for videos without analysis
-      setAnalysisState(prev => ({
-        ...prev,
-        analysis: null,
-        status: 'idle',
-        progress: 0,
-        error: null,
-      }));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [videoId]);
-
-  // Update analysis state when task status changes
-  useEffect(() => {
-    if (taskStatus && analysisState.taskId) {
-      setAnalysisState(prev => ({
-        ...prev,
-        progress: taskStatus.progress,
-        currentStage: taskStatus.current_stage || undefined,
-        stageProgress: taskStatus.stage_progress || undefined,
-        stageMessage: taskStatus.stage_message || undefined,
-      }));
-    }
-  }, [taskStatus, analysisState.taskId]);
-
-  // Function to refresh analysis data
-  const refreshAnalysis = useCallback(async () => {
-    await loadAnalysis();
-  }, [loadAnalysis]);
-
-  // Function to start analysis
-  const startAnalysis = useCallback(async (analysisRequest: {
-    analysis_type: string;
-    confidence_threshold?: number;
-    include_pose_detection?: boolean;
-  }) => {
+  // Function to start analysis using the new unified API
+  const startAnalysis = useCallback(async (analysisRequest: AnalysisRequest) => {
     try {
       setAnalysisState(prev => ({
         ...prev,
@@ -132,34 +88,17 @@ export const useAnalysisManager = ({
         error: null,
       }));
 
-      const response: AnalysisStartResponse = await analysisApi.startAnalysis(videoId, analysisRequest);
+      const response = await unifiedAnalysisApi.startAnalysis(videoId, analysisRequest);
       
-      if (response.status === 'completed' && response.analysis_id) {
-        // Analysis completed immediately (synchronous mode)
-        setAnalysisState(prev => ({
-          ...prev,
-          status: 'completed',
-          progress: 100,
-          taskId: null,
-        }));
-        
-        // Load the completed analysis
-        await refreshAnalysis();
-        
-        if (onAnalysisComplete && analysisState.analysis) {
-          onAnalysisComplete(analysisState.analysis);
-        }
-      } else if (response.status === 'processing' && response.task_id) {
-        // Analysis started in background
-        setAnalysisState(prev => ({
-          ...prev,
-          status: 'processing',
-          progress: 0,
-          taskId: response.task_id,
-        }));
-      } else {
-        throw new Error(response.message || 'Failed to start analysis');
-      }
+      setAnalysisState(prev => ({
+        ...prev,
+        status: 'processing',
+        progress: 0,
+        taskId: response.task_id,
+      }));
+
+      // Start polling for progress
+      startPolling(response.task_id);
     } catch (err: any) {
       const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to start analysis';
       setAnalysisState(prev => ({
@@ -167,20 +106,22 @@ export const useAnalysisManager = ({
         status: 'failed',
         error: errorMessage,
         progress: 0,
+        taskId: null,
       }));
       
       if (onAnalysisError) {
         onAnalysisError(errorMessage);
       }
     }
-  }, [videoId, refreshAnalysis, onAnalysisComplete, onAnalysisError, analysisState.analysis]);
+  }, [videoId, startPolling, onAnalysisError]);
 
   // Function to cancel analysis
   const cancelAnalysis = useCallback(async () => {
     if (!analysisState.taskId) return;
 
     try {
-      await analysisApi.cancelTask(analysisState.taskId);
+      await unifiedAnalysisApi.cancelTask(analysisState.taskId);
+      stopPolling();
       setAnalysisState(prev => ({
         ...prev,
         status: 'cancelled',
@@ -194,32 +135,26 @@ export const useAnalysisManager = ({
         error: errorMessage,
       }));
     }
-  }, [analysisState.taskId]);
+  }, [analysisState.taskId, stopPolling]);
 
-  // Update analysis state based on task status
-  useEffect(() => {
-    if (taskStatus) {
-      setAnalysisState(prev => ({
-        ...prev,
-        status: taskStatus.status as AnalysisState['status'],
-        progress: taskStatus.progress,
-        error: taskStatus.error,
-      }));
-    }
-  }, [taskStatus]);
-
-  // Load analysis on mount and when videoId changes
-  useEffect(() => {
-    if (autoRefresh) {
-      loadAnalysis();
-    }
-  }, [videoId, autoRefresh, loadAnalysis]);
+  // Function to refresh analysis data (placeholder for now)
+  const refreshAnalysis = useCallback(async () => {
+    // For now, just reset to idle state
+    // In the future, we could check for existing analysis results
+    setAnalysisState(prev => ({
+      ...prev,
+      status: 'idle',
+      progress: 0,
+      error: null,
+      taskId: null,
+    }));
+  }, []);
 
   return {
     analysisState,
     startAnalysis,
     refreshAnalysis,
     cancelAnalysis,
-    isLoading: isLoading || taskLoading,
+    isLoading: isLoading || isPolling,
   };
 };

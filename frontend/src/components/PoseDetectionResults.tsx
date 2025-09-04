@@ -1,6 +1,29 @@
 import React from 'react';
-import { PoseDetectionInfo } from '../services/poseDetectionApi';
 import './AnalysisResults.css';
+
+// Define the pose detection info interface locally since we removed the old API
+interface PoseDetectionInfo {
+  id: number;
+  video_id: number;
+  status: string;
+  error_message?: string;
+  created_at: string;
+  completed_at?: string;
+  metrics: {
+    total_frames: number;
+    frames_with_poses: number;
+    detection_rate: number;
+    total_pose_detections: number;
+    average_pose_confidence?: number;
+    min_pose_confidence?: number;
+    max_pose_confidence?: number;
+    pose_stability_score?: number;
+    confidence_threshold: number;
+    detection_threshold: number;
+    processing_time_seconds: number;
+    frame_processing_rate?: number;
+  };
+}
 
 interface PoseDetectionResultsProps {
   poseDetection: PoseDetectionInfo | null;
