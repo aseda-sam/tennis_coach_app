@@ -194,7 +194,7 @@ async def stream_annotated_video(
             annotated_filename = annotated_path.name
             logger.info(f"Using video annotation: {annotated_filename}")
         else:
-            # Fallback to legacy system - handle cases where filename has suffixes
+            # Handle cases where filename has suffixes
             # like _2, _3
             base_name = Path(db_video.filename).stem
             processed_dir = Path(settings.PROCESSED_DIR)

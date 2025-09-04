@@ -91,7 +91,7 @@ class PoseDetectionService:
         detection_threshold: Optional[float] = None,
     ) -> Dict[str, any]:
         """
-        Detect poses in a batch of frames with comprehensive metrics.
+        Detect poses in a batch of frames with detailed metrics.
 
         Args:
             frames: List of frame arrays
@@ -219,7 +219,7 @@ class PoseDetectionService:
             max_frames: Maximum number of frames to process
 
         Returns:
-            Dictionary containing comprehensive pose detection results
+            Dictionary containing detailed pose detection results
         """
         start_time = time.time()
         logger.info(f"Starting pose detection analysis for: {video_path}")

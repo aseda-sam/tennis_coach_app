@@ -1,7 +1,7 @@
 """
 Video quality assessment service.
 
-This service provides comprehensive video quality assessment functionality,
+This service provides detailed video quality assessment functionality,
 optimized for different use cases (quick upload assessment vs detailed analysis).
 """
 
@@ -68,7 +68,7 @@ class VideoQualityService:
         """
         Perform detailed quality assessment on provided frames.
 
-        Used for comprehensive analysis where frames are already extracted.
+        Used for detailed analysis where frames are already extracted.
 
         Args:
             frames: List of video frames to analyze
