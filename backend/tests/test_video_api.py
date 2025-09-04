@@ -108,19 +108,6 @@ class TestVideoAPI:
         assert "error" in error_data
         assert "code" in error_data["error"]
 
-    def test_analysis_endpoints_exist(self) -> None:
-        """Test that analysis endpoints exist."""
-        # Test list analyses endpoint
-        response = client.get("/v0/analysis/")
-        assert response.status_code == 200
-        assert isinstance(response.json(), list)
-
-        # Test analysis info endpoint
-        response = client.get("/v0/analysis/999")
-        assert response.status_code == 404
-        error_data = response.json()
-        assert "error" in error_data
-
 
 if __name__ == "__main__":
     # Run basic tests

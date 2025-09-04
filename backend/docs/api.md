@@ -1,6 +1,6 @@
 # API Reference
 
-> **Note**: For complete, interactive API documentation, visit the Swagger UI at http://localhost:8000/docs when the backend server is running.
+> **Note**: For interactive API documentation, visit http://localhost:8000/docs when the backend server is running.
 
 ## Overview
 
@@ -391,11 +391,11 @@ The API includes custom headers for monitoring and debugging:
 
 ## Production Deployment
 
-For production deployment information, see the [Deployment Guide](deployment_guide.md).
+For production deployment information, see the [Deployment Guide](deployment.md).
 
 ## Support
 
 - **API Issues**: Check the Swagger UI for detailed error responses
-- **Development**: See [backend README](../backend/README.md) for setup and troubleshooting
-- **Deployment**: See [deployment guide](deployment_guide.md) for production setup
+- **Development**: See [backend README](../README.md) for setup and troubleshooting
+- **Deployment**: See [deployment guide](deployment.md) for production setup
 - **Testing**: Comprehensive integration tests available in `backend/tests/test_integration.py`

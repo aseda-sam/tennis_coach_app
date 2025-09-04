@@ -105,6 +105,20 @@ export const videoApi = {
   streamAnnotatedVideo: async (videoId: number): Promise<string> => {
     return `${API_BASE_URL}/videos/${videoId}/annotated/stream`;
   },
+
+  // Check video analysis status
+  getVideoAnalysisStatus: async (
+    videoId: number
+  ): Promise<{
+    video_id: number;
+    has_analysis: boolean;
+    has_annotated_video: boolean;
+    analysis_types: string[];
+    annotated_video_available: boolean;
+  }> => {
+    const response = await api.get(`/videos/${videoId}/analysis-status`);
+    return response.data;
+  },
 };
 
 // Updated to match backend AnalysisStartResponse
@@ -226,15 +240,13 @@ export const analysisApi = {
   // New methods for task status tracking
   // Get task status by task ID
   getTaskStatus: async (taskId: number): Promise<TaskStatus> => {
-    const response = await api.get<TaskStatus>(
-      `/analysis/tasks/${taskId}/status`
-    );
+    const response = await api.get<TaskStatus>(`/analysis/status/${taskId}`);
     return response.data;
   },
 
   // Get all active tasks
   getAllTasks: async (): Promise<TaskListResponse> => {
-    const response = await api.get<TaskListResponse>('/analysis/tasks/');
+    const response = await api.get<TaskListResponse>('/analysis/tasks');
     return response.data;
   },
 
