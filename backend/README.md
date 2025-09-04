@@ -332,6 +332,7 @@ uvicorn app.main:app --reload --log-level debug
 - **[Database Schema](docs/database.md)** - Database models and relationships
 - **[Configuration Guide](docs/configuration.md)** - Environment variables and settings
 - **[Deployment Guide](docs/deployment.md)** - Production deployment
+- **[Background Tasks](docs/background-tasks.md)** - Background task system and Redis migration plan
 
 ## Contributing
 
