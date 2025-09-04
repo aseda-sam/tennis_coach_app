@@ -23,14 +23,8 @@ from app.api.schemas.video import (
 )
 from app.core.config import settings
 from app.core.database import get_db
+from app.services import video_service
 from app.services.video_quality import VideoQualityService
-from app.services.video_service import (
-    create_video_record,
-    delete_video_with_analyses,
-    get_all_videos,
-    get_video_by_id,
-    update_video_quality,
-)
 from app.utils.error_handling import (
     handle_file_error,
     handle_not_found_error,
@@ -98,7 +92,7 @@ async def list_videos(
     Returns a paginated list of videos with basic information.
     """
     try:
-        db_videos = get_all_videos(db)
+        db_videos = video_service.get_all_videos(db)
 
         # Apply pagination
         start_idx = (pagination.page - 1) * pagination.size
@@ -122,7 +116,7 @@ async def get_video(video_id: int, db: Session = Depends(get_db)) -> VideoInfo:
         Complete video information including metadata
     """
     try:
-        db_video = get_video_by_id(db, video_id)
+        db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
@@ -144,7 +138,7 @@ async def stream_video(video_id: int, db: Session = Depends(get_db)) -> FileResp
     """
     try:
         # Get video from database
-        db_video = get_video_by_id(db, video_id)
+        db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
@@ -179,7 +173,7 @@ async def stream_annotated_video(
     """
     try:
         # Get video from database
-        db_video = get_video_by_id(db, video_id)
+        db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
@@ -263,7 +257,7 @@ async def get_video_analysis_status(
     """
     try:
         # Verify video exists
-        db_video = get_video_by_id(db, video_id)
+        db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
@@ -332,7 +326,9 @@ async def delete_video(
     """
     try:
         # Use service function to handle all deletion logic
-        success, filename, deleted_video_id = delete_video_with_analyses(db, video_id)
+        success, filename, deleted_video_id = video_service.delete_video_with_analyses(
+            db, video_id
+        )
 
         if not success:
             raise handle_file_error("delete_failed", filename, "Video deletion failed")
@@ -403,7 +399,7 @@ async def upload_video(
         validate_video_file(file.filename, file_size, file.content_type, metadata_dict)
 
         # Save to database
-        db_video = create_video_record(
+        db_video = video_service.create_video_record(
             db=db,
             filename=unique_filename,
             file_path=str(file_path),
@@ -424,7 +420,7 @@ async def upload_video(
             quality_metrics = quality_service.quick_assess(file_path)
 
             # Update video record with quality metrics
-            update_video_quality(
+            video_service.update_video_quality(
                 db=db,
                 video_id=db_video.id,
                 quality_score=quality_metrics["quality_score"],
@@ -489,7 +485,7 @@ async def assess_video_quality(
     """
     try:
         # Get video from database
-        db_video = get_video_by_id(db, video_id)
+        db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise HTTPException(status_code=404, detail=f"Video {video_id} not found")
 
@@ -507,7 +503,7 @@ async def assess_video_quality(
         assessment_time = time.time() - assessment_start
 
         # Update video record with quality metrics
-        update_video_quality(
+        video_service.update_video_quality(
             db=db,
             video_id=video_id,
             quality_score=quality_metrics["quality_score"],

@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import (
+    analysis,
     ball_contacts,
     ball_detection,
     pose_detection,
@@ -142,6 +143,15 @@ app.include_router(
     },
 )
 
+app.include_router(
+    analysis.router,
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"},
+    },
+)
+
 # Mount static files for processed videos
 processed_videos_dir = Path("data/videos/processed")
 if processed_videos_dir.exists():
@@ -180,7 +190,7 @@ async def api_info() -> dict[str, str]:
         "version": "0.1.0",
         "status": "alpha",
         "warning": "This API is in alpha stage. Breaking changes may occur without notice.",
-        "endpoints": "videos: /v0/videos, ball-contacts: /v0/ball-contacts, video-quality: /v0/video-quality, ball-detection: /v0/ball-detection, pose-detection: /v0/pose-detection",
+        "endpoints": "videos: /v0/videos, ball-contacts: /v0/ball-contacts, video-quality: /v0/video-quality, ball-detection: /v0/ball-detection, pose-detection: /v0/pose-detection, analysis: /v0/analysis",
     }
 
 

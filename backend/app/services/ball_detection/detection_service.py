@@ -27,7 +27,6 @@ class BallDetectionService:
     def __init__(self) -> None:
         """Initialize the ball detection service."""
         self.yolo_models = {}
-        self.logger = logger
         self._initialize_yolo_models()
 
     def _initialize_yolo_models(self) -> None:
@@ -46,27 +45,25 @@ class BallDetectionService:
 
             for model_name, model_path in models_to_try:
                 try:
-                    self.logger.info(f"Loading YOLO model: {model_name} ({model_path})")
+                    logger.info(f"Loading YOLO model: {model_name} ({model_path})")
                     self.yolo_models[model_name] = YOLO(model_path)
-                    self.logger.info(f"Successfully loaded YOLO model: {model_name}")
+                    logger.info(f"Successfully loaded YOLO model: {model_name}")
                 except (OSError, RuntimeError, ImportError) as e:
-                    self.logger.warning(f"Failed to load YOLO model {model_name}: {e}")
+                    logger.warning(f"Failed to load YOLO model {model_name}: {e}")
                     continue
 
             if self.yolo_models:
-                self.logger.info(
-                    f"Loaded {len(self.yolo_models)} YOLO models successfully"
-                )
+                logger.info(f"Loaded {len(self.yolo_models)} YOLO models successfully")
             else:
-                self.logger.error("No YOLO models could be loaded")
+                logger.error("No YOLO models could be loaded")
 
         except ImportError as e:
-            self.logger.error(f"Failed to import ultralytics: {e}")
+            logger.error(f"Failed to import ultralytics: {e}")
         except (OSError, RuntimeError) as e:
-            self.logger.error(f"Unexpected error during model initialization: {e}")
+            logger.error(f"Unexpected error during model initialization: {e}")
 
         elapsed_time = time.time() - start_time
-        self.logger.info(f"YOLO model initialization completed in {elapsed_time:.3f}s")
+        logger.info(f"YOLO model initialization completed in {elapsed_time:.3f}s")
 
     def _select_yolo_model(self, video_quality_level: Optional[str] = None) -> str:
         """
@@ -79,6 +76,7 @@ class BallDetectionService:
             Selected model name
         """
         if not self.yolo_models:
+            logger.error("No YOLO models available for ball detection")
             raise RuntimeError("No YOLO models available for ball detection")
 
         if not video_quality_level or video_quality_level == "unknown":

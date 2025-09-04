@@ -13,8 +13,8 @@ from app.api.schemas.ball_detection import (
 )
 from app.core.database import get_db
 from app.models.ball_detection import BallDetection
+from app.services import video_service
 from app.services.ball_detection import BallDetectionService
-from app.services.video_service import get_video_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ async def analyze_video_ball_detection(
     """
     try:
         # Verify video exists
-        video = get_video_by_id(db, video_id)
+        video = video_service.get_video_by_id(db, video_id)
         if not video:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -112,7 +112,7 @@ async def get_ball_detection_results(
     """
     try:
         # Verify video exists
-        video = get_video_by_id(db, video_id)
+        video = video_service.get_video_by_id(db, video_id)
         if not video:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
