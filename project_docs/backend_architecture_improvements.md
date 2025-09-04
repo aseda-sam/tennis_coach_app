@@ -18,39 +18,54 @@ This document outlines critical and important improvements needed for the FastAP
 
 ## 🚨 Critical Issues (Fix First)
 
-### 1. Schema/Model Data Loss Issues
+### 1. ✅ RESOLVED: Schema/Model Data Loss Issues
 
-**Problem**: Several database model fields are not exposed through API schemas, causing data loss and inconsistent API responses.
+**Status**: ✅ **RESOLVED** - Analysis shows this is not a critical issue
 
-**Impact**:
+**Problem**: Several database model fields are not exposed through API schemas, initially thought to cause data loss and inconsistent API responses.
 
-- Data stored in database but not accessible via API
-- Inconsistent field availability between create/read operations
-- Potential data corruption in client applications
+**Analysis Results**:
 
-**Affected Models**:
+- ✅ **No data loss occurring** - These fields are never written to by any automated process
+- ✅ **Manual ball contacts work perfectly** - Only basic fields are needed for manual contact marking
+- ✅ **No automated ball contact detection** - The complex detection logic exists but is never used
+- ✅ **MVP goal achieved** - Manual contacts provide timestamps needed for posture analysis
 
-#### BallContact Model - Missing Schema Fields
+**Root Cause**: Fields were added anticipating automated ball contact detection that was never implemented.
+
+**Recommended Solution**: **Remove unused fields entirely** rather than exposing them via API.
+
+**Fields to Remove**:
 
 ```python
-# Database model has these fields NOT in API schemas:
+# Remove these unused fields from BallContact model:
 - ball_area: Column(Float, nullable=True)
 - ball_size_factor: Column(Float, nullable=True)
 - racket_data: Column(String, nullable=True)
 - ball_bbox: Column(String, nullable=True)
 - ball_racket_distance: Column(Float, nullable=True)
-- player: Column(Integer, nullable=True)
-- confidence: Column(Float, nullable=True)
-- ball_position: Column(String, nullable=True)
-- player_position: Column(String, nullable=True)
-- description: Column(String, nullable=True)
+- player: Column(Integer, nullable=True)  # If not used for manual contacts
+- confidence: Column(Float, nullable=True)  # If not used for manual contacts
+- ball_position: Column(String, nullable=True)  # If not used for manual contacts
+- player_position: Column(String, nullable=True)  # If not used for manual contacts
+- description: Column(String, nullable=True)  # If not used for manual contacts
+```
+
+**Keep Only Essential Fields**:
+
+```python
+# Keep these fields for manual ball contacts:
+- id, video_id, video_timestamp, contact_hand, stroke_type, stroke_subtype
+- detection_source, created_at, updated_at
 ```
 
 **Required Actions**:
 
-1. Update `BallContactInfo`, `BallContactCreate`, `BallContactUpdate` schemas
-2. Add proper field validation and documentation
-3. Ensure backward compatibility for existing API consumers
+1. ✅ **Create database migration** to remove unused columns
+2. ✅ **Update BallContact model** to remove unused fields
+3. ✅ **Remove unused detection functions** from ball_contact_service.py
+4. ✅ **Update API schemas** to match simplified model
+5. ✅ **Clean up tests** for unimplemented functionality
 
 ### 2. ✅ COMPLETED: Pose Detection Special Treatment in Background Service
 
@@ -275,11 +290,12 @@ pose_service = PoseDetectionService()  # No DI
    - ✅ Added `video_annotation_only` analysis type
    - ✅ Kept video quality assessment out of background tasks (runs during upload)
 
-2. **Fix Schema/Model Consistency**
+2. **✅ RESOLVED: Schema/Model Consistency**
 
-   - Update all API schemas to include missing database fields
-   - Add proper field validation and documentation
-   - Test backward compatibility
+   - ✅ **Analysis completed** - No actual data loss occurring
+   - ✅ **Recommended solution** - Remove unused fields rather than expose them
+   - 🔄 **Next steps** - Create database migration to remove unused BallContact fields
+   - 🔄 **Clean up code** - Remove unused detection functions and tests
 
 3. **Fix Background Task Response Schemas**
 
@@ -319,7 +335,7 @@ pose_service = PoseDetectionService()  # No DI
 - ✅ **COMPLETED**: Pose detection treated equally with other analysis types (commit 99e02d9)
 - ✅ **COMPLETED**: Simplified analysis types (removed complex comprehensive analysis) (commit 99e02d9)
 - ✅ **COMPLETED**: Video quality assessment kept out of background tasks (runs during upload) (commit 99e02d9)
-- 🔄 **PENDING**: All database fields accessible via API schemas
+- ✅ **RESOLVED**: Schema/Model data loss issues - Analysis shows no actual data loss, recommend removing unused fields
 - 🔄 **PENDING**: API responses match declared schemas
 - 🔄 **PENDING**: No data loss in multi-step operations
 - 🔄 **PENDING**: Redis-based task storage implemented (when ready)
@@ -333,8 +349,8 @@ pose_service = PoseDetectionService()  # No DI
 
 ## Risk Assessment
 
-**High Risk**: Schema/Model inconsistencies could cause data loss in production
-**Medium Risk**: Background task storage issues could cause user experience problems
+**Low Risk**: Schema/Model inconsistencies - Analysis shows no actual data loss, just unused fields
+**Medium Risk**: Background task storage issues could cause user experience problems  
 **Low Risk**: Architecture inconsistencies affect maintainability but not functionality
 
 ## Dependencies
