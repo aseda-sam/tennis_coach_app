@@ -23,7 +23,7 @@ class VideoAnnotation(Base):
     # Annotation metadata
     annotation_type = Column(
         String(50), nullable=False
-    )  # 'pose_only', 'ball_only', 'comprehensive', etc.
+    )  # 'pose_only', 'ball_only', 'video_annotation_only', etc.
     annotated_video_path = Column(
         String, nullable=False
     )  # Path to annotated video file

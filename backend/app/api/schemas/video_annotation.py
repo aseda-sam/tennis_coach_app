@@ -42,7 +42,7 @@ class VideoAnnotationInfo(BaseModel):
         None, description="Source pose detection ID"
     )
     # ball_detection_id: Optional[int] = Field(None, description="Source ball detection ID")  # Future
-    analysis_id: Optional[int] = Field(None, description="Source legacy analysis ID")
+    analysis_id: Optional[int] = Field(None, description="Source analysis ID")
 
     # Processing metadata
     processing_time_seconds: float = Field(

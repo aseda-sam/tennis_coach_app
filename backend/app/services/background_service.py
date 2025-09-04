@@ -239,7 +239,7 @@ class BackgroundTaskService:
                     _active_tasks[task_id]["error"] = str(e)
                     _active_tasks[task_id]["completed_at"] = datetime.now()
 
-            # No need to update database status since we're not using legacy Analysis records
+            # Update task progress to completion
 
     def get_task_status(self, task_id: int) -> Optional[Dict[str, Any]]:
         """Get the status of a background task."""
@@ -391,7 +391,7 @@ class BackgroundTaskService:
 
             # Update progress
             update_task_progress(
-                task_id, "pose_detection", 80, "Creating legacy analysis record", 90
+                task_id, "pose_detection", 80, "Saving pose detection results", 90
             )
 
             logger.info(f"Task {task_id}: Pose-only analysis completed successfully")
@@ -454,7 +454,7 @@ class BackgroundTaskService:
 
             # Update progress
             update_task_progress(
-                task_id, "ball_detection", 80, "Creating legacy analysis record", 90
+                task_id, "ball_detection", 80, "Saving ball detection results", 90
             )
 
             logger.info(f"Task {task_id}: Ball-only analysis completed successfully")
