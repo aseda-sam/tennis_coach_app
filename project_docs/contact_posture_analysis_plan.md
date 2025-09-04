@@ -149,17 +149,21 @@ class BallContact(Base):
 
 #### 2. API Endpoints
 
-**Ball Contact Info:**
+**Existing Ball Contact Endpoints (already implemented):**
 
 ```
-GET /api/ball-contacts/{id} - Basic ball contact data
+GET /v0/ball-contacts/{ball_contact_id} - Get ball contact info
+GET /v0/ball-contacts/video/{video_id} - Get all ball contacts for video
+POST /v0/ball-contacts/ - Create ball contact
+PUT /v0/ball-contacts/{ball_contact_id} - Update ball contact
+DELETE /v0/ball-contacts/{ball_contact_id} - Delete ball contact
 ```
 
-**Posture Analysis:**
+**New Posture Analysis Endpoints (to be added):**
 
 ```
-GET /api/ball-contacts/{id}/posture-analysis - Elbow angle and analysis data
-POST /api/ball-contacts/{id}/analyze-posture - Trigger posture analysis
+GET /v0/ball-contacts/{ball_contact_id}/posture-analysis - Get elbow angle data
+POST /v0/ball-contacts/{ball_contact_id}/analyze-posture - Trigger posture analysis
 ```
 
 #### 3. Frontend Integration
@@ -187,11 +191,11 @@ POST /api/ball-contacts/{id}/analyze-posture - Trigger posture analysis
    - Modify analyze_contact_posture to store results in database
    - Add error handling for failed analysis
 
-3. **Create API Endpoints**
+3. **Extend Existing API Endpoints**
 
-   - POST /api/ball-contacts/{id}/analyze-posture
-   - GET /api/ball-contacts/{id}/posture-analysis
-   - Update existing ball contact endpoint
+   - Add POST /v0/ball-contacts/{ball_contact_id}/analyze-posture
+   - Add GET /v0/ball-contacts/{ball_contact_id}/posture-analysis
+   - Update existing BallContactInfo schema to include elbow_angle
 
 4. **Frontend Components**
    - Update ball contact marker to show elbow angle
@@ -260,8 +264,8 @@ POST /api/ball-contacts/{id}/analyze-posture - Trigger posture analysis
 
 **Backend:**
 
-- `backend/app/api/routes/posture_analysis.py` - New API endpoints
-- `backend/app/api/schemas/posture_analysis.py` - Pydantic schemas
+- `backend/app/api/routes/ball_contacts.py` - Add posture analysis endpoints
+- `backend/app/api/schemas/ball_contact.py` - Update schemas to include elbow_angle
 
 **Frontend:**
 
