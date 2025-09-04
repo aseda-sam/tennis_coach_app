@@ -1,0 +1,367 @@
+"""
+Video annotation service for creating annotated videos with detection overlays.
+"""
+
+import json
+import logging
+import time
+import uuid
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Optional
+
+import cv2
+import numpy as np
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.models.pose_detection import PoseDetection
+from app.models.video import Video
+from app.models.video_annotation import VideoAnnotation
+
+logger = logging.getLogger(__name__)
+
+
+class VideoAnnotationService:
+    """Service for creating annotated videos with detection overlays."""
+
+    def __init__(self) -> None:
+        """Initialize the video annotation service."""
+        self.logger = logger
+
+    def create_pose_annotation(
+        self,
+        db: Session,
+        video_id: int,
+        pose_detection_id: Optional[int] = None,
+        annotation_style: str = "standard",
+    ) -> VideoAnnotation:
+        """
+        Create an annotated video with pose detection overlays.
+
+        Args:
+            db: Database session
+            video_id: ID of the video to annotate
+            pose_detection_id: Optional specific pose detection to use
+            annotation_style: Style of annotation ('standard', 'debug', 'presentation')
+
+        Returns:
+            VideoAnnotation record
+        """
+        start_time = time.time()
+        logger.info(f"Starting pose annotation for video {video_id}")
+
+        # Get video
+        video = db.query(Video).filter(Video.id == video_id).first()
+        if not video:
+            raise ValueError(f"Video {video_id} not found")
+
+        # Get pose detection data
+        if pose_detection_id:
+            pose_detection = (
+                db.query(PoseDetection)
+                .filter(
+                    PoseDetection.id == pose_detection_id,
+                    PoseDetection.video_id == video_id,
+                )
+                .first()
+            )
+        else:
+            # Get most recent pose detection for this video
+            pose_detection = (
+                db.query(PoseDetection)
+                .filter(PoseDetection.video_id == video_id)
+                .order_by(PoseDetection.created_at.desc())
+                .first()
+            )
+
+        if not pose_detection:
+            raise ValueError(f"No pose detection found for video {video_id}")
+
+        if pose_detection.status != "completed":
+            raise ValueError(f"Pose detection {pose_detection.id} is not completed")
+
+        # Create annotated video
+        video_path = Path(video.file_path)
+        annotated_video_path = self._create_pose_annotated_video(
+            video_path, pose_detection, annotation_style
+        )
+
+        if not annotated_video_path:
+            raise RuntimeError("Failed to create annotated video")
+
+        # Create annotation record
+        annotation = VideoAnnotation(
+            video_id=video_id,
+            annotation_type="pose_only",
+            annotated_video_path=str(annotated_video_path),
+            file_size_bytes=annotated_video_path.stat().st_size
+            if annotated_video_path.exists()
+            else None,
+            pose_detection_id=pose_detection.id,
+            processing_time_seconds=time.time() - start_time,
+            frames_annotated=pose_detection.total_frames,
+            annotation_style=annotation_style,
+            status="completed",
+            completed_at=datetime.now(),
+        )
+
+        db.add(annotation)
+        db.commit()
+        db.refresh(annotation)
+
+        logger.info(f"Created pose annotation {annotation.id} for video {video_id}")
+        return annotation
+
+    def _create_pose_annotated_video(
+        self,
+        video_path: Path,
+        pose_detection: PoseDetection,
+        annotation_style: str = "standard",
+    ) -> Optional[Path]:
+        """
+        Create an annotated video with pose detection overlays.
+
+        Args:
+            video_path: Path to original video
+            pose_detection: Pose detection data
+            annotation_style: Style of annotation
+
+        Returns:
+            Path to annotated video file
+        """
+        logger.info(f"Creating pose annotated video for {video_path}")
+
+        # Parse pose data
+        pose_data = (
+            json.loads(pose_detection.pose_data) if pose_detection.pose_data else []
+        )
+        confidence_scores = (
+            json.loads(pose_detection.confidence_scores)
+            if pose_detection.confidence_scores
+            else []
+        )
+
+        if not pose_data:
+            logger.warning("No pose data available for annotation")
+            return None
+
+        # Open video
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            logger.error(f"Could not open video: {video_path}")
+            return None
+
+        # Get video properties
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        # Validate FPS
+        if fps <= 0 or fps > 120:
+            logger.warning(f"Invalid FPS: {fps}, using 30 fps")
+            fps = 30.0
+
+        logger.info(
+            f"Video properties: {width}x{height}, {fps} fps, {total_frames} frames"
+        )
+
+        # Create output path
+        output_dir = Path(settings.PROCESSED_DIR)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        base_name = video_path.stem
+        annotated_filename = f"{base_name}_pose_annotated.mp4"
+        annotated_path = output_dir / annotated_filename
+
+        # Handle file conflicts
+        if annotated_path.exists():
+            # Add unique suffix
+            unique_suffix = str(uuid.uuid4())[:8]
+            annotated_filename = f"{base_name}_pose_annotated_{unique_suffix}.mp4"
+            annotated_path = output_dir / annotated_filename
+
+        logger.info(f"Creating annotated video: {annotated_path}")
+
+        # Create video writer with H.264 codec for browser compatibility
+        fourcc = cv2.VideoWriter_fourcc(*"H264")
+        out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
+
+        if not out.isOpened():
+            logger.error("Failed to create video writer")
+            cap.release()
+            return None
+
+        # Process frames
+        frame_count = 0
+        annotated_frames = 0
+
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                # Get pose data for this frame
+                frame_pose_data = (
+                    pose_data[frame_count] if frame_count < len(pose_data) else None
+                )
+                frame_confidence = (
+                    confidence_scores[frame_count]
+                    if frame_count < len(confidence_scores)
+                    else 0.0
+                )
+
+                # Annotate frame if pose data exists
+                if frame_pose_data and frame_confidence > 0.5:
+                    annotated_frame = self._draw_pose_overlay(
+                        frame, frame_pose_data, frame_confidence, annotation_style
+                    )
+                    out.write(annotated_frame)
+                    annotated_frames += 1
+                else:
+                    # Write original frame if no pose detected
+                    out.write(frame)
+
+                frame_count += 1
+
+                # Progress logging
+                if frame_count % 100 == 0:
+                    logger.info(f"Processed {frame_count}/{total_frames} frames")
+
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.error(f"Error processing video frames: {e}")
+            return None
+        finally:
+            cap.release()
+            out.release()
+
+        # Validate output
+        if annotated_path.exists() and annotated_path.stat().st_size > 0:
+            logger.info(f"Successfully created pose annotated video: {annotated_path}")
+            logger.info(f"Annotated {annotated_frames}/{frame_count} frames")
+            return annotated_path
+        else:
+            logger.error("Failed to create annotated video")
+            if annotated_path.exists():
+                annotated_path.unlink()
+            return None
+
+    def _draw_pose_overlay(
+        self,
+        frame: np.ndarray,
+        pose_data: Dict,
+        confidence: float,
+        style: str = "standard",
+    ) -> np.ndarray:
+        """
+        Draw pose keypoints overlay on frame.
+
+        Args:
+            frame: Input frame
+            pose_data: Pose keypoints data
+            confidence: Detection confidence
+            style: Annotation style
+
+        Returns:
+            Annotated frame
+        """
+        annotated_frame = frame.copy()
+
+        # TODO: Implement pose connections drawing in future version
+        # pose_connections = [
+        #     # Face, torso, arms, legs connections would go here
+        # ]
+
+        # Color scheme based on style
+        if style == "debug":
+            keypoint_color = (0, 255, 255)  # Yellow
+            # connection_color = (255, 0, 255)  # Magenta  # TODO: Use when connections are implemented
+            confidence_color = (0, 255, 0)  # Green
+        elif style == "presentation":
+            keypoint_color = (0, 255, 0)  # Green
+            # connection_color = (255, 255, 255)  # White  # TODO: Use when connections are implemented
+            confidence_color = (255, 255, 0)  # Cyan
+        else:  # standard
+            keypoint_color = (0, 255, 0)  # Green
+            # connection_color = (0, 255, 0)  # Green  # TODO: Use when connections are implemented
+            confidence_color = (255, 255, 255)  # White
+
+        # Draw keypoints
+        for _keypoint_name, keypoint_data in pose_data.items():
+            if isinstance(keypoint_data, list) and len(keypoint_data) >= 2:
+                x, y = int(keypoint_data[0]), int(keypoint_data[1])
+                if 0 <= x < frame.shape[1] and 0 <= y < frame.shape[0]:
+                    cv2.circle(annotated_frame, (x, y), 3, keypoint_color, -1)
+
+        # Draw connections (simplified - would need full keypoint mapping)
+        # For now, just draw confidence text
+        cv2.putText(
+            annotated_frame,
+            f"Pose Confidence: {confidence:.2f}",
+            (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            confidence_color,
+            2,
+        )
+
+        return annotated_frame
+
+    def get_annotation_by_video_id(
+        self, db: Session, video_id: int, annotation_type: Optional[str] = None
+    ) -> Optional[VideoAnnotation]:
+        """
+        Get video annotation for a video.
+
+        Args:
+            db: Database session
+            video_id: ID of the video
+            annotation_type: Optional filter by annotation type
+
+        Returns:
+            VideoAnnotation record if exists, None otherwise
+        """
+        query = db.query(VideoAnnotation).filter(VideoAnnotation.video_id == video_id)
+
+        if annotation_type:
+            query = query.filter(VideoAnnotation.annotation_type == annotation_type)
+
+        return query.order_by(VideoAnnotation.created_at.desc()).first()
+
+    def delete_annotation(self, db: Session, annotation_id: int) -> bool:
+        """
+        Delete a video annotation and its file.
+
+        Args:
+            db: Database session
+            annotation_id: ID of the annotation to delete
+
+        Returns:
+            True if deleted successfully, False otherwise
+        """
+        annotation = (
+            db.query(VideoAnnotation)
+            .filter(VideoAnnotation.id == annotation_id)
+            .first()
+        )
+        if not annotation:
+            return False
+
+        # Delete file
+        annotated_path = Path(annotation.annotated_video_path)
+        if annotated_path.exists():
+            try:
+                annotated_path.unlink()
+                logger.info(f"Deleted annotated video file: {annotated_path}")
+            except OSError as e:
+                logger.warning(
+                    f"Failed to delete annotated video file {annotated_path}: {e}"
+                )
+
+        # Delete database record
+        db.delete(annotation)
+        db.commit()
+        logger.info(f"Deleted video annotation {annotation_id}")
+        return True

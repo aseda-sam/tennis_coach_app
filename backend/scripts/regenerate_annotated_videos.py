@@ -98,38 +98,17 @@ def regenerate_annotated_video(analysis: "Analysis", video: "Video") -> bool:
         # Run analysis to regenerate annotated video
         logger.info(f"Running analysis for video: {video.filename}")
 
-        # Import the analysis function
-        from app.services.analysis_service import analyze_video
+        # Import the background service
+        from app.services.background_service import background_service
 
-        result = analyze_video(
-            db=db,  # Pass the database session
+        task_id = background_service.start_analysis_task(
             video_id=video.id,  # Use video ID instead of filename
-            analysis_type="comprehensive",
+            analysis_type="video_annotation_only",
             confidence_threshold=0.7,  # Use default confidence threshold
-            include_pose_detection=True,  # Include pose detection for annotated video
         )
 
-        if "error" in result:
-            logger.error(f"Analysis failed: {result['error']}")
-            return False
-
-        # Check if annotated video was created
-        if result.get("annotated_video_path"):
-            annotated_path = Path(result["annotated_video_path"])
-            if annotated_path.exists():
-                file_size = annotated_path.stat().st_size
-                logger.info(
-                    f"Successfully regenerated annotated video: {annotated_path} ({file_size} bytes)"
-                )
-                return True
-            else:
-                logger.error(
-                    f"Annotated video path returned but file doesn't exist: {annotated_path}"
-                )
-                return False
-        else:
-            logger.warning("No annotated video path in analysis result")
-            return False
+        logger.info(f"Started analysis task {task_id} for video {video.id}")
+        return True
 
     except (ImportError, RuntimeError, OSError) as e:
         logger.error(f"Error regenerating annotated video: {e}")

@@ -8,6 +8,7 @@ from typing import List
 import cv2
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.schemas.common import PaginationParams
@@ -22,14 +23,8 @@ from app.api.schemas.video import (
 )
 from app.core.config import settings
 from app.core.database import get_db
-from app.services.quality_service import quick_assess_video_quality
-from app.services.video_service import (
-    create_video_record,
-    delete_video_with_analyses,
-    get_all_videos,
-    get_video_by_id,
-    update_video_quality,
-)
+from app.services import video_service
+from app.services.video_quality import VideoQualityService
 from app.utils.error_handling import (
     handle_file_error,
     handle_not_found_error,
@@ -41,6 +36,17 @@ from app.utils.file_validation import (
     validate_file_exists,
     validate_video_file,
 )
+
+
+class VideoAnalysisStatus(BaseModel):
+    """Response model for video analysis status check."""
+
+    video_id: int
+    has_analysis: bool
+    has_annotated_video: bool
+    analysis_types: List[str] = []
+    annotated_video_available: bool = False
+
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -86,7 +92,7 @@ async def list_videos(
     Returns a paginated list of videos with basic information.
     """
     try:
-        db_videos = get_all_videos(db)
+        db_videos = video_service.get_all_videos(db)
 
         # Apply pagination
         start_idx = (pagination.page - 1) * pagination.size
@@ -110,7 +116,7 @@ async def get_video(video_id: int, db: Session = Depends(get_db)) -> VideoInfo:
         Complete video information including metadata
     """
     try:
-        db_video = get_video_by_id(db, video_id)
+        db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
@@ -132,7 +138,7 @@ async def stream_video(video_id: int, db: Session = Depends(get_db)) -> FileResp
     """
     try:
         # Get video from database
-        db_video = get_video_by_id(db, video_id)
+        db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
@@ -167,14 +173,63 @@ async def stream_annotated_video(
     """
     try:
         # Get video from database
-        db_video = get_video_by_id(db, video_id)
+        db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Look for annotated video
-        annotated_filename = f"{Path(db_video.filename).stem}_annotated.mp4"
-        processed_dir = Path(settings.PROCESSED_DIR)
-        annotated_path = processed_dir / annotated_filename
+        # Look for annotated video using the new video annotation system
+        from app.models.video_annotation import VideoAnnotation
+
+        # First try to find a video annotation record
+        video_annotation = (
+            db.query(VideoAnnotation)
+            .filter(VideoAnnotation.video_id == video_id)
+            .order_by(VideoAnnotation.created_at.desc())
+            .first()
+        )
+
+        if video_annotation and video_annotation.annotated_video_path:
+            # Use the video annotation system
+            annotated_path = Path(video_annotation.annotated_video_path)
+            annotated_filename = annotated_path.name
+            logger.info(f"Using video annotation: {annotated_filename}")
+        else:
+            # Handle cases where filename has suffixes
+            # like _2, _3
+            base_name = Path(db_video.filename).stem
+            processed_dir = Path(settings.PROCESSED_DIR)
+
+            # First try the standard naming pattern
+            annotated_filename = f"{base_name}_annotated.mp4"
+            annotated_path = processed_dir / annotated_filename
+
+            # If not found, search for files with suffixes (e.g., _2_annotated.mp4)
+            if not annotated_path.exists():
+                pattern = f"{base_name}_*_annotated.mp4"
+                matching_files = list(processed_dir.glob(pattern))
+                if matching_files:
+                    # Use the most recent file (in case there are multiple)
+                    annotated_path = max(
+                        matching_files, key=lambda p: p.stat().st_mtime
+                    )
+                    annotated_filename = annotated_path.name
+                    logger.info(
+                        f"Found annotated video with suffix: {annotated_filename}"
+                    )
+                else:
+                    # Fallback: search for any file containing the base name
+                    # and "annotated"
+                    pattern = f"*{base_name}*annotated*.mp4"
+                    matching_files = list(processed_dir.glob(pattern))
+                    if matching_files:
+                        annotated_path = max(
+                            matching_files, key=lambda p: p.stat().st_mtime
+                        )
+                        annotated_filename = annotated_path.name
+                        logger.info(
+                            f"Found annotated video with flexible pattern: "
+                            f"{annotated_filename}"
+                        )
 
         validate_file_exists(annotated_path, annotated_filename)
 
@@ -185,6 +240,75 @@ async def stream_annotated_video(
         )
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "stream_annotated_video", {"video_id": video_id})
+
+
+@router.get("/{video_id}/analysis-status", response_model=VideoAnalysisStatus)
+async def get_video_analysis_status(
+    video_id: int, db: Session = Depends(get_db)
+) -> VideoAnalysisStatus:
+    """
+    Check if a video has any analysis or annotated video available.
+
+    Args:
+        video_id: Unique video identifier
+
+    Returns:
+        Analysis status information for the video
+    """
+    try:
+        # Verify video exists
+        db_video = video_service.get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        analysis_types = []
+        has_analysis = False
+        has_annotated_video = False
+        annotated_video_available = False
+
+        # Check for pose detection
+        from app.models.pose_detection import PoseDetection
+
+        pose_detection = (
+            db.query(PoseDetection).filter(PoseDetection.video_id == video_id).first()
+        )
+        if pose_detection and pose_detection.status == "completed":
+            has_analysis = True
+            analysis_types.append("pose_detection")
+
+            # Check if annotated video file exists
+            if pose_detection.annotated_video_path:
+                annotated_path = Path(pose_detection.annotated_video_path)
+                if annotated_path.exists():
+                    has_annotated_video = True
+                    annotated_video_available = True
+
+        # Check for video annotations
+        from app.models.video_annotation import VideoAnnotation
+
+        video_annotation = (
+            db.query(VideoAnnotation)
+            .filter(VideoAnnotation.video_id == video_id)
+            .order_by(VideoAnnotation.created_at.desc())
+            .first()
+        )
+
+        if video_annotation and video_annotation.annotated_video_path:
+            has_annotated_video = True
+            annotated_path = Path(video_annotation.annotated_video_path)
+            if annotated_path.exists():
+                annotated_video_available = True
+
+        return VideoAnalysisStatus(
+            video_id=video_id,
+            has_analysis=has_analysis,
+            has_annotated_video=has_annotated_video,
+            analysis_types=analysis_types,
+            annotated_video_available=annotated_video_available,
+        )
+
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_video_analysis_status", {"video_id": video_id})
 
 
 @router.delete("/{video_id}", response_model=VideoDeleteResponse)
@@ -202,7 +326,9 @@ async def delete_video(
     """
     try:
         # Use service function to handle all deletion logic
-        success, filename, deleted_video_id = delete_video_with_analyses(db, video_id)
+        success, filename, deleted_video_id = video_service.delete_video_with_analyses(
+            db, video_id
+        )
 
         if not success:
             raise handle_file_error("delete_failed", filename, "Video deletion failed")
@@ -273,7 +399,7 @@ async def upload_video(
         validate_video_file(file.filename, file_size, file.content_type, metadata_dict)
 
         # Save to database
-        db_video = create_video_record(
+        db_video = video_service.create_video_record(
             db=db,
             filename=unique_filename,
             file_path=str(file_path),
@@ -290,10 +416,11 @@ async def upload_video(
         quality_metrics = None
         try:
             logger.info(f"Starting quality assessment for {unique_filename}")
-            quality_metrics = quick_assess_video_quality(file_path)
+            quality_service = VideoQualityService()
+            quality_metrics = quality_service.quick_assess(file_path)
 
             # Update video record with quality metrics
-            update_video_quality(
+            video_service.update_video_quality(
                 db=db,
                 video_id=db_video.id,
                 quality_score=quality_metrics["quality_score"],
@@ -304,7 +431,8 @@ async def upload_video(
             )
 
             logger.info(
-                f"Quality assessment completed: {quality_metrics['quality_level']} quality"
+                f"Quality assessment completed: "
+                f"{quality_metrics['quality_level']} quality"
             )
 
         except (OSError, RuntimeError, ValueError) as e:
@@ -357,7 +485,7 @@ async def assess_video_quality(
     """
     try:
         # Get video from database
-        db_video = get_video_by_id(db, video_id)
+        db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise HTTPException(status_code=404, detail=f"Video {video_id} not found")
 
@@ -370,11 +498,12 @@ async def assess_video_quality(
 
         # Perform quality assessment
         assessment_start = time.time()
-        quality_metrics = quick_assess_video_quality(video_path)
+        quality_service = VideoQualityService()
+        quality_metrics = quality_service.quick_assess(video_path)
         assessment_time = time.time() - assessment_start
 
         # Update video record with quality metrics
-        update_video_quality(
+        video_service.update_video_quality(
             db=db,
             video_id=video_id,
             quality_score=quality_metrics["quality_score"],
@@ -402,7 +531,10 @@ async def assess_video_quality(
             filename=db_video.filename,
             quality_metrics=quality_metrics_response,
             assessment_time=assessment_time,
-            message=f"Quality assessment completed: {quality_metrics['quality_level']} quality",
+            message=(
+                f"Quality assessment completed: "
+                f"{quality_metrics['quality_level']} quality"
+            ),
         )
 
     except HTTPException:
