@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.models.ball_contact import BallContact
 from app.models.pose_detection import PoseDetection
+from app.models.video import Video
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ def _calculate_angle_between_points(
 
 
 def get_pose_at_contact(
-    ball_contact: BallContact, pose_detection: PoseDetection
+    ball_contact: BallContact, pose_detection: PoseDetection, video: Video
 ) -> Optional[Dict]:
     """
     Get pose data for the frame closest to ball contact timestamp.
@@ -123,6 +124,7 @@ def get_pose_at_contact(
     Args:
         ball_contact: BallContact object with video_timestamp
         pose_detection: PoseDetection object with pose_data
+        video: Video object with fps metadata
 
     Returns:
         Pose landmarks for contact frame, or None if not found
@@ -140,12 +142,11 @@ def get_pose_at_contact(
             return None
 
         # Get video FPS to convert timestamp to frame index
-        # For now, we'll use a default FPS or try to estimate
-        # TODO: Get actual FPS from video metadata
-        estimated_fps = 30.0  # Default assumption
+        fps = video.fps if video.fps else 30.0  # Use actual FPS or fallback to 30
+        logger.debug(f"Using FPS: {fps} for video {video.id}")
 
         # Calculate target frame index
-        target_frame = int(ball_contact.video_timestamp * estimated_fps)
+        target_frame = int(ball_contact.video_timestamp * fps)
 
         # Find the closest available frame
         if target_frame < len(raw_pose_data):
@@ -197,6 +198,12 @@ def analyze_contact_posture(db: Session, ball_contact_id: int) -> Optional[float
             logger.error(f"Ball contact {ball_contact_id} not found")
             return None
 
+        # Fetch video for FPS metadata
+        video = db.query(Video).filter(Video.id == ball_contact.video_id).first()
+        if not video:
+            logger.error(f"Video {ball_contact.video_id} not found")
+            return None
+
         # Fetch pose detection for the same video
         pose_detection = (
             db.query(PoseDetection)
@@ -214,7 +221,7 @@ def analyze_contact_posture(db: Session, ball_contact_id: int) -> Optional[float
             return None
 
         # Get pose data at contact moment
-        pose_landmarks = get_pose_at_contact(ball_contact, pose_detection)
+        pose_landmarks = get_pose_at_contact(ball_contact, pose_detection, video)
 
         if not pose_landmarks:
             logger.error(f"No pose data found for contact {ball_contact_id}")
