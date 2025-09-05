@@ -49,6 +49,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showPlayOverlay, setShowPlayOverlay] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
+  const [isScrubbing, setIsScrubbing] = useState(false);
   const [selectedContact, setSelectedContact] = useState<BallContact | null>(
     null
   );
@@ -209,6 +210,29 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setCurrentTime(newTime);
   };
 
+  const handleSeekStart = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    setIsScrubbing(true);
+
+    // Pause video during scrubbing for precise positioning
+    if (isPlaying) {
+      video.pause();
+    }
+  };
+
+  const handleSeekEnd = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    setIsScrubbing(false);
+
+    // Only resume playing if video was playing before AND user wants it to continue
+    // For ball contact creation, we want it to stay paused for precision
+    // Users can manually click play if they want to resume
+  };
+
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const video = videoRef.current;
     if (!video) return;
@@ -300,7 +324,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           ref={containerRef}
           className={`video-container video-container-${aspectRatioMode} ${
             isPlaying ? 'playing' : 'paused'
-          }`}
+          } ${isScrubbing ? 'scrubbing' : ''}`}
           onClick={handleVideoClick}
         >
           <video
@@ -350,6 +374,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     max={duration || 0}
                     value={currentTime}
                     onChange={handleSeek}
+                    onMouseDown={handleSeekStart}
+                    onMouseUp={handleSeekEnd}
+                    onTouchStart={handleSeekStart}
+                    onTouchEnd={handleSeekEnd}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                        handleSeekStart();
+                      }
+                    }}
+                    onKeyUp={(e) => {
+                      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                        handleSeekEnd();
+                      }
+                    }}
                     step="0.1"
                   />
                   {/* Contact markers */}
