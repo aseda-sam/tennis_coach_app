@@ -49,19 +49,56 @@
   letter-spacing: -0.025em;
 }
 
+.posture-analysis-toggle {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  margin-left: 12px;
+}
+
+.posture-analysis-toggle:hover {
+  background: #2563eb;
+  transform: scale(1.05);
+}
+
 /* Video Player Wrapper */
 .video-player-wrapper {
   position: relative;
   background: #000;
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  min-height: 500px; /* Ensure minimum height */
+}
+
+.video-player-wrapper.with-sidebar {
+  /* When sidebar is open, the video takes up the remaining space */
+  height: auto;
 }
 
 /* Video Container */
 .video-container {
   position: relative;
+  flex: 1;
   width: 100%;
   height: 0;
   padding-bottom: 56.25%; /* 16:9 aspect ratio */
   cursor: pointer;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+
+.video-player-wrapper.with-sidebar .video-container {
+  /* When sidebar is open, video takes remaining space */
+  flex: 1;
+  min-width: 0; /* Allow video to shrink */
+  max-width: calc(100% - 320px); /* Account for sidebar width */
 }
 
 /* Aspect ratio modes */
@@ -85,6 +122,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  z-index: 1;
 }
 
 /* Aspect ratio mode styles */
@@ -115,6 +153,7 @@
   justify-content: center;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(2px);
+  z-index: 15;
 }
 
 /* Error Overlay */
@@ -171,9 +210,37 @@
 
 /* Video Controls */
 .video-controls {
-  background: linear-gradient(to top, #1a1a1a, #2d2d2d);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(
+    to top,
+    rgba(26, 26, 26, 0.95),
+    rgba(45, 45, 45, 0.9)
+  );
   padding: 16px 20px;
   color: white;
+  z-index: 20;
+  backdrop-filter: blur(4px);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+/* Show controls on hover, when video is paused, or when scrubbing */
+.video-container:hover .video-controls,
+.video-container.paused .video-controls,
+.video-container.scrubbing .video-controls {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Hide controls when video is playing and not hovered */
+.video-container.playing:not(:hover) .video-controls {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
 }
 
 /* Progress Bar */
@@ -213,6 +280,11 @@
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6);
 }
 
+.progress-bar:active::-webkit-slider-thumb {
+  transform: scale(1.3);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.8);
+}
+
 .progress-bar::-moz-range-thumb {
   width: 18px;
   height: 18px;
@@ -227,6 +299,11 @@
 .progress-bar::-moz-range-thumb:hover {
   transform: scale(1.2);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6);
+}
+
+.progress-bar:active::-moz-range-thumb {
+  transform: scale(1.3);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.8);
 }
 
 /* Progress Bar Wrapper for Contact Markers */
@@ -406,6 +483,14 @@
   .play-button {
     width: 60px;
     height: 60px;
+  }
+
+  .video-player-wrapper.with-sidebar {
+    flex-direction: column;
+  }
+
+  .video-player-wrapper.with-sidebar .video-container {
+    max-width: 100%;
   }
 }
 

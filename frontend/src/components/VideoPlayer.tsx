@@ -8,6 +8,7 @@ import React, {
 import { useBallContacts } from '../hooks/useBallContacts';
 import { BallContact, BallContactCreate } from '../services/ballContactApi';
 import AddContactButton from './AddContactButton';
+import BallContactMarker from './BallContactMarker';
 import BallContactModal from './BallContactModal';
 import {
   CloseIcon,
@@ -17,6 +18,7 @@ import {
   VolumeIcon,
   VolumeOffIcon,
 } from './Icons';
+import PostureAnalysisSidebar from './PostureAnalysisSidebar';
 import './VideoPlayer.css';
 
 interface VideoPlayerProps {
@@ -26,6 +28,7 @@ interface VideoPlayerProps {
   showControls?: boolean;
   aspectRatioMode?: 'cover' | 'contain' | 'auto';
   videoId?: number; // Video ID for fetching ball contacts
+  showPostureAnalysis?: boolean; // Show posture analysis sidebar
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -35,6 +38,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   showControls = true,
   aspectRatioMode = 'contain',
   videoId,
+  showPostureAnalysis = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -45,10 +49,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showPlayOverlay, setShowPlayOverlay] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
+  const [isScrubbing, setIsScrubbing] = useState(false);
   const [selectedContact, setSelectedContact] = useState<BallContact | null>(
     null
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPostureSidebarOpen, setIsPostureSidebarOpen] =
+    useState(showPostureAnalysis);
+  const [selectedContactId, setSelectedContactId] = useState<
+    number | undefined
+  >();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Use ball contacts hook if videoId is provided
@@ -200,6 +210,29 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setCurrentTime(newTime);
   };
 
+  const handleSeekStart = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    setIsScrubbing(true);
+
+    // Pause video during scrubbing for precise positioning
+    if (isPlaying) {
+      video.pause();
+    }
+  };
+
+  const handleSeekEnd = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    setIsScrubbing(false);
+
+    // Only resume playing if video was playing before AND user wants it to continue
+    // For ball contact creation, we want it to stay paused for precision
+    // Users can manually click play if they want to resume
+  };
+
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const video = videoRef.current;
     if (!video) return;
@@ -268,13 +301,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <CloseIcon size={20} />
           </button>
           <h2 className="video-title">{title}</h2>
+          {videoId && (
+            <button
+              className="posture-analysis-toggle"
+              onClick={() => setIsPostureSidebarOpen(!isPostureSidebarOpen)}
+              title="Toggle posture analysis"
+            >
+              📊
+            </button>
+          )}
         </div>
       )}
 
-      <div className="video-player-wrapper">
+      <div
+        className={`video-player-wrapper ${isPostureSidebarOpen ? 'with-sidebar' : ''}`}
+        style={{
+          minHeight: isPostureSidebarOpen ? '500px' : 'auto',
+        }}
+      >
+        {/* Video Container */}
         <div
           ref={containerRef}
-          className={`video-container video-container-${aspectRatioMode}`}
+          className={`video-container video-container-${aspectRatioMode} ${
+            isPlaying ? 'playing' : 'paused'
+          } ${isScrubbing ? 'scrubbing' : ''}`}
           onClick={handleVideoClick}
         >
           <video
@@ -312,95 +362,134 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
             </div>
           )}
-        </div>
 
-        {showControls && (
-          <div className="video-controls">
-            <div className="progress-container">
-              <div className="progress-bar-wrapper">
-                <input
-                  type="range"
-                  className="progress-bar"
-                  min="0"
-                  max={duration || 0}
-                  value={currentTime}
-                  onChange={handleSeek}
-                  step="0.1"
-                />
-                {/* Contact markers */}
-                {ballContacts.length > 0 && duration > 0 && (
-                  <div className="contact-markers">
-                    {ballContacts.map((contact) => {
-                      const position =
-                        (contact.video_timestamp / duration) * 100;
-                      const isAutomated =
-                        contact.detection_source === 'automated';
-                      const markerClass = `contact-marker ${isAutomated ? 'automated' : 'manual'}`;
-
-                      return (
-                        <div
-                          key={contact.id}
-                          className={markerClass}
-                          style={{ left: `${position}%` }}
-                          title={`${isAutomated ? 'Automated' : 'Manual'} ball contact at ${formatTime(contact.video_timestamp)}
-Hand: ${contact.contact_hand}
-Stroke: ${contact.stroke_type || 'Unknown'}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedContact(contact);
-                            setIsModalOpen(true);
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-              <div className="time-display">
-                <span>{formattedCurrentTime}</span>
-                <span>{formattedDuration}</span>
-              </div>
-            </div>
-
-            <div className="controls-row">
-              <div className="left-controls">
-                <button className="control-btn play-btn" onClick={togglePlay}>
-                  {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
-                </button>
-
-                <div className="volume-control">
-                  <button
-                    className="control-btn volume-btn"
-                    onClick={toggleMute}
-                  >
-                    {isMuted ? (
-                      <VolumeOffIcon size={20} />
-                    ) : (
-                      <VolumeIcon size={20} />
-                    )}
-                  </button>
+          {showControls && (
+            <div className="video-controls">
+              <div className="progress-container">
+                <div className="progress-bar-wrapper">
                   <input
                     type="range"
-                    className="volume-slider"
+                    className="progress-bar"
                     min="0"
-                    max="1"
+                    max={duration || 0}
+                    value={currentTime}
+                    onChange={handleSeek}
+                    onMouseDown={handleSeekStart}
+                    onMouseUp={handleSeekEnd}
+                    onTouchStart={handleSeekStart}
+                    onTouchEnd={handleSeekEnd}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                        handleSeekStart();
+                      }
+                    }}
+                    onKeyUp={(e) => {
+                      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                        handleSeekEnd();
+                      }
+                    }}
                     step="0.1"
-                    value={isMuted ? 0 : volume}
-                    onChange={handleVolumeChange}
                   />
+                  {/* Contact markers */}
+                  {ballContacts.length > 0 && duration > 0 && (
+                    <div className="contact-markers">
+                      {ballContacts.map((contact) => {
+                        const position =
+                          (contact.video_timestamp / duration) * 100;
+                        const isSelected = selectedContactId === contact.id;
+
+                        return (
+                          <BallContactMarker
+                            key={contact.id}
+                            contact={contact}
+                            position={position}
+                            isSelected={isSelected}
+                            onClick={() => {
+                              setSelectedContact(contact);
+                              setSelectedContactId(contact.id);
+                              setIsModalOpen(true);
+                            }}
+                            onAnalyzeClick={() => {
+                              setSelectedContactId(contact.id);
+                              // The analysis will be handled by the sidebar
+                            }}
+                            showAnalysisButton={isPostureSidebarOpen}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="time-display">
+                  <span>{formattedCurrentTime}</span>
+                  <span>{formattedDuration}</span>
                 </div>
               </div>
 
-              <div className="right-controls">
-                <button
-                  className="control-btn fullscreen-btn"
-                  onClick={toggleFullscreen}
-                >
-                  <FullscreenIcon size={20} />
-                </button>
+              <div className="controls-row">
+                <div className="left-controls">
+                  <button className="control-btn play-btn" onClick={togglePlay}>
+                    {isPlaying ? (
+                      <PauseIcon size={20} />
+                    ) : (
+                      <PlayIcon size={20} />
+                    )}
+                  </button>
+
+                  <div className="volume-control">
+                    <button
+                      className="control-btn volume-btn"
+                      onClick={toggleMute}
+                    >
+                      {isMuted ? (
+                        <VolumeOffIcon size={20} />
+                      ) : (
+                        <VolumeIcon size={20} />
+                      )}
+                    </button>
+                    <input
+                      type="range"
+                      className="volume-slider"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={isMuted ? 0 : volume}
+                      onChange={handleVolumeChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="right-controls">
+                  <button
+                    className="control-btn fullscreen-btn"
+                    onClick={toggleFullscreen}
+                  >
+                    <FullscreenIcon size={20} />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+        </div>
+
+        {/* Posture Analysis Sidebar */}
+        {videoId && (
+          <PostureAnalysisSidebar
+            ballContacts={ballContacts}
+            videoId={videoId}
+            onContactSelect={(contact) => {
+              setSelectedContact(contact);
+              setSelectedContactId(contact.id);
+              // Seek to the contact time
+              const video = videoRef.current;
+              if (video) {
+                video.currentTime = contact.video_timestamp;
+              }
+            }}
+            selectedContactId={selectedContactId}
+            isVisible={isPostureSidebarOpen}
+            onClose={() => setIsPostureSidebarOpen(false)}
+          />
         )}
       </div>
 
@@ -412,6 +501,7 @@ Stroke: ${contact.stroke_type || 'Unknown'}`}
         onClose={() => {
           setIsModalOpen(false);
           setSelectedContact(null);
+          setSelectedContactId(undefined);
         }}
         onUpdate={async (contactId, updates) => {
           await updateContact(contactId, updates);
