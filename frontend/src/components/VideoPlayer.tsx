@@ -201,37 +201,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, [aspectRatioMode, videoAspectRatio]);
 
-  // Keyboard shortcuts for frame navigation
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle keyboard shortcuts when video player is focused or when not in input fields
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      switch (event.key) {
-        case 'ArrowLeft':
-          event.preventDefault();
-          navigateToPreviousFrame();
-          break;
-        case 'ArrowRight':
-          event.preventDefault();
-          navigateToNextFrame();
-          break;
-        default:
-          break;
-      }
-    };
-
-    // Add event listener to document
-    document.addEventListener('keydown', handleKeyDown);
-
-    // Cleanup function
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [navigateToPreviousFrame, navigateToNextFrame]);
-
   const togglePlay = async () => {
     const video = videoRef.current;
     if (!video) return;
@@ -324,18 +293,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [videoMetadata?.fps]);
 
   // Frame navigation functions
-  const navigateFrame = useCallback((direction: 'forward' | 'backward') => {
-    const video = videoRef.current;
-    if (!video || !videoMetadata?.fps) return;
+  const navigateFrame = useCallback(
+    (direction: 'forward' | 'backward') => {
+      const video = videoRef.current;
+      if (!video || !videoMetadata?.fps) return;
 
-    const frameTime = 1 / videoMetadata.fps;
-    const newTime = direction === 'forward' 
-      ? Math.min(video.currentTime + frameTime, duration)
-      : Math.max(video.currentTime - frameTime, 0);
-    
-    video.currentTime = newTime;
-    setCurrentTime(newTime);
-  }, [videoMetadata?.fps, duration]);
+      const frameTime = 1 / videoMetadata.fps;
+      const newTime =
+        direction === 'forward'
+          ? Math.min(video.currentTime + frameTime, duration)
+          : Math.max(video.currentTime - frameTime, 0);
+
+      video.currentTime = newTime;
+      setCurrentTime(newTime);
+    },
+    [videoMetadata?.fps, duration]
+  );
 
   const navigateToNextFrame = useCallback(() => {
     navigateFrame('forward');
@@ -344,6 +317,40 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const navigateToPreviousFrame = useCallback(() => {
     navigateFrame('backward');
   }, [navigateFrame]);
+
+  // Keyboard shortcuts for frame navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle keyboard shortcuts when video player is focused or when not in input fields
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          navigateToPreviousFrame();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          navigateToNextFrame();
+          break;
+        default:
+          break;
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup function
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [navigateToPreviousFrame, navigateToNextFrame]);
 
   // Memoize formatted time strings to prevent unnecessary re-renders
   const formattedCurrentTime = useMemo(
