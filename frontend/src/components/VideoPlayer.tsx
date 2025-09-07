@@ -6,7 +6,9 @@ import React, {
   useState,
 } from 'react';
 import { useBallContacts } from '../hooks/useBallContacts';
+import { videoApi } from '../services/api';
 import { BallContact, BallContactCreate } from '../services/ballContactApi';
+import { VideoMetadata } from '../types/video';
 import AddContactButton from './AddContactButton';
 import BallContactMarker from './BallContactMarker';
 import BallContactModal from './BallContactModal';
@@ -59,6 +61,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [selectedContactId, setSelectedContactId] = useState<
     number | undefined
   >();
+  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(
+    null
+  );
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Use ball contacts hook if videoId is provided
@@ -76,6 +81,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   useEffect(() => {
     setVideoAspectRatio(null);
   }, [videoUrl]);
+
+  // Fetch video metadata when videoId is available
+  useEffect(() => {
+    const fetchVideoMetadata = async () => {
+      if (videoId) {
+        try {
+          const metadata = await videoApi.getVideo(videoId);
+          setVideoMetadata(metadata);
+        } catch (error) {
+          console.error('Failed to fetch video metadata:', error);
+        }
+      }
+    };
+
+    fetchVideoMetadata();
+  }, [videoId]);
 
   useEffect(() => {
     console.log('VideoPlayer: videoUrl changed to:', videoUrl);
@@ -262,6 +283,75 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, []);
 
+  // Calculate frame-based step size for precise positioning
+  const frameStep = useMemo(() => {
+    if (videoMetadata?.fps && videoMetadata.fps > 0) {
+      return 1 / videoMetadata.fps;
+    }
+    // Fallback to 0.1s if FPS is not available (backward compatibility)
+    return 0.1;
+  }, [videoMetadata?.fps]);
+
+  // Frame navigation functions
+  const navigateFrame = useCallback(
+    (direction: 'forward' | 'backward') => {
+      const video = videoRef.current;
+      if (!video || !videoMetadata?.fps) return;
+
+      const frameTime = 1 / videoMetadata.fps;
+      const newTime =
+        direction === 'forward'
+          ? Math.min(video.currentTime + frameTime, duration)
+          : Math.max(video.currentTime - frameTime, 0);
+
+      video.currentTime = newTime;
+      setCurrentTime(newTime);
+    },
+    [videoMetadata?.fps, duration]
+  );
+
+  const navigateToNextFrame = useCallback(() => {
+    navigateFrame('forward');
+  }, [navigateFrame]);
+
+  const navigateToPreviousFrame = useCallback(() => {
+    navigateFrame('backward');
+  }, [navigateFrame]);
+
+  // Keyboard shortcuts for frame navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle keyboard shortcuts when video player is focused or when not in input fields
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          navigateToPreviousFrame();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          navigateToNextFrame();
+          break;
+        default:
+          break;
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup function
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [navigateToPreviousFrame, navigateToNextFrame]);
+
   // Memoize formatted time strings to prevent unnecessary re-renders
   const formattedCurrentTime = useMemo(
     () => formatTime(currentTime),
@@ -388,7 +478,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         handleSeekEnd();
                       }
                     }}
-                    step="0.1"
+                    step={frameStep}
                   />
                   {/* Contact markers */}
                   {ballContacts.length > 0 && duration > 0 && (
@@ -423,6 +513,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 <div className="time-display">
                   <span>{formattedCurrentTime}</span>
                   <span>{formattedDuration}</span>
+                </div>
+                <div className="keyboard-shortcuts">
+                  <span className="shortcut-hint">← → frame by frame</span>
                 </div>
               </div>
 

@@ -55,7 +55,9 @@ const BallContactMarker: React.FC<BallContactMarkerProps> = ({
           style={{ backgroundColor: getAngleColor(contact.elbow_angle) }}
         >
           <span className="marker-time">
-            {Math.round(contact.video_timestamp * 10) / 10}s
+            {contact.frame_number
+              ? `${contact.video_timestamp.toFixed(3)}s (Frame ${contact.frame_number})`
+              : `${contact.video_timestamp.toFixed(3)}s`}
           </span>
         </div>
 
@@ -117,7 +119,10 @@ const BallContactMarker: React.FC<BallContactMarkerProps> = ({
           )}
 
           <div className="contact-details">
-            <div>Time: {contact.video_timestamp.toFixed(1)}s</div>
+            <div>
+              Time: {contact.video_timestamp.toFixed(3)}s
+              {contact.frame_number && ` (Frame ${contact.frame_number})`}
+            </div>
             <div>Source: {contact.detection_source}</div>
           </div>
         </div>
