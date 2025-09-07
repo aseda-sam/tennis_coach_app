@@ -59,6 +59,11 @@ def create_ball_contact(
     if video_timestamp < 0:
         raise ValueError("Timestamp must be greater than 0")
 
+    # Compute frame number from timestamp and FPS
+    frame_number = None
+    if video.fps and video.fps > 0:
+        frame_number = round(video_timestamp * video.fps)
+
     # Check for existing manual contact at the same timestamp (within tolerance)
     tolerance = settings.BALL_CONTACT_TIMESTAMP_TOLERANCE
     existing_manual_detection = (
@@ -81,6 +86,7 @@ def create_ball_contact(
     # Create new manual contact detection
     db_ball_contact = BallContact(
         video_timestamp=video_timestamp,
+        frame_number=frame_number,
         contact_hand=contact_hand,
         video_id=video_id,
         stroke_type=stroke_type,
@@ -166,6 +172,14 @@ def update_ball_contact(
     for key, value in updates.items():
         if key in ALLOWED_BALL_CONTACT_FIELDS:
             setattr(contact, key, value)
+
+    # If video_timestamp was updated, recompute frame_number
+    if "video_timestamp" in updates:
+        video = db.query(Video).filter(Video.id == contact.video_id).first()
+        if video and video.fps and video.fps > 0:
+            contact.frame_number = round(contact.video_timestamp * video.fps)
+        else:
+            contact.frame_number = None
 
     db.commit()
     db.refresh(contact)

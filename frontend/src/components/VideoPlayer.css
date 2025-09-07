@@ -533,3 +533,21 @@
     transform: translate(-50%, -50%) rotate(360deg);
   }
 }
+
+/* Keyboard Shortcuts Indicator */
+.keyboard-shortcuts {
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.shortcut-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  letter-spacing: 0.025em;
+}
