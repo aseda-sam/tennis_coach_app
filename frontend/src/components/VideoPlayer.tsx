@@ -6,7 +6,9 @@ import React, {
   useState,
 } from 'react';
 import { useBallContacts } from '../hooks/useBallContacts';
+import { videoApi } from '../services/api';
 import { BallContact, BallContactCreate } from '../services/ballContactApi';
+import { VideoMetadata } from '../types/video';
 import AddContactButton from './AddContactButton';
 import BallContactMarker from './BallContactMarker';
 import BallContactModal from './BallContactModal';
@@ -59,6 +61,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [selectedContactId, setSelectedContactId] = useState<
     number | undefined
   >();
+  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(
+    null
+  );
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Use ball contacts hook if videoId is provided
@@ -76,6 +81,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   useEffect(() => {
     setVideoAspectRatio(null);
   }, [videoUrl]);
+
+  // Fetch video metadata when videoId is available
+  useEffect(() => {
+    const fetchVideoMetadata = async () => {
+      if (videoId) {
+        try {
+          const metadata = await videoApi.getVideo(videoId);
+          setVideoMetadata(metadata);
+        } catch (error) {
+          console.error('Failed to fetch video metadata:', error);
+        }
+      }
+    };
+
+    fetchVideoMetadata();
+  }, [videoId]);
 
   useEffect(() => {
     console.log('VideoPlayer: videoUrl changed to:', videoUrl);
@@ -262,6 +283,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, []);
 
+  // Calculate frame-based step size for precise positioning
+  const frameStep = useMemo(() => {
+    if (videoMetadata?.fps && videoMetadata.fps > 0) {
+      return 1 / videoMetadata.fps;
+    }
+    // Fallback to 0.1s if FPS is not available (backward compatibility)
+    return 0.1;
+  }, [videoMetadata?.fps]);
+
   // Memoize formatted time strings to prevent unnecessary re-renders
   const formattedCurrentTime = useMemo(
     () => formatTime(currentTime),
@@ -388,7 +418,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         handleSeekEnd();
                       }
                     }}
-                    step="0.1"
+                    step={frameStep}
                   />
                   {/* Contact markers */}
                   {ballContacts.length > 0 && duration > 0 && (

@@ -141,12 +141,19 @@ def get_pose_at_contact(
             logger.warning("Empty pose data")
             return None
 
-        # Get video FPS to convert timestamp to frame index
-        fps = video.fps if video.fps else 30.0  # Use actual FPS or fallback to 30
-        logger.debug(f"Using FPS: {fps} for video {video.id}")
-
-        # Calculate target frame index
-        target_frame = int(ball_contact.video_timestamp * fps)
+        # Use stored frame_number if available, otherwise calculate from timestamp
+        if ball_contact.frame_number is not None:
+            target_frame = ball_contact.frame_number
+            logger.debug(
+                f"Using stored frame_number: {target_frame} for contact {ball_contact.id}"
+            )
+        else:
+            # Fallback: calculate frame from timestamp and FPS
+            fps = video.fps if video.fps else 30.0  # Use actual FPS or fallback to 30
+            target_frame = int(ball_contact.video_timestamp * fps)
+            logger.debug(
+                f"Calculated frame {target_frame} from timestamp {ball_contact.video_timestamp}s using FPS: {fps}"
+            )
 
         # Find the closest available frame
         if target_frame < len(raw_pose_data):
