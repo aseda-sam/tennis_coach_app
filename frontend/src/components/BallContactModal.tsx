@@ -139,7 +139,7 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
                 <label>Timestamp (seconds):</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.001"
                   min="0"
                   max={videoDuration > 0 ? videoDuration : undefined}
                   value={formData.video_timestamp || 0}
@@ -152,6 +152,11 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
                 {videoDuration > 0 && (
                   <div className="timestamp-info">
                     Video duration: {formatTime(videoDuration)}
+                    <br />
+                    <small>
+                      Enter timestamp with up to 3 decimal places for
+                      frame-accurate positioning
+                    </small>
                   </div>
                 )}
               </div>
@@ -219,7 +224,8 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
               <div className="detail-row">
                 <span className="detail-label">Timestamp:</span>
                 <span className="detail-value">
-                  {formatTime(contact.video_timestamp)}
+                  {contact.video_timestamp.toFixed(3)}s
+                  {contact.frame_number && ` (Frame ${contact.frame_number})`}
                 </span>
               </div>
 
