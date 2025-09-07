@@ -201,6 +201,37 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, [aspectRatioMode, videoAspectRatio]);
 
+  // Keyboard shortcuts for frame navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle keyboard shortcuts when video player is focused or when not in input fields
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          navigateToPreviousFrame();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          navigateToNextFrame();
+          break;
+        default:
+          break;
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup function
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [navigateToPreviousFrame, navigateToNextFrame]);
+
   const togglePlay = async () => {
     const video = videoRef.current;
     if (!video) return;
@@ -291,6 +322,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     // Fallback to 0.1s if FPS is not available (backward compatibility)
     return 0.1;
   }, [videoMetadata?.fps]);
+
+  // Frame navigation functions
+  const navigateFrame = useCallback((direction: 'forward' | 'backward') => {
+    const video = videoRef.current;
+    if (!video || !videoMetadata?.fps) return;
+
+    const frameTime = 1 / videoMetadata.fps;
+    const newTime = direction === 'forward' 
+      ? Math.min(video.currentTime + frameTime, duration)
+      : Math.max(video.currentTime - frameTime, 0);
+    
+    video.currentTime = newTime;
+    setCurrentTime(newTime);
+  }, [videoMetadata?.fps, duration]);
+
+  const navigateToNextFrame = useCallback(() => {
+    navigateFrame('forward');
+  }, [navigateFrame]);
+
+  const navigateToPreviousFrame = useCallback(() => {
+    navigateFrame('backward');
+  }, [navigateFrame]);
 
   // Memoize formatted time strings to prevent unnecessary re-renders
   const formattedCurrentTime = useMemo(
@@ -453,6 +506,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 <div className="time-display">
                   <span>{formattedCurrentTime}</span>
                   <span>{formattedDuration}</span>
+                </div>
+                <div className="keyboard-shortcuts">
+                  <span className="shortcut-hint">← → frame by frame</span>
                 </div>
               </div>
 
