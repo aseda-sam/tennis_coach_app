@@ -41,6 +41,7 @@ def create_ball_contact_endpoint(
             stroke_type=ball_contact.stroke_type,
             stroke_subtype=ball_contact.stroke_subtype,
             detection_source=ball_contact.detection_source,
+            player_id=ball_contact.player_id,
         )
         return BallContactInfo.model_validate(db_ball_contact)
     except ValueError as e:
@@ -56,9 +57,32 @@ def get_ball_contacts_by_video(
 ) -> List[BallContactListItem]:
     """Get all ball contacts for a specific video."""
     try:
+        from app.models.player import Player
+        
         ball_contacts = get_ball_contacts_by_video_id(db, video_id)
+        
+        # Create a mapping of player_id to player_name for efficiency
+        player_ids = {contact.player_id for contact in ball_contacts if contact.player_id}
+        players = db.query(Player).filter(Player.id.in_(player_ids)).all()
+        player_name_map = {player.id: player.name for player in players}
+        
+        # Create response with player names
         return [
-            BallContactListItem.model_validate(contact) for contact in ball_contacts
+            BallContactListItem(
+                id=contact.id,
+                video_id=contact.video_id,
+                frame_number=contact.frame_number,
+                video_timestamp=contact.video_timestamp,
+                contact_hand=contact.contact_hand,
+                stroke_type=contact.stroke_type,
+                stroke_subtype=contact.stroke_subtype,
+                elbow_angle=contact.elbow_angle,
+                detection_source=contact.detection_source,
+                player_id=contact.player_id,
+                player_name=player_name_map.get(contact.player_id),
+                created_at=contact.created_at,
+            )
+            for contact in ball_contacts
         ]
     except ValueError as e:
         raise HTTPException(
@@ -75,6 +99,48 @@ def get_ball_contact_timestamps(
     try:
         ball_contacts = get_ball_contacts_by_video_id(db, video_id)
         return [contact.video_timestamp for contact in ball_contacts]
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+
+
+@router.get("/player/{player_id}", response_model=List[BallContactListItem])
+def get_ball_contacts_by_player(
+    player_id: int, db: Session = Depends(get_db)
+) -> List[BallContactListItem]:
+    """Get all ball contacts for a specific player."""
+    try:
+        from app.models.ball_contact import BallContact
+        from app.models.player import Player
+        
+        # Validate player exists
+        player = db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise ValueError(f"Player with ID {player_id} not found")
+        
+        # Get ball contacts for the player
+        ball_contacts = db.query(BallContact).filter(BallContact.player_id == player_id).all()
+        
+        # Create response with player name
+        return [
+            BallContactListItem(
+                id=contact.id,
+                video_id=contact.video_id,
+                frame_number=contact.frame_number,
+                video_timestamp=contact.video_timestamp,
+                contact_hand=contact.contact_hand,
+                stroke_type=contact.stroke_type,
+                stroke_subtype=contact.stroke_subtype,
+                elbow_angle=contact.elbow_angle,
+                detection_source=contact.detection_source,
+                player_id=contact.player_id,
+                player_name=player.name,
+                created_at=contact.created_at,
+            )
+            for contact in ball_contacts
+        ]
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -105,13 +171,13 @@ def update_ball_contact_endpoint(
 ) -> BallContactInfo:
     """Update a ball contact marker."""
     try:
+        # Filter out None values for update
+        update_data = {k: v for k, v in ball_contact_update.model_dump().items() if v is not None}
+        
         updated_contact = update_ball_contact(
             db=db,
             ball_contact_id=ball_contact_id,
-            video_timestamp=ball_contact_update.video_timestamp,
-            contact_hand=ball_contact_update.contact_hand,
-            stroke_type=ball_contact_update.stroke_type,
-            stroke_subtype=ball_contact_update.stroke_subtype,
+            **update_data,
         )
         return BallContactInfo.model_validate(updated_contact)
     except ValueError as e:
