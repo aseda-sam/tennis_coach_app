@@ -5,6 +5,7 @@ from typing import List, Literal, Optional
 
 from sqlalchemy.orm import Session
 
+from app.models.ball_contact import BallContact
 from app.models.player import Player
 
 logger = logging.getLogger(__name__)
@@ -100,9 +101,7 @@ def get_players(
     return query.offset(skip).limit(limit).all()
 
 
-def update_player(
-    db: Session, player_id: int, **updates: str | int | float | None
-) -> Player:
+def update_player(db: Session, player_id: int, **updates: str | float | None) -> Player:
     """
     Update an existing Player record.
 
@@ -179,33 +178,4 @@ def get_player_ball_contact_count(db: Session, player_id: int) -> int:
     Returns:
         int: Number of ball contacts for the player.
     """
-    from app.models.ball_contact import BallContact
-
     return db.query(BallContact).filter(BallContact.player_id == player_id).count()
-
-
-def create_player_info_response(db: Session, player: Player) -> "PlayerInfo":
-    """
-    Create a PlayerInfo response with ball contact count.
-
-    Args:
-        db (Session): SQLAlchemy database session.
-        player (Player): Player database object.
-
-    Returns:
-        PlayerInfo: Player info with ball contact count.
-    """
-    from app.api.schemas.player import PlayerInfo
-
-    ball_contact_count = get_player_ball_contact_count(db, player.id)
-    return PlayerInfo(
-        id=player.id,
-        name=player.name,
-        dominant_hand=player.dominant_hand,
-        backhand_style=player.backhand_style,
-        height=player.height,
-        notes=player.notes,
-        ball_contact_count=ball_contact_count,
-        created_at=player.created_at,
-        updated_at=player.updated_at,
-    )

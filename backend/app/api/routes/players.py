@@ -13,6 +13,7 @@ from app.api.schemas.player import (
     PlayerUpdate,
 )
 from app.core.database import get_db
+from app.models.player import Player
 from app.services.player_service import (
     create_player,
     delete_player,
@@ -21,8 +22,25 @@ from app.services.player_service import (
     get_players,
     update_player,
 )
+from app.utils.error_handling import handle_processing_error, log_and_raise_error
 
 router = APIRouter(tags=["players"])
+
+
+def _create_player_info(db: Session, player: Player) -> PlayerInfo:
+    """Convert Player model to PlayerInfo schema with ball contact count."""
+    ball_contact_count = get_player_ball_contact_count(db, player.id)
+    return PlayerInfo(
+        id=player.id,
+        name=player.name,
+        dominant_hand=player.dominant_hand,
+        backhand_style=player.backhand_style,
+        height=player.height,
+        notes=player.notes,
+        ball_contact_count=ball_contact_count,
+        created_at=player.created_at,
+        updated_at=player.updated_at,
+    )
 
 
 @router.post("/", response_model=PlayerInfo, status_code=status.HTTP_201_CREATED)
@@ -40,23 +58,7 @@ def create_player_endpoint(
             notes=player.notes,
         )
 
-        # Get ball contact count for the player
-        ball_contact_count = get_player_ball_contact_count(db, db_player.id)
-
-        # Create response with ball contact count
-        player_info = PlayerInfo(
-            id=db_player.id,
-            name=db_player.name,
-            dominant_hand=db_player.dominant_hand,
-            backhand_style=db_player.backhand_style,
-            height=db_player.height,
-            notes=db_player.notes,
-            ball_contact_count=ball_contact_count,
-            created_at=db_player.created_at,
-            updated_at=db_player.updated_at,
-        )
-
-        return player_info
+        return _create_player_info(db, db_player)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -78,27 +80,20 @@ def get_players_endpoint(
         players = get_players(db, skip=skip, limit=limit, name_filter=name)
 
         # Create response with ball contact counts
-        player_list = []
-        for player in players:
-            ball_contact_count = get_player_ball_contact_count(db, player.id)
-            player_list.append(
-                PlayerListItem(
-                    id=player.id,
-                    name=player.name,
-                    dominant_hand=player.dominant_hand,
-                    backhand_style=player.backhand_style,
-                    height=player.height,
-                    ball_contact_count=ball_contact_count,
-                    created_at=player.created_at,
-                )
+        return [
+            PlayerListItem(
+                id=player.id,
+                name=player.name,
+                dominant_hand=player.dominant_hand,
+                backhand_style=player.backhand_style,
+                height=player.height,
+                ball_contact_count=get_player_ball_contact_count(db, player.id),
+                created_at=player.created_at,
             )
-
-        return player_list
+            for player in players
+        ]
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve players: {e!s}",
-        ) from e
+        raise handle_processing_error("get_players", str(e)) from e
 
 
 @router.get("/{player_id}", response_model=PlayerInfo)
@@ -109,28 +104,16 @@ def get_player_endpoint(player_id: int, db: Session = Depends(get_db)) -> Player
         if not player:
             raise ValueError(f"Player with ID {player_id} not found")
 
-        # Get ball contact count for the player
-        ball_contact_count = get_player_ball_contact_count(db, player.id)
-
-        # Create response with ball contact count
-        player_info = PlayerInfo(
-            id=player.id,
-            name=player.name,
-            dominant_hand=player.dominant_hand,
-            backhand_style=player.backhand_style,
-            height=player.height,
-            notes=player.notes,
-            ball_contact_count=ball_contact_count,
-            created_at=player.created_at,
-            updated_at=player.updated_at,
-        )
-
-        return player_info
+        return _create_player_info(db, player)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        ) from e
+        # Check if it's a "not found" error
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            ) from e
+        else:
+            log_and_raise_error(e, "get_player", {"player_id": player_id})
 
 
 @router.put("/{player_id}", response_model=PlayerInfo)
@@ -154,28 +137,16 @@ def update_player_endpoint(
         else:
             player = update_player(db, player_id, **update_data)
 
-        # Get ball contact count for the player
-        ball_contact_count = get_player_ball_contact_count(db, player.id)
-
-        # Create response with ball contact count
-        player_info = PlayerInfo(
-            id=player.id,
-            name=player.name,
-            dominant_hand=player.dominant_hand,
-            backhand_style=player.backhand_style,
-            height=player.height,
-            notes=player.notes,
-            ball_contact_count=ball_contact_count,
-            created_at=player.created_at,
-            updated_at=player.updated_at,
-        )
-
-        return player_info
+        return _create_player_info(db, player)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+        # Check if it's a "not found" error
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            ) from e
+        else:
+            log_and_raise_error(e, "update_player", {"player_id": player_id})
 
 
 @router.delete("/{player_id}", response_model=PlayerDeleteResponse)
@@ -187,7 +158,11 @@ def delete_player_endpoint(
         delete_player(db, player_id)
         return PlayerDeleteResponse(message=f"Player {player_id} deleted successfully")
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        ) from e
+        # Check if it's a "not found" error
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            ) from e
+        else:
+            log_and_raise_error(e, "delete_player", {"player_id": player_id})

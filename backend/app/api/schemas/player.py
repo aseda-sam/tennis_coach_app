@@ -49,8 +49,8 @@ class PlayerInfo(BaseModel):
     backhand_style: str = Field(description="Backhand style")
     height: Optional[float] = Field(description="Height in cm")
     notes: Optional[str] = Field(description="Additional notes")
-    ball_contact_count: int = Field(
-        description="Number of ball contacts for this player"
+    ball_contact_count: Optional[int] = Field(
+        None, description="Number of ball contacts for this player"
     )
     created_at: datetime = Field(description="Creation timestamp")
     updated_at: Optional[datetime] = Field(description="Last update timestamp")
