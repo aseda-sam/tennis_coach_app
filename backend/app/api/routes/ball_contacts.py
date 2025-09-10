@@ -58,14 +58,16 @@ def get_ball_contacts_by_video(
     """Get all ball contacts for a specific video."""
     try:
         from app.models.player import Player
-        
+
         ball_contacts = get_ball_contacts_by_video_id(db, video_id)
-        
+
         # Create a mapping of player_id to player_name for efficiency
-        player_ids = {contact.player_id for contact in ball_contacts if contact.player_id}
+        player_ids = {
+            contact.player_id for contact in ball_contacts if contact.player_id
+        }
         players = db.query(Player).filter(Player.id.in_(player_ids)).all()
         player_name_map = {player.id: player.name for player in players}
-        
+
         # Create response with player names
         return [
             BallContactListItem(
@@ -114,15 +116,17 @@ def get_ball_contacts_by_player(
     try:
         from app.models.ball_contact import BallContact
         from app.models.player import Player
-        
+
         # Validate player exists
         player = db.query(Player).filter(Player.id == player_id).first()
         if not player:
             raise ValueError(f"Player with ID {player_id} not found")
-        
+
         # Get ball contacts for the player
-        ball_contacts = db.query(BallContact).filter(BallContact.player_id == player_id).all()
-        
+        ball_contacts = (
+            db.query(BallContact).filter(BallContact.player_id == player_id).all()
+        )
+
         # Create response with player name
         return [
             BallContactListItem(
@@ -171,9 +175,13 @@ def update_ball_contact_endpoint(
 ) -> BallContactInfo:
     """Update a ball contact marker."""
     try:
-        # Filter out None values for update
-        update_data = {k: v for k, v in ball_contact_update.model_dump().items() if v is not None}
-        
+        # Filter out None values for update, but allow None for player_id to remove assignment
+        update_data = {
+            k: v
+            for k, v in ball_contact_update.model_dump().items()
+            if v is not None or k == "player_id"
+        }
+
         updated_contact = update_ball_contact(
             db=db,
             ball_contact_id=ball_contact_id,
