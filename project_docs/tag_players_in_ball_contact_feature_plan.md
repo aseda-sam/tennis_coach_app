@@ -6,13 +6,12 @@
 
 ## Overview
 
-This feature will enable tagging players in ball contact events, allowing for player-specific analysis and progress tracking over multiple videos. The implementation includes creating a Player model, updating the BallContact model to reference players, and building API endpoints for player management and progress analytics.
+This feature will enable tagging players in ball contact events, allowing for player-specific analysis across videos. The implementation includes creating a Player model, updating the BallContact model to reference players, and building API endpoints for player management.
 
 ## Goals
 
 1. **Player Management**: Create a Player model to store player information including handedness
 2. **Ball Contact Tagging**: Associate ball contacts with specific players
-3. **Progress Tracking**: Provide API endpoints for player progress analytics over multiple videos
 
 ## Technical Requirements
 
@@ -66,13 +65,10 @@ player = relationship("Player", back_populates="ball_contacts")
 
 1. **Create Player table**
 2. **Add player_id column to ball_contacts table**
-3. **Create indexes for performance**
-4. **Add foreign key constraints**
-5. **Data migration script for existing ball contacts** (optional player assignment)
+3. **Add foreign key constraints**
+4. **Data migration script for existing ball contacts** (optional player assignment)
 
-### Implementation Phases
-
-#### Phase 1: Backend Foundation
+### Implementation Tasks
 
 - [ ] Create Player model
 - [ ] Update BallContact model
@@ -103,13 +99,6 @@ class PlayerInfo(BaseModel):
     ball_contact_count: int
     created_at: datetime
     updated_at: Optional[datetime]
-
-class PlayerProgress(BaseModel):
-    player_id: int
-    metric: str  # 'accuracy', 'consistency', 'power', etc.
-    values: List[float]
-    timestamps: List[datetime]
-    trend: str  # 'improving', 'declining', 'stable'
 ```
 
 #### Updated BallContact Schemas
@@ -133,84 +122,18 @@ class BallContactInfo(BaseModel):
 - Integration tests for Player API endpoints
 - Tests for BallContact updates with player relationships
 - Database migration tests
-- Performance tests for analytics queries
-
-### Performance Considerations
-
-1. **Database Indexing**
-
-   - Index on player_id in ball_contacts table
-   - Composite indexes for common query patterns
-   - Consider partitioning for large datasets
-
-2. **Caching Strategy**
-
-   - Cache player information for frequently accessed players
-   - Cache progress analytics with TTL
-   - Implement cache invalidation on data updates
-
-3. **Query Optimization**
-   - Use efficient joins for player-ball contact queries
-   - Implement pagination for large result sets
-   - Consider materialized views for complex analytics
-
-### Security Considerations
-
-1. **Data Privacy**
-
-   - Ensure player data is properly protected
-   - Implement proper access controls
-   - Consider data anonymization for analytics
-
-2. **Input Validation**
-   - Validate all player input data
-   - Sanitize user-provided content
-   - Implement rate limiting for API endpoints
-
-### Future Enhancements
-
-1. **Advanced Analytics**
-
-   - Machine learning-based performance predictions
-   - Comparative analysis with similar players
-   - Automated coaching recommendations
-
-2. **Social Features**
-
-   - Player profiles and sharing
-   - Coach-player relationships
-   - Team management
-
-3. **Integration Features**
-   - Import/export player data
-   - Integration with external coaching platforms
-   - Mobile app support
 
 ## Success Metrics
 
-1. **Functionality**
-
-   - Players can be created and managed successfully
-   - Ball contacts can be tagged with players
-   - Progress tracking provides meaningful insights
-
-2. **Performance**
-
-   - API response times < 200ms for standard operations
-   - Progress analytics load within 2 seconds
-   - Database queries optimized for large datasets
-
-3. **User Experience**
-   - Intuitive player management interface
-   - Seamless ball contact tagging workflow
-   - Clear and actionable progress visualizations
+- Players can be created and managed successfully
+- Ball contacts can be tagged with players
+- API endpoints work as expected
+- Database relationships function correctly
 
 ## Dependencies
 
 - Existing BallContact model and API
 - Database migration system (Alembic)
-- Frontend charting library (to be selected)
-- Authentication/authorization system (if applicable)
 
 ## Risks and Mitigation
 
@@ -219,17 +142,6 @@ class BallContactInfo(BaseModel):
    - Risk: Existing ball contacts without players
    - Mitigation: Graceful handling with optional player assignment
 
-2. **Performance Impact**
-
-   - Risk: Additional joins affecting query performance
-   - Mitigation: Proper indexing and query optimization
-
-## Timeline Estimate
-
-- **Phase 1 (Backend Foundation)**: 2-3 weeks
-
-**Total Estimated Time**: 2-3 weeks
-
 ---
 
-_This document will be updated as the implementation progresses and requirements evolve._
+_This document will be updated as the implementation evolves._
