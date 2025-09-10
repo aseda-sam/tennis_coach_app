@@ -23,7 +23,7 @@ engine = create_engine(
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def test_db() -> Generator:
     """Create test database."""
     Base.metadata.create_all(bind=engine)
@@ -38,6 +38,7 @@ def db_session(test_db: Generator) -> Generator:
     try:
         yield session
     finally:
+        session.rollback()
         session.close()
 
 
