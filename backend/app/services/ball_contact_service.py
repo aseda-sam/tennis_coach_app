@@ -28,6 +28,7 @@ def create_ball_contact(
     stroke_type: Optional[Literal["ground_stroke", "serve", "volley", "overhead"]],
     stroke_subtype: Optional[str],
     detection_source: Optional[Literal["automated", "manual"]],
+    player_id: Optional[int] = None,
 ) -> BallContact:
     """
     Create a new BallContact record in the database.
