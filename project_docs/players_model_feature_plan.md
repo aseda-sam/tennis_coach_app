@@ -1,19 +1,20 @@
-# Tag Players in Ball Contact - Feature Plan
+# Players Model - Feature Plan
 
 **Issue**: [#90 - Tag Players in Ball Contact](https://github.com/aseda-sam/tennis_coach_app/issues/90)  
-**Branch**: `feature/tag-players-in-ball-contact`  
+**Branch**: `feature/players-model`  
 **Status**: ✅ **COMPLETED**
 
 ## Overview
 
-This feature will enable tagging players in ball contact events, allowing for player-specific analysis across videos. The implementation includes creating a Player model, updating the BallContact model to reference players, and building API endpoints for player management.
+This feature establishes a comprehensive player management system for the tennis coaching application. It enables tracking individual players across multiple videos, associating them with specific video sessions, and building the foundation for player-specific analytics and progression tracking. The implementation includes creating a Player model, establishing video-player associations, and building API endpoints for complete player lifecycle management.
 
 ## Goals
 
-1. **Player Management**: Create a Player model to store player information including handedness
-2. **Ball Contact Tagging**: Associate ball contacts with specific players
-3. **Video-Player Association**: Enable tagging players who appear in specific videos
-4. **Foundation for Analytics**: Enable future progression tracking across videos
+1. **Player Management**: Create a comprehensive Player model to store player information including handedness, physical attributes, and playing style
+2. **Video-Player Association**: Enable associating players with specific videos and sessions
+3. **Cross-Video Tracking**: Support tracking individual players across multiple videos
+4. **Analytics Foundation**: Build the foundation for player-specific analytics, progression tracking, and performance analysis
+5. **Workflow Integration**: Integrate player management into the broader tennis coaching workflow
 
 ## Technical Requirements
 
@@ -235,27 +236,31 @@ class VideoWithPlayers(BaseModel):
 
 ### Current Workflow (✅ IMPLEMENTED)
 
-1. **Create Players**: Manage player database with names, handedness, height, etc.
-2. **Direct Ball Contact Tagging**: When creating ball contacts, optionally assign to any existing player
-3. **Cross-Video Data Access**: View all ball contacts for a specific player across all videos
+1. **Player Database Management**: Create and manage a comprehensive player database with names, handedness, physical attributes, and playing style
+2. **Player-Video Association**: Associate players with specific videos and sessions
+3. **Cross-Video Player Tracking**: Track individual players across multiple videos and sessions
+4. **Player-Specific Analytics**: View all activities and data for a specific player across all videos
 
 ### Enhanced Workflow (🔄 PLANNED)
 
 1. **Video Upload**: User uploads video for analysis
 2. **Pose Detection**: Run pose detection on video (detects players in video)
-3. **Player Association**: User associates detected poses with existing players
-4. **Smart Ball Contact Assignment**:
-   - **Single player in video**: Auto-assign all ball contacts to that player
+3. **Player Association**: User associates detected poses with existing players in the database
+4. **Smart Player Assignment**:
+   - **Single player in video**: Auto-assign all activities to that player
    - **Multiple players in video**: Show player dropdown for manual selection
-   - **No players in video**: Show all players dropdown
-5. **Override Capability**: Always allow changing player assignment on existing ball contacts
+   - **No players in video**: Show all players dropdown for manual assignment
+5. **Player Progression Tracking**: Track individual player development across multiple videos and sessions
+6. **Override Capability**: Always allow changing player assignments as context evolves
 
 ### Key Benefits
 
-- **Zero Friction**: Auto-assign ball contacts for single-player videos
+- **Zero Friction**: Auto-assign activities for single-player videos
 - **Smart Defaults**: Automatic assignment when context is clear, manual when needed
+- **Player-Centric View**: Track individual player development across multiple videos and sessions
 - **Flexible Override**: Always allow changing assignments when context evolves
 - **Scalable**: Handles simple and complex video scenarios gracefully
+- **Comprehensive Tracking**: Build complete player profiles over time
 
 ### Smart Assignment Logic
 
