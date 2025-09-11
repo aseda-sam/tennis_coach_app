@@ -30,7 +30,6 @@ class TestPlayerAPI:
         assert data["backhand_style"] == "two_handed"
         assert data["height"] == 180.5
         assert data["notes"] == "Professional player"
-        assert data["ball_contact_count"] == 0
         assert "id" in data
         assert "created_at" in data
 
@@ -99,7 +98,7 @@ class TestPlayerAPI:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2
-        assert all("ball_contact_count" in player for player in data)
+        assert all("name" in player for player in data)
 
     def test_get_players_with_pagination(
         self, client: TestClient, db_session: Session
@@ -175,7 +174,6 @@ class TestPlayerAPI:
         data = response.json()
         assert data["name"] == "Test Player"
         assert data["height"] == 175.0
-        assert data["ball_contact_count"] == 0
 
     def test_get_player_by_id_not_found(
         self, client: TestClient, db_session: Session
@@ -291,7 +289,7 @@ class TestPlayerAPI:
     def test_player_with_ball_contacts(
         self, client: TestClient, db_session: Session
     ) -> None:
-        """Test player with ball contacts shows correct count."""
+        """Test player can be retrieved after ball contacts are created."""
         # Create player
         player_data = {
             "name": "Test Player",
@@ -325,9 +323,9 @@ class TestPlayerAPI:
         }
         client.post("/v0/ball-contacts/", json=ball_contact_data)
 
-        # Get player and verify ball contact count
+        # Get player and verify it still works
         response = client.get(f"/v0/players/{player_id}")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["ball_contact_count"] == 1
+        assert data["name"] == "Test Player"

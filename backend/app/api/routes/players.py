@@ -17,7 +17,6 @@ from app.models.player import Player
 from app.services.player_service import (
     create_player,
     delete_player,
-    get_player_ball_contact_count,
     get_player_by_id,
     get_players,
     update_player,
@@ -28,8 +27,7 @@ router = APIRouter(tags=["players"])
 
 
 def _create_player_info(db: Session, player: Player) -> PlayerInfo:
-    """Convert Player model to PlayerInfo schema with ball contact count."""
-    ball_contact_count = get_player_ball_contact_count(db, player.id)
+    """Convert Player model to PlayerInfo schema."""
     return PlayerInfo(
         id=player.id,
         name=player.name,
@@ -37,7 +35,6 @@ def _create_player_info(db: Session, player: Player) -> PlayerInfo:
         backhand_style=player.backhand_style,
         height=player.height,
         notes=player.notes,
-        ball_contact_count=ball_contact_count,
         created_at=player.created_at,
         updated_at=player.updated_at,
     )
@@ -79,7 +76,7 @@ def get_players_endpoint(
     try:
         players = get_players(db, skip=skip, limit=limit, name_filter=name)
 
-        # Create response with ball contact counts
+        # Create response
         return [
             PlayerListItem(
                 id=player.id,
@@ -87,7 +84,6 @@ def get_players_endpoint(
                 dominant_hand=player.dominant_hand,
                 backhand_style=player.backhand_style,
                 height=player.height,
-                ball_contact_count=get_player_ball_contact_count(db, player.id),
                 created_at=player.created_at,
             )
             for player in players
