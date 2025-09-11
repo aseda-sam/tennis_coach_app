@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import relationship
@@ -19,8 +19,12 @@ class Player(Base):
     backhand_style = Column(String(20), nullable=False)  # 'one_handed', 'two_handed'
     height = Column(Float, nullable=True)  # in cm
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), onupdate=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = Column(
+        DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc)
+    )
 
     # Relationships
     ball_contacts = relationship("BallContact", back_populates="player")

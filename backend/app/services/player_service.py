@@ -5,7 +5,6 @@ from typing import List, Literal, Optional
 
 from sqlalchemy.orm import Session
 
-from app.models.ball_contact import BallContact
 from app.models.player import Player
 
 logger = logging.getLogger(__name__)
@@ -165,17 +164,3 @@ def delete_player(db: Session, player_id: int) -> None:
     # Delete the player (ball contacts will have player_id set to NULL due to ondelete="SET NULL")
     db.delete(player)
     db.commit()
-
-
-def get_player_ball_contact_count(db: Session, player_id: int) -> int:
-    """
-    Get the count of ball contacts for a specific player.
-
-    Args:
-        db (Session): SQLAlchemy database session.
-        player_id (int): ID of the Player.
-
-    Returns:
-        int: Number of ball contacts for the player.
-    """
-    return db.query(BallContact).filter(BallContact.player_id == player_id).count()
