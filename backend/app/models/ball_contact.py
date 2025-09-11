@@ -45,6 +45,9 @@ class BallContact(Base):
 
     # Foreign key to player (optional)
     player_id = Column(
-        Integer, ForeignKey("players.id", ondelete="SET NULL"), nullable=True, index=True
+        Integer,
+        ForeignKey("players.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     player = relationship("Player", back_populates="ball_contacts")

@@ -16,7 +16,7 @@ class Player(Base):
     dominant_hand = Column(
         String(10), nullable=False
     )  # 'left', 'right' - the hand typically used for hitting
-    backhand_style = Column(String(20), nullable=False)  # 'one_handed', 'two_handed'
+    backhand_style = Column(String(20), nullable=True)  # 'one_handed', 'two_handed'
     height = Column(Float, nullable=True)  # in cm
     notes = Column(Text, nullable=True)
     created_at = Column(

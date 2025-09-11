@@ -53,6 +53,49 @@ class TestBallContactPlayerIntegration:
         assert data["player"]["name"] == "Test Player"
         assert data["player"]["dominant_hand"] == "right"
 
+    def test_create_ball_contact_with_player_no_backhand_style(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """Test creating a ball contact with a player who has no backhand style."""
+        # Create player without backhand style
+        player_data = {
+            "name": "Test Player No Backhand",
+            "dominant_hand": "left",
+        }
+        player_response = client.post("/v0/players/", json=player_data)
+        player_id = player_response.json()["id"]
+
+        # Create video directly in the database for testing
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
+        )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Create ball contact with player
+        ball_contact_data = {
+            "video_id": video_id,
+            "video_timestamp": 1.0,
+            "contact_hand": "left",
+            "stroke_type": "ground_stroke",
+            "player_id": player_id,
+        }
+
+        response = client.post("/v0/ball-contacts/", json=ball_contact_data)
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["player_id"] == player_id
+        assert data["player"]["name"] == "Test Player No Backhand"
+        assert data["player"]["dominant_hand"] == "left"
+
     def test_create_ball_contact_without_player(
         self, client: TestClient, db_session: Session
     ) -> None:

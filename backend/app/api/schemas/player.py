@@ -13,11 +13,15 @@ class PlayerCreate(BaseModel):
     dominant_hand: Literal["left", "right"] = Field(
         ..., description="The hand typically used for hitting"
     )
-    backhand_style: Literal["one_handed", "two_handed"] = Field(
-        ..., description="Backhand playing style"
+    backhand_style: Optional[Literal["one_handed", "two_handed"]] = Field(
+        None, description="Backhand playing style"
     )
     height: Optional[float] = Field(
-        None, gt=0, description="Height in cm", example=175.5
+        None,
+        ge=95,
+        le=250,
+        description="Height in cm (95-250cm range for children 4+ to adults)",
+        example=175.5,
     )
     notes: Optional[str] = Field(None, description="Additional notes about the player")
 
@@ -35,7 +39,11 @@ class PlayerUpdate(BaseModel):
         None, description="Backhand playing style"
     )
     height: Optional[float] = Field(
-        None, gt=0, description="Height in cm", example=175.5
+        None,
+        ge=95,
+        le=250,
+        description="Height in cm (95-250cm range for children 4+ to adults)",
+        example=175.5,
     )
     notes: Optional[str] = Field(None, description="Additional notes about the player")
 
@@ -46,7 +54,7 @@ class PlayerInfo(BaseModel):
     id: int = Field(description="Player ID")
     name: str = Field(description="Player name")
     dominant_hand: str = Field(description="Dominant hand")
-    backhand_style: str = Field(description="Backhand style")
+    backhand_style: Optional[str] = Field(description="Backhand style")
     height: Optional[float] = Field(description="Height in cm")
     notes: Optional[str] = Field(description="Additional notes")
     created_at: datetime = Field(description="Creation timestamp")
@@ -62,7 +70,7 @@ class PlayerListItem(BaseModel):
     id: int = Field(description="Player ID")
     name: str = Field(description="Player name")
     dominant_hand: str = Field(description="Dominant hand")
-    backhand_style: str = Field(description="Backhand style")
+    backhand_style: Optional[str] = Field(description="Backhand style")
     height: Optional[float] = Field(description="Height in cm")
     created_at: datetime = Field(description="Creation timestamp")
 

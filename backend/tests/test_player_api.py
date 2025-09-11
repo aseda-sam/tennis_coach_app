@@ -33,6 +33,27 @@ class TestPlayerAPI:
         assert "id" in data
         assert "created_at" in data
 
+    def test_create_player_without_backhand_style(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """Test creating a player without backhand style."""
+        player_data = {
+            "name": "Jane Smith",
+            "dominant_hand": "left",
+            "height": 175.0,
+        }
+
+        response = client.post("/v0/players/", json=player_data)
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "Jane Smith"
+        assert data["dominant_hand"] == "left"
+        assert data["backhand_style"] is None
+        assert data["height"] == 175.0
+        assert "id" in data
+        assert "created_at" in data
+
     def test_create_player_duplicate_name(
         self, client: TestClient, db_session: Session
     ) -> None:
@@ -213,6 +234,40 @@ class TestPlayerAPI:
         assert data["notes"] == "Updated notes"
         assert data["dominant_hand"] == "right"  # Unchanged
         assert data["backhand_style"] == "two_handed"  # Unchanged
+
+    def test_update_player_backhand_style(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        """Test updating a player's backhand style."""
+        # Create player without backhand style
+        player_data = {
+            "name": "Test Player",
+            "dominant_hand": "right",
+        }
+        create_response = client.post("/v0/players/", json=player_data)
+        player_id = create_response.json()["id"]
+
+        # Update to add backhand style
+        update_data = {
+            "backhand_style": "one_handed",
+        }
+
+        response = client.put(f"/v0/players/{player_id}", json=update_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["backhand_style"] == "one_handed"
+
+        # Update to change backhand style
+        update_data = {
+            "backhand_style": "two_handed",
+        }
+
+        response = client.put(f"/v0/players/{player_id}", json=update_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["backhand_style"] == "two_handed"
 
     def test_update_player_not_found(
         self, client: TestClient, db_session: Session
