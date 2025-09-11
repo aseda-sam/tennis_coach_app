@@ -2,7 +2,9 @@
 
 **Issue**: [#90 - Tag Players in Ball Contact](https://github.com/aseda-sam/tennis_coach_app/issues/90)  
 **Branch**: `feature/tag-players-in-ball-contact`  
-**Created**: 2025-01-27
+**Status**: ✅ **COMPLETED**  
+**Created**: 2025-01-27  
+**Completed**: 2025-09-11
 
 ## Overview
 
@@ -26,7 +28,7 @@ class Player(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False, index=True)
     dominant_hand = Column(String(10), nullable=False)  # 'left', 'right' - the hand typically used for hitting
-    backhand_style = Column(String(20), nullable=False)  # 'one_handed', 'two_handed'
+    backhand_style = Column(String(20), nullable=True)  # 'one_handed', 'two_handed'
     height = Column(Float, nullable=True)  # in cm
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
@@ -70,12 +72,13 @@ player = relationship("Player", back_populates="ball_contacts")
 
 ### Implementation Tasks
 
-- [ ] Create Player model
-- [ ] Update BallContact model
-- [ ] Create database migration
-- [ ] Implement Player API endpoints
-- [ ] Update BallContact API endpoints
-- [ ] Write backend tests
+- [x] Create Player model
+- [x] Update BallContact model
+- [x] Create database migration
+- [x] Implement Player API endpoints
+- [x] Update BallContact API endpoints
+- [x] Write backend tests
+- [x] Make backhand_style optional (additional migration)
 
 ### API Schema Examples
 
@@ -85,15 +88,15 @@ player = relationship("Player", back_populates="ball_contacts")
 class PlayerCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     dominant_hand: Literal["left", "right"] = Field(..., description="The hand typically used for hitting")
-    backhand_style: Literal["one_handed", "two_handed"] = Field(..., description="Backhand playing style")
-    height: Optional[float] = Field(None, gt=0, description="Height in cm")
+    backhand_style: Optional[Literal["one_handed", "two_handed"]] = Field(None, description="Backhand playing style")
+    height: Optional[float] = Field(None, ge=95, le=250, description="Height in cm (95-250cm range for children 4+ to adults)")
     notes: Optional[str] = None
 
 class PlayerInfo(BaseModel):
     id: int
     name: str
     dominant_hand: str
-    backhand_style: str
+    backhand_style: Optional[str]
     height: Optional[float]
     notes: Optional[str]
     ball_contact_count: int
@@ -129,6 +132,51 @@ class BallContactInfo(BaseModel):
 - Ball contacts can be tagged with players
 - API endpoints work as expected
 - Database relationships function correctly
+
+## Implementation Details
+
+### Completed Files
+
+#### Models & Database
+- **`app/models/player.py`** - Player SQLAlchemy model with relationships
+- **`app/models/ball_contact.py`** - Updated with player_id foreign key 
+- **`alembic/versions/4b5bac20565b_*.py`** - Initial migration for Player table and foreign key
+- **`alembic/versions/943e05c001f6_*.py`** - Additional migration to make backhand_style nullable
+
+#### API Layer
+- **`app/api/schemas/player.py`** - Pydantic schemas for Player operations
+- **`app/api/routes/players.py`** - Full CRUD API endpoints for Player management
+- **`app/api/routes/ball_contacts.py`** - Updated to support player tagging
+- **`app/services/player_service.py`** - Business logic layer for Player operations
+
+#### Testing
+- **`tests/test_player_api.py`** - Comprehensive API tests for Player endpoints
+- **`tests/test_ball_contact_player_integration.py`** - Integration tests for Player-BallContact relationships
+- **`tests/conftest.py`** - Updated for proper test database isolation
+
+### Key Changes Made Post-Implementation
+
+1. **Made `backhand_style` Optional**: 
+   - Updated Player model: `backhand_style = Column(String(20), nullable=True)`
+   - Updated schemas: `backhand_style: Optional[Literal["one_handed", "two_handed"]]`
+   - Created additional migration: `943e05c001f6_make_backhand_style_nullable.py`
+
+2. **Enhanced Height Validation**:
+   - Added realistic height range validation: `ge=95, le=250` (95-250cm for children 4+ to adults)
+   - Improved field description with range information
+
+3. **Architectural Improvements**:
+   - Service layer maintains API-agnostic approach (returns database models only)
+   - Error handling follows established patterns (services throw ValueError, routes handle HTTP conversion)
+   - DRY principle applied with helper functions for schema conversion
+
+### Database Schema Changes
+
+The implementation required two migrations:
+1. **Initial migration** (`4b5bac20565b`): Created Player table and added player_id to ball_contacts
+2. **Follow-up migration** (`943e05c001f6`): Made backhand_style nullable for better usability
+
+Both migrations use SQLite batch operations for compatibility.
 
 ## Dependencies
 
