@@ -23,7 +23,7 @@ def create_player(
     db: Session,
     name: str,
     dominant_hand: Literal["left", "right"],
-    backhand_style: Literal["one_handed", "two_handed"],
+    backhand_style: Optional[Literal["one_handed", "two_handed"]] = None,
     height: Optional[float] = None,
     notes: Optional[str] = None,
 ) -> Player:
@@ -34,7 +34,7 @@ def create_player(
         db (Session): SQLAlchemy database session.
         name (str): Player name.
         dominant_hand (Literal["left", "right"]): Dominant hand.
-        backhand_style (Literal["one_handed", "two_handed"]): Backhand style.
+        backhand_style (Optional[Literal["one_handed", "two_handed"]]): Backhand style.
         height (Optional[float]): Height in cm.
         notes (Optional[str]): Additional notes.
 

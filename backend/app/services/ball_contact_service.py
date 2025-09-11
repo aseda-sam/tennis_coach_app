@@ -64,6 +64,7 @@ def create_ball_contact(
     # Validate Player exists if player_id is provided
     if player_id is not None:
         from app.models.player import Player
+
         player = db.query(Player).filter(Player.id == player_id).first()
         if not player:
             raise ValueError(f"Player with ID {player_id} not found")
@@ -181,6 +182,7 @@ def update_ball_contact(
     # Validate Player exists if player_id is being updated
     if "player_id" in updates and updates["player_id"] is not None:
         from app.models.player import Player
+
         player = db.query(Player).filter(Player.id == updates["player_id"]).first()
         if not player:
             raise ValueError(f"Player with ID {updates['player_id']} not found")
