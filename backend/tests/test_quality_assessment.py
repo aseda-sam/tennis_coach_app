@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 class TestQualityAssessment:
     """Tests for video quality assessment endpoints."""
 
-    def test_quality_assessment_endpoint_exists(self, client: TestClient) -> None:
+    def test_quality_assessment_exists(self, client: TestClient) -> None:
         """Test that the quality assessment endpoint exists."""
         # Test with a non-existent video ID to check if endpoint exists
         response = client.post("/v0/videos/999/quality-check")

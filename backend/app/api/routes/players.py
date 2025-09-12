@@ -41,9 +41,7 @@ def _create_player_info(db: Session, player: Player) -> PlayerInfo:
 
 
 @router.post("/", response_model=PlayerInfo, status_code=status.HTTP_201_CREATED)
-def create_player_endpoint(
-    player: PlayerCreate, db: Session = Depends(get_db)
-) -> PlayerInfo:
+def create_player(player: PlayerCreate, db: Session = Depends(get_db)) -> PlayerInfo:
     """Create a new player."""
     try:
         db_player = create_player(
@@ -64,7 +62,7 @@ def create_player_endpoint(
 
 
 @router.get("/", response_model=List[PlayerListItem])
-def get_players_endpoint(
+def get_players(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(
         100, ge=1, le=1000, description="Maximum number of records to return"
@@ -93,7 +91,7 @@ def get_players_endpoint(
 
 
 @router.get("/{player_id}", response_model=PlayerInfo)
-def get_player_endpoint(player_id: int, db: Session = Depends(get_db)) -> PlayerInfo:
+def get_player(player_id: int, db: Session = Depends(get_db)) -> PlayerInfo:
     """Get a specific player by ID."""
     try:
         player = get_player_by_id(db, player_id)
@@ -113,7 +111,7 @@ def get_player_endpoint(player_id: int, db: Session = Depends(get_db)) -> Player
 
 
 @router.put("/{player_id}", response_model=PlayerInfo)
-def update_player_endpoint(
+def update_player(
     player_id: int,
     player_update: PlayerUpdate,
     db: Session = Depends(get_db),
@@ -146,7 +144,7 @@ def update_player_endpoint(
 
 
 @router.delete("/{player_id}", response_model=PlayerDeleteResponse)
-def delete_player_endpoint(
+def delete_player(
     player_id: int, db: Session = Depends(get_db)
 ) -> PlayerDeleteResponse:
     """Delete a player."""

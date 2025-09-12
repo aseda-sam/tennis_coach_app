@@ -14,6 +14,7 @@ from app.api.schemas.ball_contact import (
     PostureAnalysisRequest,
     PostureAnalysisResponse,
 )
+from app.api.schemas.video_player import BallContactPlayerOptions
 from app.core.database import get_db
 from app.services.ball_contact_service import (
     create_ball_contact,
@@ -23,12 +24,13 @@ from app.services.ball_contact_service import (
     update_ball_contact,
 )
 from app.services.posture_analysis import analyze_and_store_contact_posture
+from app.services.video_player_service import get_ball_contact_player_options
 
 router = APIRouter(tags=["ball-contacts"])
 
 
 @router.post("/", response_model=BallContactInfo, status_code=status.HTTP_201_CREATED)
-def create_ball_contact_endpoint(
+def create_ball_contact(
     ball_contact: BallContactCreate, db: Session = Depends(get_db)
 ) -> BallContactInfo:
     """Create a new ball contact marker."""
@@ -168,7 +170,7 @@ def get_ball_contact(
 
 
 @router.put("/{ball_contact_id}", response_model=BallContactInfo)
-def update_ball_contact_endpoint(
+def update_ball_contact(
     ball_contact_id: int,
     ball_contact_update: BallContactUpdate,
     db: Session = Depends(get_db),
@@ -196,7 +198,7 @@ def update_ball_contact_endpoint(
 
 
 @router.delete("/{ball_contact_id}", response_model=BallContactDeleteResponse)
-def delete_ball_contact_endpoint(
+def delete_ball_contact(
     ball_contact_id: int, db: Session = Depends(get_db)
 ) -> BallContactDeleteResponse:
     """Delete a ball contact marker."""
@@ -307,4 +309,21 @@ def analyze_video_posture(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Batch posture analysis failed: {e!s}",
+        ) from e
+
+
+@router.get(
+    "/video/{video_id}/player-options/", response_model=BallContactPlayerOptions
+)
+def get_ball_contact_player_options(
+    video_id: int, db: Session = Depends(get_db)
+) -> BallContactPlayerOptions:
+    """Get player assignment options for ball contact creation in a video."""
+    try:
+        options = get_ball_contact_player_options(db, video_id)
+        return BallContactPlayerOptions(**options)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get player options: {e!s}",
         ) from e
