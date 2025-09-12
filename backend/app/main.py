@@ -19,6 +19,7 @@ from app.api.routes import (
     pose_detection,
     video,
     video_annotation,
+    video_players,
     video_quality,
 )
 from app.core.config import settings
@@ -112,6 +113,16 @@ app.include_router(
     players.router,
     prefix="/v0/players",
     tags=["players"],
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"},
+    },
+)
+
+app.include_router(
+    video_players.router,
+    tags=["video-players"],
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},

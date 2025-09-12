@@ -28,3 +28,15 @@ class Player(Base):
 
     # Relationships
     ball_contacts = relationship("BallContact", back_populates="player")
+    video_appearances = relationship("VideoPlayer", back_populates="player")
+
+    # Convenience properties
+    @property
+    def videos(self) -> list:
+        """Get list of videos where this player appears."""
+        return [vp.video for vp in self.video_appearances]
+
+    @property
+    def total_videos(self) -> int:
+        """Get total number of videos where this player appears."""
+        return len(self.video_appearances)
