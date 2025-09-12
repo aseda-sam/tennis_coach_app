@@ -18,20 +18,27 @@ from app.api.schemas.video_player import (
 from app.core.database import get_db
 from app.models.player import Player
 from app.models.video import Video
+from app.models.video_player import VideoPlayer
 from app.services.video_player_service import (
     create_video_player_association,
     delete_video_player_association,
-    get_ball_contact_player_options,
     get_players_in_video,
     get_videos_for_player,
-    update_video_player_association,
+)
+from app.services.video_player_service import (
+    get_ball_contact_player_options as get_ball_contact_options,
+)
+from app.services.video_player_service import (
+    update_video_player_association as update_video_player,
 )
 from app.utils.error_handling import log_and_raise_error
 
 router = APIRouter(prefix="/v0", tags=["video-players"])
 
 
-def _create_video_player_info(db: Session, video_player) -> VideoPlayerInfo:
+def _create_video_player_info(
+    db: Session, video_player: VideoPlayer
+) -> VideoPlayerInfo:
     """Create VideoPlayerInfo from VideoPlayer model."""
     return VideoPlayerInfo(
         id=video_player.id,
@@ -77,7 +84,7 @@ def get_video_players(
     try:
         video_players = get_players_in_video(db, video_id)
         return [_create_video_player_info(db, vp) for vp in video_players]
-    except Exception as e:
+    except ValueError as e:
         log_and_raise_error(e, "get_video_players", {"video_id": video_id})
 
 
@@ -109,7 +116,7 @@ def get_video_players_summary(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except ValueError as e:
         log_and_raise_error(e, "get_video_players_summary", {"video_id": video_id})
 
 
@@ -122,7 +129,7 @@ def update_video_player_association(
 ) -> VideoPlayerInfo:
     """Update a video-player association."""
     try:
-        video_player = update_video_player_association(
+        video_player = update_video_player(
             db=db,
             video_id=video_id,
             player_id=player_id,
@@ -196,7 +203,7 @@ def get_player_videos(
         )
     except HTTPException:
         raise
-    except Exception as e:
+    except ValueError as e:
         log_and_raise_error(e, "get_player_videos", {"player_id": player_id})
 
 
@@ -208,9 +215,9 @@ def get_ball_contact_player_options(
 ) -> BallContactPlayerOptions:
     """Get player assignment options for ball contact creation."""
     try:
-        options = get_ball_contact_player_options(db, video_id)
+        options = get_ball_contact_options(db, video_id)
         return BallContactPlayerOptions(**options)
-    except Exception as e:
+    except ValueError as e:
         log_and_raise_error(
             e, "get_ball_contact_player_options", {"video_id": video_id}
         )

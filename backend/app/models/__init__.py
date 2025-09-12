@@ -4,6 +4,7 @@ from app.models.player import Player
 from app.models.pose_detection import PoseDetection
 from app.models.video import Video
 from app.models.video_annotation import VideoAnnotation
+from app.models.video_player import VideoPlayer
 
 __all__ = [
     "BallContact",
@@ -12,4 +13,5 @@ __all__ = [
     "PoseDetection",
     "Video",
     "VideoAnnotation",
+    "VideoPlayer",
 ]

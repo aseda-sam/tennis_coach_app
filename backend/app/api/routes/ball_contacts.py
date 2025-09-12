@@ -17,14 +17,22 @@ from app.api.schemas.ball_contact import (
 from app.api.schemas.video_player import BallContactPlayerOptions
 from app.core.database import get_db
 from app.services.ball_contact_service import (
-    create_ball_contact,
-    delete_ball_contact,
+    create_ball_contact as create_ball_contact_service,
+)
+from app.services.ball_contact_service import (
+    delete_ball_contact as delete_ball_contact_service,
+)
+from app.services.ball_contact_service import (
     get_ball_contact_by_id,
     get_ball_contacts_by_video_id,
-    update_ball_contact,
+)
+from app.services.ball_contact_service import (
+    update_ball_contact as update_ball_contact_service,
 )
 from app.services.posture_analysis import analyze_and_store_contact_posture
-from app.services.video_player_service import get_ball_contact_player_options
+from app.services.video_player_service import (
+    get_ball_contact_player_options as get_ball_contact_options_service,
+)
 
 router = APIRouter(tags=["ball-contacts"])
 
@@ -35,7 +43,7 @@ def create_ball_contact(
 ) -> BallContactInfo:
     """Create a new ball contact marker."""
     try:
-        db_ball_contact = create_ball_contact(
+        db_ball_contact = create_ball_contact_service(
             db=db,
             video_id=ball_contact.video_id,
             video_timestamp=ball_contact.video_timestamp,
@@ -184,7 +192,7 @@ def update_ball_contact(
             if v is not None or k == "player_id"
         }
 
-        updated_contact = update_ball_contact(
+        updated_contact = update_ball_contact_service(
             db=db,
             ball_contact_id=ball_contact_id,
             **update_data,
@@ -203,7 +211,7 @@ def delete_ball_contact(
 ) -> BallContactDeleteResponse:
     """Delete a ball contact marker."""
     try:
-        delete_ball_contact(db, ball_contact_id)
+        delete_ball_contact_service(db, ball_contact_id)
         return BallContactDeleteResponse(
             message=f"Ball contact {ball_contact_id} deleted successfully"
         )
@@ -320,7 +328,7 @@ def get_ball_contact_player_options(
 ) -> BallContactPlayerOptions:
     """Get player assignment options for ball contact creation in a video."""
     try:
-        options = get_ball_contact_player_options(db, video_id)
+        options = get_ball_contact_options_service(db, video_id)
         return BallContactPlayerOptions(**options)
     except Exception as e:
         raise HTTPException(

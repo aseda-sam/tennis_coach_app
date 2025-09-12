@@ -15,11 +15,19 @@ from app.api.schemas.player import (
 from app.core.database import get_db
 from app.models.player import Player
 from app.services.player_service import (
-    create_player,
-    delete_player,
+    create_player as create_player_service,
+)
+from app.services.player_service import (
+    delete_player as delete_player_service,
+)
+from app.services.player_service import (
     get_player_by_id,
-    get_players,
-    update_player,
+)
+from app.services.player_service import (
+    get_players as get_players_service,
+)
+from app.services.player_service import (
+    update_player as update_player_service,
 )
 from app.utils.error_handling import handle_processing_error, log_and_raise_error
 
@@ -44,7 +52,7 @@ def _create_player_info(db: Session, player: Player) -> PlayerInfo:
 def create_player(player: PlayerCreate, db: Session = Depends(get_db)) -> PlayerInfo:
     """Create a new player."""
     try:
-        db_player = create_player(
+        db_player = create_player_service(
             db=db,
             name=player.name,
             dominant_hand=player.dominant_hand,
@@ -72,7 +80,7 @@ def get_players(
 ) -> List[PlayerListItem]:
     """Get all players with optional filtering and pagination."""
     try:
-        players = get_players(db, skip=skip, limit=limit, name_filter=name)
+        players = get_players_service(db, skip=skip, limit=limit, name_filter=name)
 
         # Create response
         return [
@@ -129,7 +137,7 @@ def update_player(
             if not player:
                 raise ValueError(f"Player with ID {player_id} not found")
         else:
-            player = update_player(db, player_id, **update_data)
+            player = update_player_service(db, player_id, **update_data)
 
         return _create_player_info(db, player)
     except ValueError as e:
@@ -149,7 +157,7 @@ def delete_player(
 ) -> PlayerDeleteResponse:
     """Delete a player."""
     try:
-        delete_player(db, player_id)
+        delete_player_service(db, player_id)
         return PlayerDeleteResponse(message=f"Player {player_id} deleted successfully")
     except ValueError as e:
         # Check if it's a "not found" error
