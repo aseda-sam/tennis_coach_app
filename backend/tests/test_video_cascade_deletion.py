@@ -177,7 +177,7 @@ class TestVideoCascadeDeletion:
         assert ball_detection.id is not None
 
         # Delete the video
-        success, filename, deleted_video_id = video_service.delete_video_with_analyses(
+        success, _, deleted_video_id = video_service.delete_video_with_analyses(
             db_session, video.id
         )
 
