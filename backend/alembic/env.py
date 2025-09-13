@@ -12,9 +12,11 @@ from app.core.database import Base
 # Without these imports, autogenerate will see no tables and create empty migrations
 from app.models import ball_contact as _ball_contact_model  # noqa: F401
 from app.models import ball_detection as _ball_detection_model  # noqa: F401
+from app.models import player as _player_model  # noqa: F401
 from app.models import pose_detection as _pose_detection_model  # noqa: F401
 from app.models import video as _video_model  # noqa: F401
 from app.models import video_annotation as _video_annotation_model  # noqa: F401
+from app.models import video_player as _video_player_model  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
