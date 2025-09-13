@@ -23,7 +23,7 @@ from app.api.routes import (
     video_quality,
 )
 from app.core.config import settings
-from app.core.database import create_tables
+from app.core.database import create_tables_if_not_exists
 from app.utils.error_handling import (
     APIError,
     api_error_handler,
@@ -36,7 +36,7 @@ from app.utils.error_handling import (
 async def lifespan(app: FastAPI) -> None:
     """Application lifespan manager."""
     # Startup
-    create_tables()
+    create_tables_if_not_exists()
     yield
     # Shutdown
     pass
