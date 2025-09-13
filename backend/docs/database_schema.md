@@ -15,155 +15,22 @@ The Tennis Coach App uses SQLite as its database with SQLAlchemy ORM for data mo
 
 The database consists of 7 main tables that support comprehensive tennis video analysis and player management.
 
-## Entity Relationship Diagram
+## Database Relationships Overview
 
-```mermaid
-erDiagram
-    VIDEOS {
-        int id PK
-        string filename UK
-        string file_path
-        int file_size
-        string content_type
-        float duration
-        float fps
-        int width
-        int height
-        int frame_count
-        datetime created_at
-        datetime updated_at
-        string status
-        string error_message
-        float quality_score
-        float blur_score
-        float lighting_score
-        float resolution_score
-        string quality_level
-        datetime quality_assessed_at
-    }
-    
-    PLAYERS {
-        int id PK
-        string name
-        string dominant_hand
-        string backhand_style
-        float height
-        text notes
-        datetime created_at
-        datetime updated_at
-    }
-    
-    VIDEO_PLAYERS {
-        int id PK
-        int video_id FK
-        int player_id FK
-        int pose_detection_id FK
-        datetime created_at
-    }
-    
-    BALL_CONTACTS {
-        int id PK
-        int frame_number
-        float video_timestamp
-        string contact_hand
-        string stroke_type
-        string stroke_subtype
-        datetime created_at
-        datetime updated_at
-        string detection_source
-        float elbow_angle
-        int video_id FK
-        int player_id FK
-    }
-    
-    BALL_DETECTIONS {
-        int id PK
-        int video_id FK
-        int total_frames
-        int frames_with_balls
-        int total_ball_detections
-        float average_detections_per_frame
-        float detection_rate
-        string model_used
-        float confidence_threshold
-        string model_selection_reason
-        text detection_data
-        text confidence_scores
-        float processing_time_seconds
-        float frame_processing_rate
-        float average_confidence
-        float min_confidence
-        float max_confidence
-        string status
-        string error_message
-        datetime created_at
-        datetime updated_at
-        datetime completed_at
-    }
-    
-    POSE_DETECTIONS {
-        int id PK
-        int video_id FK
-        int total_frames
-        int frames_with_poses
-        int total_pose_detections
-        float detection_rate
-        float average_pose_confidence
-        float min_pose_confidence
-        float max_pose_confidence
-        float pose_stability_score
-        float confidence_threshold
-        float detection_threshold
-        text pose_data
-        text visibility_scores
-        text confidence_scores
-        string annotated_video_path
-        float processing_time_seconds
-        float frame_processing_rate
-        string status
-        string error_message
-        datetime created_at
-        datetime completed_at
-    }
-    
-    VIDEO_ANNOTATIONS {
-        int id PK
-        int video_id FK
-        string annotation_type
-        string annotated_video_path
-        int file_size_bytes
-        int pose_detection_id FK
-        float processing_time_seconds
-        int frames_annotated
-        string annotation_style
-        string status
-        string error_message
-        datetime created_at
-        datetime completed_at
-    }
+**Core Entity:** Videos (central hub for all analysis data)
 
-    %% Relationships
-    VIDEOS ||--o{ BALL_CONTACTS : "has many"
-    VIDEOS ||--o{ BALL_DETECTIONS : "has one"
-    VIDEOS ||--o{ POSE_DETECTIONS : "has one"
-    VIDEOS ||--o{ VIDEO_ANNOTATIONS : "has many"
-    VIDEOS ||--o{ VIDEO_PLAYERS : "has many"
-    
-    PLAYERS ||--o{ BALL_CONTACTS : "has many"
-    PLAYERS ||--o{ VIDEO_PLAYERS : "has many"
-    
-    VIDEO_PLAYERS }o--|| VIDEOS : "belongs to"
-    VIDEO_PLAYERS }o--|| PLAYERS : "belongs to"
-    VIDEO_PLAYERS }o--o| POSE_DETECTIONS : "optional"
-    
-    BALL_CONTACTS }o--|| VIDEOS : "belongs to"
-    BALL_CONTACTS }o--o| PLAYERS : "optional"
-    
-    BALL_DETECTIONS }o--|| VIDEOS : "belongs to"
-    POSE_DETECTIONS }o--|| VIDEOS : "belongs to"
-    VIDEO_ANNOTATIONS }o--|| VIDEOS : "belongs to"
-    VIDEO_ANNOTATIONS }o--o| POSE_DETECTIONS : "optional"
-```
+**Analysis Tables:** Ball Detections, Pose Detections, Video Annotations (one per video)
+**Association Table:** VideoPlayer (many-to-many between Videos and Players)  
+**Event Table:** Ball Contacts (many per video, optionally linked to players)
+
+### Relationship Summary
+
+- **Videos** → **Ball Detections** (1:1) - One analysis per video
+- **Videos** → **Pose Detections** (1:1) - One analysis per video
+- **Videos** → **Video Annotations** (1:many) - Multiple annotation styles
+- **Videos** → **Ball Contacts** (1:many) - Multiple contact events
+- **Videos** ↔ **Players** (many:many via VideoPlayer) - Multiple players per video
+- **Players** → **Ball Contacts** (1:many) - Player's contact events across videos
 
 ## Table Overview
 
