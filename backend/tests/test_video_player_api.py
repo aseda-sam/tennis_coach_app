@@ -1,257 +1,478 @@
-"""
-Tests for video-player association API endpoints.
-"""
+"""Tests for Video-Player association API endpoints."""
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.main import app
-from app.models.player import Player
 from app.models.video import Video
-from app.models.video_player import VideoPlayer
-
-client = TestClient(app)
-
-
-@pytest.fixture
-def sample_video(db_session: Session) -> Video:
-    """Create a sample video for testing."""
-    import uuid
-
-    unique_filename = f"test_video_{uuid.uuid4().hex[:8]}.mp4"
-    video = Video(
-        filename=unique_filename,
-        file_path=f"/path/to/{unique_filename}",
-        file_size=1024000,
-        content_type="video/mp4",
-        duration=30.0,
-        fps=30.0,
-        width=1920,
-        height=1080,
-        frame_count=900,
-    )
-    db_session.add(video)
-    db_session.commit()
-    db_session.refresh(video)
-    return video
-
-
-@pytest.fixture
-def sample_player(db_session: Session) -> Player:
-    """Create a sample player for testing."""
-    import uuid
-
-    unique_name = f"Test Player {uuid.uuid4().hex[:8]}"
-    player = Player(
-        name=unique_name,
-        dominant_hand="right",
-        backhand_style="two_handed",
-        height=180.0,
-        notes="Test player for video-player associations",
-    )
-    db_session.add(player)
-    db_session.commit()
-    db_session.refresh(player)
-    return player
-
-
-@pytest.fixture
-def sample_video_player(
-    db_session: Session, sample_video: Video, sample_player: Player
-) -> VideoPlayer:
-    """Create a sample video-player association for testing."""
-    video_player = VideoPlayer(
-        video_id=sample_video.id,
-        player_id=sample_player.id,
-        pose_detection_id=None,
-    )
-    db_session.add(video_player)
-    db_session.commit()
-    db_session.refresh(video_player)
-    return video_player
 
 
 class TestVideoPlayerAPI:
-    """Test video-player association API endpoints."""
+    """Test cases for Video-Player association API endpoints."""
 
     def test_associate_player_with_video(
-        self, db_session: Session, sample_video: Video, sample_player: Player
+        self, client: TestClient, db_session: Session
     ) -> None:
         """Test associating a player with a video."""
-        # Clean up any existing associations first
-        from app.models.video_player import VideoPlayer
+        # Create player through API
+        player_data = {
+            "name": "Test Player",
+            "dominant_hand": "right",
+            "backhand_style": "two_handed",
+        }
+        player_response = client.post("/v0/players/", json=player_data)
+        player_id = player_response.json()["id"]
 
-        db_session.query(VideoPlayer).delete()
-        db_session.commit()
-
-        response = client.post(
-            f"/v0/videos/{sample_video.id}/players/",
-            json={
-                "player_id": sample_player.id,
-                "pose_detection_id": None,
-            },
+        # Create video directly in database
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
         )
-        print(f"Response status: {response.status_code}")
-        print(f"Response body: {response.text}")
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Associate player with video
+        association_data = {
+            "player_id": player_id,
+            "pose_detection_id": None,
+        }
+
+        response = client.post(f"/v0/videos/{video_id}/players/", json=association_data)
+
         assert response.status_code == 200
         data = response.json()
-        assert data["video_id"] == sample_video.id
-        assert data["player_id"] == sample_player.id
-        assert data["player"]["name"] == sample_player.name
+        assert data["video_id"] == video_id
+        assert data["player_id"] == player_id
+        assert data["player"]["name"] == "Test Player"
 
     def test_associate_player_with_nonexistent_video(
-        self, db_session: Session, sample_player: Player
+        self, client: TestClient, db_session: Session
     ) -> None:
         """Test associating a player with a nonexistent video."""
-        response = client.post(
-            "/v0/videos/999/players/",
-            json={
-                "player_id": sample_player.id,
-                "pose_detection_id": None,
-            },
-        )
+        # Create player through API
+        player_data = {
+            "name": "Test Player",
+            "dominant_hand": "right",
+        }
+        player_response = client.post("/v0/players/", json=player_data)
+        player_id = player_response.json()["id"]
+
+        # Try to associate with nonexistent video
+        association_data = {
+            "player_id": player_id,
+            "pose_detection_id": None,
+        }
+
+        response = client.post("/v0/videos/999/players/", json=association_data)
+
         assert response.status_code == 404
 
     def test_associate_nonexistent_player_with_video(
-        self, db_session: Session, sample_video: Video
+        self, client: TestClient, db_session: Session
     ) -> None:
         """Test associating a nonexistent player with a video."""
-        response = client.post(
-            f"/v0/videos/{sample_video.id}/players/",
-            json={
-                "player_id": 999,
-                "pose_detection_id": None,
-            },
+        # Create video directly in database
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
         )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Try to associate nonexistent player
+        association_data = {
+            "player_id": 999,
+            "pose_detection_id": None,
+        }
+
+        response = client.post(f"/v0/videos/{video_id}/players/", json=association_data)
+
         assert response.status_code == 404
 
     def test_associate_duplicate_player_with_video(
-        self, db_session: Session, sample_video_player: VideoPlayer
+        self, client: TestClient, db_session: Session
     ) -> None:
         """Test associating the same player with a video twice."""
-        response = client.post(
-            f"/v0/videos/{sample_video_player.video_id}/players/",
-            json={
-                "player_id": sample_video_player.player_id,
-                "pose_detection_id": None,
-            },
-        )
-        assert response.status_code == 409
+        # Create player through API
+        player_data = {
+            "name": "Test Player",
+            "dominant_hand": "right",
+        }
+        player_response = client.post("/v0/players/", json=player_data)
+        player_id = player_response.json()["id"]
 
-    def test_get_video_players(
-        self, db_session: Session, sample_video_player: VideoPlayer
-    ) -> None:
+        # Create video directly in database
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
+        )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # First association should succeed
+        association_data = {
+            "player_id": player_id,
+            "pose_detection_id": None,
+        }
+
+        response1 = client.post(
+            f"/v0/videos/{video_id}/players/", json=association_data
+        )
+        assert response1.status_code == 200
+
+        # Second association should fail
+        response2 = client.post(
+            f"/v0/videos/{video_id}/players/", json=association_data
+        )
+        assert response2.status_code == 409
+
+    def test_get_video_players(self, client: TestClient, db_session: Session) -> None:
         """Test getting all players associated with a video."""
-        response = client.get(f"/v0/videos/{sample_video_player.video_id}/players/")
+        # Create player through API
+        player_data = {
+            "name": "Test Player",
+            "dominant_hand": "right",
+        }
+        player_response = client.post("/v0/players/", json=player_data)
+        player_id = player_response.json()["id"]
+
+        # Create video directly in database
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
+        )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Associate player with video
+        association_data = {
+            "player_id": player_id,
+            "pose_detection_id": None,
+        }
+        client.post(f"/v0/videos/{video_id}/players/", json=association_data)
+
+        # Get video players
+        response = client.get(f"/v0/videos/{video_id}/players/")
+
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
-        assert data[0]["player_id"] == sample_video_player.player_id
+        assert data[0]["player_id"] == player_id
 
     def test_get_video_players_summary(
-        self, db_session: Session, sample_video_player: VideoPlayer
+        self, client: TestClient, db_session: Session
     ) -> None:
         """Test getting video players summary."""
-        response = client.get(
-            f"/v0/videos/{sample_video_player.video_id}/players-summary/"
+        # Create player through API
+        player_data = {
+            "name": "Test Player",
+            "dominant_hand": "right",
+        }
+        player_response = client.post("/v0/players/", json=player_data)
+        player_id = player_response.json()["id"]
+
+        # Create video directly in database
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
         )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Associate player with video
+        association_data = {
+            "player_id": player_id,
+            "pose_detection_id": None,
+        }
+        client.post(f"/v0/videos/{video_id}/players/", json=association_data)
+
+        # Get video players summary
+        response = client.get(f"/v0/videos/{video_id}/players-summary/")
+
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == sample_video_player.video_id
+        assert data["id"] == video_id
         assert data["total_players"] == 1
         assert len(data["players"]) == 1
-        assert data["players"][0]["name"] == sample_video_player.player.name
+        assert data["players"][0]["name"] == "Test Player"
 
     def test_update_video_player_association(
-        self, db_session: Session, sample_video_player: VideoPlayer
+        self, client: TestClient, db_session: Session
     ) -> None:
         """Test updating a video-player association."""
-        response = client.put(
-            f"/v0/videos/{sample_video_player.video_id}/players/{sample_video_player.player_id}/",
-            json={
-                "pose_detection_id": 123,
-            },
+        # Create player through API
+        player_data = {
+            "name": "Test Player",
+            "dominant_hand": "right",
+        }
+        player_response = client.post("/v0/players/", json=player_data)
+        player_id = player_response.json()["id"]
+
+        # Create video directly in database
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
         )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Associate player with video
+        association_data = {
+            "player_id": player_id,
+            "pose_detection_id": None,
+        }
+        client.post(f"/v0/videos/{video_id}/players/", json=association_data)
+
+        # Update association
+        update_data = {"pose_detection_id": 123}
+
+        response = client.put(
+            f"/v0/videos/{video_id}/players/{player_id}/", json=update_data
+        )
+
         assert response.status_code == 200
         data = response.json()
         assert data["pose_detection_id"] == 123
 
     def test_remove_player_from_video(
-        self, db_session: Session, sample_video_player: VideoPlayer
+        self, client: TestClient, db_session: Session
     ) -> None:
         """Test removing a player from a video."""
-        response = client.delete(
-            f"/v0/videos/{sample_video_player.video_id}/players/{sample_video_player.player_id}/"
+        # Create player through API
+        player_data = {
+            "name": "Test Player",
+            "dominant_hand": "right",
+        }
+        player_response = client.post("/v0/players/", json=player_data)
+        player_id = player_response.json()["id"]
+
+        # Create video directly in database
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
         )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Associate player with video
+        association_data = {
+            "player_id": player_id,
+            "pose_detection_id": None,
+        }
+        client.post(f"/v0/videos/{video_id}/players/", json=association_data)
+
+        # Remove player from video
+        response = client.delete(f"/v0/videos/{video_id}/players/{player_id}/")
+
         assert response.status_code == 204
 
         # Verify the association was removed
-        response = client.get(f"/v0/videos/{sample_video_player.video_id}/players/")
+        response = client.get(f"/v0/videos/{video_id}/players/")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 0
 
-    def test_get_player_videos(
-        self, db_session: Session, sample_video_player: VideoPlayer
-    ) -> None:
+    def test_get_player_videos(self, client: TestClient, db_session: Session) -> None:
         """Test getting all videos where a player appears."""
-        response = client.get(f"/v0/players/{sample_video_player.player_id}/videos/")
+        # Create player through API
+        player_data = {
+            "name": "Test Player",
+            "dominant_hand": "right",
+        }
+        player_response = client.post("/v0/players/", json=player_data)
+        player_id = player_response.json()["id"]
+
+        # Create video directly in database
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
+        )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Associate player with video
+        association_data = {
+            "player_id": player_id,
+            "pose_detection_id": None,
+        }
+        client.post(f"/v0/videos/{video_id}/players/", json=association_data)
+
+        # Get player videos
+        response = client.get(f"/v0/players/{player_id}/videos/")
+
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == sample_video_player.player_id
+        assert data["id"] == player_id
         assert data["total_videos"] == 1
         assert len(data["videos"]) == 1
-        assert data["videos"][0]["id"] == sample_video_player.video_id
+        assert data["videos"][0]["id"] == video_id
 
     def test_get_ball_contact_player_options_single_player(
-        self, db_session: Session, sample_video_player: VideoPlayer
+        self, client: TestClient, db_session: Session
     ) -> None:
         """Test getting player options when only one player is in the video."""
-        response = client.get(
-            f"/v0/ball-contacts/video/{sample_video_player.video_id}/player-options/"
+        # Create player through API
+        player_data = {
+            "name": "Test Player",
+            "dominant_hand": "right",
+        }
+        player_response = client.post("/v0/players/", json=player_data)
+        player_id = player_response.json()["id"]
+
+        # Create video directly in database
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
         )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Associate player with video
+        association_data = {
+            "player_id": player_id,
+            "pose_detection_id": None,
+        }
+        client.post(f"/v0/videos/{video_id}/players/", json=association_data)
+
+        # Get player options
+        response = client.get(f"/v0/ball-contacts/video/{video_id}/player-options/")
+
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text}")
         assert response.status_code == 200
         data = response.json()
-        assert data["auto_assign"] == sample_video_player.player_id
-        assert data["player_name"] == sample_video_player.player.name
+        assert data["auto_assign"] == player_id
+        assert data["player_name"] == "Test Player"
         assert len(data["options"]) == 1
 
     def test_get_ball_contact_player_options_no_players(
-        self, db_session: Session, sample_video: Video
+        self, client: TestClient, db_session: Session
     ) -> None:
         """Test getting player options when no players are in the video."""
-        response = client.get(
-            f"/v0/ball-contacts/video/{sample_video.id}/player-options/"
+        # Create video directly in database
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
         )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Get player options
+        response = client.get(f"/v0/ball-contacts/video/{video_id}/player-options/")
+
         assert response.status_code == 200
         data = response.json()
         assert data["auto_assign"] is None
         assert "No players assigned to video" in data["message"]
-        # Should return all players as options
-        assert len(data["options"]) >= 0  # Could be 0 if no players exist
 
     def test_get_ball_contact_player_options_multiple_players(
-        self, db_session: Session, sample_video: Video
+        self, client: TestClient, db_session: Session
     ) -> None:
         """Test getting player options when multiple players are in the video."""
-        # Create two players
-        player1 = Player(name="Player 1", dominant_hand="right")
-        player2 = Player(name="Player 2", dominant_hand="left")
-        db_session.add_all([player1, player2])
-        db_session.commit()
-        db_session.refresh(player1)
-        db_session.refresh(player2)
+        # Create two players through API
+        player1_data = {
+            "name": "Player 1",
+            "dominant_hand": "right",
+        }
+        player1_response = client.post("/v0/players/", json=player1_data)
+        player1_id = player1_response.json()["id"]
 
-        # Associate both players with the video
-        video_player1 = VideoPlayer(video_id=sample_video.id, player_id=player1.id)
-        video_player2 = VideoPlayer(video_id=sample_video.id, player_id=player2.id)
-        db_session.add_all([video_player1, video_player2])
-        db_session.commit()
+        player2_data = {
+            "name": "Player 2",
+            "dominant_hand": "left",
+        }
+        player2_response = client.post("/v0/players/", json=player2_data)
+        player2_id = player2_response.json()["id"]
 
-        response = client.get(
-            f"/v0/ball-contacts/video/{sample_video.id}/player-options/"
+        # Create video directly in database
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
         )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Associate both players with video
+        association1_data = {
+            "player_id": player1_id,
+            "pose_detection_id": None,
+        }
+        client.post(f"/v0/videos/{video_id}/players/", json=association1_data)
+
+        association2_data = {
+            "player_id": player2_id,
+            "pose_detection_id": None,
+        }
+        client.post(f"/v0/videos/{video_id}/players/", json=association2_data)
+
+        # Get player options
+        response = client.get(f"/v0/ball-contacts/video/{video_id}/player-options/")
+
         assert response.status_code == 200
         data = response.json()
         assert data["auto_assign"] is None

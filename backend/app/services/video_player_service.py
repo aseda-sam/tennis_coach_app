@@ -107,13 +107,13 @@ def get_ball_contact_player_options(db: Session, video_id: int) -> dict:
         return {
             "auto_assign": video_players[0].player_id,
             "player_name": video_players[0].player.name,
-            "options": video_players,
+            "options": [video_players[0].player],
             "message": f"Auto-assigning to {video_players[0].player.name}",
         }
     elif len(video_players) > 1:
         return {
             "auto_assign": None,
-            "options": video_players,
+            "options": [vp.player for vp in video_players],
             "message": "Multiple players in video - select one",
         }
     else:
