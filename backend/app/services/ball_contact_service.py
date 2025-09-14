@@ -17,6 +17,7 @@ ALLOWED_BALL_CONTACT_FIELDS = {
     "stroke_type",
     "stroke_subtype",
     "detection_source",
+    "player_id",
 }
 
 
@@ -28,6 +29,7 @@ def create_ball_contact(
     stroke_type: Optional[Literal["ground_stroke", "serve", "volley", "overhead"]],
     stroke_subtype: Optional[str],
     detection_source: Optional[Literal["automated", "manual"]],
+    player_id: Optional[int] = None,
 ) -> BallContact:
     """
     Create a new BallContact record in the database.
@@ -58,6 +60,14 @@ def create_ball_contact(
     # Validate timestamp is positive
     if video_timestamp < 0:
         raise ValueError("Timestamp must be greater than 0")
+
+    # Validate Player exists if player_id is provided
+    if player_id is not None:
+        from app.models.player import Player
+
+        player = db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise ValueError(f"Player with ID {player_id} not found")
 
     # Compute frame number from timestamp and FPS
     frame_number = None
@@ -92,6 +102,7 @@ def create_ball_contact(
         stroke_type=stroke_type,
         stroke_subtype=stroke_subtype,
         detection_source=detection_source,
+        player_id=player_id,
     )
     db.add(db_ball_contact)
     db.commit()
@@ -167,6 +178,14 @@ def update_ball_contact(
         raise ValueError(
             f"Invalid fields for update: {invalid_fields}. Allowed fields: {ALLOWED_BALL_CONTACT_FIELDS}"
         )
+
+    # Validate Player exists if player_id is being updated
+    if "player_id" in updates and updates["player_id"] is not None:
+        from app.models.player import Player
+
+        player = db.query(Player).filter(Player.id == updates["player_id"]).first()
+        if not player:
+            raise ValueError(f"Player with ID {updates['player_id']} not found")
 
     # Safely update only validated fields
     for key, value in updates.items():

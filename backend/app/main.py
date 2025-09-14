@@ -15,13 +15,15 @@ from app.api.routes import (
     analysis,
     ball_contacts,
     ball_detection,
+    players,
     pose_detection,
     video,
     video_annotation,
+    video_players,
     video_quality,
 )
 from app.core.config import settings
-from app.core.database import create_tables
+from app.core.database import create_tables_if_not_exists
 from app.utils.error_handling import (
     APIError,
     api_error_handler,
@@ -34,7 +36,7 @@ from app.utils.error_handling import (
 async def lifespan(app: FastAPI) -> None:
     """Application lifespan manager."""
     # Startup
-    create_tables()
+    create_tables_if_not_exists()
     yield
     # Shutdown
     pass
@@ -100,6 +102,27 @@ app.include_router(
     ball_contacts.router,
     prefix="/v0/ball-contacts",
     tags=["ball-contacts"],
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"},
+    },
+)
+
+app.include_router(
+    players.router,
+    prefix="/v0/players",
+    tags=["players"],
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"},
+    },
+)
+
+app.include_router(
+    video_players.router,
+    tags=["video-players"],
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},
@@ -190,7 +213,7 @@ async def api_info() -> dict[str, str]:
         "version": "0.1.0",
         "status": "alpha",
         "warning": "This API is in alpha stage. Breaking changes may occur without notice.",
-        "endpoints": "videos: /v0/videos, ball-contacts: /v0/ball-contacts, video-quality: /v0/video-quality, ball-detection: /v0/ball-detection, pose-detection: /v0/pose-detection, analysis: /v0/analysis",
+        "endpoints": "videos: /v0/videos, ball-contacts: /v0/ball-contacts, players: /v0/players, video-quality: /v0/video-quality, ball-detection: /v0/ball-detection, pose-detection: /v0/pose-detection, analysis: /v0/analysis",
     }
 
 

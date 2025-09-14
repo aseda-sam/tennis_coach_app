@@ -5,6 +5,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from app.api.schemas.player import PlayerInfo
+
 
 class BallContactInfo(BaseModel):
     """Model for ball contact information."""
@@ -33,6 +35,8 @@ class BallContactInfo(BaseModel):
         ge=0.0,
         le=180.0,
     )
+    player_id: Optional[int] = Field(description="Player ID", default=None)
+    player: Optional[PlayerInfo] = Field(description="Player information", default=None)
     created_at: datetime = Field(description="Creation timestamp")
     updated_at: Optional[datetime] = Field(description="Last update timestamp")
 
@@ -59,6 +63,7 @@ class BallContactCreate(BaseModel):
     detection_source: Literal["automated", "manual"] = Field(
         default="manual", description="Source of contact detection"
     )
+    player_id: Optional[int] = Field(default=None, description="Player ID")
 
 
 class BallContactUpdate(BaseModel):
@@ -85,6 +90,7 @@ class BallContactUpdate(BaseModel):
     detection_source: Optional[Literal["automated", "manual"]] = Field(
         description="Source of contact detection", default=None
     )
+    player_id: Optional[int] = Field(default=None, description="Player ID")
 
 
 class BallContactListItem(BaseModel):
@@ -114,6 +120,8 @@ class BallContactListItem(BaseModel):
     detection_source: Literal["automated", "manual"] = Field(
         description="Source of contact detection"
     )
+    player_id: Optional[int] = Field(description="Player ID", default=None)
+    player_name: Optional[str] = Field(description="Player name", default=None)
     created_at: datetime = Field(description="Creation timestamp")
 
     class Config:
