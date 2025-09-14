@@ -42,3 +42,12 @@ class BallContact(Base):
         Integer, ForeignKey("videos.id", ondelete="CASCADE"), nullable=False, index=True
     )
     video = relationship("Video", back_populates="ball_contacts")
+
+    # Foreign key to player (optional)
+    player_id = Column(
+        Integer,
+        ForeignKey("players.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    player = relationship("Player", back_populates="ball_contacts")

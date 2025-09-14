@@ -62,7 +62,7 @@ class TestVideoProcessing:
         response = client.delete(f"/v0/videos/{video_id}")
         assert response.status_code == 200
 
-    def test_video_stream_endpoints(
+    def test_video_stream(
         self,
         client: TestClient,
         test_video_path: Path,

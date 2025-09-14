@@ -2,246 +2,232 @@
 
 ## Overview
 
-The Tennis Coach App uses SQLite as its database with SQLAlchemy ORM for data modeling. The database stores video metadata, analysis results, and processing status information.
+The Tennis Coach App uses SQLite as its database with SQLAlchemy ORM for data modeling. The database stores video metadata, analysis results, player information, and processing status information.
+
+**Source of Truth:** All table definitions are in `app/models/` - this documentation provides a high-level overview.
 
 ## Database Location
 
 - **Development**: `data/database/tennis_coach.db`
 - **Production**: Configured via `DATABASE_URL` environment variable
 
-## Tables
+## Current Schema (7 Tables)
 
-### Videos Table
+The database consists of 7 main tables that support comprehensive tennis video analysis and player management.
 
-Stores metadata for uploaded tennis videos.
+## Database Relationships Overview
 
-```sql
-CREATE TABLE videos (
-    id INTEGER PRIMARY KEY,
-    filename VARCHAR(255) NOT NULL,
-    file_path VARCHAR(500) NOT NULL,
-    file_size INTEGER NOT NULL,
-    content_type VARCHAR(100),
-    duration FLOAT,
-    fps FLOAT,
-    width INTEGER,
-    height INTEGER,
-    frame_count INTEGER,
-    status VARCHAR(50),
-    error_message TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME
-);
-```
+**Core Entity:** Videos (central hub for all analysis data)
+
+**Analysis Tables:** Ball Detections, Pose Detections, Video Annotations (one per video)
+**Association Table:** VideoPlayer (many-to-many between Videos and Players)  
+**Event Table:** Ball Contacts (many per video, optionally linked to players)
+
+### Relationship Summary
+
+- **Videos** → **Ball Detections** (1:1) - One analysis per video
+- **Videos** → **Pose Detections** (1:1) - One analysis per video
+- **Videos** → **Video Annotations** (1:many) - Multiple annotation styles
+- **Videos** → **Ball Contacts** (1:many) - Multiple contact events
+- **Videos** ↔ **Players** (many:many via VideoPlayer) - Multiple players per video
+- **Players** → **Ball Contacts** (1:many) - Player's contact events across videos
+
+## Table Overview
+
+### 1. Videos Table
+
+**Model:** `app.models.video.Video`
+
+Stores metadata for uploaded tennis videos including file information, processing status, and quality assessments.
 
 **Key Fields:**
 
 - `id` - Unique video identifier (Primary Key)
-- `filename` - Original uploaded filename
+- `filename` - Original uploaded filename (Unique)
 - `file_path` - Storage location on filesystem
 - `file_size` - File size in bytes
-- `content_type` - MIME type (e.g., "video/mp4")
 - `duration` - Video length in seconds
 - `fps` - Frames per second
 - `width` / `height` - Video dimensions in pixels
-- `frame_count` - Total number of frames
 - `status` - Processing status (uploaded, processing, completed, failed)
-- `error_message` - Error details if processing failed
-- `created_at` - Upload timestamp
-- `updated_at` - Last modification timestamp
+- `quality_score` - Overall video quality assessment
+- `quality_level` - Quality rating (excellent, good, fair, poor)
 
-### Ball Contacts Table
+### 2. Players Table
 
-Stores ball contact detection data for tennis videos. This table tracks when the ball makes contact with the player's racket or hand, including both automated and manual detections.
+**Model:** `app.models.player.Player`
 
-```sql
-CREATE TABLE ball_contacts (
-    id INTEGER PRIMARY KEY,
-    frame_number INTEGER,
-    video_timestamp FLOAT NOT NULL,
-    player INTEGER,
-    contact_hand VARCHAR(10),  -- 'left' or 'right'
-    stroke_type VARCHAR,       -- 'ground_stroke', 'serve', 'volley', 'overhead'
-    stroke_subtype VARCHAR,    -- 'topspin', 'backspin', 'forehand', 'backhand', 'flat', 'slice', 'lob', 'drop'
-    confidence FLOAT,
-    ball_position VARCHAR,     -- JSON: {"x": 0.5, "y": 0.3}
-    player_position VARCHAR,   -- JSON: {"x": 0.5, "y": 0.3}
-    description VARCHAR,
-    detection_source VARCHAR(20) NOT NULL DEFAULT 'automated',  -- 'automated' or 'manual'
-    ball_area FLOAT,
-    ball_size_factor FLOAT,
-    racket_data VARCHAR,
-    ball_bbox VARCHAR,
-    ball_racket_distance FLOAT,
-    video_id INTEGER NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME,
-    FOREIGN KEY(video_id) REFERENCES videos (id) ON DELETE CASCADE
-);
-```
+Stores player information and attributes for tracking individual players across multiple videos.
+
+**Key Fields:**
+
+- `id` - Unique player identifier (Primary Key)
+- `name` - Player name
+- `dominant_hand` - Hand typically used for hitting ('left' or 'right')
+- `backhand_style` - Backhand technique ('one_handed' or 'two_handed')
+- `height` - Player height in centimeters
+- `notes` - Additional player information
+
+### 3. VideoPlayer Junction Table
+
+**Model:** `app.models.video_player.VideoPlayer`
+
+Associates players with specific videos (many-to-many relationship). Prevents duplicate associations.
+
+**Key Fields:**
+
+- `id` - Unique association identifier (Primary Key)
+- `video_id` - Reference to videos table (Foreign Key)
+- `player_id` - Reference to players table (Foreign Key)
+- `pose_detection_id` - Optional reference to pose detection data
+- **Unique Constraint**: Prevents duplicate video-player associations
+
+### 4. Ball Contacts Table
+
+**Model:** `app.models.ball_contact.BallContact`
+
+Stores ball contact detection data for tennis videos, including both automated and manual detections.
 
 **Key Fields:**
 
 - `id` - Unique ball contact identifier (Primary Key)
-- `frame_number` - Frame index in the video (nullable)
-- `video_timestamp` - Timestamp in seconds when contact occurred (NOT NULL)
-- `player` - Player identifier (nullable)
+- `frame_number` - Frame index in the video
+- `video_timestamp` - Timestamp in seconds when contact occurred
 - `contact_hand` - Hand used for contact ('left' or 'right')
 - `stroke_type` - Type of stroke (ground_stroke, serve, volley, overhead)
-- `stroke_subtype` - Subtype of stroke (topspin, backspin, forehand, backhand, flat, slice, lob, drop)
-- `confidence` - Detection confidence score (0.0 to 1.0)
-- `ball_position` - JSON string of ball coordinates
-- `player_position` - JSON string of player position data
-- `description` - Additional description or notes
+- `stroke_subtype` - Subtype of stroke (topspin, backspin, forehand, backhand, etc.)
 - `detection_source` - Source of detection ('automated' or 'manual')
-- `ball_area` - Area of detected ball in pixels
-- `ball_size_factor` - Size factor of the ball
-- `racket_data` - JSON string of racket detection data
-- `ball_bbox` - JSON string of ball bounding box coordinates
-- `ball_racket_distance` - Distance between ball and racket in pixels
-- `video_id` - Reference to videos table (Foreign Key, NOT NULL)
-- `created_at` - Contact detection timestamp
-- `updated_at` - Last modification timestamp
+- `elbow_angle` - Elbow angle measurement for posture analysis
+- `video_id` - Reference to videos table (Foreign Key)
+- `player_id` - Reference to players table (Foreign Key, nullable)
 
-### Analyses Table
+### 5. Ball Detections Table
 
-Stores analysis results and processing metadata.
+**Model:** `app.models.ball_detection.BallDetection`
 
-```sql
-CREATE TABLE analyses (
-    id INTEGER PRIMARY KEY,
-    video_id INTEGER,
-    video_filename VARCHAR NOT NULL,
-    analysis_type VARCHAR NOT NULL,
-    total_frames INTEGER,
-    frames_with_balls INTEGER,
-    total_ball_detections INTEGER,
-    average_detections_per_frame FLOAT,
-    detection_rate FLOAT,
-    frames_with_pose INTEGER,
-    pose_detection_rate FLOAT,
-    ball_detections TEXT,
-    pose_detections TEXT,
-    annotated_video_path VARCHAR,
-    processing_time FLOAT,
-    model_used VARCHAR,
-    confidence_threshold FLOAT,
-    status VARCHAR(50),
-    progress INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME,
-    completed_at DATETIME,
-    FOREIGN KEY(video_id) REFERENCES videos (id)
-);
-```
+Stores ball detection analysis results and processing metadata.
 
 **Key Fields:**
 
-- `id` - Unique analysis identifier (Primary Key)
+- `id` - Unique detection identifier (Primary Key)
 - `video_id` - Reference to videos table (Foreign Key)
-- `video_filename` - Original video filename
-- `analysis_type` - Type of analysis (ball_tracking, pose_estimation, comprehensive)
-- `status` - Processing status (processing, completed, failed)
-- `progress` - Completion percentage (0-100)
-- `total_frames` - Total frames in video
+- `total_frames` - Total frames processed
 - `frames_with_balls` - Frames containing ball detections
-- `total_ball_detections` - Total ball detections found
 - `detection_rate` - Percentage of frames with detections
-- `frames_with_pose` - Frames with pose detections
-- `pose_detection_rate` - Percentage of frames with pose data
-- `ball_detections` - JSON string of ball detection coordinates
-- `pose_detections` - JSON string of pose keypoint data
-- `annotated_video_path` - Path to annotated video file
-- `processing_time` - Analysis duration in seconds
-- `model_used` - YOLO model version (e.g., "yolov8n")
+- `model_used` - YOLO model version used
 - `confidence_threshold` - Detection confidence threshold
-- `created_at` - Analysis creation timestamp
-- `updated_at` - Last modification timestamp
-- `completed_at` - Analysis completion timestamp (nullable)
+- `detection_data` - JSON string of ball detection coordinates
+- `processing_time_seconds` - Analysis duration
+
+### 6. Pose Detections Table
+
+**Model:** `app.models.pose_detection.PoseDetection`
+
+Stores pose detection analysis results and keypoint data.
+
+**Key Fields:**
+
+- `id` - Unique pose detection identifier (Primary Key)
+- `video_id` - Reference to videos table (Foreign Key)
+- `total_frames` - Total frames processed
+- `frames_with_poses` - Frames containing pose detections
+- `detection_rate` - Percentage of frames with pose data
+- `pose_data` - JSON string of pose keypoint data
+- `pose_stability_score` - Overall pose detection stability
+- `annotated_video_path` - Path to annotated video file
+
+### 7. Video Annotations Table
+
+**Model:** `app.models.video_annotation.VideoAnnotation`
+
+Stores video annotation processing results and metadata.
+
+**Key Fields:**
+
+- `id` - Unique annotation identifier (Primary Key)
+- `video_id` - Reference to videos table (Foreign Key)
+- `annotation_type` - Type of annotation applied
+- `annotated_video_path` - Path to annotated video file
+- `file_size_bytes` - Size of annotated video file
+- `frames_annotated` - Number of frames processed
+- `annotation_style` - Style of annotation applied
 
 ## Relationships
 
-### One-to-Many: Videos to Analyses
+### One-to-Many Relationships
 
-- One video can have multiple analyses
-- Each analysis belongs to one video
-- Foreign key: `analyses.video_id` → `videos.id`
-
-### One-to-Many: Videos to Ball Contacts
+**Videos → Ball Contacts**
 
 - One video can have multiple ball contacts
-- Each ball contact belongs to one video
-- Foreign key: `ball_contacts.video_id` → `videos.id`
-- Cascade delete: When a video is deleted, all associated ball contacts are also deleted
+- Cascade delete: When video is deleted, all ball contacts are deleted
 
-## Indexes
+**Videos → Ball Detections**
 
-### Videos Table
+- One video can have one ball detection analysis
+- Cascade delete: When video is deleted, ball detection is deleted
 
-- `ix_videos_id` - Primary key index
-- `ix_videos_filename` - Unique filename index
+**Videos → Pose Detections**
 
-### Analyses Table
+- One video can have one pose detection analysis
+- Cascade delete: When video is deleted, pose detection is deleted
 
-- `ix_analyses_id` - Primary key index
-- `ix_analyses_video_id` - Foreign key index
-- `ix_analyses_video_filename` - Filename lookup index
+**Videos → Video Annotations**
 
-### Ball Contacts Table
+- One video can have multiple annotations
+- Cascade delete: When video is deleted, annotations are deleted
 
-- `ix_ball_contacts_id` - Primary key index
-- `ix_ball_contacts_video_id` - Foreign key index
-- `ix_ball_contacts_frame_number` - Frame number lookup index
+**Players → Ball Contacts**
 
-## Data Types
+- One player can have multiple ball contacts
+- Set null on delete: When player is deleted, ball contacts remain but player_id is set to null
 
-### Status Values
+### Many-to-Many Relationships
 
-**Video Status:**
+**Videos ↔ Players (via VideoPlayer)**
+
+- Many videos can have many players
+- Many players can appear in many videos
+- Junction table: `video_players`
+- Unique constraint prevents duplicate associations
+
+## Data Types and Enums
+
+### Video Status Values
 
 - `uploaded` - File uploaded successfully
 - `processing` - Currently being processed
 - `completed` - Processing finished successfully
 - `failed` - Processing encountered an error
 
-**Analysis Status:**
+### Analysis Status Values
 
 - `processing` - Analysis is currently running
 - `completed` - Analysis finished successfully
 - `failed` - Analysis encountered an error
 
-### Analysis Types
+### Player Hand Values
 
-- `ball_tracking` - Ball detection only
-- `pose_estimation` - Pose detection only
-- `comprehensive` - Both ball and pose detection
+- `left` - Left-handed player
+- `right` - Right-handed player
 
-### Ball Contact Data Types
+### Backhand Style Values
 
-**Contact Hand Values:**
+- `one_handed` - One-handed backhand
+- `two_handed` - Two-handed backhand
+
+### Contact Hand Values
 
 - `left` - Left hand contact
 - `right` - Right hand contact
 
-**Stroke Type Values:**
+### Stroke Type Values
 
 - `ground_stroke` - Ground stroke (forehand/backhand)
 - `serve` - Serve
 - `volley` - Volley
 - `overhead` - Overhead/smash
 
-**Stroke Subtype Values:**
-
-- `topspin` - Topspin shot
-- `backspin` - Backspin/slice
-- `forehand` - Forehand stroke
-- `backhand` - Backhand stroke
-- `flat` - Flat shot
-- `slice` - Slice shot
-- `lob` - Lob shot
-- `drop` - Drop shot
-
-**Detection Source Values:**
+### Detection Source Values
 
 - `automated` - Automatically detected by AI
 - `manual` - Manually added by user
@@ -262,6 +248,32 @@ alembic history
 
 # Downgrade to previous version
 alembic downgrade -1
+```
+
+### Clean Migration Process (for future use)
+
+When you need to create a fresh migration:
+
+```bash
+# 1. Backup current database
+cp data/database/tennis_coach.db data/database/tennis_coach_backup_$(date +%Y%m%d_%H%M%S).db
+
+# 2. Remove all existing migrations
+rm -rf backend/alembic/versions/*.py
+
+# 3. Remove current database
+rm -f data/database/tennis_coach.db
+
+# 4. Ensure all models are imported in alembic/env.py
+
+# 5. Generate fresh migration
+cd backend && alembic revision --autogenerate -m "initial_schema_with_all_tables"
+
+# 6. Apply migration
+alembic upgrade head
+
+# 7. Test app startup
+python -c "from app.main import app; print('Success!')"
 ```
 
 ## Backup and Recovery
@@ -289,6 +301,7 @@ cp data/database/tennis_coach_backup.db data/database/tennis_coach.db
 - **JSON Fields**: Large detection data stored as JSON strings
 - **Indexes**: Foreign keys and frequently queried fields are indexed
 - **SQLite**: Suitable for development and small to medium deployments
+- **Unique Constraints**: Prevent duplicate data and ensure data integrity
 
 ## Future Considerations
 
@@ -296,3 +309,4 @@ cp data/database/tennis_coach_backup.db data/database/tennis_coach.db
 - **Data Archiving**: Strategy for old analysis data
 - **Compression**: JSON field compression for large datasets
 - **Partitioning**: Time-based partitioning for large datasets
+- **Player Analytics**: Enhanced player-specific performance tracking

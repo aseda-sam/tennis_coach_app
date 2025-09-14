@@ -43,3 +43,15 @@ def create_tables() -> None:
     from app.models import video  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+
+
+def create_tables_if_not_exists() -> None:
+    """Create tables only if they don't exist (for development convenience)."""
+    from sqlalchemy import inspect
+
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+
+    # Only create if no tables exist (fresh database)
+    if not existing_tables:
+        create_tables()

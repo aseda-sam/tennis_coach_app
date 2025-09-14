@@ -26,7 +26,7 @@ class TestVideoAPI:
         assert data["version"] == "0.1.0"
         assert "timestamp" in data
 
-    def test_root_endpoint(self) -> None:
+    def test_root(self) -> None:
         """Test the root endpoint."""
         response = client.get("/")
         assert response.status_code == 200
