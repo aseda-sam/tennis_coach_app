@@ -26,13 +26,15 @@ class TestPoseDetectionService:
         """Create a pose detection service instance."""
         # Mock MediaPipe initialization to avoid errors in test environment
         mock_pose_instance = Mock()
-        
-        def mock_initialize_mediapipe(self):
+
+        def mock_initialize_mediapipe(self: PoseDetectionService) -> None:
             """Mock MediaPipe initialization."""
             self.mp_pose = Mock()
             self.pose_detector = mock_pose_instance
-        
-        with patch.object(PoseDetectionService, "_initialize_mediapipe", mock_initialize_mediapipe):
+
+        with patch.object(
+            PoseDetectionService, "_initialize_mediapipe", mock_initialize_mediapipe
+        ):
             service = PoseDetectionService()
             return service
 
@@ -214,7 +216,7 @@ class TestPoseDetectionAPI:
             "detection_rate": 0.6,
             "processing_time_seconds": 10.0,
         }
-        
+
         # Mock service instance
         mock_service_instance = Mock()
         mock_service_instance.get_detection_by_video_id.return_value = None
