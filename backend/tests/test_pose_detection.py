@@ -24,7 +24,19 @@ class TestPoseDetectionService:
     @pytest.fixture
     def pose_service(self) -> PoseDetectionService:
         """Create a pose detection service instance."""
-        return PoseDetectionService()
+        # Mock MediaPipe initialization to avoid errors in test environment
+        mock_pose_instance = Mock()
+
+        def mock_initialize_mediapipe(self: PoseDetectionService) -> None:
+            """Mock MediaPipe initialization."""
+            self.mp_pose = Mock()
+            self.pose_detector = mock_pose_instance
+
+        with patch.object(
+            PoseDetectionService, "_initialize_mediapipe", mock_initialize_mediapipe
+        ):
+            service = PoseDetectionService()
+            return service
 
     @pytest.fixture
     def mock_video_file(self) -> Path:
@@ -184,16 +196,18 @@ class TestPoseDetectionAPI:
     @patch(
         "app.services.pose_detection.detection_service.PoseDetectionService.analyze_video_file"
     )
+    @patch("app.api.routes.pose_detection.PoseDetectionService")
     @patch("pathlib.Path.exists")
     def test_analyze_pose_detection_success(
         self,
         mock_exists: Mock,
+        mock_service_class: Mock,
         mock_analyze: Mock,
         client: TestClient,
         db_session: Session,
     ) -> None:
         """Test successful pose detection analysis."""
-        # Setup
+        # Setup mocks
         mock_exists.return_value = True
         mock_analyze.return_value = {
             "total_frames": 50,
@@ -202,6 +216,12 @@ class TestPoseDetectionAPI:
             "detection_rate": 0.6,
             "processing_time_seconds": 10.0,
         }
+
+        # Mock service instance
+        mock_service_instance = Mock()
+        mock_service_instance.get_detection_by_video_id.return_value = None
+        mock_service_instance.analyze_video_file = mock_analyze
+        mock_service_class.return_value = mock_service_instance
 
         # Create test video with unique filename
         video = Video(
