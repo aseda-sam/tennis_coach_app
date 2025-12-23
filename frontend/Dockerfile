@@ -33,8 +33,6 @@ RUN npm ci
 COPY . .
 
 # Build the app
-# Set PUBLIC_URL to override homepage field for Docker deployment (served from root, not subdirectory)
-ENV PUBLIC_URL=/
 RUN npm run build
 
 # Production stage
