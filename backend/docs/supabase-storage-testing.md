@@ -27,7 +27,7 @@ Create or update `backend/.env`:
 STORAGE_TYPE=supabase
 
 # Supabase Storage
-SUPABASE_STORAGE_URL=https://xxxxx.supabase.co
+SUPABASE_URL=https://xxxxx.supabase.co/
 SUPABASE_KEY=eyJhbGc...  # Your Service Role Key
 SUPABASE_STORAGE_BUCKET=tennis-videos
 
@@ -78,8 +78,9 @@ Then restart your backend.
 ## Troubleshooting
 
 ### Error: "Supabase client not initialized"
-- Check that `SUPABASE_STORAGE_URL` and `SUPABASE_KEY` are set correctly
+- Check that `SUPABASE_URL` and `SUPABASE_KEY` are set correctly
 - Verify the Service Role Key (not the anon key)
+- Ensure `SUPABASE_URL` has a trailing slash (e.g., `https://xxxxx.supabase.co/`)
 
 ### Error: "SUPABASE_STORAGE_BUCKET must be set"
 - Make sure `SUPABASE_STORAGE_BUCKET` matches your bucket name exactly

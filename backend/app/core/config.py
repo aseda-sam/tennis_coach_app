@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     SUPABASE_DB_URL: Optional[str] = None  # Direct connection to Supabase database
 
     # Supabase Storage - Production file storage
-    SUPABASE_STORAGE_URL: Optional[str] = None  # Supabase project URL for storage
+    SUPABASE_URL: Optional[str] = (
+        None  # Supabase project URL (used for storage, auth, etc.)
+    )
     SUPABASE_STORAGE_BUCKET: Optional[str] = None  # Storage bucket name
 
     # File storage - Environment-based configuration
