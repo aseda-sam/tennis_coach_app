@@ -33,8 +33,8 @@ class StorageService:
 
             # Ensure URL has trailing slash (required by Supabase client)
             supabase_url = settings.SUPABASE_URL
-            if not supabase_url.endswith('/'):
-                supabase_url = supabase_url + '/'
+            if not supabase_url.endswith("/"):
+                supabase_url = supabase_url + "/"
                 logger.debug(f"Added trailing slash to SUPABASE_URL: {supabase_url}")
 
             self._supabase_client: Client = create_client(
