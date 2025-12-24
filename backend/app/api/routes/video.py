@@ -70,7 +70,9 @@ def _create_temp_file_for_processing(file_content: bytes, filename: str) -> Path
     Returns:
         Path to temporary file (caller must clean up)
     """
-    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp_file:
+    with tempfile.NamedTemporaryFile(
+        delete=False, suffix=Path(filename).suffix
+    ) as tmp_file:
         tmp_file.write(file_content)
         tmp_path = Path(tmp_file.name)
     return tmp_path
@@ -150,9 +152,7 @@ async def get_video(video_id: int, db: Session = Depends(get_db)) -> VideoInfo:
 
 
 @router.get("/{video_id}/stream", response_model=None)
-async def stream_video(
-    video_id: int, db: Session = Depends(get_db)
-) -> Response:
+async def stream_video(video_id: int, db: Session = Depends(get_db)) -> Response:
     """
     Stream a video file.
 
