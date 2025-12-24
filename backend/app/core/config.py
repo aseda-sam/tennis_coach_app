@@ -21,12 +21,15 @@ class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
 
     # Supabase - Production database
-    SUPABASE_URL: Optional[str] = None
     SUPABASE_KEY: Optional[str] = None
     SUPABASE_DB_URL: Optional[str] = None  # Direct connection to Supabase database
 
+    # Supabase Storage - Production file storage
+    SUPABASE_STORAGE_URL: Optional[str] = None  # Supabase project URL for storage
+    SUPABASE_STORAGE_BUCKET: Optional[str] = None  # Storage bucket name
+
     # File storage - Environment-based configuration
-    STORAGE_TYPE: str = "local"  # local, cloudinary, s3
+    STORAGE_TYPE: str = "local"  # local, supabase, cloudinary, s3
     UPLOAD_DIR: str = "../data/videos/raw"
     PROCESSED_DIR: str = "../data/videos/processed"
     MAX_FILE_SIZE: int = 104857600  # 100MB

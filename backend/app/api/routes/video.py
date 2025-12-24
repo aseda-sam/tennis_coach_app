@@ -1,13 +1,19 @@
 """Video API routes with proper REST patterns and error handling."""
 
 import logging
+import tempfile
 import time
 from pathlib import Path
 from typing import List
 
 import cv2
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import (
+    FileResponse,
+    RedirectResponse,
+    Response,
+    StreamingResponse,
+)
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -24,6 +30,7 @@ from app.api.schemas.video import (
 from app.core.config import settings
 from app.core.database import get_db
 from app.services import video_service
+from app.services.storage_service import storage_service
 from app.services.video_quality import VideoQualityService
 from app.utils.error_handling import (
     handle_file_error,
@@ -50,6 +57,23 @@ class VideoAnalysisStatus(BaseModel):
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _create_temp_file_for_processing(file_content: bytes, filename: str) -> Path:
+    """
+    Create a temporary file for video processing (metadata extraction, quality assessment).
+
+    Args:
+        file_content: File content as bytes
+        filename: Original filename (for extension)
+
+    Returns:
+        Path to temporary file (caller must clean up)
+    """
+    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp_file:
+        tmp_file.write(file_content)
+        tmp_path = Path(tmp_file.name)
+    return tmp_path
 
 
 def extract_video_metadata(video_path: Path) -> VideoMetadata:
@@ -125,8 +149,10 @@ async def get_video(video_id: int, db: Session = Depends(get_db)) -> VideoInfo:
         log_and_raise_error(e, "get_video", {"video_id": video_id})
 
 
-@router.get("/{video_id}/stream")
-async def stream_video(video_id: int, db: Session = Depends(get_db)) -> FileResponse:
+@router.get("/{video_id}/stream", response_model=None)
+async def stream_video(
+    video_id: int, db: Session = Depends(get_db)
+) -> Response:
     """
     Stream a video file.
 
@@ -134,7 +160,7 @@ async def stream_video(video_id: int, db: Session = Depends(get_db)) -> FileResp
         video_id: Unique video identifier
 
     Returns:
-        Video file stream
+        Video file stream or redirect to storage URL
     """
     try:
         # Get video from database
@@ -142,18 +168,34 @@ async def stream_video(video_id: int, db: Session = Depends(get_db)) -> FileResp
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Check if file exists on disk
-        upload_dir = Path(settings.UPLOAD_DIR)
-        file_path = upload_dir / db_video.filename
+        # Use storage service to get file
+        if settings.STORAGE_TYPE == "supabase":
+            # For Supabase, redirect to public URL or stream from Supabase
+            try:
+                file_url = storage_service.get_file_url(db_video.filename)
+                # Redirect to Supabase public URL
+                return RedirectResponse(url=file_url)
+            except (ValueError, RuntimeError, OSError) as e:
+                logger.error(f"Failed to get Supabase URL: {e}")
+                # Fallback: download and stream
+                file_data = storage_service.download_file(db_video.filename)
+                return StreamingResponse(
+                    iter([file_data]),
+                    media_type=db_video.content_type or "video/mp4",
+                    headers={
+                        "Content-Disposition": f'inline; filename="{get_safe_filename(db_video.filename)}"'
+                    },
+                )
+        else:
+            # For local storage, use FileResponse
+            file_path = Path(db_video.file_path)
+            validate_file_exists(file_path, db_video.filename)
 
-        validate_file_exists(file_path, db_video.filename)
-
-        # Return the video file with safe filename to prevent header injection
-        return FileResponse(
-            path=str(file_path),
-            media_type=db_video.content_type or "video/mp4",
-            filename=get_safe_filename(db_video.filename),
-        )
+            return FileResponse(
+                path=str(file_path),
+                media_type=db_video.content_type or "video/mp4",
+                filename=get_safe_filename(db_video.filename),
+            )
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "stream_video", {"video_id": video_id})
 
@@ -369,25 +411,43 @@ async def upload_video(
         # Validate video file
         validate_video_file(file.filename, file_size, file.content_type)
 
-        # Create upload directory if it doesn't exist
-        upload_dir = Path(settings.UPLOAD_DIR)
-        upload_dir.mkdir(parents=True, exist_ok=True)
-
         # Ensure safe and unique filename
         safe_filename = get_safe_filename(file.filename)
-        unique_filename = ensure_unique_filename(safe_filename, upload_dir)
 
-        # Save file
-        file_path = upload_dir / unique_filename
+        # For local storage, check uniqueness in local directory
+        # For Supabase, we'll use the filename directly (Supabase handles uniqueness)
+        if settings.STORAGE_TYPE == "local":
+            upload_dir = Path(settings.UPLOAD_DIR)
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            unique_filename = ensure_unique_filename(safe_filename, upload_dir)
+        else:
+            unique_filename = safe_filename
+
+        # Read file content
+        file_content = file.file.read()
+
+        # Upload to storage (local or Supabase)
         try:
-            with open(file_path, "wb") as buffer:
-                content = file.file.read()
-                buffer.write(content)
-        except OSError as e:
+            storage_path = storage_service.upload_file(
+                file_content=file_content,
+                file_path=unique_filename,
+                content_type=file.content_type,
+            )
+        except (ValueError, RuntimeError, OSError) as e:
             raise handle_file_error("upload_failed", unique_filename, str(e)) from e
 
-        # Extract video metadata
-        metadata = extract_video_metadata(file_path)
+        # For metadata extraction, we need the file locally
+        # If using Supabase, use temp file. For local, use actual file path.
+        if settings.STORAGE_TYPE == "supabase":
+            tmp_path = _create_temp_file_for_processing(file_content, unique_filename)
+            try:
+                metadata = extract_video_metadata(tmp_path)
+            finally:
+                tmp_path.unlink()
+        else:
+            # For local storage, use the actual file path
+            file_path = Path(storage_path)
+            metadata = extract_video_metadata(file_path)
 
         # Validate video metadata
         metadata_dict = {
@@ -399,10 +459,12 @@ async def upload_video(
         validate_video_file(file.filename, file_size, file.content_type, metadata_dict)
 
         # Save to database
+        # For storage path, use the storage path returned by storage service
+        # For Supabase, this is just the filename. For local, it's the full path.
         db_video = video_service.create_video_record(
             db=db,
             filename=unique_filename,
-            file_path=str(file_path),
+            file_path=storage_path,  # Use storage path (filename for Supabase, full path for local)
             file_size=file_size,
             content_type=file.content_type,
             duration=metadata.duration,
@@ -413,11 +475,22 @@ async def upload_video(
         )
 
         # Perform quick quality assessment
+        # For Supabase, we need to download the file temporarily
         quality_metrics = None
         try:
             logger.info(f"Starting quality assessment for {unique_filename}")
             quality_service = VideoQualityService()
-            quality_metrics = quality_service.quick_assess(file_path)
+
+            if settings.STORAGE_TYPE == "supabase":
+                # Download file temporarily for quality assessment
+                file_data = storage_service.download_file(unique_filename)
+                tmp_path = _create_temp_file_for_processing(file_data, unique_filename)
+                try:
+                    quality_metrics = quality_service.quick_assess(tmp_path)
+                finally:
+                    tmp_path.unlink()
+            else:
+                quality_metrics = quality_service.quick_assess(Path(storage_path))
 
             # Update video record with quality metrics
             video_service.update_video_quality(
