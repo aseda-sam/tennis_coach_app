@@ -25,14 +25,20 @@ class StorageService:
         try:
             from supabase import Client, create_client
 
-            if not settings.SUPABASE_STORAGE_URL or not settings.SUPABASE_KEY:
+            if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
                 logger.warning(
-                    "Supabase storage configured but SUPABASE_STORAGE_URL or SUPABASE_KEY not set."
+                    "Supabase storage configured but SUPABASE_URL or SUPABASE_KEY not set."
                 )
                 return
 
+            # Ensure URL has trailing slash (required by Supabase client)
+            supabase_url = settings.SUPABASE_URL
+            if not supabase_url.endswith('/'):
+                supabase_url = supabase_url + '/'
+                logger.debug(f"Added trailing slash to SUPABASE_URL: {supabase_url}")
+
             self._supabase_client: Client = create_client(
-                settings.SUPABASE_STORAGE_URL, settings.SUPABASE_KEY
+                supabase_url, settings.SUPABASE_KEY
             )
             logger.info("Supabase storage client initialized")
         except ImportError:
@@ -48,7 +54,7 @@ class StorageService:
         """Validate Supabase configuration and client."""
         if not self._supabase_client:
             raise ValueError(
-                "Supabase client not initialized. Check SUPABASE_STORAGE_URL and SUPABASE_KEY."
+                "Supabase client not initialized. Check SUPABASE_URL and SUPABASE_KEY."
             )
         if not settings.SUPABASE_STORAGE_BUCKET:
             raise ValueError("SUPABASE_STORAGE_BUCKET must be set")
