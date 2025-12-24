@@ -92,12 +92,14 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         """Get database URL based on environment."""
-        if self.is_production and self.SUPABASE_DB_URL:
+        # Use Supabase DB URL if provided (works in both dev and production)
+        if self.SUPABASE_DB_URL:
             return self.SUPABASE_DB_URL
+        # Use explicit DATABASE_URL if set
         if self.DATABASE_URL:
             return self.DATABASE_URL
-        else:
-            return "sqlite:///../data/database/tennis_coach.db"
+        # Default to SQLite for local development
+        return "sqlite:///../data/database/tennis_coach.db"
 
     @property
     def is_production(self) -> bool:
