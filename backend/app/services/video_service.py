@@ -92,14 +92,10 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     """
     from pathlib import Path
 
-    from app.core.config import settings
-
     # Get video from database
     video = get_video_by_id(db, video_id)
     if not video:
-        from app.utils.error_handling import handle_not_found_error
-
-        raise handle_not_found_error("Video", str(video_id))
+        raise ValueError(f"Video with ID {video_id} not found")
 
     filename = video.filename
 
@@ -144,17 +140,21 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
                             f"Failed to delete pose detection annotated video {annotated_path}: {e}"
                         )
 
-        # Delete original video file from file system
-        upload_dir = Path(settings.UPLOAD_DIR)
-        file_path = upload_dir / filename
+        # Delete original video file from storage (local or Supabase)
+        from app.services.storage_service import storage_service
 
-        if file_path.exists() and file_path.is_file():
-            try:
-                file_path.unlink()
-                logger.info(f"Deleted original video: {file_path}")
-            except OSError as e:
-                logger.error(f"Failed to delete video file {file_path}: {e}")
-                # Continue with database deletion even if file deletion fails
+        try:
+            # Use storage service to delete the file
+            # For Supabase, file_path is just the filename
+            # For local, file_path is the full path or relative path
+            storage_path = video.file_path
+            storage_service.delete_file(storage_path)
+            logger.info(f"Deleted original video from storage: {storage_path}")
+        except (ValueError, RuntimeError, OSError) as e:
+            logger.error(
+                f"Failed to delete video file from storage {storage_path}: {e}"
+            )
+            # Continue with database deletion even if file deletion fails
 
         # Delete from database (this will cascade delete all related records)
         # The cascade relationships will automatically delete:
