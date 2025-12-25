@@ -337,19 +337,28 @@ class TestStorageServiceInitialization:
     def test_init_supabase_missing_package(self) -> None:
         """Test that missing supabase package raises ImportError."""
         # Remove supabase from sys.modules to simulate missing package
+        # Also remove any submodules that might be cached
         original_supabase = sys.modules.pop("supabase", None)
+        original_supabase_client = sys.modules.pop("supabase.client", None)
+        original_supabase_create = sys.modules.pop("supabase.create_client", None)
         try:
             with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
                 settings, "SUPABASE_URL", "https://test.supabase.co/"
-            ), patch.object(settings, "SUPABASE_KEY", "test-key"):
+            ), patch.object(settings, "SUPABASE_KEY", "test-key"), patch.dict(
+                "sys.modules", {"supabase": None}, clear=False
+            ):
                 with pytest.raises(ImportError) as exc_info:
                     StorageService()
 
                 assert "supabase package is required" in str(exc_info.value)
         finally:
-            # Restore if it existed
+            # Restore if they existed
             if original_supabase:
                 sys.modules["supabase"] = original_supabase
+            if original_supabase_client:
+                sys.modules["supabase.client"] = original_supabase_client
+            if original_supabase_create:
+                sys.modules["supabase.create_client"] = original_supabase_create
 
     def test_init_supabase_url_trailing_slash(self) -> None:
         """Test that URL gets trailing slash added automatically."""
