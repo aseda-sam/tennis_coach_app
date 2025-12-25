@@ -90,7 +90,6 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     Returns:
         Tuple of (success: bool, filename: str, video_id: int)
     """
-    from pathlib import Path
 
     # Get video from database
     video = get_video_by_id(db, video_id)
