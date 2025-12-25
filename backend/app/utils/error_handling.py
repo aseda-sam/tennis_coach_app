@@ -1,7 +1,8 @@
 """Centralized error handling utilities."""
 
 import logging
-from typing import Any, Dict, Optional
+import re
+from typing import Any, Dict, Optional, Tuple
 
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -97,6 +98,46 @@ def handle_not_found_error(resource_type: str, resource_id: str) -> APIError:
     )
 
 
+def _extract_resource_info_from_error(
+    error: ValueError, context: Optional[Dict[str, Any]] = None
+) -> Tuple[str, str]:
+    """
+    Extract resource type and ID from error message or context.
+
+    Args:
+        error: The ValueError exception
+        context: Optional context dictionary with resource IDs
+
+    Returns:
+        Tuple of (resource_type, resource_id)
+    """
+    resource_type = "resource"
+    resource_id = "unknown"
+
+    # Check context for common resource ID fields
+    context_mapping = {
+        "video_id": "video",
+        "player_id": "player",
+        "annotation_id": "annotation",
+        "ball_contact_id": "ball_contact",
+    }
+
+    if context:
+        for key, res_type in context_mapping.items():
+            if key in context:
+                resource_type = res_type
+                resource_id = str(context[key])
+                break
+
+    # Try to extract from error message (e.g., "Video with ID 999 not found")
+    match = re.search(r"(\w+)\s+with\s+ID\s+(\d+)", str(error), re.IGNORECASE)
+    if match:
+        resource_type = match.group(1).lower()
+        resource_id = match.group(2)
+
+    return resource_type, resource_id
+
+
 def log_and_raise_error(
     error: Exception, operation: str, context: Optional[Dict[str, Any]] = None
 ) -> None:
@@ -112,7 +153,14 @@ def log_and_raise_error(
 
     # Convert common exceptions to API errors
     if isinstance(error, ValueError):
-        raise handle_validation_error("input", "invalid", str(error))
+        error_message = str(error).lower()
+        if "not found" in error_message:
+            resource_type, resource_id = _extract_resource_info_from_error(
+                error, context
+            )
+            raise handle_not_found_error(resource_type, resource_id)
+        else:
+            raise handle_validation_error("input", "invalid", str(error))
     elif isinstance(error, FileNotFoundError):
         raise handle_not_found_error("file", str(error))
     elif isinstance(error, OSError):
