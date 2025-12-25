@@ -361,7 +361,9 @@ class TestStorageServiceInitialization:
                 # We need to ensure sys.modules doesn't have supabase, and patch __import__
                 # Type annotations use Any to match __import__ signature for mocking
                 def import_side_effect(
-                    name: str, *args: Any, **kwargs: Any  # noqa: ANN401
+                    name: str,
+                    *args: Any,  # noqa: ANN401
+                    **kwargs: Any,  # noqa: ANN401
                 ) -> Any:  # noqa: ANN401
                     if name == "supabase" or name.startswith("supabase."):
                         raise ImportError(f"No module named '{name}'")
