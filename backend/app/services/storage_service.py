@@ -83,7 +83,7 @@ class StorageService:
 
     def _resolve_local_path(self, file_path: str) -> Path:
         """Resolve local file path (handles absolute or relative paths).
-        
+
         For absolute paths or paths starting with '..', use them directly.
         For relative paths, resolve against UPLOAD_DIR.
         """

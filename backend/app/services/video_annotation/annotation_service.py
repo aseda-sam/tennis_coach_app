@@ -93,6 +93,7 @@ class VideoAnnotationService:
                 video_content = storage_service.download_file(video.file_path)
                 # Create temp file for processing
                 import tempfile
+
                 temp_video_file = tempfile.NamedTemporaryFile(
                     delete=False, suffix=".mp4", dir=settings.PROCESSED_DIR
                 )
@@ -132,7 +133,11 @@ class VideoAnnotationService:
                 logger.info(f"Uploaded annotated video to Supabase: {supabase_path}")
 
             # Get file size
-            file_size = annotated_video_path.stat().st_size if annotated_video_path.exists() else None
+            file_size = (
+                annotated_video_path.stat().st_size
+                if annotated_video_path.exists()
+                else None
+            )
 
             # Create annotation record
             annotation = VideoAnnotation(
@@ -161,7 +166,9 @@ class VideoAnnotationService:
                     temp_video_path.unlink()
                     logger.debug(f"Cleaned up temp video file: {temp_video_path}")
                 except OSError as e:
-                    logger.warning(f"Failed to delete temp video file {temp_video_path}: {e}")
+                    logger.warning(
+                        f"Failed to delete temp video file {temp_video_path}: {e}"
+                    )
 
     def _create_pose_annotated_video(
         self,
