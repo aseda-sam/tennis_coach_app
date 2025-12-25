@@ -82,9 +82,18 @@ class StorageService:
             )
 
     def _resolve_local_path(self, file_path: str) -> Path:
-        """Resolve local file path (handles absolute or relative paths)."""
-        if Path(file_path).is_absolute():
-            return Path(file_path)
+        """Resolve local file path (handles absolute or relative paths).
+        
+        For absolute paths or paths starting with '..', use them directly.
+        For relative paths, resolve against UPLOAD_DIR.
+        """
+        path_obj = Path(file_path)
+        if path_obj.is_absolute():
+            return path_obj
+        # If path starts with '..', it's a relative path to a parent directory
+        # Use it as-is (it will be resolved relative to current working directory)
+        if file_path.startswith(".."):
+            return path_obj.resolve()
         return Path(settings.UPLOAD_DIR) / file_path
 
     def upload_file(

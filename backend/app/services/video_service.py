@@ -102,22 +102,24 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     try:
         # Delete video annotations
         from app.models.video_annotation import VideoAnnotation
+        from app.services.storage_service import storage_service
 
         video_annotations = (
             db.query(VideoAnnotation).filter(VideoAnnotation.video_id == video_id).all()
         )
         for annotation in video_annotations:
-            # Delete annotated video files
+            # Delete annotated video files using storage service
             if annotation.annotated_video_path:
-                annotated_path = Path(annotation.annotated_video_path)
-                if annotated_path.exists():
-                    try:
-                        annotated_path.unlink()
-                        logger.info(f"Deleted video annotation file: {annotated_path}")
-                    except OSError as e:
-                        logger.warning(
-                            f"Failed to delete video annotation file {annotated_path}: {e}"
-                        )
+                try:
+                    # Use storage service to delete (handles both local and Supabase)
+                    storage_service.delete_file(annotation.annotated_video_path)
+                    logger.info(
+                        f"Deleted video annotation file: {annotation.annotated_video_path}"
+                    )
+                except (ValueError, RuntimeError, OSError) as e:
+                    logger.warning(
+                        f"Failed to delete video annotation file {annotation.annotated_video_path}: {e}"
+                    )
 
         # Delete pose detection annotated video files
         from app.models.pose_detection import PoseDetection
@@ -126,27 +128,25 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
             db.query(PoseDetection).filter(PoseDetection.video_id == video_id).all()
         )
         for pose_detection in pose_detections:
-            # Delete annotated video files
+            # Delete annotated video files using storage service
             if pose_detection.annotated_video_path:
-                annotated_path = Path(pose_detection.annotated_video_path)
-                if annotated_path.exists():
-                    try:
-                        annotated_path.unlink()
-                        logger.info(
-                            f"Deleted pose detection annotated video: {annotated_path}"
-                        )
-                    except OSError as e:
-                        logger.warning(
-                            f"Failed to delete pose detection annotated video {annotated_path}: {e}"
-                        )
+                try:
+                    # Use storage service to delete (handles both local and Supabase)
+                    storage_service.delete_file(pose_detection.annotated_video_path)
+                    logger.info(
+                        f"Deleted pose detection annotated video: {pose_detection.annotated_video_path}"
+                    )
+                except (ValueError, RuntimeError, OSError) as e:
+                    logger.warning(
+                        f"Failed to delete pose detection annotated video {pose_detection.annotated_video_path}: {e}"
+                    )
 
         # Delete original video file from storage (local or Supabase)
-        from app.services.storage_service import storage_service
 
         try:
             # Use storage service to delete the file
-            # For Supabase, file_path is just the filename
-            # For local, file_path is the full path or relative path
+            # For Supabase, file_path is 'raw/filename.mp4'
+            # For local, file_path is the full path
             storage_path = video.file_path
             storage_service.delete_file(storage_path)
             logger.info(f"Deleted original video from storage: {storage_path}")

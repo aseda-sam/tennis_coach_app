@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.models.pose_detection import PoseDetection
 from app.models.video import Video
 from app.models.video_annotation import VideoAnnotation
+from app.services.storage_service import storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -81,37 +82,86 @@ class VideoAnnotationService:
         if pose_detection.status != "completed":
             raise ValueError(f"Pose detection {pose_detection.id} is not completed")
 
-        # Create annotated video
-        video_path = Path(video.file_path)
-        annotated_video_path = self._create_pose_annotated_video(
-            video_path, pose_detection, annotation_style
-        )
+        # Get video file for processing
+        # For Supabase, download to temp file. For local, use file_path directly.
+        video_path = None
+        temp_video_path = None
+        try:
+            if settings.STORAGE_TYPE == "supabase":
+                # Download video from Supabase to temp file for processing
+                logger.info(f"Downloading video from Supabase: {video.file_path}")
+                video_content = storage_service.download_file(video.file_path)
+                # Create temp file for processing
+                import tempfile
+                temp_video_file = tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".mp4", dir=settings.PROCESSED_DIR
+                )
+                temp_video_file.write(video_content)
+                temp_video_file.close()
+                temp_video_path = Path(temp_video_file.name)
+                video_path = temp_video_path
+            else:
+                # For local storage, use file_path directly
+                video_path = Path(video.file_path)
 
-        if not annotated_video_path:
-            raise RuntimeError("Failed to create annotated video")
+            # Create annotated video
+            annotated_video_path = self._create_pose_annotated_video(
+                video_path, pose_detection, annotation_style
+            )
 
-        # Create annotation record
-        annotation = VideoAnnotation(
-            video_id=video_id,
-            annotation_type="pose_only",
-            annotated_video_path=str(annotated_video_path),
-            file_size_bytes=annotated_video_path.stat().st_size
-            if annotated_video_path.exists()
-            else None,
-            pose_detection_id=pose_detection.id,
-            processing_time_seconds=time.time() - start_time,
-            frames_annotated=pose_detection.total_frames,
-            annotation_style=annotation_style,
-            status="completed",
-            completed_at=datetime.now(),
-        )
+            if not annotated_video_path:
+                raise RuntimeError("Failed to create annotated video")
 
-        db.add(annotation)
-        db.commit()
-        db.refresh(annotation)
+            # Upload annotated video to storage if using Supabase
+            annotated_storage_path = str(annotated_video_path)
+            if settings.STORAGE_TYPE == "supabase":
+                # Read the annotated video file
+                with open(annotated_video_path, "rb") as f:
+                    annotated_content = f.read()
 
-        logger.info(f"Created pose annotation {annotation.id} for video {video_id}")
-        return annotation
+                # Upload to Supabase with processed/ prefix
+                # Extract just the filename from the local path
+                annotated_filename = annotated_video_path.name
+                supabase_path = f"processed/{annotated_filename}"
+                storage_service.upload_file(
+                    file_content=annotated_content,
+                    file_path=supabase_path,
+                    content_type="video/mp4",
+                )
+                annotated_storage_path = supabase_path
+                logger.info(f"Uploaded annotated video to Supabase: {supabase_path}")
+
+            # Get file size
+            file_size = annotated_video_path.stat().st_size if annotated_video_path.exists() else None
+
+            # Create annotation record
+            annotation = VideoAnnotation(
+                video_id=video_id,
+                annotation_type="pose_only",
+                annotated_video_path=annotated_storage_path,
+                file_size_bytes=file_size,
+                pose_detection_id=pose_detection.id,
+                processing_time_seconds=time.time() - start_time,
+                frames_annotated=pose_detection.total_frames,
+                annotation_style=annotation_style,
+                status="completed",
+                completed_at=datetime.now(),
+            )
+
+            db.add(annotation)
+            db.commit()
+            db.refresh(annotation)
+
+            logger.info(f"Created pose annotation {annotation.id} for video {video_id}")
+            return annotation
+        finally:
+            # Clean up temp video file if created
+            if temp_video_path and temp_video_path.exists():
+                try:
+                    temp_video_path.unlink()
+                    logger.debug(f"Cleaned up temp video file: {temp_video_path}")
+                except OSError as e:
+                    logger.warning(f"Failed to delete temp video file {temp_video_path}: {e}")
 
     def _create_pose_annotated_video(
         self,
@@ -349,15 +399,16 @@ class VideoAnnotationService:
         if not annotation:
             return False
 
-        # Delete file
-        annotated_path = Path(annotation.annotated_video_path)
-        if annotated_path.exists():
+        # Delete file using storage service (handles both local and Supabase)
+        if annotation.annotated_video_path:
             try:
-                annotated_path.unlink()
-                logger.info(f"Deleted annotated video file: {annotated_path}")
-            except OSError as e:
+                storage_service.delete_file(annotation.annotated_video_path)
+                logger.info(
+                    f"Deleted annotated video file: {annotation.annotated_video_path}"
+                )
+            except (ValueError, RuntimeError, OSError) as e:
                 logger.warning(
-                    f"Failed to delete annotated video file {annotated_path}: {e}"
+                    f"Failed to delete annotated video file {annotation.annotated_video_path}: {e}"
                 )
 
         # Delete database record
