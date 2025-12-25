@@ -341,16 +341,31 @@ class TestStorageServiceInitialization:
         original_supabase = sys.modules.pop("supabase", None)
         original_supabase_client = sys.modules.pop("supabase.client", None)
         original_supabase_create = sys.modules.pop("supabase.create_client", None)
+        # Remove any other supabase-related modules that might be cached
+        keys_to_remove = [k for k in list(sys.modules.keys()) if k.startswith("supabase")]
+        original_modules = {k: sys.modules.pop(k) for k in keys_to_remove}
+        
         try:
+            # Save reference to original __import__ before patching
+            import builtins
+            original_import = builtins.__import__
+            
             with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
                 settings, "SUPABASE_URL", "https://test.supabase.co/"
-            ), patch.object(settings, "SUPABASE_KEY", "test-key"), patch.dict(
-                "sys.modules", {"supabase": None}, clear=False
-            ):
-                with pytest.raises(ImportError) as exc_info:
-                    StorageService()
+            ), patch.object(settings, "SUPABASE_KEY", "test-key"):
+                # Patch the import statement by making the module raise ImportError
+                # We need to ensure sys.modules doesn't have supabase, and patch __import__
+                def import_side_effect(name, *args, **kwargs):
+                    if name == "supabase" or name.startswith("supabase."):
+                        raise ImportError(f"No module named '{name}'")
+                    # For other imports, use the original import function
+                    return original_import(name, *args, **kwargs)
+                
+                with patch("builtins.__import__", side_effect=import_side_effect):
+                    with pytest.raises(ImportError) as exc_info:
+                        StorageService()
 
-                assert "supabase package is required" in str(exc_info.value)
+                    assert "supabase package is required" in str(exc_info.value)
         finally:
             # Restore if they existed
             if original_supabase:
@@ -359,6 +374,8 @@ class TestStorageServiceInitialization:
                 sys.modules["supabase.client"] = original_supabase_client
             if original_supabase_create:
                 sys.modules["supabase.create_client"] = original_supabase_create
+            # Restore other supabase modules
+            sys.modules.update(original_modules)
 
     def test_init_supabase_url_trailing_slash(self) -> None:
         """Test that URL gets trailing slash added automatically."""
