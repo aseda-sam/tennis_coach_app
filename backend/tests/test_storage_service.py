@@ -2,6 +2,7 @@
 
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -358,7 +359,10 @@ class TestStorageServiceInitialization:
             ), patch.object(settings, "SUPABASE_KEY", "test-key"):
                 # Patch the import statement by making the module raise ImportError
                 # We need to ensure sys.modules doesn't have supabase, and patch __import__
-                def import_side_effect(name, *args, **kwargs):
+                # Type annotations use Any to match __import__ signature for mocking
+                def import_side_effect(
+                    name: str, *args: Any, **kwargs: Any  # noqa: ANN401
+                ) -> Any:  # noqa: ANN401
                     if name == "supabase" or name.startswith("supabase."):
                         raise ImportError(f"No module named '{name}'")
                     # For other imports, use the original import function

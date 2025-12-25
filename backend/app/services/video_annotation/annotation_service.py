@@ -94,12 +94,11 @@ class VideoAnnotationService:
                 # Create temp file for processing
                 import tempfile
 
-                temp_video_file = tempfile.NamedTemporaryFile(
+                with tempfile.NamedTemporaryFile(
                     delete=False, suffix=".mp4", dir=settings.PROCESSED_DIR
-                )
-                temp_video_file.write(video_content)
-                temp_video_file.close()
-                temp_video_path = Path(temp_video_file.name)
+                ) as temp_video_file:
+                    temp_video_file.write(video_content)
+                    temp_video_path = Path(temp_video_file.name)
                 video_path = temp_video_path
             else:
                 # For local storage, use file_path directly
