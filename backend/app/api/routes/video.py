@@ -170,15 +170,17 @@ async def stream_video(video_id: int, db: Session = Depends(get_db)) -> Response
 
         # Use storage service to get file
         if settings.STORAGE_TYPE == "supabase":
-            # For Supabase, redirect to public URL or stream from Supabase
+            # For Supabase, use file_path which contains 'raw/filename.mp4'
+            # For local, file_path is the full path, but for Supabase it's the storage path
+            storage_path = db_video.file_path
             try:
-                file_url = storage_service.get_file_url(db_video.filename)
+                file_url = storage_service.get_file_url(storage_path)
                 # Redirect to Supabase public URL
                 return RedirectResponse(url=file_url)
             except (ValueError, RuntimeError, OSError) as e:
                 logger.error(f"Failed to get Supabase URL: {e}")
                 # Fallback: download and stream
-                file_data = storage_service.download_file(db_video.filename)
+                file_data = storage_service.download_file(storage_path)
                 return StreamingResponse(
                     iter([file_data]),
                     media_type=db_video.content_type or "video/mp4",
@@ -203,7 +205,7 @@ async def stream_video(video_id: int, db: Session = Depends(get_db)) -> Response
 @router.get("/{video_id}/annotated/stream")
 async def stream_annotated_video(
     video_id: int, db: Session = Depends(get_db)
-) -> FileResponse:
+) -> Response:
     """
     Stream an annotated video file.
 
@@ -211,7 +213,7 @@ async def stream_annotated_video(
         video_id: Unique video identifier
 
     Returns:
-        Annotated video file stream
+        Annotated video file stream or redirect to storage URL
     """
     try:
         # Get video from database
@@ -230,14 +232,17 @@ async def stream_annotated_video(
             .first()
         )
 
+        annotated_storage_path = None
+        annotated_filename = None
+
         if video_annotation and video_annotation.annotated_video_path:
             # Use the video annotation system
-            annotated_path = Path(video_annotation.annotated_video_path)
-            annotated_filename = annotated_path.name
+            annotated_storage_path = video_annotation.annotated_video_path
+            # Extract filename from path (handles both local paths and Supabase paths)
+            annotated_filename = Path(annotated_storage_path).name
             logger.info(f"Using video annotation: {annotated_filename}")
         else:
-            # Handle cases where filename has suffixes
-            # like _2, _3
+            # Fallback: Handle cases where filename has suffixes (legacy support)
             base_name = Path(db_video.filename).stem
             processed_dir = Path(settings.PROCESSED_DIR)
 
@@ -272,14 +277,41 @@ async def stream_annotated_video(
                             f"Found annotated video with flexible pattern: "
                             f"{annotated_filename}"
                         )
+                    else:
+                        raise handle_not_found_error(
+                            "annotated_video", f"for video {video_id}"
+                        )
 
-        validate_file_exists(annotated_path, annotated_filename)
+            annotated_storage_path = str(annotated_path)
+            validate_file_exists(annotated_path, annotated_filename)
 
-        return FileResponse(
-            path=str(annotated_path),
-            media_type="video/mp4",
-            filename=get_safe_filename(annotated_filename),
-        )
+        # Handle Supabase vs local storage
+        if settings.STORAGE_TYPE == "supabase":
+            # For Supabase, redirect to public URL or stream from Supabase
+            try:
+                file_url = storage_service.get_file_url(annotated_storage_path)
+                # Redirect to Supabase public URL
+                return RedirectResponse(url=file_url)
+            except (ValueError, RuntimeError, OSError) as e:
+                logger.error(f"Failed to get Supabase URL: {e}")
+                # Fallback: download and stream
+                file_data = storage_service.download_file(annotated_storage_path)
+                return StreamingResponse(
+                    iter([file_data]),
+                    media_type="video/mp4",
+                    headers={
+                        "Content-Disposition": f'inline; filename="{get_safe_filename(annotated_filename)}"'
+                    },
+                )
+        else:
+            # For local storage, use FileResponse
+            annotated_path = Path(annotated_storage_path)
+            validate_file_exists(annotated_path, annotated_filename)
+            return FileResponse(
+                path=str(annotated_path),
+                media_type="video/mp4",
+                filename=get_safe_filename(annotated_filename),
+            )
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "stream_annotated_video", {"video_id": video_id})
 
@@ -420,8 +452,12 @@ async def upload_video(
             upload_dir = Path(settings.UPLOAD_DIR)
             upload_dir.mkdir(parents=True, exist_ok=True)
             unique_filename = ensure_unique_filename(safe_filename, upload_dir)
+            # For local storage, use filename directly (UPLOAD_DIR already contains 'raw')
+            storage_file_path = unique_filename
         else:
             unique_filename = safe_filename
+            # For Supabase, add 'raw/' prefix to match local directory structure
+            storage_file_path = f"raw/{unique_filename}"
 
         # Read file content
         file_content = file.file.read()
@@ -430,7 +466,7 @@ async def upload_video(
         try:
             storage_path = storage_service.upload_file(
                 file_content=file_content,
-                file_path=unique_filename,
+                file_path=storage_file_path,
                 content_type=file.content_type,
             )
         except (ValueError, RuntimeError, OSError) as e:
@@ -460,11 +496,11 @@ async def upload_video(
 
         # Save to database
         # For storage path, use the storage path returned by storage service
-        # For Supabase, this is just the filename. For local, it's the full path.
+        # For Supabase, this is 'raw/filename.mp4'. For local, it's the full path.
         db_video = video_service.create_video_record(
             db=db,
             filename=unique_filename,
-            file_path=storage_path,  # Use storage path (filename for Supabase, full path for local)
+            file_path=storage_path,  # Use storage path ('raw/filename.mp4' for Supabase, full path for local)
             file_size=file_size,
             content_type=file.content_type,
             duration=metadata.duration,
