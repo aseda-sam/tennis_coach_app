@@ -341,12 +341,11 @@ class TestStorageServiceInitialization:
         try:
             with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
                 settings, "SUPABASE_URL", "https://test.supabase.co/"
-            ), patch.object(settings, "SUPABASE_KEY", "test-key"), pytest.raises(
-                ImportError
-            ) as exc_info:
-                StorageService()
+            ), patch.object(settings, "SUPABASE_KEY", "test-key"):
+                with pytest.raises(ImportError) as exc_info:
+                    StorageService()
 
-            assert "supabase package is required" in str(exc_info.value)
+                assert "supabase package is required" in str(exc_info.value)
         finally:
             # Restore if it existed
             if original_supabase:
