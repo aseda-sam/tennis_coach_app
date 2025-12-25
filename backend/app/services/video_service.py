@@ -90,38 +90,35 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     Returns:
         Tuple of (success: bool, filename: str, video_id: int)
     """
-    from pathlib import Path
-
-    from app.core.config import settings
 
     # Get video from database
     video = get_video_by_id(db, video_id)
     if not video:
-        from app.utils.error_handling import handle_not_found_error
-
-        raise handle_not_found_error("Video", str(video_id))
+        raise ValueError(f"Video with ID {video_id} not found")
 
     filename = video.filename
 
     try:
         # Delete video annotations
         from app.models.video_annotation import VideoAnnotation
+        from app.services.storage_service import storage_service
 
         video_annotations = (
             db.query(VideoAnnotation).filter(VideoAnnotation.video_id == video_id).all()
         )
         for annotation in video_annotations:
-            # Delete annotated video files
+            # Delete annotated video files using storage service
             if annotation.annotated_video_path:
-                annotated_path = Path(annotation.annotated_video_path)
-                if annotated_path.exists():
-                    try:
-                        annotated_path.unlink()
-                        logger.info(f"Deleted video annotation file: {annotated_path}")
-                    except OSError as e:
-                        logger.warning(
-                            f"Failed to delete video annotation file {annotated_path}: {e}"
-                        )
+                try:
+                    # Use storage service to delete (handles both local and Supabase)
+                    storage_service.delete_file(annotation.annotated_video_path)
+                    logger.info(
+                        f"Deleted video annotation file: {annotation.annotated_video_path}"
+                    )
+                except (ValueError, RuntimeError, OSError) as e:
+                    logger.warning(
+                        f"Failed to delete video annotation file {annotation.annotated_video_path}: {e}"
+                    )
 
         # Delete pose detection annotated video files
         from app.models.pose_detection import PoseDetection
@@ -130,31 +127,33 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
             db.query(PoseDetection).filter(PoseDetection.video_id == video_id).all()
         )
         for pose_detection in pose_detections:
-            # Delete annotated video files
+            # Delete annotated video files using storage service
             if pose_detection.annotated_video_path:
-                annotated_path = Path(pose_detection.annotated_video_path)
-                if annotated_path.exists():
-                    try:
-                        annotated_path.unlink()
-                        logger.info(
-                            f"Deleted pose detection annotated video: {annotated_path}"
-                        )
-                    except OSError as e:
-                        logger.warning(
-                            f"Failed to delete pose detection annotated video {annotated_path}: {e}"
-                        )
+                try:
+                    # Use storage service to delete (handles both local and Supabase)
+                    storage_service.delete_file(pose_detection.annotated_video_path)
+                    logger.info(
+                        f"Deleted pose detection annotated video: {pose_detection.annotated_video_path}"
+                    )
+                except (ValueError, RuntimeError, OSError) as e:
+                    logger.warning(
+                        f"Failed to delete pose detection annotated video {pose_detection.annotated_video_path}: {e}"
+                    )
 
-        # Delete original video file from file system
-        upload_dir = Path(settings.UPLOAD_DIR)
-        file_path = upload_dir / filename
+        # Delete original video file from storage (local or Supabase)
 
-        if file_path.exists() and file_path.is_file():
-            try:
-                file_path.unlink()
-                logger.info(f"Deleted original video: {file_path}")
-            except OSError as e:
-                logger.error(f"Failed to delete video file {file_path}: {e}")
-                # Continue with database deletion even if file deletion fails
+        try:
+            # Use storage service to delete the file
+            # For Supabase, file_path is 'raw/filename.mp4'
+            # For local, file_path is the full path
+            storage_path = video.file_path
+            storage_service.delete_file(storage_path)
+            logger.info(f"Deleted original video from storage: {storage_path}")
+        except (ValueError, RuntimeError, OSError) as e:
+            logger.error(
+                f"Failed to delete video file from storage {storage_path}: {e}"
+            )
+            # Continue with database deletion even if file deletion fails
 
         # Delete from database (this will cascade delete all related records)
         # The cascade relationships will automatically delete:

@@ -21,12 +21,17 @@ class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
 
     # Supabase - Production database
-    SUPABASE_URL: Optional[str] = None
     SUPABASE_KEY: Optional[str] = None
     SUPABASE_DB_URL: Optional[str] = None  # Direct connection to Supabase database
 
+    # Supabase Storage - Production file storage
+    SUPABASE_URL: Optional[str] = (
+        None  # Supabase project URL (used for storage, auth, etc.)
+    )
+    SUPABASE_STORAGE_BUCKET: Optional[str] = None  # Storage bucket name
+
     # File storage - Environment-based configuration
-    STORAGE_TYPE: str = "local"  # local, cloudinary, s3
+    STORAGE_TYPE: str = "local"  # local, supabase, cloudinary, s3
     UPLOAD_DIR: str = "../data/videos/raw"
     PROCESSED_DIR: str = "../data/videos/processed"
     MAX_FILE_SIZE: int = 104857600  # 100MB
@@ -87,12 +92,14 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         """Get database URL based on environment."""
-        if self.is_production and self.SUPABASE_DB_URL:
+        # Use Supabase DB URL if provided (works in both dev and production)
+        if self.SUPABASE_DB_URL:
             return self.SUPABASE_DB_URL
+        # Use explicit DATABASE_URL if set
         if self.DATABASE_URL:
             return self.DATABASE_URL
-        else:
-            return "sqlite:///../data/database/tennis_coach.db"
+        # Default to SQLite for local development
+        return "sqlite:///../data/database/tennis_coach.db"
 
     @property
     def is_production(self) -> bool:
