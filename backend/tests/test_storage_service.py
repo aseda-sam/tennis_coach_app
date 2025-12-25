@@ -342,14 +342,17 @@ class TestStorageServiceInitialization:
         original_supabase_client = sys.modules.pop("supabase.client", None)
         original_supabase_create = sys.modules.pop("supabase.create_client", None)
         # Remove any other supabase-related modules that might be cached
-        keys_to_remove = [k for k in list(sys.modules.keys()) if k.startswith("supabase")]
+        keys_to_remove = [
+            k for k in list(sys.modules.keys()) if k.startswith("supabase")
+        ]
         original_modules = {k: sys.modules.pop(k) for k in keys_to_remove}
-        
+
         try:
             # Save reference to original __import__ before patching
             import builtins
+
             original_import = builtins.__import__
-            
+
             with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
                 settings, "SUPABASE_URL", "https://test.supabase.co/"
             ), patch.object(settings, "SUPABASE_KEY", "test-key"):
@@ -360,7 +363,7 @@ class TestStorageServiceInitialization:
                         raise ImportError(f"No module named '{name}'")
                     # For other imports, use the original import function
                     return original_import(name, *args, **kwargs)
-                
+
                 with patch("builtins.__import__", side_effect=import_side_effect):
                     with pytest.raises(ImportError) as exc_info:
                         StorageService()
