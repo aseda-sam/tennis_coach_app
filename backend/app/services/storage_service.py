@@ -59,6 +59,28 @@ class StorageService:
         if not settings.SUPABASE_STORAGE_BUCKET:
             raise ValueError("SUPABASE_STORAGE_BUCKET must be set")
 
+    def _validate_file_path(self, file_path: str) -> None:
+        """Validate file path to prevent directory traversal attacks.
+
+        Args:
+            file_path: Path to validate
+
+        Raises:
+            ValueError: If path contains traversal attempts or is invalid
+        """
+        if not file_path or not file_path.strip():
+            raise ValueError("File path cannot be empty")
+
+        # Reject paths containing directory traversal attempts
+        if ".." in file_path:
+            raise ValueError("Invalid file path: path traversal detected")
+
+        # For cloud storage, reject absolute paths (local storage allows them)
+        if self.storage_type != "local" and file_path.startswith("/"):
+            raise ValueError(
+                "Invalid file path: absolute paths not allowed for cloud storage"
+            )
+
     def _resolve_local_path(self, file_path: str) -> Path:
         """Resolve local file path (handles absolute or relative paths)."""
         if Path(file_path).is_absolute():
@@ -79,6 +101,7 @@ class StorageService:
         Returns:
             Storage path/URL of the uploaded file
         """
+        self._validate_file_path(file_path)
         if self.storage_type == "supabase":
             return self._upload_to_supabase(file_content, file_path, content_type)
         return self._upload_to_local(file_content, file_path)
@@ -93,6 +116,7 @@ class StorageService:
         Returns:
             File content as bytes
         """
+        self._validate_file_path(file_path)
         if self.storage_type == "supabase":
             return self._download_from_supabase(file_path)
         return self._download_from_local(file_path)
@@ -104,6 +128,7 @@ class StorageService:
         Args:
             file_path: Path to the file in storage
         """
+        self._validate_file_path(file_path)
         if self.storage_type == "supabase":
             self._delete_from_supabase(file_path)
         else:
@@ -119,6 +144,7 @@ class StorageService:
         Returns:
             URL to access the file (Supabase) or file path (local)
         """
+        self._validate_file_path(file_path)
         if self.storage_type == "supabase":
             return self._get_supabase_url(file_path)
         return file_path  # Local storage - API route handles serving

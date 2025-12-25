@@ -475,16 +475,17 @@ async def upload_video(
         )
 
         # Perform quick quality assessment
-        # For Supabase, we need to download the file temporarily
+        # Reuse file_content already in memory (no need to download from Supabase)
         quality_metrics = None
         try:
             logger.info(f"Starting quality assessment for {unique_filename}")
             quality_service = VideoQualityService()
 
             if settings.STORAGE_TYPE == "supabase":
-                # Download file temporarily for quality assessment
-                file_data = storage_service.download_file(unique_filename)
-                tmp_path = _create_temp_file_for_processing(file_data, unique_filename)
+                # Reuse file_content already in memory (no download needed)
+                tmp_path = _create_temp_file_for_processing(
+                    file_content, unique_filename
+                )
                 try:
                     quality_metrics = quality_service.quick_assess(tmp_path)
                 finally:
