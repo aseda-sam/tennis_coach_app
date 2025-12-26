@@ -69,7 +69,9 @@ async def assess_video_quality(
 
             processing_time = time.time() - start_time
 
-            logger.info(f"Independent quality assessment completed for video {video_id}")
+            logger.info(
+                f"Independent quality assessment completed for video {video_id}"
+            )
 
             return VideoQualityAssessmentResponse(
                 video_id=video_id,
