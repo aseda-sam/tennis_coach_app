@@ -144,7 +144,9 @@ class BackgroundTaskService:
                 # For cloud storage: downloads to temp file (caller must clean up)
                 # For local: returns actual file path
                 video_path = storage_service.get_local_file_path(video.file_path)
-                temp_video_path = video_path if storage_service.storage_type == "supabase" else None
+                temp_video_path = (
+                    video_path if storage_service.storage_type == "supabase" else None
+                )
 
                 # Update progress - frame extraction
                 with _task_lock:
