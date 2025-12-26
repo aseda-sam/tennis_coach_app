@@ -18,6 +18,7 @@ from app.models.pose_detection import PoseDetection
 from app.services import video_service
 from app.services.ball_detection import BallDetectionService
 from app.services.pose_detection import PoseDetectionService
+from app.services.storage_service import storage_service
 from app.services.video_annotation.annotation_service import VideoAnnotationService
 from app.utils.progress_utils import set_task_storage, update_task_progress
 
@@ -115,6 +116,7 @@ class BackgroundTaskService:
         confidence_threshold: float,
     ) -> None:
         """Run the actual analysis task in a background thread."""
+        temp_video_path = None
         try:
             # Update task status to processing (now actually processing)
             with _task_lock:
@@ -138,10 +140,13 @@ class BackgroundTaskService:
                     f"Task {task_id}: Starting analysis for video {video.filename}"
                 )
 
-                # Get video file path
-                video_path = Path(video.file_path)
-                if not video_path.exists():
-                    raise ValueError(f"Video file not found: {video.file_path}")
+                # Get video file path - storage service handles cloud vs local storage
+                # For cloud storage: downloads to temp file (caller must clean up)
+                # For local: returns actual file path
+                video_path = storage_service.get_local_file_path(video.file_path)
+                temp_video_path = (
+                    video_path if storage_service.storage_type == "supabase" else None
+                )
 
                 # Update progress - frame extraction
                 with _task_lock:
@@ -248,6 +253,18 @@ class BackgroundTaskService:
                     _active_tasks[task_id]["completed_at"] = datetime.now()
 
             # Update task progress to completion
+        finally:
+            # Clean up temp video file if created for cloud storage
+            if temp_video_path and temp_video_path.exists():
+                try:
+                    temp_video_path.unlink()
+                    logger.debug(
+                        f"Task {task_id}: Cleaned up temp video file: {temp_video_path}"
+                    )
+                except OSError as e:
+                    logger.warning(
+                        f"Task {task_id}: Failed to delete temp video file {temp_video_path}: {e}"
+                    )
 
     def get_task_status(self, task_id: int) -> Optional[Dict[str, Any]]:
         """Get the status of a background task."""
