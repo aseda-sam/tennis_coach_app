@@ -11,10 +11,12 @@ from app.api.schemas.ball_detection import (
     BallDetectionRequest,
     BallDetectionResponse,
 )
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.ball_detection import BallDetection
 from app.services import video_service
 from app.services.ball_detection import BallDetectionService
+from app.services.storage_service import storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +44,25 @@ async def analyze_video_ball_detection(
                 detail=f"Video with ID {video_id} not found",
             )
 
-        # Check if video file exists
-        video_path = Path(video.file_path)
-        if not video_path.exists():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Video file not found: {video.file_path}",
-            )
+        # Check if video file exists (storage-aware)
+        if settings.STORAGE_TYPE == "supabase":
+            # For cloud storage, verify file exists by attempting to get URL
+            try:
+                storage_service.get_file_url(video.file_path)
+            except (ValueError, RuntimeError, OSError) as e:
+                logger.error(f"Failed to access video file in cloud storage: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Video file not found in storage: {video.file_path}",
+                ) from e
+        else:
+            # For local storage, check if file exists
+            video_path = Path(video.file_path)
+            if not video_path.exists():
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Video file not found: {video.file_path}",
+                )
 
         # Check if ball detection already exists
         ball_detection_service = BallDetectionService()
