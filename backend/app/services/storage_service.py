@@ -1,6 +1,7 @@
 """Storage service for handling file uploads and downloads across different storage backends."""
 
 import logging
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class StorageService:
-    """Unified storage service supporting local and Supabase storage."""
+    """Unified storage service supporting local and cloud storage backends."""
 
     def __init__(self) -> None:
         """Initialize storage service based on configuration."""
@@ -21,40 +22,40 @@ class StorageService:
             self._init_supabase()
 
     def _init_supabase(self) -> None:
-        """Initialize Supabase client for storage."""
+        """Initialize cloud storage client for remote file storage."""
         try:
             from supabase import Client, create_client
 
             if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
                 logger.warning(
-                    "Supabase storage configured but SUPABASE_URL or SUPABASE_KEY not set."
+                    "Cloud storage configured but SUPABASE_URL or SUPABASE_KEY not set."
                 )
                 return
 
-            # Ensure URL has trailing slash (required by Supabase client)
+            # Ensure URL has trailing slash (required by cloud storage client)
             supabase_url = settings.SUPABASE_URL
             if not supabase_url.endswith("/"):
                 supabase_url = supabase_url + "/"
-                logger.debug(f"Added trailing slash to SUPABASE_URL: {supabase_url}")
+                logger.debug(f"Added trailing slash to storage URL: {supabase_url}")
 
             self._supabase_client: Client = create_client(
                 supabase_url, settings.SUPABASE_KEY
             )
-            logger.info("Supabase storage client initialized")
+            logger.info("Cloud storage client initialized")
         except ImportError:
             raise ImportError(
-                "supabase package is required for Supabase storage. "
+                "supabase package is required for cloud storage. "
                 "Install it with: pip install supabase"
             ) from None
         except Exception as e:
-            logger.error(f"Failed to initialize Supabase client: {e}")
-            raise RuntimeError(f"Failed to initialize Supabase client: {e}") from e
+            logger.error(f"Failed to initialize cloud storage client: {e}")
+            raise RuntimeError(f"Failed to initialize cloud storage client: {e}") from e
 
     def _validate_supabase_config(self) -> None:
-        """Validate Supabase configuration and client."""
+        """Validate cloud storage configuration and client."""
         if not self._supabase_client:
             raise ValueError(
-                "Supabase client not initialized. Check SUPABASE_URL and SUPABASE_KEY."
+                "Cloud storage client not initialized. Check SUPABASE_URL and SUPABASE_KEY."
             )
         if not settings.SUPABASE_STORAGE_BUCKET:
             raise ValueError("SUPABASE_STORAGE_BUCKET must be set")
@@ -145,36 +146,90 @@ class StorageService:
 
     def get_file_url(self, file_path: str) -> str:
         """
-        Get a URL to access the file (for Supabase) or path (for local).
+        Get a URL to access the file (for cloud storage) or path (for local).
 
         Args:
             file_path: Path to the file in storage
 
         Returns:
-            URL to access the file (Supabase) or file path (local)
+            URL to access the file (cloud storage) or file path (local)
         """
         self._validate_file_path(file_path)
         if self.storage_type == "supabase":
             return self._get_supabase_url(file_path)
         return file_path  # Local storage - API route handles serving
 
-    # Supabase storage methods
+    def get_local_file_path(
+        self, file_path: str, temp_dir: Optional[str] = None
+    ) -> Path:
+        """
+        Get a local file path for processing.
+
+        For cloud storage: Downloads file to a temporary location and returns the path.
+        For local storage: Returns the actual file path.
+
+        IMPORTANT: When using cloud storage, the caller MUST clean up the temp file
+        after processing. Use a try/finally block or context manager.
+
+        Args:
+            file_path: Path to the file in storage
+            temp_dir: Optional directory for temp files (defaults to PROCESSED_DIR)
+
+        Returns:
+            Path object pointing to a local file that can be used for processing
+
+        Example:
+            temp_path = None
+            try:
+                temp_path = storage_service.get_local_file_path("raw/video.mp4")
+                # Process video using temp_path
+                process_video(temp_path)
+            finally:
+                if temp_path and temp_path.exists():
+                    temp_path.unlink()  # Clean up
+        """
+        self._validate_file_path(file_path)
+
+        if self.storage_type == "supabase":
+            # Download from cloud storage to temp file
+            logger.info(
+                f"Downloading file from cloud storage for processing: {file_path}"
+            )
+            file_content = self.download_file(file_path)
+
+            temp_dir_path = Path(temp_dir) if temp_dir else Path(settings.PROCESSED_DIR)
+            temp_dir_path.mkdir(parents=True, exist_ok=True)
+
+            # Create temp file
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=Path(file_path).suffix, dir=str(temp_dir_path)
+            ) as temp_file:
+                temp_file.write(file_content)
+                temp_path = Path(temp_file.name)
+
+            logger.debug(f"Downloaded to temp file: {temp_path}")
+            return temp_path
+        else:
+            # For local storage, return the actual path
+            return self._resolve_local_path(file_path)
+
+    # Cloud storage methods
 
     def _upload_to_supabase(
         self, file_content: bytes, file_path: str, content_type: Optional[str] = None
     ) -> str:
-        """Upload file to Supabase storage."""
+        """Upload file to cloud storage."""
         self._validate_supabase_config()
 
         self._supabase_client.storage.from_(settings.SUPABASE_STORAGE_BUCKET).upload(
             file_path, file_content, file_options={"content-type": content_type}
         )
 
-        logger.info(f"File uploaded to Supabase: {file_path}")
+        logger.info(f"File uploaded to cloud storage: {file_path}")
         return file_path
 
     def _download_from_supabase(self, file_path: str) -> bytes:
-        """Download file from Supabase storage."""
+        """Download file from cloud storage."""
         self._validate_supabase_config()
 
         return self._supabase_client.storage.from_(
@@ -182,17 +237,17 @@ class StorageService:
         ).download(file_path)
 
     def _delete_from_supabase(self, file_path: str) -> None:
-        """Delete file from Supabase storage."""
+        """Delete file from cloud storage."""
         self._validate_supabase_config()
 
         self._supabase_client.storage.from_(settings.SUPABASE_STORAGE_BUCKET).remove(
             [file_path]
         )
 
-        logger.info(f"File deleted from Supabase: {file_path}")
+        logger.info(f"File deleted from cloud storage: {file_path}")
 
     def _get_supabase_url(self, file_path: str) -> str:
-        """Get public URL for file in Supabase storage."""
+        """Get public URL for file in cloud storage."""
         self._validate_supabase_config()
 
         return self._supabase_client.storage.from_(

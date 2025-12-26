@@ -494,7 +494,7 @@ class TestStorageServiceErrorHandling:
             with pytest.raises(ValueError) as exc_info:
                 service._validate_supabase_config()
 
-            assert "Supabase client not initialized" in str(exc_info.value)
+            assert "Cloud storage client not initialized" in str(exc_info.value)
 
     def test_validate_supabase_config_missing_bucket(self) -> None:
         """Test that missing bucket raises ValueError."""
