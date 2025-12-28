@@ -4,6 +4,7 @@ import {
   VideoMetadata,
   VideoUploadResponse,
 } from '../types/video';
+import { supabase } from './supabaseClient';
 
 // API configuration
 const API_BASE_URL =
@@ -22,7 +23,16 @@ const api = axios.create({
 });
 
 // Add request/response interceptors
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
+  // Get current session token
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+
   console.log(
     `Making ${config.method?.toUpperCase()} request to ${config.url}`
   );

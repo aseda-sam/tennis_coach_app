@@ -29,6 +29,7 @@ from app.api.schemas.video import (
 )
 from app.core.config import settings
 from app.core.database import get_db
+from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.storage_service import storage_service
 from app.services.video_quality import VideoQualityService
@@ -419,6 +420,7 @@ async def delete_video(
 @router.post("/upload", response_model=VideoUploadResponse)
 async def upload_video(
     file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VideoUploadResponse:
     """
@@ -509,6 +511,11 @@ async def upload_video(
             height=metadata.height,
             frame_count=metadata.frame_count,
         )
+
+        # Associate video with authenticated user
+        db_video.user_id = current_user["id"]
+        db.commit()
+        db.refresh(db_video)
 
         # Perform quick quality assessment
         # Reuse file_content already in memory (no need to download from Supabase)

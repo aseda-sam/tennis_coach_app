@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     # Supabase - Production database
     SUPABASE_KEY: Optional[str] = None
+    SUPABASE_SECRET_KEY: Optional[str] = None
     SUPABASE_DB_URL: Optional[str] = None  # Direct connection to Supabase database
 
     # Supabase Storage - Production file storage
@@ -88,6 +89,9 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "https://aseda-sam.github.io",
     ]
+
+    # Authentication
+    REQUIRE_AUTH: bool = True  # Set to False to skip auth in development
 
     @property
     def database_url(self) -> str:
