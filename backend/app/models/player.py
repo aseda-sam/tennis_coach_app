@@ -26,6 +26,9 @@ class Player(Base):
         DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc)
     )
 
+    # Authentication - user who owns this player
+    user_id = Column(String(36), nullable=True, index=True)  # UUID as string
+
     # Relationships
     ball_contacts = relationship("BallContact", back_populates="player")
     video_appearances = relationship("VideoPlayer", back_populates="player")

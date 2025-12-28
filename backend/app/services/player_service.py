@@ -26,6 +26,7 @@ def create_player(
     backhand_style: Optional[Literal["one_handed", "two_handed"]] = None,
     height: Optional[float] = None,
     notes: Optional[str] = None,
+    user_id: Optional[str] = None,
 ) -> Player:
     """
     Create a new Player record in the database.
@@ -37,17 +38,22 @@ def create_player(
         backhand_style (Optional[Literal["one_handed", "two_handed"]]): Backhand style.
         height (Optional[float]): Height in cm.
         notes (Optional[str]): Additional notes.
+        user_id (Optional[str]): UUID of the user who owns this player.
 
     Returns:
         Player: The created Player database object.
     """
-    logger.info(f"Creating new player: name='{name}', dominant_hand='{dominant_hand}'")
+    logger.info(f"Creating new player: name='{name}', dominant_hand='{dominant_hand}', user_id='{user_id}'")
 
-    # Check if player with same name already exists
-    existing_player = db.query(Player).filter(Player.name == name).first()
+    # Check if player with same name already exists for this user
+    # Note: Different users can have players with the same name
+    query = db.query(Player).filter(Player.name == name)
+    if user_id:
+        query = query.filter(Player.user_id == user_id)
+    existing_player = query.first()
     if existing_player:
         logger.warning(
-            f"Player creation failed: player with name '{name}' already exists (ID: {existing_player.id})"
+            f"Player creation failed: player with name '{name}' already exists for user '{user_id}' (ID: {existing_player.id})"
         )
         raise ValueError(f"Player with name '{name}' already exists")
 
@@ -58,13 +64,14 @@ def create_player(
         backhand_style=backhand_style,
         height=height,
         notes=notes,
+        user_id=user_id,
     )
     db.add(db_player)
     db.commit()
     db.refresh(db_player)
 
     logger.info(
-        f"✅ Successfully created player: ID={db_player.id}, name='{name}', dominant_hand='{dominant_hand}'"
+        f"✅ Successfully created player: ID={db_player.id}, name='{name}', dominant_hand='{dominant_hand}', user_id='{user_id}'"
     )
     return db_player
 

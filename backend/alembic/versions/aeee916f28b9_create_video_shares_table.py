@@ -1,0 +1,46 @@
+"""create_video_shares_table
+
+Revision ID: aeee916f28b9
+Revises: 0d3483669a49
+Create Date: 2025-12-28 22:05:30.615611
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = 'aeee916f28b9'
+down_revision: Union[str, Sequence[str], None] = '0d3483669a49'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    """Create video_shares table for future video sharing functionality."""
+    op.create_table(
+        "video_shares",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("video_id", sa.Integer(), nullable=False),
+        sa.Column("shared_with_user_id", sa.String(36), nullable=False),
+        sa.Column("permission", sa.String(20), nullable=False, server_default="view"),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["video_id"],
+            ["videos.id"],
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("video_id", "shared_with_user_id", name="uq_video_share"),
+    )
+    op.create_index("idx_video_shares_video_id", "video_shares", ["video_id"])
+    op.create_index("idx_video_shares_user_id", "video_shares", ["shared_with_user_id"])
+
+
+def downgrade() -> None:
+    """Drop video_shares table."""
+    op.drop_index("idx_video_shares_user_id", "video_shares")
+    op.drop_index("idx_video_shares_video_id", "video_shares")
+    op.drop_table("video_shares")
