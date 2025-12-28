@@ -19,11 +19,10 @@ def get_supabase_client() -> Client:
     if not supabase_url.endswith("/"):
         supabase_url = supabase_url + "/"
 
-    supabase_key = settings.SUPABASE_SECRET_KEY or settings.SUPABASE_KEY
-    if not supabase_key:
-        raise ValueError("SUPABASE_SECRET_KEY or SUPABASE_KEY not configured")
+    if not settings.SUPABASE_SECRET_KEY:
+        raise ValueError("SUPABASE_SECRET_KEY not configured")
 
-    return create_client(supabase_url, supabase_key)
+    return create_client(supabase_url, settings.SUPABASE_SECRET_KEY)
 
 
 def verify_supabase_token(token: str) -> Optional[dict]:

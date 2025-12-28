@@ -22,52 +22,18 @@ class TestSupabaseAuth:
         with patch("app.utils.supabase_auth.settings") as mock_settings:
             mock_settings.SUPABASE_URL = None
             mock_settings.SUPABASE_SECRET_KEY = "test-key"  # noqa: S105
-            mock_settings.SUPABASE_KEY = None
 
             with pytest.raises(ValueError, match="SUPABASE_URL not configured"):
                 get_supabase_client()
 
     def test_get_supabase_client_missing_key(self) -> None:
-        """Test that missing SUPABASE_KEY raises ValueError."""
+        """Test that missing SUPABASE_SECRET_KEY raises ValueError."""
         with patch("app.utils.supabase_auth.settings") as mock_settings:
             mock_settings.SUPABASE_URL = "https://test.supabase.co/"
             mock_settings.SUPABASE_SECRET_KEY = None
-            mock_settings.SUPABASE_KEY = None
 
-            with pytest.raises(
-                ValueError, match="SUPABASE_SECRET_KEY or SUPABASE_KEY not configured"
-            ):
+            with pytest.raises(ValueError, match="SUPABASE_SECRET_KEY not configured"):
                 get_supabase_client()
-
-    def test_get_supabase_client_uses_secret_key(self) -> None:
-        """Test that SUPABASE_SECRET_KEY is preferred over SUPABASE_KEY."""
-        with patch("app.utils.supabase_auth.settings") as mock_settings, patch(
-            "app.utils.supabase_auth.create_client"
-        ) as mock_create:
-            mock_settings.SUPABASE_URL = "https://test.supabase.co/"
-            mock_settings.SUPABASE_SECRET_KEY = "secret-key"  # noqa: S105
-            mock_settings.SUPABASE_KEY = "legacy-key"
-
-            get_supabase_client()
-
-            mock_create.assert_called_once_with(
-                "https://test.supabase.co/", "secret-key"
-            )
-
-    def test_get_supabase_client_fallback_to_legacy_key(self) -> None:
-        """Test that SUPABASE_KEY is used if SUPABASE_SECRET_KEY is missing."""
-        with patch("app.utils.supabase_auth.settings") as mock_settings, patch(
-            "app.utils.supabase_auth.create_client"
-        ) as mock_create:
-            mock_settings.SUPABASE_URL = "https://test.supabase.co/"
-            mock_settings.SUPABASE_SECRET_KEY = None
-            mock_settings.SUPABASE_KEY = "legacy-key"
-
-            get_supabase_client()
-
-            mock_create.assert_called_once_with(
-                "https://test.supabase.co/", "legacy-key"
-            )
 
     def test_get_supabase_client_adds_trailing_slash(self) -> None:
         """Test that URL gets trailing slash added if missing."""
@@ -76,7 +42,6 @@ class TestSupabaseAuth:
         ) as mock_create:
             mock_settings.SUPABASE_URL = "https://test.supabase.co"
             mock_settings.SUPABASE_SECRET_KEY = "test-key"  # noqa: S105
-            mock_settings.SUPABASE_KEY = None
 
             get_supabase_client()
 
