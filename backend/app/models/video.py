@@ -45,7 +45,7 @@ class Video(Base):
     quality_assessed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Authentication - user who owns this video
-    user_id = Column(String(36), nullable=True, index=True)  # UUID as string
+    user_id = Column(String(36), nullable=False, index=True)  # UUID as string
 
     # New granular analysis relationships
     ball_detections = relationship(

@@ -23,10 +23,10 @@ def create_player(
     db: Session,
     name: str,
     dominant_hand: Literal["left", "right"],
+    user_id: str,
     backhand_style: Optional[Literal["one_handed", "two_handed"]] = None,
     height: Optional[float] = None,
     notes: Optional[str] = None,
-    user_id: Optional[str] = None,
 ) -> Player:
     """
     Create a new Player record in the database.
@@ -43,13 +43,17 @@ def create_player(
     Returns:
         Player: The created Player database object.
     """
-    logger.info(f"Creating new player: name='{name}', dominant_hand='{dominant_hand}', user_id='{user_id}'")
+    logger.info(
+        f"Creating new player: name='{name}', dominant_hand='{dominant_hand}', user_id='{user_id}'"
+    )
+
+    # Validate user_id is provided (required)
+    if not user_id:
+        raise ValueError("user_id is required for player creation")
 
     # Check if player with same name already exists for this user
     # Note: Different users can have players with the same name
-    query = db.query(Player).filter(Player.name == name)
-    if user_id:
-        query = query.filter(Player.user_id == user_id)
+    query = db.query(Player).filter(Player.name == name, Player.user_id == user_id)
     existing_player = query.first()
     if existing_player:
         logger.warning(

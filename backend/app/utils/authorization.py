@@ -19,14 +19,9 @@ def is_admin(user: dict) -> bool:
         True if user is admin, False otherwise
     """
     # Check user_metadata for admin flag
-    if user.get("user_metadata", {}).get("is_admin", False):
-        return True
-
-    # Check email (can be configured for specific admin emails)
-    email = user.get("email", "")
     # For now, no specific admin emails - can be added later
-    # Example: return email == "admin@example.com"
-    return False
+    # Example: return user.get("email") == "admin@example.com"
+    return user.get("user_metadata", {}).get("is_admin", False)
 
 
 def can_access_video(video: "Video", user: dict) -> bool:
@@ -43,13 +38,8 @@ def can_access_video(video: "Video", user: dict) -> bool:
     if is_admin(user):
         return True
 
-    # Video owner can access
-    if video.user_id == user["id"]:
-        return True
-
-    # Future: Check video_shares table for shared videos
-    # For now, only owner and admin can access
-    return False
+    # Only owner and admin can access (no sharing implemented yet)
+    return video.user_id == user["id"]
 
 
 def require_video_access(video: "Video", user: dict) -> None:
@@ -84,10 +74,7 @@ def can_manage_player(player: "Player", user: dict) -> bool:
         return True
 
     # Player owner can manage
-    if player.user_id == user["id"]:
-        return True
-
-    return False
+    return player.user_id == user["id"]
 
 
 def require_player_access(player: "Player", user: dict) -> None:
@@ -141,4 +128,45 @@ def require_ball_contact_permission(video: "Video", user: dict) -> None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to create ball contacts for this video",
+        )
+
+
+def can_tag_player_to_video(video: "Video", player: "Player", user: dict) -> bool:
+    """Check if user can tag a player to a video.
+
+    User must own both the video and the player to tag it.
+    This ensures users can only tag players they created themselves.
+
+    Args:
+        video: Video model instance
+        player: Player model instance
+        user: User dict with id, email, user_metadata, etc.
+
+    Returns:
+        True if user can tag player to video, False otherwise
+    """
+    # Admins can tag any player to any video
+    if is_admin(user):
+        return True
+
+    # User must own both the video and the player
+    # (they can only tag players they created to their videos)
+    return video.user_id == user["id"] and player.user_id == user["id"]
+
+
+def require_player_tag_permission(video: "Video", player: "Player", user: dict) -> None:
+    """Raise exception if user can't tag player to video.
+
+    Args:
+        video: Video model instance
+        player: Player model instance
+        user: User dict with id, email, user_metadata, etc.
+
+    Raises:
+        HTTPException: 403 if user can't tag player to video
+    """
+    if not can_tag_player_to_video(video, player, user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only tag players you created to your videos",
         )

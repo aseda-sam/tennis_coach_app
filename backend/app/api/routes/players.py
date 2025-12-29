@@ -13,6 +13,7 @@ from app.api.schemas.player import (
     PlayerUpdate,
 )
 from app.core.database import get_db
+from app.dependencies.auth import get_current_user
 from app.models.player import Player
 from app.services.player_service import (
     create_player as create_player_service,
@@ -49,13 +50,18 @@ def _create_player_info(db: Session, player: Player) -> PlayerInfo:
 
 
 @router.post("/", response_model=PlayerInfo, status_code=status.HTTP_201_CREATED)
-def create_player(player: PlayerCreate, db: Session = Depends(get_db)) -> PlayerInfo:
+def create_player(
+    player: PlayerCreate,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PlayerInfo:
     """Create a new player."""
     try:
         db_player = create_player_service(
             db=db,
             name=player.name,
             dominant_hand=player.dominant_hand,
+            user_id=current_user["id"],
             backhand_style=player.backhand_style,
             height=player.height,
             notes=player.notes,

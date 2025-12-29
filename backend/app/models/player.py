@@ -27,7 +27,7 @@ class Player(Base):
     )
 
     # Authentication - user who owns this player
-    user_id = Column(String(36), nullable=True, index=True)  # UUID as string
+    user_id = Column(String(36), nullable=False, index=True)  # UUID as string
 
     # Relationships
     ball_contacts = relationship("BallContact", back_populates="player")
