@@ -85,6 +85,8 @@ docker run -p 8000:8000 tennis-backend
 - **Health Check**: http://localhost:8000/health
 - **API Info**: http://localhost:8000/v0
 
+**Note:** Most API endpoints require authentication. See the [Authentication](#authentication) section below for configuration details.
+
 ## Environment Configuration
 
 ### Required Environment Variables
@@ -107,6 +109,11 @@ DEBUG=True
 
 # CORS (for frontend integration)
 CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+
+# Authentication (Supabase)
+# Required for production, optional for local development
+SUPABASE_URL=https://your-project.supabase.co/
+SUPABASE_SECRET_KEY=your-secret-key
 ```
 
 ### Optional Environment Variables
@@ -120,9 +127,45 @@ CONFIDENCE_THRESHOLD=0.5
 # Ball Contact Configuration
 BALL_CONTACT_TIMESTAMP_TOLERANCE=0.1  # Tolerance in seconds for duplicate detection
 
-# Security (for production)
-SECRET_KEY=your-secret-key-here
+# Authentication (for local development)
+ENVIRONMENT=development
+REQUIRE_AUTH=false  # Set to false to disable auth in development
 ```
+
+## Authentication
+
+The application uses **Supabase Auth** for user authentication. Most API endpoints require authentication to ensure users can only access their own data.
+
+### Production Setup
+
+For production, configure Supabase authentication:
+
+```bash
+SUPABASE_URL=https://your-project.supabase.co/
+SUPABASE_SECRET_KEY=your-secret-key
+REQUIRE_AUTH=true
+```
+
+### Local Development
+
+For local development, you can disable authentication:
+
+```bash
+ENVIRONMENT=development
+REQUIRE_AUTH=false
+```
+
+When `REQUIRE_AUTH=false`, the API will accept requests without authentication tokens. This is useful for local testing but should never be used in production.
+
+### Protected Endpoints
+
+The following endpoints require authentication:
+- Video upload and management
+- Player creation and management
+- Ball contact creation and management
+- Analysis requests
+
+See the [API documentation](docs/api.md) for details on authentication requirements for each endpoint.
 
 ## Development
 
@@ -230,6 +273,9 @@ backend/
 
 ## Features
 
+- **User Authentication**: Secure authentication with Supabase Auth
+- **User-based Data Isolation**: Videos and players are scoped to individual users
+- **Player Management**: Create and manage players with hand preference and backhand style
 - **Video Upload & Management**: Secure file upload with validation and metadata extraction
 - **Computer Vision Analysis**: YOLO ball detection + MediaPipe pose estimation
 - **Annotated Video Creation**: Generate videos with detection overlays
