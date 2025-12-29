@@ -116,3 +116,9 @@ backend/tests/test_data/*.mov
 test_yolo_fix.py
 *.tmp
 *.temp
+
+# Sensitive documentation (contains security architecture details)
+# These files are kept locally for development but should not be committed
+project_docs/authentication_plan.md
+backend/scripts/MIGRATION_GUIDE.md
+project_docs/archive/
