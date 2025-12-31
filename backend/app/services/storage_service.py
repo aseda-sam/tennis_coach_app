@@ -26,9 +26,9 @@ class StorageService:
         try:
             from supabase import Client, create_client
 
-            if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+            if not settings.SUPABASE_URL or not settings.SUPABASE_SECRET_KEY:
                 logger.warning(
-                    "Cloud storage configured but SUPABASE_URL or SUPABASE_KEY not set."
+                    "Cloud storage configured but SUPABASE_URL or SUPABASE_SECRET_KEY not set."
                 )
                 return
 
@@ -39,7 +39,7 @@ class StorageService:
                 logger.debug(f"Added trailing slash to storage URL: {supabase_url}")
 
             self._supabase_client: Client = create_client(
-                supabase_url, settings.SUPABASE_KEY
+                supabase_url, settings.SUPABASE_SECRET_KEY
             )
             logger.info("Cloud storage client initialized")
         except ImportError:
@@ -55,7 +55,7 @@ class StorageService:
         """Validate cloud storage configuration and client."""
         if not self._supabase_client:
             raise ValueError(
-                "Cloud storage client not initialized. Check SUPABASE_URL and SUPABASE_KEY."
+                "Cloud storage client not initialized. Check SUPABASE_URL and SUPABASE_SECRET_KEY."
             )
         if not settings.SUPABASE_STORAGE_BUCKET:
             raise ValueError("SUPABASE_STORAGE_BUCKET must be set")
@@ -73,8 +73,19 @@ class StorageService:
             raise ValueError("File path cannot be empty")
 
         # Reject paths containing directory traversal attempts
+        # For local storage: allow ".." at the start (will be resolved by _resolve_local_path)
+        # For cloud storage: reject all ".." (security requirement)
+        # Always reject ".." in the middle or end of paths (suspicious)
         if ".." in file_path:
-            raise ValueError("Invalid file path: path traversal detected")
+            if self.storage_type == "local" and file_path.startswith("../"):
+                # Allow ".." at the start for local storage - will be resolved safely
+                # But check if there are any ".." in the middle or end (suspicious)
+                if ".." in file_path[3:]:  # Check after the leading "../"
+                    raise ValueError("Invalid file path: path traversal detected")
+                # Leading "../" is allowed for local storage
+            else:
+                # Cloud storage or ".." not at start - reject
+                raise ValueError("Invalid file path: path traversal detected")
 
         # For cloud storage, reject absolute paths (local storage allows them)
         if self.storage_type != "local" and file_path.startswith("/"):

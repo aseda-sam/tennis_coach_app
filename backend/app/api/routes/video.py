@@ -29,9 +29,11 @@ from app.api.schemas.video import (
 )
 from app.core.config import settings
 from app.core.database import get_db
+from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.storage_service import storage_service
 from app.services.video_quality import VideoQualityService
+from app.utils.authorization import is_admin, require_upload_limit, require_video_access
 from app.utils.error_handling import (
     handle_file_error,
     handle_not_found_error,
@@ -110,15 +112,26 @@ def extract_video_metadata(video_path: Path) -> VideoMetadata:
 
 @router.get("/", response_model=List[VideoListItem])
 async def list_videos(
-    pagination: PaginationParams = Depends(), db: Session = Depends(get_db)
+    pagination: PaginationParams = Depends(),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> List[VideoListItem]:
     """
-    List all uploaded videos.
+    List all uploaded videos for the current user.
 
     Returns a paginated list of videos with basic information.
     """
     try:
-        db_videos = video_service.get_all_videos(db)
+        from app.models.video import Video
+        from app.utils.authorization import is_admin
+
+        # Filter by user_id unless admin
+        query = db.query(Video)
+        if not is_admin(current_user):
+            query = query.filter(Video.user_id == current_user["id"])
+
+        # Order by creation date
+        db_videos = query.order_by(Video.created_at.desc()).all()
 
         # Apply pagination
         start_idx = (pagination.page - 1) * pagination.size
@@ -131,7 +144,11 @@ async def list_videos(
 
 
 @router.get("/{video_id}", response_model=VideoInfo)
-async def get_video(video_id: int, db: Session = Depends(get_db)) -> VideoInfo:
+async def get_video(
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VideoInfo:
     """
     Get detailed information about a specific video.
 
@@ -146,13 +163,20 @@ async def get_video(video_id: int, db: Session = Depends(get_db)) -> VideoInfo:
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
+        # Check authorization
+        require_video_access(db_video, current_user)
+
         return VideoInfo.model_validate(db_video)
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "get_video", {"video_id": video_id})
 
 
 @router.get("/{video_id}/stream", response_model=None)
-async def stream_video(video_id: int, db: Session = Depends(get_db)) -> Response:
+async def stream_video(
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
     """
     Stream a video file.
 
@@ -168,6 +192,9 @@ async def stream_video(video_id: int, db: Session = Depends(get_db)) -> Response
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
+        # Check authorization
+        require_video_access(db_video, current_user)
+
         # Use storage service to get file
         if settings.STORAGE_TYPE == "supabase":
             # For Supabase, use file_path which contains 'raw/filename.mp4'
@@ -175,10 +202,15 @@ async def stream_video(video_id: int, db: Session = Depends(get_db)) -> Response
             storage_path = db_video.file_path
             try:
                 file_url = storage_service.get_file_url(storage_path)
+                logger.info(
+                    f"Redirecting to Supabase URL for video {video_id}: {file_url}"
+                )
                 # Redirect to Supabase public URL
                 return RedirectResponse(url=file_url)
             except (ValueError, RuntimeError, OSError) as e:
-                logger.error(f"Failed to get Supabase URL: {e}")
+                logger.error(
+                    f"Failed to get Supabase URL for video {video_id}, storage_path={storage_path}: {e}"
+                )
                 # Fallback: download and stream
                 file_data = storage_service.download_file(storage_path)
                 return StreamingResponse(
@@ -204,7 +236,9 @@ async def stream_video(video_id: int, db: Session = Depends(get_db)) -> Response
 
 @router.get("/{video_id}/annotated/stream")
 async def stream_annotated_video(
-    video_id: int, db: Session = Depends(get_db)
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> Response:
     """
     Stream an annotated video file.
@@ -220,6 +254,9 @@ async def stream_annotated_video(
         db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
+
+        # Check authorization
+        require_video_access(db_video, current_user)
 
         # Look for annotated video using the new video annotation system
         from app.models.video_annotation import VideoAnnotation
@@ -290,10 +327,15 @@ async def stream_annotated_video(
             # For Supabase, redirect to public URL or stream from Supabase
             try:
                 file_url = storage_service.get_file_url(annotated_storage_path)
+                logger.info(
+                    f"Redirecting to Supabase URL for annotated video {video_id}: {file_url}"
+                )
                 # Redirect to Supabase public URL
                 return RedirectResponse(url=file_url)
             except (ValueError, RuntimeError, OSError) as e:
-                logger.error(f"Failed to get Supabase URL: {e}")
+                logger.error(
+                    f"Failed to get Supabase URL for annotated video {video_id}, storage_path={annotated_storage_path}: {e}"
+                )
                 # Fallback: download and stream
                 file_data = storage_service.download_file(annotated_storage_path)
                 return StreamingResponse(
@@ -318,7 +360,9 @@ async def stream_annotated_video(
 
 @router.get("/{video_id}/analysis-status", response_model=VideoAnalysisStatus)
 async def get_video_analysis_status(
-    video_id: int, db: Session = Depends(get_db)
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> VideoAnalysisStatus:
     """
     Check if a video has any analysis or annotated video available.
@@ -334,6 +378,9 @@ async def get_video_analysis_status(
         db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
+
+        # Check authorization
+        require_video_access(db_video, current_user)
 
         analysis_types = []
         has_analysis = False
@@ -387,7 +434,9 @@ async def get_video_analysis_status(
 
 @router.delete("/{video_id}", response_model=VideoDeleteResponse)
 async def delete_video(
-    video_id: int, db: Session = Depends(get_db)
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> VideoDeleteResponse:
     """
     Delete a video file and database record.
@@ -399,6 +448,14 @@ async def delete_video(
         Deletion confirmation
     """
     try:
+        # Get video first to check authorization
+        db_video = video_service.get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Check authorization (only owner can delete)
+        require_video_access(db_video, current_user)
+
         # Use service function to handle all deletion logic
         success, filename, deleted_video_id = video_service.delete_video_with_analyses(
             db, video_id
@@ -419,6 +476,7 @@ async def delete_video(
 @router.post("/upload", response_model=VideoUploadResponse)
 async def upload_video(
     file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VideoUploadResponse:
     """
@@ -431,6 +489,10 @@ async def upload_video(
         Upload confirmation with video information
     """
     try:
+        # Check daily upload limit (skip for admins and local profile)
+        if settings.PROFILE != "local" and not is_admin(current_user):
+            require_upload_limit(db, current_user, settings.MAX_VIDEO_UPLOADS_PER_DAY)
+
         # Validate file
         if not file.filename:
             raise handle_file_error("invalid", "", "No file provided")
@@ -502,6 +564,7 @@ async def upload_video(
             filename=unique_filename,
             file_path=storage_path,  # Use storage path ('raw/filename.mp4' for Supabase, full path for local)
             file_size=file_size,
+            user_id=current_user["id"],  # Associate video with authenticated user
             content_type=file.content_type,
             duration=metadata.duration,
             fps=metadata.fps,
@@ -581,7 +644,9 @@ async def upload_video(
 
 @router.post("/{video_id}/quality-check", response_model=VideoQualityAssessmentResponse)
 async def assess_video_quality(
-    video_id: int, db: Session = Depends(get_db)
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> VideoQualityAssessmentResponse:
     """
     Perform quick quality assessment on a video.
@@ -598,6 +663,9 @@ async def assess_video_quality(
         db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise HTTPException(status_code=404, detail=f"Video {video_id} not found")
+
+        # Check authorization
+        require_video_access(db_video, current_user)
 
         # Check if video file exists
         video_path = Path(db_video.file_path)

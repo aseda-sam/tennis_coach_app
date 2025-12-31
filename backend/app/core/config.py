@@ -1,27 +1,29 @@
+import logging
 from pathlib import Path
 from typing import Optional
 
 from pydantic_settings import BaseSettings
 
+logger = logging.getLogger(__name__)
+
 
 class Settings(BaseSettings):
     """Application settings."""
 
-    # Environment
-    ENVIRONMENT: str = "development"  # development, production
-    LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    # Profile-based configuration
+    PROFILE: str = "local"  # local or production
 
     # API Configuration
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
-    DEBUG: bool = False
+    DEBUG: bool = False  # If True: enables auto-reload and DEBUG logging
 
     # Database - Environment-based configuration
     # DATABASE_URL: str = "sqlite:///../data/database/tennis_coach.db"
     DATABASE_URL: Optional[str] = None
 
     # Supabase - Production database
-    SUPABASE_KEY: Optional[str] = None
+    SUPABASE_SECRET_KEY: Optional[str] = None
     SUPABASE_DB_URL: Optional[str] = None  # Direct connection to Supabase database
 
     # Supabase Storage - Production file storage
@@ -31,7 +33,10 @@ class Settings(BaseSettings):
     SUPABASE_STORAGE_BUCKET: Optional[str] = None  # Storage bucket name
 
     # File storage - Environment-based configuration
-    STORAGE_TYPE: str = "local"  # local, supabase, cloudinary, s3
+    # Note: STORAGE_TYPE is auto-detected based on SUPABASE_DB_URL
+    # If SUPABASE_DB_URL is set, STORAGE_TYPE is automatically set to "supabase"
+    # This ensures consistency: Supabase DB → Supabase Storage
+    _STORAGE_TYPE: Optional[str] = None  # Private field for explicit env var override
     UPLOAD_DIR: str = "../data/videos/raw"
     PROCESSED_DIR: str = "../data/videos/processed"
     MAX_FILE_SIZE: int = 104857600  # 100MB
@@ -89,22 +94,73 @@ class Settings(BaseSettings):
         "https://aseda-sam.github.io",
     ]
 
+    # Authentication
+    REQUIRE_AUTH: bool = True  # Set to False to skip auth in development
+
+    # Rate Limiting Configuration
+    # Auth rate limits (per IP)
+    RATE_LIMIT_AUTH_PRODUCTION: str = "5/minute"  # Production auth attempts
+    RATE_LIMIT_AUTH_OTHER: str = "10/minute"  # Other profiles (staging, etc.)
+    # General API rate limits (per IP)
+    RATE_LIMIT_DEFAULT_LOCAL: str = "1000/hour"  # Local dev default
+    RATE_LIMIT_DEFAULT_PRODUCTION: str = "100/hour"  # Production default
+    # Expensive operations rate limits (per IP)
+    RATE_LIMIT_VIDEO_UPLOAD: str = "10/hour"  # Video uploads (large files)
+    RATE_LIMIT_ANALYSIS: str = "20/hour"  # Analysis requests (CPU-intensive)
+    # Per-user upload limits (database-based)
+    MAX_VIDEO_UPLOADS_PER_DAY: int = 3  # Maximum videos per user per day (production)
+
     @property
     def database_url(self) -> str:
-        """Get database URL based on environment."""
-        # Use Supabase DB URL if provided (works in both dev and production)
-        if self.SUPABASE_DB_URL:
+        """Get database URL based on profile."""
+        # Profile-based database selection
+        if self.PROFILE == "local":
+            # Local profile: Use DATABASE_URL if set, else SQLite
+            if self.DATABASE_URL:
+                return self.DATABASE_URL
+            return "sqlite:///../data/database/tennis_coach.db"
+        else:
+            # production: Require SUPABASE_DB_URL
+            if not self.SUPABASE_DB_URL:
+                raise ValueError(
+                    f"SUPABASE_DB_URL required when PROFILE={self.PROFILE}"
+                )
             return self.SUPABASE_DB_URL
-        # Use explicit DATABASE_URL if set
-        if self.DATABASE_URL:
-            return self.DATABASE_URL
-        # Default to SQLite for local development
-        return "sqlite:///../data/database/tennis_coach.db"
 
     @property
     def is_production(self) -> bool:
-        """Check if the environment is production."""
-        return self.ENVIRONMENT == "production"
+        """Check if the profile is production."""
+        return self.PROFILE == "production"
+
+    @property
+    def auth_required(self) -> bool:
+        """Check if authentication is required based on profile."""
+        return self.PROFILE != "local"
+
+    @property
+    def STORAGE_TYPE(self) -> str:  # noqa: N802 - Property name matches existing API
+        """Get storage type, auto-detected if not explicitly set.
+
+        Returns:
+            "local" or "supabase" based on configuration
+
+        Logic:
+            - If _STORAGE_TYPE is explicitly set (via env var), use that
+            - Otherwise, auto-detect:
+              - If SUPABASE_DB_URL is set → "supabase"
+              - Else if PROFILE == "local" → "local"
+              - Else → "supabase"
+        """
+        # If explicitly set via env var, use that
+        if self._STORAGE_TYPE is not None:
+            return self._STORAGE_TYPE
+
+        # Auto-detect based on SUPABASE_DB_URL (Supabase DB → Supabase Storage)
+        if self.SUPABASE_DB_URL:
+            return "supabase"
+
+        # Fall back to profile-based detection
+        return "local" if self.PROFILE == "local" else "supabase"
 
     class Config:
         env_file = ".env"
@@ -113,6 +169,63 @@ class Settings(BaseSettings):
 
 # Create settings instance
 settings = Settings()
+
+
+# Profile-based configuration initialization
+def initialize_profile_config() -> None:
+    """Initialize configuration based on PROFILE setting."""
+    profile = settings.PROFILE
+
+    # Log storage type (now computed via property)
+    logger.info(f"Profile '{profile}': Using {settings.STORAGE_TYPE} storage")
+
+    # Determine database based on profile
+    if profile == "local":
+        if settings.DATABASE_URL:
+            logger.info(f"Profile '{profile}': Using DATABASE_URL for local Postgres")
+        else:
+            logger.info(f"Profile '{profile}': Using SQLite (default)")
+    else:
+        if not settings.SUPABASE_DB_URL:
+            raise ValueError(f"SUPABASE_DB_URL required when PROFILE={profile}")
+        logger.info(f"Profile '{profile}': Using Supabase database")
+
+    # Validate Supabase configuration when using supabase storage
+    if settings.STORAGE_TYPE == "supabase":
+        required_vars = {
+            "SUPABASE_URL": settings.SUPABASE_URL,
+            "SUPABASE_SECRET_KEY": settings.SUPABASE_SECRET_KEY,
+            "SUPABASE_STORAGE_BUCKET": settings.SUPABASE_STORAGE_BUCKET,
+        }
+        for var_name, var_value in required_vars.items():
+            if not var_value:
+                raise ValueError(f"{var_name} required when STORAGE_TYPE=supabase")
+
+    # Log auth requirement
+    auth_required = profile != "local"
+    logger.info(
+        f"Profile '{profile}': Auth {'required' if auth_required else 'disabled'}"
+    )
+
+
+# Initialize profile-based configuration
+initialize_profile_config()
+
+
+# Configure logging based on DEBUG setting
+def configure_logging() -> None:
+    """Configure logging level based on DEBUG setting."""
+    log_level = logging.DEBUG if settings.DEBUG else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    logger.info(f"Logging configured: level={logging.getLevelName(log_level)}")
+
+
+# Configure logging
+configure_logging()
 
 
 # Environment detection and dynamic configuration

@@ -14,8 +14,10 @@ from app.api.schemas.background_tasks import (
     TaskStatus,
 )
 from app.core.database import get_db
+from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.background_service import background_service
+from app.utils.authorization import require_video_access
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,7 @@ router = APIRouter(prefix="/v0/analysis", tags=["analysis"])
 async def start_analysis(
     video_id: int,
     request: AnalysisRequest,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AnalysisResponse:
     """
@@ -52,6 +55,9 @@ async def start_analysis(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Video with ID {video_id} not found",
             )
+
+        # Check authorization (only video owner can start analysis)
+        require_video_access(video, current_user)
 
         # Start background task
         task_id = background_service.start_analysis_task(
@@ -92,7 +98,11 @@ async def start_analysis(
 
 
 @router.get("/status/{task_id}", response_model=TaskStatus)
-async def get_task_status(task_id: int) -> TaskStatus:
+async def get_task_status(
+    task_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TaskStatus:
     """
     Get the status of a background analysis task.
 
@@ -110,6 +120,13 @@ async def get_task_status(task_id: int) -> TaskStatus:
                 detail=f"Task {task_id} not found",
             )
 
+        # Check authorization via video access
+        video_id = task_status.get("video_id")
+        if video_id:
+            video = video_service.get_video_by_id(db, video_id)
+            if video:
+                require_video_access(video, current_user)
+
         return TaskStatus.model_validate(task_status)
 
     except HTTPException:
@@ -123,21 +140,43 @@ async def get_task_status(task_id: int) -> TaskStatus:
 
 
 @router.get("/tasks", response_model=TaskListResponse)
-async def list_tasks() -> TaskListResponse:
+async def list_tasks(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TaskListResponse:
     """
-    List all active background tasks.
+    List all active background tasks for the current user.
 
     Returns:
         Dictionary of all active tasks with their status
     """
     try:
+        from app.utils.authorization import is_admin
+
         all_tasks = background_service.get_all_tasks()
+
+        # Filter tasks by user's videos unless admin
+        filtered_tasks = {}
+        if not is_admin(current_user):
+            from app.models.video import Video
+
+            user_video_ids = {
+                video.id
+                for video in db.query(Video)
+                .filter(Video.user_id == current_user["id"])
+                .all()
+            }
+            for task_id, task_data in all_tasks.items():
+                if task_data.get("video_id") in user_video_ids:
+                    filtered_tasks[task_id] = task_data
+        else:
+            filtered_tasks = all_tasks
 
         # Convert to TaskStatus objects
         task_statuses = {}
         status_counts = {}
 
-        for task_id, task_data in all_tasks.items():
+        for task_id, task_data in filtered_tasks.items():
             task_status = TaskStatus.model_validate(task_data)
             task_statuses[task_id] = task_status
 
@@ -147,7 +186,7 @@ async def list_tasks() -> TaskListResponse:
 
         return TaskListResponse(
             tasks=task_statuses,
-            total_tasks=len(all_tasks),
+            total_tasks=len(filtered_tasks),
             status_counts=status_counts,
         )
 
@@ -160,7 +199,9 @@ async def list_tasks() -> TaskListResponse:
 
 
 @router.get("/stats", response_model=TaskStatsResponse)
-async def get_task_stats() -> TaskStatsResponse:
+async def get_task_stats(
+    current_user: dict = Depends(get_current_user),
+) -> TaskStatsResponse:
     """
     Get background task system statistics.
 
@@ -180,7 +221,11 @@ async def get_task_stats() -> TaskStatsResponse:
 
 
 @router.delete("/tasks/{task_id}")
-async def cancel_task(task_id: int) -> Dict[str, str]:
+async def cancel_task(
+    task_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, str]:
     """
     Cancel a running background task.
 
@@ -191,11 +236,25 @@ async def cancel_task(task_id: int) -> Dict[str, str]:
         Cancellation confirmation
     """
     try:
+        # Check authorization via video access
+        task_status = background_service.get_task_status(task_id)
+        if not task_status:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Task {task_id} not found",
+            )
+
+        video_id = task_status.get("video_id")
+        if video_id:
+            video = video_service.get_video_by_id(db, video_id)
+            if video:
+                require_video_access(video, current_user)
+
         success = background_service.cancel_task(task_id)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Task {task_id} not found or cannot be cancelled",
+                detail=f"Task {task_id} cannot be cancelled",
             )
 
         return {"message": f"Task {task_id} cancelled successfully"}

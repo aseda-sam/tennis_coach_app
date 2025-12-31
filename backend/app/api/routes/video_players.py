@@ -16,9 +16,10 @@ from app.api.schemas.video_player import (
     VideoWithPlayers,
 )
 from app.core.database import get_db
-from app.models.player import Player
-from app.models.video import Video
+from app.dependencies.auth import get_current_user
 from app.models.video_player import VideoPlayer
+from app.services import video_service
+from app.services.player_service import get_player_by_id
 from app.services.video_player_service import (
     create_video_player_association,
     delete_video_player_association,
@@ -30,6 +31,11 @@ from app.services.video_player_service import (
 )
 from app.services.video_player_service import (
     update_video_player_association as update_video_player,
+)
+from app.utils.authorization import (
+    require_player_access,
+    require_player_tag_permission,
+    require_video_access,
 )
 from app.utils.error_handling import log_and_raise_error
 
@@ -54,10 +60,23 @@ def _create_video_player_info(
 def associate_player_with_video(
     video_id: int,
     video_player_data: VideoPlayerCreate,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VideoPlayerInfo:
     """Associate a player with a video."""
     try:
+        # Get video and player to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise ValueError(f"Video with ID {video_id} not found")
+
+        player = get_player_by_id(db, video_player_data.player_id)
+        if not player:
+            raise ValueError(f"Player with ID {video_player_data.player_id} not found")
+
+        # Check authorization: user must own both video and player
+        require_player_tag_permission(video, player, current_user)
+
         video_player = create_video_player_association(
             db=db,
             video_id=video_id,
@@ -78,10 +97,20 @@ def associate_player_with_video(
 
 @router.get("/videos/{video_id}/players/", response_model=List[VideoPlayerInfo])
 def get_video_players(
-    video_id: int, db: Session = Depends(get_db)
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> List[VideoPlayerInfo]:
     """Get all players associated with a video."""
     try:
+        # Get video to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise ValueError(f"Video with ID {video_id} not found")
+
+        # Check authorization
+        require_video_access(video, current_user)
+
         video_players = get_players_in_video(db, video_id)
         return [_create_video_player_info(db, vp) for vp in video_players]
     except ValueError as e:
@@ -90,16 +119,22 @@ def get_video_players(
 
 @router.get("/videos/{video_id}/players-summary/", response_model=VideoWithPlayers)
 def get_video_players_summary(
-    video_id: int, db: Session = Depends(get_db)
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> VideoWithPlayers:
     """Get video with associated players summary."""
     try:
+        # Get video to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+
+        # Check authorization
+        require_video_access(video, current_user)
+
         video_players = get_players_in_video(db, video_id)
         if not video_players:
-            # Check if video exists
-            video = db.query(Video).filter(Video.id == video_id).first()
-            if not video:
-                raise HTTPException(status_code=404, detail="Video not found")
             return VideoWithPlayers(
                 id=video.id,
                 filename=video.filename,
@@ -125,10 +160,19 @@ def update_video_player_association(
     video_id: int,
     player_id: int,
     video_player_data: VideoPlayerUpdate,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VideoPlayerInfo:
     """Update a video-player association."""
     try:
+        # Get video to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise ValueError(f"Video with ID {video_id} not found")
+
+        # Check authorization (only video owner can update associations)
+        require_video_access(video, current_user)
+
         video_player = update_video_player(
             db=db,
             video_id=video_id,
@@ -151,10 +195,21 @@ def update_video_player_association(
     "/videos/{video_id}/players/{player_id}/", status_code=status.HTTP_204_NO_CONTENT
 )
 def remove_player_from_video(
-    video_id: int, player_id: int, db: Session = Depends(get_db)
+    video_id: int,
+    player_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> None:
     """Remove a player from a video."""
     try:
+        # Get video to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise ValueError(f"Video with ID {video_id} not found")
+
+        # Check authorization (only video owner can remove players)
+        require_video_access(video, current_user)
+
         delete_video_player_association(db, video_id, player_id)
     except ValueError as e:
         if "not associated" in str(e).lower():
@@ -169,16 +224,22 @@ def remove_player_from_video(
 
 @router.get("/players/{player_id}/videos/", response_model=PlayerWithVideos)
 def get_player_videos(
-    player_id: int, db: Session = Depends(get_db)
+    player_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> PlayerWithVideos:
     """Get all videos where a player appears."""
     try:
+        # Get player to check authorization
+        player = get_player_by_id(db, player_id)
+        if not player:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        # Check authorization
+        require_player_access(player, current_user)
+
         video_players = get_videos_for_player(db, player_id)
         if not video_players:
-            # Check if player exists
-            player = db.query(Player).filter(Player.id == player_id).first()
-            if not player:
-                raise HTTPException(status_code=404, detail="Player not found")
             return PlayerWithVideos(
                 id=player.id,
                 name=player.name,
@@ -211,10 +272,20 @@ def get_player_videos(
     "/videos/{video_id}/player-options/", response_model=BallContactPlayerOptions
 )
 def get_ball_contact_player_options(
-    video_id: int, db: Session = Depends(get_db)
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> BallContactPlayerOptions:
     """Get player assignment options for ball contact creation."""
     try:
+        # Get video to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise ValueError(f"Video with ID {video_id} not found")
+
+        # Check authorization
+        require_video_access(video, current_user)
+
         options = get_ball_contact_options(db, video_id)
         return BallContactPlayerOptions(**options)
     except ValueError as e:

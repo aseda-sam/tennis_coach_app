@@ -12,6 +12,7 @@ A computer vision-based tennis coaching platform that analyzes your tennis video
 
 ## 🎾 What It Does
 
+- **User accounts** with secure authentication
 - **Upload tennis videos** and get instant analysis
 - **Ball detection** using YOLO computer vision
 - **Pose estimation** with MediaPipe for stroke analysis
@@ -38,6 +39,8 @@ docker compose up --build
 ### Option 2: Local Development
 
 **Prerequisites:** Python 3.11+, Node.js 16+, FFmpeg
+
+**Note:** For local development, authentication can be disabled. See the [Backend README](backend/README.md) and [Frontend README](frontend/README.md) for environment variable configuration.
 
 ```bash
 # Backend
@@ -68,6 +71,7 @@ tennis_coach_app/
 - **Backend**: FastAPI, SQLAlchemy, YOLO, MediaPipe
 - **Frontend**: React, TypeScript, HTML5 Video
 - **Database**: SQLite (dev) → PostgreSQL (prod)
+- **Authentication**: Supabase Auth
 - **Deployment**: Docker, GitHub Actions
 
 ## 📚 Documentation
@@ -80,9 +84,11 @@ tennis_coach_app/
 ### Detailed Documentation
 
 - **[Backend API](backend/docs/api.md)** - Complete API reference
-- **[Backend Database](backend/docs/database.md)** - Database schema and models
-- **[Backend Configuration](backend/docs/configuration.md)** - Environment variables
-- **[Backend Deployment](backend/docs/deployment.md)** - Production deployment
+- **[Backend Database Schema](backend/docs/database_schema.md)** - Database models and relationships
+- **[Backend Profile Configuration](backend/docs/profile-configuration.md)** - Profile-based configuration system
+- **[Backend Cloud Database Setup](backend/docs/cloud-database-setup.md)** - PostgreSQL/Supabase setup
+- **[Backend Cloud Storage Setup](backend/docs/cloud-storage-setup.md)** - Supabase storage configuration
+- **[Backend Background Tasks](backend/docs/background-tasks.md)** - Background task system
 - **[Frontend Components](frontend/docs/components.md)** - Component documentation
 - **[Frontend API Integration](frontend/docs/api-integration.md)** - API communication
 - **[ML Models](ml_models/README.md)** - Machine learning models and usage

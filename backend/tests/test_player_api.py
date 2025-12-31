@@ -86,7 +86,9 @@ class TestPlayerAPI:
 
         assert response.status_code == 422  # Validation error
 
-    def test_get_players_empty(self, client: TestClient, db_session: Session) -> None:
+    def test_get_players_empty(
+        self, client: TestClient, db_session: Session, test_user_id: str
+    ) -> None:
         """Test getting players when none exist."""
         response = client.get("/v0/players/")
 
@@ -342,7 +344,7 @@ class TestPlayerAPI:
         assert "not found" in response.json()["detail"]
 
     def test_player_with_ball_contacts(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test player can be retrieved after ball contacts are created."""
         # Create player
@@ -363,6 +365,7 @@ class TestPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()

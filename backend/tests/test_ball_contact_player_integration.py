@@ -10,7 +10,7 @@ class TestBallContactPlayerIntegration:
     """Test cases for BallContact-Player integration."""
 
     def test_create_ball_contact_with_player(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test creating a ball contact with a player."""
         # Create player
@@ -31,6 +31,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -54,7 +55,7 @@ class TestBallContactPlayerIntegration:
         assert data["player"]["dominant_hand"] == "right"
 
     def test_create_ball_contact_with_player_no_backhand_style(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test creating a ball contact with a player who has no backhand style."""
         # Create player without backhand style
@@ -74,6 +75,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -97,7 +99,7 @@ class TestBallContactPlayerIntegration:
         assert data["player"]["dominant_hand"] == "left"
 
     def test_create_ball_contact_without_player(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test creating a ball contact without a player."""
         # Create video directly in the database for testing
@@ -109,6 +111,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -130,7 +133,7 @@ class TestBallContactPlayerIntegration:
         assert data["player"] is None
 
     def test_create_ball_contact_invalid_player(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test creating a ball contact with invalid player ID fails."""
         # Create video directly in the database for testing
@@ -142,6 +145,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -162,7 +166,7 @@ class TestBallContactPlayerIntegration:
         assert "not found" in response.json()["detail"]
 
     def test_update_ball_contact_player(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test updating a ball contact's player assignment."""
         # Create players
@@ -191,6 +195,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -217,7 +222,7 @@ class TestBallContactPlayerIntegration:
         assert data["player"]["name"] == "Player 2"
 
     def test_update_ball_contact_remove_player(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test updating a ball contact to remove player assignment."""
         # Create player
@@ -238,6 +243,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -264,7 +270,7 @@ class TestBallContactPlayerIntegration:
         assert data["player"] is None
 
     def test_get_ball_contacts_by_player(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test getting ball contacts by player ID."""
         # Create player
@@ -285,6 +291,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -330,7 +337,7 @@ class TestBallContactPlayerIntegration:
         assert "not found" in response.json()["detail"]
 
     def test_get_ball_contacts_by_video_with_players(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test getting ball contacts by video includes player information."""
         # Create players
@@ -359,6 +366,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -412,7 +420,7 @@ class TestBallContactPlayerIntegration:
         assert no_player_contacts[0]["player_name"] is None
 
     def test_delete_player_cascades_to_ball_contacts(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test that deleting a player sets ball contact player_id to NULL."""
         # Create player
@@ -433,6 +441,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()

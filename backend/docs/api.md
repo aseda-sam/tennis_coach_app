@@ -65,7 +65,20 @@ All endpoints are prefixed with the version number (e.g., `/v0/videos/upload`).
 
 ## Authentication
 
-Currently, no authentication is required for MVP. Future versions will implement JWT-based authentication.
+The API uses **Supabase Auth** for authentication. Rate limiting is applied to authentication endpoints to prevent brute force attacks:
+
+- Production: 5 authentication attempts per minute per IP
+- Other profiles: 10 authentication attempts per minute per IP
+- Local development: No rate limiting
+
+## Upload Limits
+
+Video uploads are rate-limited per user:
+
+- **Regular users**: Maximum 3 videos per day (production)
+- **Admin users**: Unlimited uploads
+- **Local development**: No limits
+- Limits are enforced via database queries (counts uploads in last 24 hours)
 
 ## File Upload Limits
 

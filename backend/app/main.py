@@ -1,5 +1,6 @@
 """Main FastAPI application."""
 
+import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -10,6 +11,9 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from app.api.routes import (
     analysis,
@@ -31,15 +35,29 @@ from app.utils.error_handling import (
     validation_error_handler,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
     """Application lifespan manager."""
     # Startup
+    logger.info("=" * 60)
+    logger.info("Tennis Coach API - Starting up")
+    logger.info("=" * 60)
+    logger.info(f"Profile: {settings.PROFILE}")
+    logger.info(f"Auth Required: {settings.auth_required}")
+    logger.info(f"Debug Mode: {settings.DEBUG}")
+    logger.info(
+        f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else settings.database_url}"
+    )
+    logger.info(f"Storage Type: {settings.STORAGE_TYPE}")
+    logger.info(f"CORS Origins: {settings.BACKEND_CORS_ORIGINS}")
+    logger.info("=" * 60)
     create_tables_if_not_exists()
     yield
     # Shutdown
-    pass
+    logger.info("Tennis Coach API - Shutting down")
 
 
 # Create FastAPI app with lifespan
@@ -49,6 +67,19 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Initialize rate limiter
+# Use more lenient limits for local development, stricter for production
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=(
+        [settings.RATE_LIMIT_DEFAULT_LOCAL]
+        if settings.PROFILE == "local"
+        else [settings.RATE_LIMIT_DEFAULT_PRODUCTION]
+    ),
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Add CORS middleware
 app.add_middleware(

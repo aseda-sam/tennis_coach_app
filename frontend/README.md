@@ -30,6 +30,11 @@ Create a `.env` file in the `frontend/` directory:
 # API Configuration
 REACT_APP_API_URL=http://localhost:8000
 
+# Authentication (Supabase)
+# Required for user authentication
+REACT_APP_SUPABASE_URL=https://your-project.supabase.co/
+REACT_APP_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+
 # File Upload
 REACT_APP_MAX_FILE_SIZE=104857600  # 100MB
 
@@ -125,8 +130,10 @@ frontend/
 
 ## Features
 
+- **User Authentication**: Login and registration with Supabase Auth
+- **User Sessions**: Secure session management and token handling
 - **Video Upload**: Drag-and-drop file upload with validation
-- **Video Library**: Browse and manage uploaded videos
+- **Video Library**: Browse and manage your uploaded videos
 - **Video Playback**: HTML5 video player with controls and fullscreen
 - **Analysis Results**: Display ball detection and pose estimation metrics
 - **Annotated Videos**: Automatic playback of videos with AI overlays

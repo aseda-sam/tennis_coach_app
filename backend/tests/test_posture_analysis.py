@@ -117,7 +117,9 @@ class TestPostureAnalysisService:
         # Should be close to 90 degrees for L-shaped arm
         assert 80.0 <= angle <= 100.0
 
-    def test_get_pose_at_contact_exact_frame(self, db_session: Session) -> None:
+    def test_get_pose_at_contact_exact_frame(
+        self, db_session: Session, test_user_id: str
+    ) -> None:
         """Test pose retrieval when exact frame exists."""
         # Create test video
         video = Video(
@@ -126,6 +128,7 @@ class TestPostureAnalysisService:
             file_size=1000,
             content_type="video/mp4",
             fps=30.0,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.flush()
@@ -171,7 +174,9 @@ class TestPostureAnalysisService:
         assert "right_elbow" in pose_landmarks
         assert "right_wrist" in pose_landmarks
 
-    def test_get_pose_at_contact_nearby_frame(self, db_session: Session) -> None:
+    def test_get_pose_at_contact_nearby_frame(
+        self, db_session: Session, test_user_id: str
+    ) -> None:
         """Test pose retrieval when exact frame is missing but nearby frame exists."""
         # Create test video
         video = Video(
@@ -180,6 +185,7 @@ class TestPostureAnalysisService:
             file_size=1000,
             content_type="video/mp4",
             fps=30.0,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.flush()
@@ -223,7 +229,9 @@ class TestPostureAnalysisService:
         assert pose_landmarks is not None
         assert "right_shoulder" in pose_landmarks
 
-    def test_get_pose_at_contact_no_data(self, db_session: Session) -> None:
+    def test_get_pose_at_contact_no_data(
+        self, db_session: Session, test_user_id: str
+    ) -> None:
         """Test pose retrieval when no pose data is available."""
         # Create test video
         video = Video(
@@ -232,6 +240,7 @@ class TestPostureAnalysisService:
             file_size=1000,
             content_type="video/mp4",
             fps=30.0,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.flush()
@@ -262,7 +271,9 @@ class TestPostureAnalysisService:
         pose_landmarks = get_pose_at_contact(ball_contact, pose_detection, video)
         assert pose_landmarks is None
 
-    def test_analyze_contact_posture_success(self, db_session: Session) -> None:
+    def test_analyze_contact_posture_success(
+        self, db_session: Session, test_user_id: str
+    ) -> None:
         """Test successful contact posture analysis."""
         # Create test video
         video = Video(
@@ -271,6 +282,7 @@ class TestPostureAnalysisService:
             file_size=1000,
             content_type="video/mp4",
             fps=30.0,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.flush()
@@ -312,13 +324,15 @@ class TestPostureAnalysisService:
         assert elbow_angle is not None
         assert 0.0 <= elbow_angle <= 180.0
 
-    def test_analyze_contact_posture_missing_contact(self, db_session: Session) -> None:
+    def test_analyze_contact_posture_missing_contact(
+        self, db_session: Session, test_user_id: str
+    ) -> None:
         """Test posture analysis with missing ball contact."""
         elbow_angle = analyze_contact_posture(db_session, 999)  # Non-existent ID
         assert elbow_angle is None
 
     def test_analyze_and_store_contact_posture_success(
-        self, db_session: Session
+        self, db_session: Session, test_user_id: str
     ) -> None:
         """Test analyze and store functionality with successful analysis."""
         # Create test data similar to previous test
@@ -328,6 +342,7 @@ class TestPostureAnalysisService:
             file_size=1000,
             content_type="video/mp4",
             fps=30.0,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.flush()
@@ -374,7 +389,7 @@ class TestPostureAnalysisService:
         assert ball_contact.elbow_angle == result["elbow_angle"]
 
     def test_analyze_and_store_contact_posture_already_analyzed(
-        self, db_session: Session
+        self, db_session: Session, test_user_id: str
     ) -> None:
         """Test analyze and store when contact is already analyzed."""
         # Create ball contact with existing elbow angle
@@ -384,6 +399,7 @@ class TestPostureAnalysisService:
             file_size=1000,
             content_type="video/mp4",
             fps=30.0,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.flush()
@@ -408,7 +424,7 @@ class TestPostureAnalysisService:
         assert "already completed" in result["message"]
 
     def test_analyze_and_store_contact_posture_force_reanalysis(
-        self, db_session: Session
+        self, db_session: Session, test_user_id: str
     ) -> None:
         """Test forced reanalysis of already analyzed contact."""
         # Create test data
@@ -418,6 +434,7 @@ class TestPostureAnalysisService:
             file_size=1000,
             content_type="video/mp4",
             fps=30.0,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.flush()
@@ -461,7 +478,7 @@ class TestPostureAnalysisService:
         assert 0.0 <= result["elbow_angle"] <= 180.0
 
     def test_analyze_and_store_contact_posture_unsupported_stroke(
-        self, db_session: Session
+        self, db_session: Session, test_user_id: str
     ) -> None:
         """Test analyze and store with unsupported stroke type."""
         video = Video(
@@ -470,6 +487,7 @@ class TestPostureAnalysisService:
             file_size=1000,
             content_type="video/mp4",
             fps=30.0,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.flush()
@@ -495,7 +513,7 @@ class TestPostureAnalysisAPI:
     """Test posture analysis API endpoints."""
 
     def test_analyze_ball_contact_posture_success(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test successful ball contact posture analysis via API."""
         # Create test data
@@ -505,6 +523,7 @@ class TestPostureAnalysisAPI:
             file_size=1000,
             content_type="video/mp4",
             fps=30.0,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.flush()
@@ -557,13 +576,11 @@ class TestPostureAnalysisAPI:
             "/v0/ball-contacts/999/analyze-posture", json={"force_reanalysis": False}
         )
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["analysis_status"] == "failed"
-        assert "not found" in data["message"].lower()
+        # Non-existent ball contact should return 404
+        assert response.status_code == 404
 
     def test_get_ball_contact_posture_analysis(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test retrieving existing posture analysis via API."""
         # Create ball contact with existing analysis
@@ -573,6 +590,7 @@ class TestPostureAnalysisAPI:
             file_size=1000,
             content_type="video/mp4",
             fps=30.0,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.flush()
@@ -603,7 +621,7 @@ class TestPostureAnalysisIntegration:
     """Integration tests for posture analysis with real-like data."""
 
     def test_full_posture_analysis_workflow(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test complete posture analysis workflow with video upload and ball contact creation."""
         # This test simulates the real workflow:
@@ -620,6 +638,7 @@ class TestPostureAnalysisIntegration:
             width=1920,
             height=1080,
             frame_count=300,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.flush()

@@ -85,6 +85,8 @@ docker run -p 8000:8000 tennis-backend
 - **Health Check**: http://localhost:8000/health
 - **API Info**: http://localhost:8000/v0
 
+**Note:** Most API endpoints require authentication. See the [Authentication](#authentication) section below for configuration details.
+
 ## Environment Configuration
 
 ### Required Environment Variables
@@ -107,6 +109,11 @@ DEBUG=True
 
 # CORS (for frontend integration)
 CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+
+# Authentication (Supabase)
+# Required for production, optional for local development
+SUPABASE_URL=https://your-project.supabase.co/
+SUPABASE_SECRET_KEY=your-secret-key
 ```
 
 ### Optional Environment Variables
@@ -120,9 +127,66 @@ CONFIDENCE_THRESHOLD=0.5
 # Ball Contact Configuration
 BALL_CONTACT_TIMESTAMP_TOLERANCE=0.1  # Tolerance in seconds for duplicate detection
 
-# Security (for production)
-SECRET_KEY=your-secret-key-here
+# Profile configuration (for local development)
+PROFILE=local  # Disables auth automatically
 ```
+
+## Authentication
+
+The application uses **Supabase Auth** for user authentication. Most API endpoints require authentication to ensure users can only access their own data.
+
+### Architecture
+
+- **Frontend**: Handles user login/registration via Supabase client
+- **Backend**: Verifies JWT tokens on protected endpoints
+- **User Isolation**: All videos and players are scoped to individual users
+- **Local Development**: Authentication can be disabled using `PROFILE=local`
+
+### Production Setup
+
+For production, configure Supabase authentication:
+
+```bash
+SUPABASE_URL=https://your-project.supabase.co/
+SUPABASE_SECRET_KEY=your-secret-key
+REQUIRE_AUTH=true
+PROFILE=production
+```
+
+### Local Development
+
+For local development, set the profile to `local`:
+
+```bash
+PROFILE=local
+```
+
+When `PROFILE=local`, the API automatically uses a mock user and doesn't require authentication tokens. This is useful for local testing but should never be used in production.
+
+### Protected Endpoints
+
+The following endpoints require authentication:
+- Video upload and management
+- Player creation and management
+- Ball contact creation and management
+- Analysis requests
+
+### Rate Limiting
+
+Rate limiting is configured to protect against abuse:
+- **Authentication**: 5/minute (production) or 10/minute (other profiles) per IP
+- **General API**: 100/hour (production) or 1000/hour (local) per IP
+- **Video Uploads**: 3 videos per day per user (production only, admins unlimited)
+- Rate limits are configurable via `RATE_LIMIT_*` and `MAX_VIDEO_UPLOADS_PER_DAY` settings in `app/core/config.py`
+
+### Authorization
+
+The application enforces user-based data isolation:
+- Users can only access their own videos and players
+- Video owners control access to their video data
+- Admin users (configured via Supabase metadata) can access all data
+
+See the [API documentation](docs/api.md) for details on authentication requirements for each endpoint.
 
 ## Development
 
@@ -219,9 +283,11 @@ backend/
 │   └── main.py              # FastAPI app
 ├── docs/                    # Detailed documentation
 │   ├── api.md              # API reference
-│   ├── database.md         # Database schema
-│   ├── configuration.md    # Environment configuration
-│   └── deployment.md       # Production deployment
+│   ├── database_schema.md  # Database schema
+│   ├── profile-configuration.md  # Profile-based configuration
+│   ├── cloud-database-setup.md   # PostgreSQL setup guide
+│   ├── cloud-storage-setup.md    # Cloud storage setup
+│   └── background-tasks.md       # Background task system
 ├── alembic/                 # Database migrations
 ├── tests/                   # Test files
 ├── pyproject.toml           # Project configuration
@@ -230,6 +296,9 @@ backend/
 
 ## Features
 
+- **User Authentication**: Secure authentication with Supabase Auth
+- **User-based Data Isolation**: Videos and players are scoped to individual users
+- **Player Management**: Create and manage players with hand preference and backhand style
 - **Video Upload & Management**: Secure file upload with validation and metadata extraction
 - **Computer Vision Analysis**: YOLO ball detection + MediaPipe pose estimation
 - **Annotated Video Creation**: Generate videos with detection overlays
@@ -318,9 +387,8 @@ sudo sysctl vm.swappiness=10
 ### Debug Mode
 
 ```bash
-# Enable debug logging
+# Enable debug mode (auto-reload + DEBUG logging)
 export DEBUG=True
-export LOG_LEVEL=DEBUG
 
 # Start with debug
 uvicorn app.main:app --reload --log-level debug
@@ -329,9 +397,10 @@ uvicorn app.main:app --reload --log-level debug
 ## Documentation
 
 - **[API Reference](docs/api.md)** - Complete API documentation
-- **[Database Schema](docs/database.md)** - Database models and relationships
-- **[Configuration Guide](docs/configuration.md)** - Environment variables and settings
-- **[Deployment Guide](docs/deployment.md)** - Production deployment
+- **[Database Schema](docs/database_schema.md)** - Database models and relationships
+- **[Profile Configuration](docs/profile-configuration.md)** - Profile-based configuration system
+- **[Cloud Database Setup](docs/cloud-database-setup.md)** - PostgreSQL/Supabase database setup
+- **[Cloud Storage Setup](docs/cloud-storage-setup.md)** - Supabase storage configuration
 - **[Background Tasks](docs/background-tasks.md)** - Background task system and Redis migration plan
 
 ## Contributing
