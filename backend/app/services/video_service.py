@@ -27,7 +27,7 @@ def create_video_record(
     frame_count: Optional[int] = None,
 ) -> Video:
     """Create a new video record in the database.
-    
+
     Args:
         db: Database session
         filename: Video filename

@@ -25,9 +25,6 @@ from app.services.player_service import (
     get_player_by_id,
 )
 from app.services.player_service import (
-    get_players as get_players_service,
-)
-from app.services.player_service import (
     update_player as update_player_service,
 )
 from app.utils.authorization import is_admin, require_player_access

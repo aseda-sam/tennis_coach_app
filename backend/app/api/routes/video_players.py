@@ -17,8 +17,6 @@ from app.api.schemas.video_player import (
 )
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
-from app.models.player import Player
-from app.models.video import Video
 from app.models.video_player import VideoPlayer
 from app.services import video_service
 from app.services.player_service import get_player_by_id
