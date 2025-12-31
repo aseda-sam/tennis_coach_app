@@ -84,9 +84,11 @@ tennis_coach_app/
 ### Detailed Documentation
 
 - **[Backend API](backend/docs/api.md)** - Complete API reference
-- **[Backend Database](backend/docs/database.md)** - Database schema and models
-- **[Backend Configuration](backend/docs/configuration.md)** - Environment variables
-- **[Backend Deployment](backend/docs/deployment.md)** - Production deployment
+- **[Backend Database Schema](backend/docs/database_schema.md)** - Database models and relationships
+- **[Backend Profile Configuration](backend/docs/profile-configuration.md)** - Profile-based configuration system
+- **[Backend Cloud Database Setup](backend/docs/cloud-database-setup.md)** - PostgreSQL/Supabase setup
+- **[Backend Cloud Storage Setup](backend/docs/cloud-storage-setup.md)** - Supabase storage configuration
+- **[Backend Background Tasks](backend/docs/background-tasks.md)** - Background task system
 - **[Frontend Components](frontend/docs/components.md)** - Component documentation
 - **[Frontend API Integration](frontend/docs/api-integration.md)** - API communication
 - **[ML Models](ml_models/README.md)** - Machine learning models and usage
