@@ -91,7 +91,7 @@ def verify_supabase_token(token: str) -> Optional[dict]:
             exc_info=True,
         )
         return None
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - Intentional: fail closed for auth, catch all exceptions
         # Check for specific exception types if available
         error_type = type(e).__name__
 
@@ -119,10 +119,11 @@ def verify_supabase_token(token: str) -> Optional[dict]:
             )
             return None
 
-        # Unexpected errors - log with full context and re-raise
-        # This ensures programming errors and unexpected issues are not silently ignored
-        logger.error(
-            f"Unexpected error during Supabase token verification: {error_type}: {e}",
+        # For authentication, we want to fail closed - any unexpected error
+        # during token verification should be treated as auth failure
+        # This prevents leaking information about internal errors
+        logger.warning(
+            f"Unexpected error during Supabase token verification (treated as auth failure): {error_type}: {e}",
             exc_info=True,
         )
-        raise
+        return None

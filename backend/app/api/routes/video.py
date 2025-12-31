@@ -33,7 +33,7 @@ from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.storage_service import storage_service
 from app.services.video_quality import VideoQualityService
-from app.utils.authorization import require_video_access
+from app.utils.authorization import is_admin, require_upload_limit, require_video_access
 from app.utils.error_handling import (
     handle_file_error,
     handle_not_found_error,
@@ -489,6 +489,10 @@ async def upload_video(
         Upload confirmation with video information
     """
     try:
+        # Check daily upload limit (skip for admins and local profile)
+        if settings.PROFILE != "local" and not is_admin(current_user):
+            require_upload_limit(db, current_user, settings.MAX_VIDEO_UPLOADS_PER_DAY)
+
         # Validate file
         if not file.filename:
             raise handle_file_error("invalid", "", "No file provided")

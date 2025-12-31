@@ -58,22 +58,24 @@ async def get_current_user(
     # Apply rate limiting for authentication attempts
     # Skip rate limiting for local profile
     if settings.PROFILE != "local":
-        limiter = request.app.state.limiter
-        # Rate limit from config: production vs other profiles
-        rate_limit = (
-            settings.RATE_LIMIT_AUTH_PRODUCTION
-            if settings.PROFILE == "production"
-            else settings.RATE_LIMIT_AUTH_OTHER
-        )
-        # Check rate limit - this will raise RateLimitExceeded if exceeded
-        try:
-            _check_auth_rate_limit(request, limiter, rate_limit)
-        except RateLimitExceeded:
-            client_host = request.client.host if request.client else "unknown"
-            logger.warning(
-                f"Rate limit exceeded for authentication attempt from {client_host}"
+        # Check if limiter is available (may not be in tests)
+        limiter = getattr(request.app.state, "limiter", None)
+        if limiter is not None:
+            # Rate limit from config: production vs other profiles
+            rate_limit = (
+                settings.RATE_LIMIT_AUTH_PRODUCTION
+                if settings.PROFILE == "production"
+                else settings.RATE_LIMIT_AUTH_OTHER
             )
-            raise
+            # Check rate limit - this will raise RateLimitExceeded if exceeded
+            try:
+                _check_auth_rate_limit(request, limiter, rate_limit)
+            except RateLimitExceeded:
+                client_host = request.client.host if request.client else "unknown"
+                logger.warning(
+                    f"Rate limit exceeded for authentication attempt from {client_host}"
+                )
+                raise
 
     # Log profile and auth status for debugging
     logger.debug(

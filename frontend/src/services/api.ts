@@ -67,6 +67,11 @@ api.interceptors.response.use(
           hasAuthHeader: !!error.config?.headers?.Authorization,
         }
       );
+    } else if (status === 429) {
+      console.warn(
+        `[API] 429 Rate Limit Exceeded on ${error.config?.method?.toUpperCase()} ${error.config?.url}:`,
+        data?.detail || 'Rate limit exceeded'
+      );
     } else {
       console.error(
         `[API] Error ${status} ${statusText} on ${error.config?.method?.toUpperCase()} ${error.config?.url}:`,

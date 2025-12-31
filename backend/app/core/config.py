@@ -107,6 +107,8 @@ class Settings(BaseSettings):
     # Expensive operations rate limits (per IP)
     RATE_LIMIT_VIDEO_UPLOAD: str = "10/hour"  # Video uploads (large files)
     RATE_LIMIT_ANALYSIS: str = "20/hour"  # Analysis requests (CPU-intensive)
+    # Per-user upload limits (database-based)
+    MAX_VIDEO_UPLOADS_PER_DAY: int = 3  # Maximum videos per user per day (production)
 
     @property
     def database_url(self) -> str:

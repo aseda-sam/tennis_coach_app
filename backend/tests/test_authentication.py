@@ -56,6 +56,7 @@ class TestSupabaseAuth:
 
         mock_response = Mock()
         mock_response.user = mock_user
+        mock_response.error = None  # No error for valid token
 
         with patch("app.utils.supabase_auth.get_supabase_client") as mock_get_client:
             mock_client = Mock()
@@ -84,6 +85,7 @@ class TestSupabaseAuth:
         """Test token verification when response has no user."""
         mock_response = Mock()
         mock_response.user = None
+        mock_response.error = None  # No error, just no user
 
         with patch("app.utils.supabase_auth.get_supabase_client") as mock_get_client:
             mock_client = Mock()
@@ -103,6 +105,7 @@ class TestSupabaseAuth:
 
         mock_response = Mock()
         mock_response.user = mock_user
+        mock_response.error = None  # No error for valid token
 
         with patch("app.utils.supabase_auth.get_supabase_client") as mock_get_client:
             mock_client = Mock()
@@ -161,10 +164,13 @@ class TestAuthDependency:
     @pytest.mark.asyncio
     async def test_get_current_user_local_profile_no_auth(self) -> None:
         """Test that local profile returns mock user without auth."""
+        mock_request = Mock()
+        mock_request.app.state.limiter = None  # Not used for local profile
+
         with patch("app.dependencies.auth.settings") as mock_settings:
             mock_settings.PROFILE = "local"
 
-            result = await get_current_user(credentials=None)
+            result = await get_current_user(request=mock_request, credentials=None)
 
             assert result["id"] == "00000000-0000-0000-0000-000000000000"
             assert result["email"] == "dev@localhost"
@@ -173,11 +179,16 @@ class TestAuthDependency:
     @pytest.mark.asyncio
     async def test_get_current_user_production_no_credentials(self) -> None:
         """Test that production profile requires credentials."""
+        mock_request = Mock()
+        mock_request.app.state.limiter = Mock()
+        mock_request.client = Mock()
+        mock_request.client.host = "127.0.0.1"
+
         with patch("app.dependencies.auth.settings") as mock_settings:
             mock_settings.PROFILE = "production"
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user(credentials=None)
+                await get_current_user(request=mock_request, credentials=None)
 
             assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
             assert "Authentication required" in str(exc_info.value.detail)
@@ -185,6 +196,11 @@ class TestAuthDependency:
     @pytest.mark.asyncio
     async def test_get_current_user_valid_token(self) -> None:
         """Test that valid token returns user."""
+        mock_request = Mock()
+        mock_request.app.state.limiter = Mock()
+        mock_request.client = Mock()
+        mock_request.client.host = "127.0.0.1"
+
         mock_credentials = Mock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "valid-token"
 
@@ -200,7 +216,7 @@ class TestAuthDependency:
             mock_settings.PROFILE = "production"
             mock_verify.return_value = mock_user
 
-            result = await get_current_user(credentials=mock_credentials)
+            result = await get_current_user(request=mock_request, credentials=mock_credentials)
 
             assert result == mock_user
             mock_verify.assert_called_once_with("valid-token")
@@ -208,6 +224,11 @@ class TestAuthDependency:
     @pytest.mark.asyncio
     async def test_get_current_user_invalid_token(self) -> None:
         """Test that invalid token raises 401."""
+        mock_request = Mock()
+        mock_request.app.state.limiter = Mock()
+        mock_request.client = Mock()
+        mock_request.client.host = "127.0.0.1"
+
         mock_credentials = Mock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "invalid-token"
 
@@ -218,7 +239,7 @@ class TestAuthDependency:
             mock_verify.return_value = None
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user(credentials=mock_credentials)
+                await get_current_user(request=mock_request, credentials=mock_credentials)
 
             assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
             assert "Invalid authentication credentials" in str(exc_info.value.detail)

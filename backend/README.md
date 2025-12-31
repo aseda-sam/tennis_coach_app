@@ -176,7 +176,8 @@ The following endpoints require authentication:
 Rate limiting is configured to protect against abuse:
 - **Authentication**: 5/minute (production) or 10/minute (other profiles) per IP
 - **General API**: 100/hour (production) or 1000/hour (local) per IP
-- Rate limits are configurable via `RATE_LIMIT_*` settings in `app/core/config.py`
+- **Video Uploads**: 3 videos per day per user (production only, admins unlimited)
+- Rate limits are configurable via `RATE_LIMIT_*` and `MAX_VIDEO_UPLOADS_PER_DAY` settings in `app/core/config.py`
 
 ### Authorization
 

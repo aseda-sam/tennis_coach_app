@@ -1,8 +1,10 @@
 """Authorization utilities for checking user permissions."""
 
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from app.models.player import Player
@@ -169,4 +171,49 @@ def require_player_tag_permission(video: "Video", player: "Player", user: dict) 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only tag players you created to your videos",
+        )
+
+
+def check_daily_upload_limit(
+    db: Session, user_id: str, max_uploads: int
+) -> tuple[bool, int]:
+    """Check if user has exceeded daily upload limit.
+
+    Args:
+        db: Database session
+        user_id: User ID to check
+        max_uploads: Maximum uploads allowed per day
+
+    Returns:
+        Tuple of (is_within_limit, current_count)
+    """
+    from app.models.video import Video
+
+    yesterday = datetime.utcnow() - timedelta(days=1)
+    count = (
+        db.query(Video)
+        .filter(Video.user_id == user_id, Video.created_at >= yesterday)
+        .count()
+    )
+    return count < max_uploads, count
+
+
+def require_upload_limit(db: Session, user: dict, max_uploads: int) -> None:
+    """Raise exception if user has exceeded daily upload limit.
+
+    Args:
+        db: Database session
+        user: User dict with id, email, user_metadata, etc.
+        max_uploads: Maximum uploads allowed per day
+
+    Raises:
+        HTTPException: 429 if upload limit exceeded
+    """
+    is_within_limit, current_count = check_daily_upload_limit(
+        db, user["id"], max_uploads
+    )
+    if not is_within_limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"You've reached your daily upload limit of {max_uploads} videos ({current_count} uploaded today). Please try again tomorrow.",
         )
