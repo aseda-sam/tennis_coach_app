@@ -97,6 +97,17 @@ class Settings(BaseSettings):
     # Authentication
     REQUIRE_AUTH: bool = True  # Set to False to skip auth in development
 
+    # Rate Limiting Configuration
+    # Auth rate limits (per IP)
+    RATE_LIMIT_AUTH_PRODUCTION: str = "5/minute"  # Production auth attempts
+    RATE_LIMIT_AUTH_OTHER: str = "10/minute"  # Other profiles (staging, etc.)
+    # General API rate limits (per IP)
+    RATE_LIMIT_DEFAULT_LOCAL: str = "1000/hour"  # Local dev default
+    RATE_LIMIT_DEFAULT_PRODUCTION: str = "100/hour"  # Production default
+    # Expensive operations rate limits (per IP)
+    RATE_LIMIT_VIDEO_UPLOAD: str = "10/hour"  # Video uploads (large files)
+    RATE_LIMIT_ANALYSIS: str = "20/hour"  # Analysis requests (CPU-intensive)
+
     @property
     def database_url(self) -> str:
         """Get database URL based on profile."""

@@ -3,8 +3,10 @@
 import logging
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.utils.supabase_auth import verify_supabase_token
@@ -16,20 +18,63 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 
+def _check_auth_rate_limit(request: Request, limiter: Limiter, rate_limit: str) -> None:
+    """Check rate limit for authentication attempts.
+
+    Args:
+        request: FastAPI request object
+        limiter: SlowAPI limiter instance
+        rate_limit: Rate limit string (e.g., "5/minute")
+
+    Raises:
+        RateLimitExceeded: If rate limit is exceeded
+    """
+
+    # Apply rate limit decorator dynamically
+    @limiter.limit(rate_limit)
+    def _rate_limited_check(req: Request) -> None:
+        """Rate-limited helper function."""
+        pass
+
+    _rate_limited_check(request)
+
+
 async def get_current_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> dict:
     """Dependency to get current authenticated user from Supabase.
 
     Args:
+        request: FastAPI request object (for rate limiting)
         credentials: HTTP Bearer token from request header
 
     Returns:
         User dict with id, email, user_metadata, etc.
 
     Raises:
-        HTTPException: 401 if authentication fails
+        HTTPException: 401 if authentication fails, 429 if rate limit exceeded
     """
+    # Apply rate limiting for authentication attempts
+    # Skip rate limiting for local profile
+    if settings.PROFILE != "local":
+        limiter = request.app.state.limiter
+        # Rate limit from config: production vs other profiles
+        rate_limit = (
+            settings.RATE_LIMIT_AUTH_PRODUCTION
+            if settings.PROFILE == "production"
+            else settings.RATE_LIMIT_AUTH_OTHER
+        )
+        # Check rate limit - this will raise RateLimitExceeded if exceeded
+        try:
+            _check_auth_rate_limit(request, limiter, rate_limit)
+        except RateLimitExceeded:
+            client_host = request.client.host if request.client else "unknown"
+            logger.warning(
+                f"Rate limit exceeded for authentication attempt from {client_host}"
+            )
+            raise
+
     # Log profile and auth status for debugging
     logger.debug(
         f"Auth check: PROFILE={settings.PROFILE}, "
