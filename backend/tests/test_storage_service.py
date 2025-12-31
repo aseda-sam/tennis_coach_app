@@ -181,7 +181,7 @@ class TestStorageServiceSupabase:
 
         with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_URL", "https://test.supabase.co"
-        ), patch.object(settings, "SUPABASE_KEY", "test-key"), patch.object(
+        ), patch.object(settings, "SUPABASE_SECRET_KEY", "test-key"), patch.object(
             settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
         ), patch.dict("sys.modules", {"supabase": mock_supabase_module}):
             service = StorageService()
@@ -310,7 +310,7 @@ class TestStorageServiceInitialization:
 
         with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_URL", "https://test.supabase.co/"
-        ), patch.object(settings, "SUPABASE_KEY", "test-key"), patch.dict(
+        ), patch.object(settings, "SUPABASE_SECRET_KEY", "test-key"), patch.dict(
             "sys.modules", {"supabase": mock_supabase_module}
         ):
             service = StorageService()
@@ -327,7 +327,7 @@ class TestStorageServiceInitialization:
 
         with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_URL", None
-        ), patch.object(settings, "SUPABASE_KEY", None), patch.dict(
+        ), patch.object(settings, "SUPABASE_SECRET_KEY", None), patch.dict(
             "sys.modules", {"supabase": mock_supabase_module}
         ), patch("app.services.storage_service.logger") as mock_logger:
             service = StorageService()
@@ -356,7 +356,7 @@ class TestStorageServiceInitialization:
 
             with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
                 settings, "SUPABASE_URL", "https://test.supabase.co/"
-            ), patch.object(settings, "SUPABASE_KEY", "test-key"):
+            ), patch.object(settings, "SUPABASE_SECRET_KEY", "test-key"):
                 # Patch the import statement by making the module raise ImportError
                 # We need to ensure sys.modules doesn't have supabase, and patch __import__
                 # Type annotations use Any to match __import__ signature for mocking
@@ -395,7 +395,7 @@ class TestStorageServiceInitialization:
 
         with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_URL", "https://test.supabase.co"
-        ), patch.object(settings, "SUPABASE_KEY", "test-key"), patch.dict(
+        ), patch.object(settings, "SUPABASE_SECRET_KEY", "test-key"), patch.dict(
             "sys.modules", {"supabase": mock_supabase_module}
         ):
             service = StorageService()

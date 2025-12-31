@@ -566,10 +566,8 @@ class TestPostureAnalysisAPI:
             "/v0/ball-contacts/999/analyze-posture", json={"force_reanalysis": False}
         )
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["analysis_status"] == "failed"
-        assert "not found" in data["message"].lower()
+        # Non-existent ball contact should return 404
+        assert response.status_code == 404
 
     def test_get_ball_contact_posture_analysis(
         self, client: TestClient, db_session: Session, test_user_id: str
