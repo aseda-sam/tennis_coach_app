@@ -79,15 +79,6 @@ def _create_temp_file_for_processing(file_content: bytes, filename: str) -> Path
         tmp_path = Path(tmp_file.name)
     return tmp_path
 
-    Returns:
-        Path to temporary file (caller must clean up)
-    """
-    with tempfile.NamedTemporaryFile(
-        delete=False, suffix=Path(filename).suffix
-    ) as tmp_file:
-        tmp_file.write(file_content)
-        tmp_path = Path(tmp_file.name)
-    return tmp_path
 
 def extract_video_metadata(video_path: Path) -> VideoMetadata:
     """Extract metadata from video file using OpenCV."""
@@ -430,28 +421,6 @@ async def get_video_analysis_status(
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "get_video_analysis_status", {"video_id": video_id})
 
-    Args:
-        video_id: Unique video identifier
-
-    Returns:
-        Deletion confirmation
-    """
-    try:
-        # Use service function to handle all deletion logic
-        success, filename, deleted_video_id = video_service.delete_video_with_analyses(
-            db, video_id
-        )
-
-        if not success:
-            raise handle_file_error("delete_failed", filename, "Video deletion failed")
-
-        return VideoDeleteResponse(
-            message=f"Video {filename} deleted successfully",
-            video_id=deleted_video_id,
-            filename=filename,
-        )
-    except (OSError, ValueError) as e:
-        log_and_raise_error(e, "delete_video", {"video_id": video_id})
 
 @router.delete("/{video_id}", response_model=VideoDeleteResponse)
 async def delete_video(
