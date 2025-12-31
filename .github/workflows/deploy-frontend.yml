@@ -18,6 +18,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: github-pages
     defaults:
       run:
         working-directory: frontend
@@ -38,7 +39,10 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          REACT_APP_PROFILE: production
           REACT_APP_API_URL: https://tennis-coach-backend.onrender.com/v0
+          REACT_APP_SUPABASE_URL: ${{ secrets.REACT_APP_SUPABASE_URL }}
+          REACT_APP_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.REACT_APP_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
