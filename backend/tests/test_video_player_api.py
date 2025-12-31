@@ -10,7 +10,7 @@ class TestVideoPlayerAPI:
     """Test cases for Video-Player association API endpoints."""
 
     def test_associate_player_with_video(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test associating a player with a video."""
         # Create player through API
@@ -31,6 +31,7 @@ class TestVideoPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -73,7 +74,7 @@ class TestVideoPlayerAPI:
         assert response.status_code == 404
 
     def test_associate_nonexistent_player_with_video(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test associating a nonexistent player with a video."""
         # Create video directly in database
@@ -85,6 +86,7 @@ class TestVideoPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -121,6 +123,7 @@ class TestVideoPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -143,7 +146,7 @@ class TestVideoPlayerAPI:
         )
         assert response2.status_code == 409
 
-    def test_get_video_players(self, client: TestClient, db_session: Session) -> None:
+    def test_get_video_players(self, client: TestClient, db_session: Session, test_user_id: str) -> None:
         """Test getting all players associated with a video."""
         # Create player through API
         player_data = {
@@ -162,6 +165,7 @@ class TestVideoPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -203,6 +207,7 @@ class TestVideoPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -246,6 +251,7 @@ class TestVideoPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -290,6 +296,7 @@ class TestVideoPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -313,7 +320,7 @@ class TestVideoPlayerAPI:
         data = response.json()
         assert len(data) == 0
 
-    def test_get_player_videos(self, client: TestClient, db_session: Session) -> None:
+    def test_get_player_videos(self, client: TestClient, db_session: Session, test_user_id: str) -> None:
         """Test getting all videos where a player appears."""
         # Create player through API
         player_data = {
@@ -332,6 +339,7 @@ class TestVideoPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -355,7 +363,7 @@ class TestVideoPlayerAPI:
         assert data["videos"][0]["id"] == video_id
 
     def test_get_ball_contact_player_options_single_player(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test getting player options when only one player is in the video."""
         # Create player through API
@@ -375,6 +383,7 @@ class TestVideoPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -399,7 +408,7 @@ class TestVideoPlayerAPI:
         assert len(data["options"]) == 1
 
     def test_get_ball_contact_player_options_no_players(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test getting player options when no players are in the video."""
         # Create video directly in database
@@ -411,6 +420,7 @@ class TestVideoPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -425,7 +435,7 @@ class TestVideoPlayerAPI:
         assert "No players assigned to video" in data["message"]
 
     def test_get_ball_contact_player_options_multiple_players(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test getting player options when multiple players are in the video."""
         # Create two players through API
@@ -452,6 +462,7 @@ class TestVideoPlayerAPI:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()

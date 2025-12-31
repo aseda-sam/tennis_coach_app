@@ -13,6 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base, get_db
+from app.dependencies.auth import get_current_user
 from app.main import app
 
 # Test database configuration
@@ -45,8 +46,14 @@ def db_session(test_db: Generator) -> Generator:
 
 
 @pytest.fixture
+def test_user_id() -> str:
+    """Get test user ID for creating test data."""
+    return "00000000-0000-0000-0000-000000000000"
+
+
+@pytest.fixture
 def client(db_session: Generator) -> Generator[TestClient, None, None]:
-    """Create test client with database override."""
+    """Create test client with database override and mock auth."""
 
     def override_get_db() -> Generator:
         try:
@@ -54,7 +61,16 @@ def client(db_session: Generator) -> Generator[TestClient, None, None]:
         finally:
             pass
 
+    async def mock_get_current_user() -> dict:
+        """Mock authentication for tests."""
+        return {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "email": "test@example.com",
+            "user_metadata": {},
+        }
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = mock_get_current_user
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

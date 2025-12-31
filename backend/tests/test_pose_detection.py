@@ -88,7 +88,7 @@ class TestPoseDetectionService:
         assert "error" in results
 
     def test_save_detection_results(
-        self, pose_service: PoseDetectionService, db_session: Session
+        self, pose_service: PoseDetectionService, db_session: Session, test_user_id: str
     ) -> None:
         """Test saving pose detection results to database."""
         # Create test video with unique filename
@@ -96,6 +96,7 @@ class TestPoseDetectionService:
             filename="test_save_detection_video.mp4",
             file_path="/path/to/test_save_detection_video.mp4",
             file_size=1000,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -130,7 +131,7 @@ class TestPoseDetectionService:
         assert pose_detection.status == "completed"
 
     def test_get_detection_by_video_id(
-        self, pose_service: PoseDetectionService, db_session: Session
+        self, pose_service: PoseDetectionService, db_session: Session, test_user_id: str
     ) -> None:
         """Test retrieving pose detection by video ID."""
         # Create test video with unique filename
@@ -138,6 +139,7 @@ class TestPoseDetectionService:
             filename="test_get_detection_video.mp4",
             file_path="/path/to/test_get_detection_video.mp4",
             file_size=1000,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -205,6 +207,7 @@ class TestPoseDetectionAPI:
         mock_analyze: Mock,
         client: TestClient,
         db_session: Session,
+        test_user_id: str,
     ) -> None:
         """Test successful pose detection analysis."""
         # Setup mocks
@@ -228,6 +231,7 @@ class TestPoseDetectionAPI:
             filename="test_analyze_pose_video.mp4",
             file_path="/path/to/test_analyze_pose_video.mp4",
             file_size=1000,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -254,6 +258,7 @@ def create_test_video_with_pose_detection(db: Session) -> tuple[Video, PoseDetec
         filename=f"integration_test_{unique_id}.mp4",
         file_path=f"/path/to/integration_test_{unique_id}.mp4",
         file_size=2000,
+        user_id="00000000-0000-0000-0000-000000000000",
     )
     db.add(video)
     db.commit()

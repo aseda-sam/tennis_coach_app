@@ -31,6 +31,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -74,6 +75,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -109,6 +111,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -142,6 +145,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -191,6 +195,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -238,6 +243,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -285,6 +291,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -359,6 +366,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()
@@ -433,6 +441,7 @@ class TestBallContactPlayerIntegration:
             width=1920,
             height=1080,
             status="uploaded",
+            user_id=test_user_id,
         )
         db_session.add(test_video)
         db_session.commit()

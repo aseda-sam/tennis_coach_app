@@ -14,7 +14,7 @@ class TestVideoCascadeDeletion:
     """Test that video deletion properly cascades to all related records."""
 
     def test_video_deletion_cascades_to_pose_detection(
-        self, db_session: Session
+        self, db_session: Session, test_user_id: str
     ) -> None:
         """Test that deleting a video also deletes associated pose detection records."""
         # Create a test video
@@ -22,6 +22,7 @@ class TestVideoCascadeDeletion:
             filename="test_cascade_video.mp4",
             file_path="/path/to/test_cascade_video.mp4",
             file_size=1000,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -70,7 +71,7 @@ class TestVideoCascadeDeletion:
         assert deleted_pose_detection is None
 
     def test_video_deletion_cascades_to_ball_detection(
-        self, db_session: Session
+        self, db_session: Session, test_user_id: str
     ) -> None:
         """Test that deleting a video also deletes associated ball detection records."""
         # Create a test video
@@ -78,6 +79,7 @@ class TestVideoCascadeDeletion:
             filename="test_cascade_ball_video.mp4",
             file_path="/path/to/test_cascade_ball_video.mp4",
             file_size=2000,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -127,7 +129,7 @@ class TestVideoCascadeDeletion:
         assert deleted_ball_detection is None
 
     def test_video_deletion_with_multiple_related_records(
-        self, db_session: Session
+        self, db_session: Session, test_user_id: str
     ) -> None:
         """Test that deleting a video deletes all related records (pose, ball, etc.)."""
         # Create a test video
@@ -135,6 +137,7 @@ class TestVideoCascadeDeletion:
             filename="test_cascade_comprehensive.mp4",
             file_path="/path/to/test_cascade_comprehensive.mp4",
             file_size=3000,
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
