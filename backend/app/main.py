@@ -1,5 +1,6 @@
 """Main FastAPI application."""
 
+import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -31,15 +32,27 @@ from app.utils.error_handling import (
     validation_error_handler,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
     """Application lifespan manager."""
     # Startup
+    logger.info("=" * 60)
+    logger.info("Tennis Coach API - Starting up")
+    logger.info("=" * 60)
+    logger.info(f"Profile: {settings.PROFILE}")
+    logger.info(f"Auth Required: {settings.auth_required}")
+    logger.info(f"Debug Mode: {settings.DEBUG}")
+    logger.info(f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else settings.database_url}")
+    logger.info(f"Storage Type: {settings.STORAGE_TYPE}")
+    logger.info(f"CORS Origins: {settings.BACKEND_CORS_ORIGINS}")
+    logger.info("=" * 60)
     create_tables_if_not_exists()
     yield
     # Shutdown
-    pass
+    logger.info("Tennis Coach API - Shutting down")
 
 
 # Create FastAPI app with lifespan

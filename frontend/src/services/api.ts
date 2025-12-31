@@ -24,27 +24,55 @@ const api = axios.create({
 
 // Add request/response interceptors
 api.interceptors.request.use(async (config) => {
-  // Get current session token only if supabase is available
-  if (supabase) {
+  const profile = process.env.REACT_APP_PROFILE || 'local';
+  
+  // Only add auth headers if profile is not 'local' and supabase is available
+  if (profile !== 'local' && supabase) {
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
     if (session?.access_token) {
       config.headers.Authorization = `Bearer ${session.access_token}`;
+      console.log(
+        `[API] ${config.method?.toUpperCase()} ${config.url} - Auth token added (profile: ${profile})`
+      );
+    } else {
+      console.warn(
+        `[API] ${config.method?.toUpperCase()} ${config.url} - No session token available (profile: ${profile})`
+      );
     }
+  } else {
+    console.log(
+      `[API] ${config.method?.toUpperCase()} ${config.url} - No auth required (profile: ${profile})`
+    );
   }
 
-  console.log(
-    `Making ${config.method?.toUpperCase()} request to ${config.url}`
-  );
   return config;
 });
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    const status = error.response?.status;
+    const statusText = error.response?.statusText;
+    const data = error.response?.data;
+    
+    if (status === 401) {
+      console.error(
+        `[API] 401 Unauthorized on ${error.config?.method?.toUpperCase()} ${error.config?.url}`,
+        {
+          profile: process.env.REACT_APP_PROFILE || 'local',
+          detail: data?.detail || 'Not authenticated',
+          hasAuthHeader: !!error.config?.headers?.Authorization,
+        }
+      );
+    } else {
+      console.error(
+        `[API] Error ${status} ${statusText} on ${error.config?.method?.toUpperCase()} ${error.config?.url}:`,
+        data || error.message
+      );
+    }
     return Promise.reject(error);
   }
 );
