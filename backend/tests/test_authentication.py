@@ -216,7 +216,9 @@ class TestAuthDependency:
             mock_settings.PROFILE = "production"
             mock_verify.return_value = mock_user
 
-            result = await get_current_user(request=mock_request, credentials=mock_credentials)
+            result = await get_current_user(
+                request=mock_request, credentials=mock_credentials
+            )
 
             assert result == mock_user
             mock_verify.assert_called_once_with("valid-token")
@@ -239,7 +241,9 @@ class TestAuthDependency:
             mock_verify.return_value = None
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user(request=mock_request, credentials=mock_credentials)
+                await get_current_user(
+                    request=mock_request, credentials=mock_credentials
+                )
 
             assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
             assert "Invalid authentication credentials" in str(exc_info.value.detail)
