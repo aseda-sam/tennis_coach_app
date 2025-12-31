@@ -45,7 +45,9 @@ async def lifespan(app: FastAPI) -> None:
     logger.info(f"Profile: {settings.PROFILE}")
     logger.info(f"Auth Required: {settings.auth_required}")
     logger.info(f"Debug Mode: {settings.DEBUG}")
-    logger.info(f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else settings.database_url}")
+    logger.info(
+        f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else settings.database_url}"
+    )
     logger.info(f"Storage Type: {settings.STORAGE_TYPE}")
     logger.info(f"CORS Origins: {settings.BACKEND_CORS_ORIGINS}")
     logger.info("=" * 60)
