@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # Note: STORAGE_TYPE is auto-detected based on SUPABASE_DB_URL
     # If SUPABASE_DB_URL is set, STORAGE_TYPE is automatically set to "supabase"
     # This ensures consistency: Supabase DB → Supabase Storage
-    STORAGE_TYPE: Optional[str] = None  # Auto-detected: "local" or "supabase"
+    _STORAGE_TYPE: Optional[str] = None  # Private field for explicit env var override
     UPLOAD_DIR: str = "../data/videos/raw"
     PROCESSED_DIR: str = "../data/videos/processed"
     MAX_FILE_SIZE: int = 104857600  # 100MB
@@ -137,6 +137,31 @@ class Settings(BaseSettings):
         """Check if authentication is required based on profile."""
         return self.PROFILE != "local"
 
+    @property
+    def STORAGE_TYPE(self) -> str:  # noqa: N802 - Property name matches existing API
+        """Get storage type, auto-detected if not explicitly set.
+
+        Returns:
+            "local" or "supabase" based on configuration
+
+        Logic:
+            - If _STORAGE_TYPE is explicitly set (via env var), use that
+            - Otherwise, auto-detect:
+              - If SUPABASE_DB_URL is set → "supabase"
+              - Else if PROFILE == "local" → "local"
+              - Else → "supabase"
+        """
+        # If explicitly set via env var, use that
+        if self._STORAGE_TYPE is not None:
+            return self._STORAGE_TYPE
+
+        # Auto-detect based on SUPABASE_DB_URL (Supabase DB → Supabase Storage)
+        if self.SUPABASE_DB_URL:
+            return "supabase"
+
+        # Fall back to profile-based detection
+        return "local" if self.PROFILE == "local" else "supabase"
+
     class Config:
         env_file = ".env"
         case_sensitive = True
@@ -151,10 +176,8 @@ def initialize_profile_config() -> None:
     """Initialize configuration based on PROFILE setting."""
     profile = settings.PROFILE
 
-    # Determine storage type based on profile
-    if settings.STORAGE_TYPE is None:
-        settings.STORAGE_TYPE = "local" if profile == "local" else "supabase"
-        logger.info(f"Profile '{profile}': Using {settings.STORAGE_TYPE} storage")
+    # Log storage type (now computed via property)
+    logger.info(f"Profile '{profile}': Using {settings.STORAGE_TYPE} storage")
 
     # Determine database based on profile
     if profile == "local":

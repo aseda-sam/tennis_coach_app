@@ -20,7 +20,7 @@ class TestStorageServiceLocal:
         """Test uploading file to local filesystem."""
         # Override UPLOAD_DIR for this test
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
             file_path = "test_video.mp4"
@@ -43,7 +43,7 @@ class TestStorageServiceLocal:
         full_path.write_bytes(sample_video_content)
 
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
             downloaded_content = service.download_file(file_path)
@@ -61,7 +61,7 @@ class TestStorageServiceLocal:
         assert full_path.exists()
 
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
             service.delete_file(file_path)
@@ -70,7 +70,7 @@ class TestStorageServiceLocal:
 
     def test_get_file_url_local(self) -> None:
         """Test getting file URL for local storage."""
-        with patch.object(settings, "STORAGE_TYPE", "local"):
+        with patch.object(settings, "_STORAGE_TYPE", "local"):
             service = StorageService()
             file_path = "test_video.mp4"
 
@@ -84,7 +84,7 @@ class TestStorageServiceLocal:
     ) -> None:
         """Test that upload creates parent directories if missing."""
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
             file_path = "subdir/nested/test_video.mp4"
@@ -103,7 +103,7 @@ class TestStorageServiceLocal:
     ) -> None:
         """Test that absolute paths are handled correctly."""
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
             absolute_path = str(temp_upload_dir / "absolute_video.mp4")
@@ -119,7 +119,7 @@ class TestStorageServiceLocal:
     ) -> None:
         """Test that relative paths are resolved correctly."""
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
             relative_path = "relative_video.mp4"
@@ -134,7 +134,7 @@ class TestStorageServiceLocal:
     def test_download_local_file_not_found(self, temp_upload_dir: Path) -> None:
         """Test that downloading non-existent file raises error."""
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
 
@@ -144,7 +144,7 @@ class TestStorageServiceLocal:
     def test_delete_local_file_not_found(self, temp_upload_dir: Path) -> None:
         """Test that deleting non-existent file logs warning but doesn't raise."""
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
 
@@ -179,7 +179,7 @@ class TestStorageServiceSupabase:
         mock_supabase_module.create_client = Mock(return_value=mock_supabase_client)
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_URL", "https://test.supabase.co"
         ), patch.object(settings, "SUPABASE_SECRET_KEY", "test-key"), patch.object(
             settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
@@ -211,7 +211,7 @@ class TestStorageServiceSupabase:
         mock_supabase_module.create_client = Mock(return_value=mock_supabase_client)
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
         ), patch.dict("sys.modules", {"supabase": mock_supabase_module}):
             service = StorageService()
@@ -230,7 +230,7 @@ class TestStorageServiceSupabase:
         mock_supabase_module.create_client = Mock(return_value=mock_supabase_client)
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
         ), patch.dict("sys.modules", {"supabase": mock_supabase_module}):
             service = StorageService()
@@ -252,7 +252,7 @@ class TestStorageServiceSupabase:
         mock_supabase_module.create_client = Mock(return_value=mock_supabase_client)
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
         ), patch.dict("sys.modules", {"supabase": mock_supabase_module}):
             service = StorageService()
@@ -273,7 +273,7 @@ class TestStorageServiceSupabase:
         mock_supabase_module.create_client = Mock(return_value=mock_supabase_client)
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
         ), patch.dict("sys.modules", {"supabase": mock_supabase_module}):
             service = StorageService()
@@ -295,7 +295,7 @@ class TestStorageServiceInitialization:
 
     def test_init_local_storage(self) -> None:
         """Test initialization for local storage."""
-        with patch.object(settings, "STORAGE_TYPE", "local"):
+        with patch.object(settings, "_STORAGE_TYPE", "local"):
             service = StorageService()
 
             assert service.storage_type == "local"
@@ -308,7 +308,7 @@ class TestStorageServiceInitialization:
         mock_supabase_module.create_client = Mock(return_value=mock_client)
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_URL", "https://test.supabase.co/"
         ), patch.object(settings, "SUPABASE_SECRET_KEY", "test-key"), patch.dict(
             "sys.modules", {"supabase": mock_supabase_module}
@@ -325,7 +325,7 @@ class TestStorageServiceInitialization:
         mock_supabase_module.create_client = Mock()
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_URL", None
         ), patch.object(settings, "SUPABASE_SECRET_KEY", None), patch.dict(
             "sys.modules", {"supabase": mock_supabase_module}
@@ -354,7 +354,7 @@ class TestStorageServiceInitialization:
 
             original_import = builtins.__import__
 
-            with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+            with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
                 settings, "SUPABASE_URL", "https://test.supabase.co/"
             ), patch.object(settings, "SUPABASE_SECRET_KEY", "test-key"):
                 # Patch the import statement by making the module raise ImportError
@@ -393,7 +393,7 @@ class TestStorageServiceInitialization:
         mock_supabase_module.create_client = Mock(return_value=mock_client)
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_URL", "https://test.supabase.co"
         ), patch.object(settings, "SUPABASE_SECRET_KEY", "test-key"), patch.dict(
             "sys.modules", {"supabase": mock_supabase_module}
@@ -412,7 +412,7 @@ class TestStorageServicePathValidation:
 
     def test_validate_file_path_rejects_traversal(self) -> None:
         """Test that path traversal attempts are rejected."""
-        with patch.object(settings, "STORAGE_TYPE", "local"):
+        with patch.object(settings, "_STORAGE_TYPE", "local"):
             service = StorageService()
 
             with pytest.raises(ValueError) as exc_info:
@@ -428,7 +428,7 @@ class TestStorageServicePathValidation:
         mock_supabase_module.create_client = Mock(return_value=mock_supabase_client)
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
         ), patch.dict("sys.modules", {"supabase": mock_supabase_module}):
             service = StorageService()
@@ -444,7 +444,7 @@ class TestStorageServicePathValidation:
     ) -> None:
         """Test that absolute paths are allowed for local storage."""
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
             absolute_path = str(temp_upload_dir / "absolute_file.mp4")
@@ -455,7 +455,7 @@ class TestStorageServicePathValidation:
 
     def test_validate_file_path_rejects_empty_path(self) -> None:
         """Test that empty paths are rejected."""
-        with patch.object(settings, "STORAGE_TYPE", "local"):
+        with patch.object(settings, "_STORAGE_TYPE", "local"):
             service = StorageService()
 
             with pytest.raises(ValueError) as exc_info:
@@ -468,7 +468,7 @@ class TestStorageServicePathValidation:
     ) -> None:
         """Test that safe relative paths are allowed."""
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
 
@@ -486,7 +486,7 @@ class TestStorageServiceErrorHandling:
         mock_supabase_module.create_client = Mock()
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"):
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"):
             with patch.dict("sys.modules", {"supabase": mock_supabase_module}):
                 service = StorageService()
                 service._supabase_client = None
@@ -503,7 +503,7 @@ class TestStorageServiceErrorHandling:
         mock_supabase_module.create_client = Mock()
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_STORAGE_BUCKET", None
         ), patch.dict("sys.modules", {"supabase": mock_supabase_module}):
             service = StorageService()
@@ -520,7 +520,7 @@ class TestStorageServiceErrorHandling:
         mock_supabase_module.create_client = Mock()
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.dict(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.dict(
             "sys.modules", {"supabase": mock_supabase_module}
         ):
             service = StorageService()
@@ -538,7 +538,7 @@ class TestStorageServiceIntegration:
     ) -> None:
         """Test upload then download returns same content."""
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
             file_path = "test_video.mp4"
@@ -556,7 +556,7 @@ class TestStorageServiceIntegration:
     ) -> None:
         """Test upload then delete removes file."""
         with patch.object(settings, "UPLOAD_DIR", str(temp_upload_dir)), patch.object(
-            settings, "STORAGE_TYPE", "local"
+            settings, "_STORAGE_TYPE", "local"
         ):
             service = StorageService()
             file_path = "test_video.mp4"
@@ -581,7 +581,7 @@ class TestStorageServiceIntegration:
         mock_supabase_module.create_client = Mock(return_value=mock_supabase_client)
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
         ), patch.dict("sys.modules", {"supabase": mock_supabase_module}):
             service = StorageService()
@@ -603,7 +603,7 @@ class TestStorageServiceTypeSwitching:
 
     def test_storage_type_local(self) -> None:
         """Test service uses local storage when STORAGE_TYPE=local."""
-        with patch.object(settings, "STORAGE_TYPE", "local"):
+        with patch.object(settings, "_STORAGE_TYPE", "local"):
             service = StorageService()
 
             assert service.storage_type == "local"
@@ -621,7 +621,7 @@ class TestStorageServiceTypeSwitching:
         mock_supabase_module.create_client = Mock(return_value=mock_client)
         mock_supabase_module.Client = Mock()
 
-        with patch.object(settings, "STORAGE_TYPE", "supabase"), patch.object(
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
             settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
         ), patch.dict("sys.modules", {"supabase": mock_supabase_module}):
             service = StorageService()
