@@ -342,7 +342,7 @@ class TestPlayerAPI:
         assert "not found" in response.json()["detail"]
 
     def test_player_with_ball_contacts(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test player can be retrieved after ball contacts are created."""
         # Create player
