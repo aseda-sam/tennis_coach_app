@@ -18,7 +18,9 @@ from app.services.background_service import BackgroundTaskService
 class TestBackgroundServiceIntegration:
     """Test background service integration with modular services."""
 
-    def test_pose_only_analysis_routing(self, db_session: Session, test_user_id: str) -> None:
+    def test_pose_only_analysis_routing(
+        self, db_session: Session, test_user_id: str
+    ) -> None:
         """Test that pose_only analysis routes to PoseDetectionService."""
         # This test is skipped because it requires mocking complex video processing
         # The actual analysis logic is tested in the individual service tests
@@ -26,7 +28,9 @@ class TestBackgroundServiceIntegration:
             "Analysis routing requires complex mocking - tested in service tests"
         )
 
-    def test_ball_only_analysis_routing(self, db_session: Session, test_user_id: str) -> None:
+    def test_ball_only_analysis_routing(
+        self, db_session: Session, test_user_id: str
+    ) -> None:
         """Test that ball_only analysis routes to BallDetectionService."""
         # This test is skipped because it requires mocking complex video processing
         # The actual analysis logic is tested in the individual service tests
@@ -34,7 +38,9 @@ class TestBackgroundServiceIntegration:
             "Analysis routing requires complex mocking - tested in service tests"
         )
 
-    def test_comprehensive_analysis_routing(self, db_session: Session, test_user_id: str) -> None:
+    def test_comprehensive_analysis_routing(
+        self, db_session: Session, test_user_id: str
+    ) -> None:
         """Test that comprehensive analysis routes to both services."""
         # This test is skipped because it requires mocking complex video processing
         # The actual analysis logic is tested in the individual service tests
@@ -42,7 +48,9 @@ class TestBackgroundServiceIntegration:
             "Analysis routing requires complex mocking - tested in service tests"
         )
 
-    def test_analysis_type_routing_in_main_function(self, db_session: Session, test_user_id: str) -> None:
+    def test_analysis_type_routing_in_main_function(
+        self, db_session: Session, test_user_id: str
+    ) -> None:
         """Test that the main _run_analysis_task function routes correctly."""
         # Create test video
         video = Video(

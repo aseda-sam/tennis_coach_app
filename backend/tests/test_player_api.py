@@ -86,7 +86,9 @@ class TestPlayerAPI:
 
         assert response.status_code == 422  # Validation error
 
-    def test_get_players_empty(self, client: TestClient, db_session: Session, test_user_id: str) -> None:
+    def test_get_players_empty(
+        self, client: TestClient, db_session: Session, test_user_id: str
+    ) -> None:
         """Test getting players when none exist."""
         response = client.get("/v0/players/")
 

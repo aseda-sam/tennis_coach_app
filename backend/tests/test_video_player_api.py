@@ -146,7 +146,9 @@ class TestVideoPlayerAPI:
         )
         assert response2.status_code == 409
 
-    def test_get_video_players(self, client: TestClient, db_session: Session, test_user_id: str) -> None:
+    def test_get_video_players(
+        self, client: TestClient, db_session: Session, test_user_id: str
+    ) -> None:
         """Test getting all players associated with a video."""
         # Create player through API
         player_data = {
@@ -320,7 +322,9 @@ class TestVideoPlayerAPI:
         data = response.json()
         assert len(data) == 0
 
-    def test_get_player_videos(self, client: TestClient, db_session: Session, test_user_id: str) -> None:
+    def test_get_player_videos(
+        self, client: TestClient, db_session: Session, test_user_id: str
+    ) -> None:
         """Test getting all videos where a player appears."""
         # Create player through API
         player_data = {
