@@ -114,6 +114,46 @@ class TestSupabaseAuth:
             assert result is not None
             assert result["user_metadata"] == {}
 
+    def test_verify_supabase_token_response_error(self) -> None:
+        """Test token verification when response has error property."""
+        mock_error = Mock()
+        mock_error.message = "Invalid token"
+
+        mock_response = Mock()
+        mock_response.error = mock_error
+        mock_response.user = None
+
+        with patch("app.utils.supabase_auth.get_supabase_client") as mock_get_client:
+            mock_client = Mock()
+            mock_client.auth.get_user.return_value = mock_response
+            mock_get_client.return_value = mock_client
+
+            result = verify_supabase_token("invalid-token")
+
+            assert result is None
+
+    def test_verify_supabase_token_attribute_error(self) -> None:
+        """Test token verification handles AttributeError gracefully."""
+        with patch("app.utils.supabase_auth.get_supabase_client") as mock_get_client:
+            mock_client = Mock()
+            # Simulate response without expected attributes
+            mock_response = Mock()
+            del mock_response.user  # Remove user attribute
+            mock_client.auth.get_user.return_value = mock_response
+            mock_get_client.return_value = mock_client
+
+            result = verify_supabase_token("token")
+
+            assert result is None
+
+    def test_verify_supabase_token_value_error_reraises(self) -> None:
+        """Test that ValueError (configuration errors) are re-raised."""
+        with patch("app.utils.supabase_auth.get_supabase_client") as mock_get_client:
+            mock_get_client.side_effect = ValueError("Configuration error")
+
+            with pytest.raises(ValueError, match="Configuration error"):
+                verify_supabase_token("token")
+
 
 class TestAuthDependency:
     """Tests for authentication dependency."""
