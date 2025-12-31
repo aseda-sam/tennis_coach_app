@@ -73,8 +73,19 @@ class StorageService:
             raise ValueError("File path cannot be empty")
 
         # Reject paths containing directory traversal attempts
+        # For local storage: allow ".." at the start (will be resolved by _resolve_local_path)
+        # For cloud storage: reject all ".." (security requirement)
+        # Always reject ".." in the middle or end of paths (suspicious)
         if ".." in file_path:
-            raise ValueError("Invalid file path: path traversal detected")
+            if self.storage_type == "local" and file_path.startswith("../"):
+                # Allow ".." at the start for local storage - will be resolved safely
+                # But check if there are any ".." in the middle or end (suspicious)
+                if ".." in file_path[3:]:  # Check after the leading "../"
+                    raise ValueError("Invalid file path: path traversal detected")
+                # Leading "../" is allowed for local storage
+            else:
+                # Cloud storage or ".." not at start - reject
+                raise ValueError("Invalid file path: path traversal detected")
 
         # For cloud storage, reject absolute paths (local storage allows them)
         if self.storage_type != "local" and file_path.startswith("/"):
