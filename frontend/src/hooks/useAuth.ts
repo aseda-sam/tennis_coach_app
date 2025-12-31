@@ -26,6 +26,9 @@ export function useAuth() {
       return;
     }
 
+    // Store in local const so TypeScript knows it's non-null
+    const supabaseClient = supabase;
+
     // Handle email confirmation callback
     // When user clicks email confirmation link, Supabase redirects with tokens in URL hash
     const handleEmailConfirmation = async () => {
@@ -38,7 +41,7 @@ export function useAuth() {
       if (type === 'recovery' || type === 'signup') {
         // Exchange tokens for session
         if (accessToken && refreshToken) {
-          const { data, error } = await supabase.auth.setSession({
+          const { data, error } = await supabaseClient.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
@@ -57,7 +60,7 @@ export function useAuth() {
     // Handle email confirmation first
     handleEmailConfirmation().then(() => {
       // Then get initial session
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      supabaseClient.auth.getSession().then(({ data: { session } }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -67,7 +70,7 @@ export function useAuth() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
