@@ -202,10 +202,15 @@ async def stream_video(
             storage_path = db_video.file_path
             try:
                 file_url = storage_service.get_file_url(storage_path)
+                logger.info(
+                    f"Redirecting to Supabase URL for video {video_id}: {file_url}"
+                )
                 # Redirect to Supabase public URL
                 return RedirectResponse(url=file_url)
             except (ValueError, RuntimeError, OSError) as e:
-                logger.error(f"Failed to get Supabase URL: {e}")
+                logger.error(
+                    f"Failed to get Supabase URL for video {video_id}, storage_path={storage_path}: {e}"
+                )
                 # Fallback: download and stream
                 file_data = storage_service.download_file(storage_path)
                 return StreamingResponse(
@@ -322,10 +327,15 @@ async def stream_annotated_video(
             # For Supabase, redirect to public URL or stream from Supabase
             try:
                 file_url = storage_service.get_file_url(annotated_storage_path)
+                logger.info(
+                    f"Redirecting to Supabase URL for annotated video {video_id}: {file_url}"
+                )
                 # Redirect to Supabase public URL
                 return RedirectResponse(url=file_url)
             except (ValueError, RuntimeError, OSError) as e:
-                logger.error(f"Failed to get Supabase URL: {e}")
+                logger.error(
+                    f"Failed to get Supabase URL for annotated video {video_id}, storage_path={annotated_storage_path}: {e}"
+                )
                 # Fallback: download and stream
                 file_data = storage_service.download_file(annotated_storage_path)
                 return StreamingResponse(

@@ -25,7 +25,7 @@ const api = axios.create({
 // Add request/response interceptors
 api.interceptors.request.use(async (config) => {
   const profile = process.env.REACT_APP_PROFILE || 'local';
-  
+
   // Only add auth headers if profile is not 'local' and supabase is available
   if (profile !== 'local' && supabase) {
     const {
@@ -57,7 +57,7 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const statusText = error.response?.statusText;
     const data = error.response?.data;
-    
+
     if (status === 401) {
       console.error(
         `[API] 401 Unauthorized on ${error.config?.method?.toUpperCase()} ${error.config?.url}`,

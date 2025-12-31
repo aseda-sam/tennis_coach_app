@@ -8,6 +8,7 @@ import React, {
 import { useBallContacts } from '../hooks/useBallContacts';
 import { videoApi } from '../services/api';
 import { BallContact, BallContactCreate } from '../services/ballContactApi';
+import { supabase } from '../services/supabaseClient';
 import { VideoMetadata } from '../types/video';
 import AddContactButton from './AddContactButton';
 import BallContactMarker from './BallContactMarker';
@@ -77,10 +78,54 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     autoRefresh: !!videoId,
   });
 
+  const [resolvedVideoUrl, setResolvedVideoUrl] = useState<string>(videoUrl);
+
+  // Resolve redirect URL for video (handles Supabase redirects)
+  useEffect(() => {
+    const resolveVideoUrl = async () => {
+      // If URL is a backend stream endpoint, resolve the redirect with auth
+      if (videoUrl.includes('/stream')) {
+        try {
+          // Get auth token if needed
+          const profile = process.env.REACT_APP_PROFILE || 'local';
+          let authHeaders: HeadersInit = {};
+          
+          if (profile !== 'local' && supabase) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+              authHeaders = { Authorization: `Bearer ${session.access_token}` };
+            }
+          }
+
+          // Use GET to follow redirect and get final URL
+          const response = await fetch(videoUrl, {
+            method: 'GET',
+            redirect: 'follow',
+            headers: authHeaders,
+          });
+          
+          // If redirect happened, use the final URL; otherwise use original
+          if (response.ok && response.url !== videoUrl) {
+            setResolvedVideoUrl(response.url);
+          } else {
+            setResolvedVideoUrl(videoUrl);
+          }
+        } catch (error) {
+          console.warn('Failed to resolve video URL redirect, using original:', error);
+          setResolvedVideoUrl(videoUrl);
+        }
+      } else {
+        setResolvedVideoUrl(videoUrl);
+      }
+    };
+
+    resolveVideoUrl();
+  }, [videoUrl]);
+
   // Reset aspect ratio when video URL changes
   useEffect(() => {
     setVideoAspectRatio(null);
-  }, [videoUrl]);
+  }, [resolvedVideoUrl]);
 
   // Fetch video metadata when videoId is available
   useEffect(() => {
@@ -99,7 +144,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [videoId]);
 
   useEffect(() => {
-    console.log('VideoPlayer: videoUrl changed to:', videoUrl);
+    console.log('VideoPlayer: resolvedVideoUrl changed to:', resolvedVideoUrl);
     const video = videoRef.current;
     if (!video) return;
 
@@ -138,6 +183,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         console.error('Video error message:', video.error?.message);
         console.error('Video ready state:', video.readyState);
         console.error('Video network state:', video.networkState);
+        console.error('Video current src:', video.currentSrc);
+        console.error('Video src:', video.src);
       }
 
       // Provide more specific error messages based on error type
@@ -149,7 +196,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             errorMessage = 'Video loading was aborted.';
             break;
           case MediaError.MEDIA_ERR_NETWORK:
-            errorMessage = 'Network error occurred while loading video.';
+            errorMessage =
+              'Network error occurred while loading video. This may be a CORS issue or the video URL is not accessible.';
             break;
           case MediaError.MEDIA_ERR_DECODE:
             errorMessage = 'Video format is not supported or corrupted.';
@@ -158,6 +206,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             errorMessage = 'Video format is not supported by your browser.';
             break;
         }
+      }
+
+      // Add URL information to error message for debugging
+      if (video?.currentSrc) {
+        errorMessage += ` (URL: ${video.currentSrc})`;
       }
 
       setError(errorMessage);
@@ -178,7 +231,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('error', handleError);
     };
-  }, [videoUrl]);
+  }, [resolvedVideoUrl]);
 
   // Handle aspect ratio mode changes
   useEffect(() => {
@@ -419,9 +472,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         >
           <video
             ref={videoRef}
-            src={videoUrl}
+            src={resolvedVideoUrl}
             className={`video-element video-element-${aspectRatioMode}`}
             preload="metadata"
+            crossOrigin="anonymous"
             data-testid="video-element"
           />
 
