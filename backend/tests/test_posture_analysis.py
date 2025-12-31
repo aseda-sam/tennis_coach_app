@@ -468,7 +468,7 @@ class TestPostureAnalysisService:
         assert 0.0 <= result["elbow_angle"] <= 180.0
 
     def test_analyze_and_store_contact_posture_unsupported_stroke(
-        self, db_session: Session
+        self, db_session: Session, test_user_id: str
     ) -> None:
         """Test analyze and store with unsupported stroke type."""
         video = Video(
@@ -503,7 +503,7 @@ class TestPostureAnalysisAPI:
     """Test posture analysis API endpoints."""
 
     def test_analyze_ball_contact_posture_success(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test successful ball contact posture analysis via API."""
         # Create test data
@@ -572,7 +572,7 @@ class TestPostureAnalysisAPI:
         assert "not found" in data["message"].lower()
 
     def test_get_ball_contact_posture_analysis(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test retrieving existing posture analysis via API."""
         # Create ball contact with existing analysis
@@ -613,7 +613,7 @@ class TestPostureAnalysisIntegration:
     """Integration tests for posture analysis with real-like data."""
 
     def test_full_posture_analysis_workflow(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test complete posture analysis workflow with video upload and ball contact creation."""
         # This test simulates the real workflow:
