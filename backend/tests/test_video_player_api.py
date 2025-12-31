@@ -103,7 +103,7 @@ class TestVideoPlayerAPI:
         assert response.status_code == 404
 
     def test_associate_duplicate_player_with_video(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test associating the same player with a video twice."""
         # Create player through API
@@ -187,7 +187,7 @@ class TestVideoPlayerAPI:
         assert data[0]["player_id"] == player_id
 
     def test_get_video_players_summary(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test getting video players summary."""
         # Create player through API
@@ -231,7 +231,7 @@ class TestVideoPlayerAPI:
         assert data["players"][0]["name"] == "Test Player"
 
     def test_update_video_player_association(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test updating a video-player association."""
         # Create player through API
@@ -276,7 +276,7 @@ class TestVideoPlayerAPI:
         assert data["pose_detection_id"] == 123
 
     def test_remove_player_from_video(
-        self, client: TestClient, db_session: Session
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test removing a player from a video."""
         # Create player through API

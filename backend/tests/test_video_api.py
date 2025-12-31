@@ -8,16 +8,11 @@ import tempfile
 import pytest
 from fastapi.testclient import TestClient
 
-# Import the app
-from app.main import app
-
-client = TestClient(app)
-
 
 class TestVideoAPI:
     """Basic tests for video API endpoints."""
 
-    def test_health_check(self) -> None:
+    def test_health_check(self, client: TestClient) -> None:
         """Test the health check endpoint."""
         response = client.get("/health")
         assert response.status_code == 200
@@ -26,7 +21,7 @@ class TestVideoAPI:
         assert data["version"] == "0.1.0"
         assert "timestamp" in data
 
-    def test_root(self) -> None:
+    def test_root(self, client: TestClient) -> None:
         """Test the root endpoint."""
         response = client.get("/")
         assert response.status_code == 200
@@ -35,7 +30,7 @@ class TestVideoAPI:
         assert data["version"] == "0.1.0"
         assert data["status"] == "alpha"
 
-    def test_api_info(self) -> None:
+    def test_api_info(self, client: TestClient) -> None:
         """Test the API info endpoint."""
         response = client.get("/v0")
         assert response.status_code == 200
@@ -45,14 +40,14 @@ class TestVideoAPI:
         assert "warning" in data
         assert "endpoints" in data
 
-    def test_list_videos_empty(self) -> None:
+    def test_list_videos_empty(self, client: TestClient) -> None:
         """Test listing videos when database is empty."""
         response = client.get("/v0/videos/")
         assert response.status_code == 200
         # Should return empty list
         assert isinstance(response.json(), list)
 
-    def test_upload_video_invalid_format(self) -> None:
+    def test_upload_video_invalid_format(self, client: TestClient) -> None:
         """Test upload with unsupported file format."""
         # Create a temporary text file
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp_file:
@@ -73,7 +68,7 @@ class TestVideoAPI:
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)
 
-    def test_upload_video_success(self) -> None:
+    def test_upload_video_success(self, client: TestClient) -> None:
         """Test successful video upload with mock video file."""
         # Create a mock video file (just a file with .mp4 extension)
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
@@ -100,7 +95,7 @@ class TestVideoAPI:
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)
 
-    def test_get_video_not_found(self) -> None:
+    def test_get_video_not_found(self, client: TestClient) -> None:
         """Test getting a video that doesn't exist."""
         response = client.get("/v0/videos/999")
         assert response.status_code == 404

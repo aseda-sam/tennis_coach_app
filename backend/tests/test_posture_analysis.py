@@ -322,7 +322,7 @@ class TestPostureAnalysisService:
         assert elbow_angle is None
 
     def test_analyze_and_store_contact_posture_success(
-        self, db_session: Session
+        self, db_session: Session, test_user_id: str
     ) -> None:
         """Test analyze and store functionality with successful analysis."""
         # Create test data similar to previous test
@@ -379,7 +379,7 @@ class TestPostureAnalysisService:
         assert ball_contact.elbow_angle == result["elbow_angle"]
 
     def test_analyze_and_store_contact_posture_already_analyzed(
-        self, db_session: Session
+        self, db_session: Session, test_user_id: str
     ) -> None:
         """Test analyze and store when contact is already analyzed."""
         # Create ball contact with existing elbow angle
@@ -414,7 +414,7 @@ class TestPostureAnalysisService:
         assert "already completed" in result["message"]
 
     def test_analyze_and_store_contact_posture_force_reanalysis(
-        self, db_session: Session
+        self, db_session: Session, test_user_id: str
     ) -> None:
         """Test forced reanalysis of already analyzed contact."""
         # Create test data
