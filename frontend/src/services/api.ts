@@ -24,13 +24,15 @@ const api = axios.create({
 
 // Add request/response interceptors
 api.interceptors.request.use(async (config) => {
-  // Get current session token
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  // Get current session token only if supabase is available
+  if (supabase) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`;
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
+    }
   }
 
   console.log(

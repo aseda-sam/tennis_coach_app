@@ -14,9 +14,7 @@ The main configuration is defined in `backend/app/core/config.py` using the `Set
 
 - `API_HOST` - API server host (default: "0.0.0.0")
 - `API_PORT` - API server port (default: 8000)
-- `DEBUG` - Enable debug mode (default: False)
-- `ENVIRONMENT` - Environment type: "development" or "production" (default: "development")
-- `LOG_LEVEL` - Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL (default: "INFO")
+- `DEBUG` - Enable debug mode (default: False). When True: enables auto-reload and DEBUG-level logging
 
 ### Database Configuration
 
@@ -130,7 +128,7 @@ Create a `.env` file in the backend directory:
 ```env
 BALL_CONTACT_TIMESTAMP_TOLERANCE=0.15
 MAX_FILE_SIZE=52428800
-ENVIRONMENT=production
+PROFILE=production
 ```
 
 ## Configuration Validation

@@ -24,11 +24,13 @@ Create a `.env.production` file:
 DATABASE_URL=postgresql://user:password@host:5432/tennis_analysis
 # OR for SQLite: sqlite:///./data/database/tennis_coach.db
 
+# Profile Configuration
+PROFILE=production
+
 # API Configuration
 API_HOST=0.0.0.0
 API_PORT=8000
 DEBUG=False
-ENVIRONMENT=production
 
 # File Storage
 UPLOAD_DIR=./data/videos/raw
@@ -54,7 +56,7 @@ CONFIDENCE_THRESHOLD=0.5
 BALL_CONTACT_TIMESTAMP_TOLERANCE=0.1
 
 # Logging
-LOG_LEVEL=INFO
+DEBUG=False
 ```
 
 ## Docker Deployment
@@ -81,8 +83,8 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - PROFILE=production
       - DATABASE_URL=postgresql://user:password@db:5432/tennis_analysis
-      - ENVIRONMENT=production
       - DEBUG=False
     volumes:
       - ./data:/app/data
@@ -114,9 +116,9 @@ docker-compose -f docker-compose.prod.yml up -d
 ```bash
 # Run with environment variables
 docker run -p 8000:8000 \
+  -e PROFILE=production \
   -e DATABASE_URL=postgresql://user:password@host:5432/tennis_analysis \
   -e MAX_FILE_SIZE=104857600 \
-  -e ENVIRONMENT=production \
   -e DEBUG=False \
   -v $(pwd)/data:/app/data \
   tennis-backend:latest
@@ -133,8 +135,8 @@ docker run -p 8000:8000 \
    - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
    - **Environment**: `Python 3.11`
 4. **Set Environment Variables**:
+   - `PROFILE`: `production`
    - `DATABASE_URL`: Your PostgreSQL connection string
-   - `ENVIRONMENT`: `production`
    - `DEBUG`: `False`
    - `SECRET_KEY`: Generate a secure secret key
 5. **Deploy**: Render will automatically build and deploy
@@ -145,8 +147,8 @@ docker run -p 8000:8000 \
 2. **Create Project**: Create a new project from your repository
 3. **Add Database**: Add a PostgreSQL database service
 4. **Configure Environment Variables**:
+   - `PROFILE`: `production`
    - `DATABASE_URL`: Use the generated PostgreSQL URL
-   - `ENVIRONMENT`: `production`
    - `DEBUG`: `False`
 5. **Deploy**: Railway will automatically deploy
 
@@ -280,9 +282,9 @@ CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 
 ```bash
 # Optimize for production
-ENVIRONMENT=production
+PROFILE=production
 DEBUG=False
-LOG_LEVEL=INFO
+DEBUG=False
 MAX_WORKERS=4
 ```
 
@@ -352,7 +354,7 @@ chown -R app:app data/
 ```bash
 # Enable debug logging
 export DEBUG=True
-export LOG_LEVEL=DEBUG
+export DEBUG=True
 
 # Start with debug
 uvicorn app.main:app --reload --log-level debug

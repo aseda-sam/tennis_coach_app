@@ -174,7 +174,7 @@ For production, set these environment variables:
 
 ```bash
 SUPABASE_DB_URL=postgresql://postgres:password@db.example.com:5432/postgres
-ENVIRONMENT=production
+PROFILE=production
 ```
 
 The app will automatically use the cloud database when `SUPABASE_DB_URL` is set.

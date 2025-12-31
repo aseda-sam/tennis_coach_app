@@ -25,8 +25,8 @@ async def get_current_user(
     Raises:
         HTTPException: 401 if authentication fails
     """
-    # Skip auth in development if REQUIRE_AUTH is False
-    if settings.ENVIRONMENT == "development" and not settings.REQUIRE_AUTH:
+    # Skip auth when PROFILE=local
+    if settings.PROFILE == "local":
         # Return mock user for local testing
         return {
             "id": "00000000-0000-0000-0000-000000000000",

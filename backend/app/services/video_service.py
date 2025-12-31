@@ -18,6 +18,7 @@ def create_video_record(
     filename: str,
     file_path: str,
     file_size: int,
+    user_id: str,
     content_type: Optional[str] = None,
     duration: Optional[float] = None,
     fps: Optional[float] = None,
@@ -25,7 +26,21 @@ def create_video_record(
     height: Optional[int] = None,
     frame_count: Optional[int] = None,
 ) -> Video:
-    """Create a new video record in the database."""
+    """Create a new video record in the database.
+    
+    Args:
+        db: Database session
+        filename: Video filename
+        file_path: Path to video file
+        file_size: Size of video file in bytes
+        user_id: UUID of the user who owns this video (required)
+        content_type: MIME type of the video
+        duration: Video duration in seconds
+        fps: Frames per second
+        width: Video width in pixels
+        height: Video height in pixels
+        frame_count: Total number of frames
+    """
     db_video = Video(
         filename=filename,
         file_path=file_path,
@@ -37,6 +52,7 @@ def create_video_record(
         height=height,
         frame_count=frame_count,
         status="uploaded",
+        user_id=user_id,
     )
     db.add(db_video)
     db.commit()

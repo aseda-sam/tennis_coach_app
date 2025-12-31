@@ -127,9 +127,8 @@ CONFIDENCE_THRESHOLD=0.5
 # Ball Contact Configuration
 BALL_CONTACT_TIMESTAMP_TOLERANCE=0.1  # Tolerance in seconds for duplicate detection
 
-# Authentication (for local development)
-ENVIRONMENT=development
-REQUIRE_AUTH=false  # Set to false to disable auth in development
+# Profile configuration (for local development)
+PROFILE=local  # Disables auth automatically
 ```
 
 ## Authentication
@@ -148,14 +147,13 @@ REQUIRE_AUTH=true
 
 ### Local Development
 
-For local development, you can disable authentication:
+For local development, set the profile to `local`:
 
 ```bash
-ENVIRONMENT=development
-REQUIRE_AUTH=false
+PROFILE=local
 ```
 
-When `REQUIRE_AUTH=false`, the API will accept requests without authentication tokens. This is useful for local testing but should never be used in production.
+When `PROFILE=local`, the API automatically uses a mock user and doesn't require authentication tokens. This is useful for local testing but should never be used in production.
 
 ### Protected Endpoints
 
@@ -364,9 +362,8 @@ sudo sysctl vm.swappiness=10
 ### Debug Mode
 
 ```bash
-# Enable debug logging
+# Enable debug mode (auto-reload + DEBUG logging)
 export DEBUG=True
-export LOG_LEVEL=DEBUG
 
 # Start with debug
 uvicorn app.main:app --reload --log-level debug

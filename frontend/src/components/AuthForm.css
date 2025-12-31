@@ -85,3 +85,11 @@
   border-radius: 4px;
   font-size: 14px;
 }
+
+.auth-form .success {
+  padding: 10px;
+  background-color: #d1fae5;
+  color: #065f46;
+  border-radius: 4px;
+  font-size: 14px;
+}

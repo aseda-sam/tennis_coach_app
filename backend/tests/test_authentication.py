@@ -119,11 +119,10 @@ class TestAuthDependency:
     """Tests for authentication dependency."""
 
     @pytest.mark.asyncio
-    async def test_get_current_user_dev_mode_no_auth(self) -> None:
-        """Test that dev mode returns mock user when REQUIRE_AUTH is False."""
+    async def test_get_current_user_local_profile_no_auth(self) -> None:
+        """Test that local profile returns mock user without auth."""
         with patch("app.dependencies.auth.settings") as mock_settings:
-            mock_settings.ENVIRONMENT = "development"
-            mock_settings.REQUIRE_AUTH = False
+            mock_settings.PROFILE = "local"
 
             result = await get_current_user(credentials=None)
 
@@ -132,24 +131,10 @@ class TestAuthDependency:
             assert result["user_metadata"] == {}
 
     @pytest.mark.asyncio
-    async def test_get_current_user_dev_mode_with_auth_required(self) -> None:
-        """Test that dev mode requires auth when REQUIRE_AUTH is True."""
-        with patch("app.dependencies.auth.settings") as mock_settings:
-            mock_settings.ENVIRONMENT = "development"
-            mock_settings.REQUIRE_AUTH = True
-
-            with pytest.raises(HTTPException) as exc_info:
-                await get_current_user(credentials=None)
-
-            assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
-            assert "Authentication required" in str(exc_info.value.detail)
-
-    @pytest.mark.asyncio
     async def test_get_current_user_production_no_credentials(self) -> None:
-        """Test that production requires credentials."""
+        """Test that production profile requires credentials."""
         with patch("app.dependencies.auth.settings") as mock_settings:
-            mock_settings.ENVIRONMENT = "production"
-            mock_settings.REQUIRE_AUTH = True
+            mock_settings.PROFILE = "production"
 
             with pytest.raises(HTTPException) as exc_info:
                 await get_current_user(credentials=None)
@@ -172,8 +157,7 @@ class TestAuthDependency:
         with patch("app.dependencies.auth.settings") as mock_settings, patch(
             "app.dependencies.auth.verify_supabase_token"
         ) as mock_verify:
-            mock_settings.ENVIRONMENT = "production"
-            mock_settings.REQUIRE_AUTH = True
+            mock_settings.PROFILE = "production"
             mock_verify.return_value = mock_user
 
             result = await get_current_user(credentials=mock_credentials)
@@ -190,8 +174,7 @@ class TestAuthDependency:
         with patch("app.dependencies.auth.settings") as mock_settings, patch(
             "app.dependencies.auth.verify_supabase_token"
         ) as mock_verify:
-            mock_settings.ENVIRONMENT = "production"
-            mock_settings.REQUIRE_AUTH = True
+            mock_settings.PROFILE = "production"
             mock_verify.return_value = None
 
             with pytest.raises(HTTPException) as exc_info:

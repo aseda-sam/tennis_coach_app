@@ -8,6 +8,7 @@ import { useAuth } from './hooks/useAuth';
 import { VideoMetadata } from './types/video';
 
 function App() {
+  const profile = process.env.REACT_APP_PROFILE || 'local';
   const { user, loading, signOut } = useAuth();
   const [currentView, setCurrentView] = useState<'upload' | 'list' | 'dashboard'>('upload');
   const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(null);
@@ -41,7 +42,8 @@ function App() {
     );
   }
 
-  if (!user) {
+  // Show auth form only if profile is not local and user is not authenticated
+  if (profile !== 'local' && !user) {
     return (
       <div className="App">
         <div className="app-container">
