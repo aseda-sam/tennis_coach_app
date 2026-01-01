@@ -181,11 +181,16 @@ class TestAuthDependency:
         """Test that production profile requires credentials."""
         mock_request = Mock()
         mock_request.app.state.limiter = Mock()
+        mock_request.app.state.limiter.storage = Mock()
+        mock_request.app.state.limiter.storage.get = Mock(return_value=0)
+        mock_request.app.state.limiter.storage.incr = Mock()
+        mock_request.app.state.limiter.key_prefix = "LIMITER"
         mock_request.client = Mock()
         mock_request.client.host = "127.0.0.1"
 
         with patch("app.dependencies.auth.settings") as mock_settings:
             mock_settings.PROFILE = "production"
+            mock_settings.RATE_LIMIT_AUTH_PRODUCTION = "5/minute"
 
             with pytest.raises(HTTPException) as exc_info:
                 await get_current_user(request=mock_request, credentials=None)
@@ -198,6 +203,10 @@ class TestAuthDependency:
         """Test that valid token returns user."""
         mock_request = Mock()
         mock_request.app.state.limiter = Mock()
+        mock_request.app.state.limiter.storage = Mock()
+        mock_request.app.state.limiter.storage.get = Mock(return_value=0)
+        mock_request.app.state.limiter.storage.incr = Mock()
+        mock_request.app.state.limiter.key_prefix = "LIMITER"
         mock_request.client = Mock()
         mock_request.client.host = "127.0.0.1"
 
@@ -214,6 +223,7 @@ class TestAuthDependency:
             "app.dependencies.auth.verify_supabase_token"
         ) as mock_verify:
             mock_settings.PROFILE = "production"
+            mock_settings.RATE_LIMIT_AUTH_PRODUCTION = "5/minute"
             mock_verify.return_value = mock_user
 
             result = await get_current_user(
@@ -228,6 +238,10 @@ class TestAuthDependency:
         """Test that invalid token raises 401."""
         mock_request = Mock()
         mock_request.app.state.limiter = Mock()
+        mock_request.app.state.limiter.storage = Mock()
+        mock_request.app.state.limiter.storage.get = Mock(return_value=0)
+        mock_request.app.state.limiter.storage.incr = Mock()
+        mock_request.app.state.limiter.key_prefix = "LIMITER"
         mock_request.client = Mock()
         mock_request.client.host = "127.0.0.1"
 
@@ -238,6 +252,7 @@ class TestAuthDependency:
             "app.dependencies.auth.verify_supabase_token"
         ) as mock_verify:
             mock_settings.PROFILE = "production"
+            mock_settings.RATE_LIMIT_AUTH_PRODUCTION = "5/minute"
             mock_verify.return_value = None
 
             with pytest.raises(HTTPException) as exc_info:
