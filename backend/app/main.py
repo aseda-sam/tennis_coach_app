@@ -11,6 +11,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
 
 from app.api.routes import (
     analysis,
@@ -58,11 +59,15 @@ async def lifespan(app: FastAPI) -> None:
 
 
 # Create FastAPI app with lifespan
+# Disable docs in production to prevent public API discovery
 app = FastAPI(
     title="Tennis Coach API",
     description="AI-powered tennis video analysis API",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url="/docs" if settings.PROFILE == "local" else None,
+    redoc_url="/redoc" if settings.PROFILE == "local" else None,
+    openapi_url="/openapi.json" if settings.PROFILE == "local" else None,
 )
 
 # Add CORS middleware
@@ -73,6 +78,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Middleware to block docs endpoints in production (defense in depth)
+@app.middleware("http")
+async def block_docs_in_production(request: Request, call_next: Callable) -> Response:
+    """Block access to docs endpoints in production."""
+    docs_paths = ["/docs", "/redoc", "/openapi.json"]
+
+    if settings.PROFILE != "local" and request.url.path in docs_paths:
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(status_code=404, content={"detail": "Not found"})
+
+    return await call_next(request)
 
 
 # Request processing time middleware
@@ -201,14 +220,19 @@ if processed_videos_dir.exists():
 @app.get("/")
 async def root() -> dict[str, str]:
     """Root endpoint with API information."""
-    return {
+    response = {
         "message": "Tennis Coach API",
         "version": "0.1.0",
         "status": "alpha",
-        "docs": "/docs",
-        "redoc": "/redoc",
         "health": "/health",
     }
+
+    # Only include docs URLs in local development
+    if settings.PROFILE == "local":
+        response["docs"] = "/docs"
+        response["redoc"] = "/redoc"
+
+    return response
 
 
 @app.get("/health")
