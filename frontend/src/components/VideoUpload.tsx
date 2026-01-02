@@ -57,17 +57,11 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
       setUploadProgress(100);
     } catch (err: any) {
       // Handle error responses
-      const status = err.response?.status;
       const detail = err.response?.data?.detail || err.response?.data?.error?.message;
       
-      // Special handling for rate limit (429) errors
-      if (status === 429) {
-        setError(detail || 'You have reached your daily upload limit. Please try again tomorrow.');
-      } else {
-        // Handle other errors
-        const errorMessage = detail || 'Upload failed. Please try again.';
-        setError(errorMessage);
-      }
+      // Handle errors
+      const errorMessage = detail || 'Upload failed. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsUploading(false);
     }

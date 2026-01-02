@@ -19,7 +19,6 @@ dependencies = [
     "psutil>=5.9.0",
     "psycopg2-binary>=2.9.9",
     "supabase>=2.0.0",
-    "slowapi>=0.1.9",
 ]
 
 [build-system]
