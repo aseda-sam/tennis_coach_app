@@ -10,6 +10,7 @@ from typing import Callable
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response
 
@@ -87,8 +88,6 @@ async def block_docs_in_production(request: Request, call_next: Callable) -> Res
     docs_paths = ["/docs", "/redoc", "/openapi.json"]
 
     if settings.PROFILE != "local" and request.url.path in docs_paths:
-        from fastapi.responses import JSONResponse
-
         return JSONResponse(status_code=404, content={"detail": "Not found"})
 
     return await call_next(request)
