@@ -57,7 +57,6 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
       setUploadProgress(100);
     } catch (err: any) {
       // Handle error responses
-      const status = err.response?.status;
       const detail = err.response?.data?.detail || err.response?.data?.error?.message;
       
       // Handle errors
