@@ -23,7 +23,7 @@ redis_conn = Redis.from_url(REDIS_URL, socket_connect_timeout=1, socket_timeout=
 try:
     redis_conn.ping()
     logger.info(f"Successfully connected to Redis at {REDIS_URL}")
-except Exception as e:
+except (ConnectionError, TimeoutError, OSError) as e:
     logger.warning(
         f"Redis not available at {REDIS_URL}: {e}. "
         "Some features (background tasks) will not work until Redis is available."
