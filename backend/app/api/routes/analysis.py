@@ -1,7 +1,7 @@
 """Unified analysis API routes with RQ background task support."""
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -184,9 +184,7 @@ async def get_task_status(
                 job_result = None
 
         # Extract video_id from job arguments for authorization
-        video_id = None
-        if job.args and len(job.args) > 0:
-            video_id = job.args[0]  # First argument is video_id
+        video_id = _extract_video_id_from_job(job)
 
         # Check authorization via video access
         if video_id:
@@ -266,7 +264,7 @@ async def list_tasks(
         for job_id in job_ids:
             try:
                 job = Job.fetch(job_id, connection=redis_conn)
-                video_id = job.args[0] if job.args and len(job.args) > 0 else None
+                video_id = _extract_video_id_from_job(job)
 
                 # Filter by user's videos unless admin
                 if not is_admin(current_user) and video_id not in user_video_ids:
@@ -408,9 +406,7 @@ async def cancel_task(
             ) from e
 
         # Extract video_id from job arguments for authorization
-        video_id = None
-        if job.args and len(job.args) > 0:
-            video_id = job.args[0]  # First argument is video_id
+        video_id = _extract_video_id_from_job(job)
 
         # Check authorization via video access
         if video_id:
@@ -437,6 +433,31 @@ async def cancel_task(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to cancel job: {e!s}",
         ) from e
+
+
+def _extract_video_id_from_job(job: Job) -> Optional[int]:
+    """
+    Extract video_id from RQ job arguments.
+
+    RQ jobs can have arguments in either:
+    - job.args (positional arguments) - legacy support
+    - job.kwargs (keyword arguments) - current implementation
+
+    Args:
+        job: RQ Job object
+
+    Returns:
+        video_id if found, None otherwise
+    """
+    # Check positional arguments first (legacy support)
+    if job.args and len(job.args) > 0:
+        return job.args[0]
+
+    # Check keyword arguments (current implementation)
+    if job.kwargs and "video_id" in job.kwargs:
+        return job.kwargs["video_id"]
+
+    return None
 
 
 def _map_rq_status_to_frontend(rq_status: str) -> str:

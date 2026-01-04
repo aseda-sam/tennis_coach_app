@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from './supabaseClient';
 
 // API configuration
 const API_BASE_URL =
@@ -11,10 +12,31 @@ const analysisApi = axios.create({
 });
 
 // Add request/response interceptors
-analysisApi.interceptors.request.use((config) => {
-  console.log(
-    `Making ${config.method?.toUpperCase()} request to ${config.url}`
-  );
+analysisApi.interceptors.request.use(async (config) => {
+  const profile = process.env.REACT_APP_PROFILE || 'local';
+
+  // Only add auth headers if profile is not 'local' and supabase is available
+  if (profile !== 'local' && supabase) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
+      console.log(
+        `[Analysis API] ${config.method?.toUpperCase()} ${config.url} - Auth token added (profile: ${profile})`
+      );
+    } else {
+      console.warn(
+        `[Analysis API] ${config.method?.toUpperCase()} ${config.url} - No session token available (profile: ${profile})`
+      );
+    }
+  } else {
+    console.log(
+      `[Analysis API] ${config.method?.toUpperCase()} ${config.url} - No auth required (profile: ${profile})`
+    );
+  }
+
   return config;
 });
 
