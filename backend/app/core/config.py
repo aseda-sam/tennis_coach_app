@@ -104,6 +104,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: Optional[str] = (
         None  # Environment: development or production (defaults to development)
     )
+    SERVICE_TYPE: Optional[str] = (
+        None  # Service type: 'api' or 'worker' (defaults to 'api' in main.py)
+    )
 
     # Rate Limiting Configuration (currently disabled - can be re-enabled in the future)
     # Auth rate limits (per IP)
