@@ -7,42 +7,41 @@ from pydantic import BaseModel, Field
 
 
 class TaskStatus(BaseModel):
-    """Base task status response model."""
+    """Base task status response model (RQ-compatible)."""
 
-    task_id: int = Field(description="Unique task identifier")
+    job_id: str = Field(description="Unique job identifier (UUID string)")
     video_id: int = Field(description="Video ID being analyzed")
     analysis_type: Literal[
         "pose_only", "ball_only", "video_annotation_only", "pose_with_annotation"
     ] = Field(description="Type of analysis being performed")
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
-        description="Current task status"
+        description="Current task status (mapped from RQ statuses)"
     )
     progress: int = Field(
-        ge=0, le=100, description="Overall progress percentage (0-100)"
-    )
-    current_stage: Optional[str] = Field(
-        default=None, description="Current processing stage"
-    )
-    stage_progress: Optional[int] = Field(
-        default=None, ge=0, le=100, description="Progress within current stage (0-100)"
-    )
-    stage_message: Optional[str] = Field(
-        default=None, description="Human-readable stage description"
+        default=0,
+        ge=0,
+        le=100,
+        description="Overall progress percentage (0-100, calculated client-side from elapsed time)",
     )
     error: Optional[str] = Field(default=None, description="Error message if failed")
     result: Optional[Dict[str, Any]] = Field(
         default=None, description="Task results when completed"
     )
-    started_at: datetime = Field(description="Task start timestamp")
+    started_at: Optional[datetime] = Field(
+        default=None, description="Task start timestamp"
+    )
     completed_at: Optional[datetime] = Field(
         default=None, description="Task completion timestamp"
+    )
+    estimated_duration: Optional[float] = Field(
+        default=None, description="Estimated completion time in seconds"
     )
 
 
 class TaskStartResponse(BaseModel):
-    """Response model for starting a background task."""
+    """Response model for starting a background task (deprecated, use AnalysisResponse)."""
 
-    task_id: int = Field(description="Unique task identifier")
+    task_id: int = Field(description="Unique task identifier (deprecated, use job_id)")
     video_id: int = Field(description="Video ID being analyzed")
     analysis_type: Literal[
         "pose_only", "ball_only", "video_annotation_only", "pose_with_annotation"
@@ -57,8 +56,8 @@ class TaskStartResponse(BaseModel):
 class TaskListResponse(BaseModel):
     """Response model for listing all tasks."""
 
-    tasks: Dict[int, TaskStatus] = Field(
-        description="Dictionary of task_id to task status"
+    tasks: Dict[str, TaskStatus] = Field(
+        description="Dictionary of job_id (string) to task status"
     )
     total_tasks: int = Field(description="Total number of active tasks")
     status_counts: Dict[str, int] = Field(description="Count of tasks by status")
@@ -86,15 +85,15 @@ class AnalysisRequest(BaseModel):
 
 
 class AnalysisResponse(BaseModel):
-    """Unified analysis response model."""
+    """Unified analysis response model (RQ-compatible)."""
 
-    task_id: int = Field(description="Background task identifier")
+    job_id: str = Field(description="Background job identifier (UUID string)")
     video_id: int = Field(description="Video ID being analyzed")
     analysis_type: Literal[
         "pose_only", "ball_only", "video_annotation_only", "pose_with_annotation"
     ] = Field(description="Type of analysis being performed")
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
-        description="Current task status"
+        description="Current task status (mapped from RQ statuses)"
     )
     message: str = Field(description="Status message")
     estimated_duration: Optional[float] = Field(

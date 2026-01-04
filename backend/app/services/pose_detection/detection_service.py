@@ -31,18 +31,36 @@ class PoseDetectionService:
     def _initialize_mediapipe(self) -> None:
         """Initialize MediaPipe pose detection models."""
         try:
-            import mediapipe as mp
-
-            self.mp_pose = mp.solutions.pose
-            self.pose_detector = self.mp_pose.Pose(
-                static_image_mode=False,
-                model_complexity=1,  # 0, 1, or 2 (1 is good balance)
-                smooth_landmarks=True,
-                enable_segmentation=False,
-                min_detection_confidence=settings.POSE_DETECTION_CONFIDENCE,
-                min_tracking_confidence=settings.POSE_TRACKING_CONFIDENCE,
+            # MediaPipe 0.10.x uses tasks API instead of solutions
+            # The model file needs to be downloaded or specified
+            from mediapipe.tasks.python import BaseOptions
+            from mediapipe.tasks.python.vision import (
+                PoseLandmarker,
+                PoseLandmarkerOptions,
+                RunningMode,
             )
-            logger.info("✅ MediaPipe pose detection initialized successfully")
+
+            # Download model file if not exists
+            # MediaPipe 0.10.x requires explicit model file
+            model_path = self._get_or_download_model()
+
+            # Configure options for video processing
+            base_options = BaseOptions(model_asset_path=model_path)
+            options = PoseLandmarkerOptions(
+                base_options=base_options,
+                running_mode=RunningMode.VIDEO,  # For video processing
+                min_pose_detection_confidence=settings.POSE_DETECTION_CONFIDENCE,
+                min_pose_presence_confidence=settings.POSE_TRACKING_CONFIDENCE,
+                min_tracking_confidence=settings.POSE_TRACKING_CONFIDENCE,
+                num_poses=1,  # Detect single pose
+                output_segmentation_masks=False,
+            )
+
+            self.pose_detector = PoseLandmarker.create_from_options(options)
+            self.mp_pose = None  # Not used in 0.10.x API
+            logger.info(
+                "✅ MediaPipe pose detection initialized successfully (v0.10.x)"
+            )
 
         except ImportError as e:
             logger.error(f"Failed to import MediaPipe: {e}")
@@ -50,6 +68,34 @@ class PoseDetectionService:
         except (RuntimeError, ValueError, OSError) as e:
             logger.error(f"Failed to initialize MediaPipe pose detection: {e}")
             self.pose_detector = None
+
+    def _get_or_download_model(self) -> str:
+        """Get or download the MediaPipe pose landmarker model file."""
+        import urllib.request
+        from pathlib import Path
+
+        # Model URL from MediaPipe GitHub releases
+        model_url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task"
+        model_dir = Path(settings.ML_MODELS_DIR)
+        model_dir.mkdir(parents=True, exist_ok=True)
+        model_path = model_dir / "pose_landmarker.task"
+
+        # Download if not exists
+        if not model_path.exists():
+            logger.info(f"Downloading MediaPipe pose landmarker model to {model_path}")
+            try:
+                urllib.request.urlretrieve(model_url, model_path)  # noqa: S310 - Downloading from trusted Google storage
+                logger.info("✅ Model downloaded successfully")
+            except (urllib.error.URLError, OSError) as e:
+                logger.error(f"Failed to download model: {e}")
+                # Try lighter model as fallback
+                model_url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
+                model_path = model_dir / "pose_landmarker_lite.task"
+                if not model_path.exists():
+                    urllib.request.urlretrieve(model_url, model_path)  # noqa: S310 - Downloading from trusted Google storage
+                    logger.info("✅ Lite model downloaded as fallback")
+
+        return str(model_path)
 
     def detect_pose_in_frame(
         self, frame: np.ndarray
@@ -71,11 +117,29 @@ class PoseDetectionService:
             # Convert BGR to RGB (MediaPipe expects RGB)
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-            # Process frame
-            results = self.pose_detector.process(rgb_frame)
+            # MediaPipe 0.10.x uses Image class and detect() method
+            from mediapipe import Image, ImageFormat
 
-            if results.pose_landmarks:
-                landmarks = results.pose_landmarks.landmark
+            # Create MediaPipe Image from numpy array
+            mp_image = Image(image_format=ImageFormat.SRGB, data=rgb_frame)
+
+            # Process frame (detect() for video mode)
+            # Note: For video mode, we need to provide timestamp_ms
+            # Using current time in milliseconds
+            import time
+
+            timestamp_ms = int(time.time() * 1000)
+            detection_result = self.pose_detector.detect_for_video(
+                mp_image, timestamp_ms
+            )
+
+            # Access pose landmarks from result
+            if (
+                detection_result.pose_landmarks
+                and len(detection_result.pose_landmarks) > 0
+            ):
+                # Get first pose (we configured num_poses=1)
+                landmarks = detection_result.pose_landmarks[0]
                 return self._extract_keypoints(landmarks, frame.shape)
 
             return None
@@ -458,6 +522,7 @@ class PoseDetectionService:
         # Extract keypoints relevant for tennis analysis (back view focus)
         # Note: Nose removed as it's not visible from behind
         # Focus on upper body and legs for tennis stroke analysis
+        # MediaPipe 0.10.x uses same landmark indices but different structure
         keypoints = {
             # Upper body - essential for stroke analysis
             "left_shoulder": [landmarks[11].x * width, landmarks[11].y * height],

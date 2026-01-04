@@ -48,7 +48,7 @@ const VideoList: React.FC<VideoListProps> = ({
 
   // Track active analysis tasks using the unified system
   const [activeAnalysisTasks, setActiveAnalysisTasks] = useState<
-    Map<number, number> // videoId -> taskId
+    Map<number, string> // videoId -> jobId
   >(new Map());
 
   // Removed legacy analysis verification
@@ -150,12 +150,12 @@ const VideoList: React.FC<VideoListProps> = ({
       // Analysis started in background - track the task
       setActiveAnalysisTasks((prev) => {
         const newMap = new Map(prev);
-        newMap.set(videoId, response.task_id);
+        newMap.set(videoId, response.job_id);
         return newMap;
       });
 
       // Start polling for progress
-      startPolling(response.task_id);
+      startPolling(response.job_id);
     } catch (err: any) {
       const errorMessage =
         err?.response?.data?.detail ||
@@ -421,12 +421,32 @@ const VideoList: React.FC<VideoListProps> = ({
                     <div className="analysis-progress-container">
                       <div className="pose-analysis-progress">
                         <span>
-                          Pose Detection:{' '}
-                          {analysisProgress.currentStage || 'Processing...'}
+                          {analysisProgress.status === 'queued'
+                            ? 'Queued...'
+                            : analysisProgress.status === 'processing'
+                              ? `Processing... (${
+                                  analysisProgress.elapsedTime
+                                    ? Math.round(
+                                        analysisProgress.elapsedTime / 1000
+                                      )
+                                    : 0
+                                }s)` +
+                                (analysisProgress.estimatedDuration
+                                  ? `, ~${Math.round(analysisProgress.estimatedDuration)}s estimated`
+                                  : '')
+                              : analysisProgress.status}
                         </span>
                         <ProgressBar
                           progress={analysisProgress.progress}
-                          status="processing"
+                          status={
+                            analysisProgress.status === 'processing'
+                              ? 'processing'
+                              : analysisProgress.status === 'completed'
+                                ? 'completed'
+                                : analysisProgress.status === 'failed'
+                                  ? 'failed'
+                                  : 'processing'
+                          }
                           size="small"
                           showPercentage={false}
                           showStatus={false}

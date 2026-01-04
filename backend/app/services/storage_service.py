@@ -229,15 +229,95 @@ class StorageService:
     def _upload_to_supabase(
         self, file_content: bytes, file_path: str, content_type: Optional[str] = None
     ) -> str:
-        """Upload file to cloud storage."""
+        """
+        Upload file to cloud storage with automatic unique filename generation.
+
+        If a file with the same name already exists, automatically appends a counter
+        (e.g., test.mp4 -> test_1.mp4 -> test_2.mp4) to ensure uniqueness, consistent
+        with local storage behavior.
+
+        Args:
+            file_content: File content as bytes
+            file_path: Path where file should be stored
+            content_type: MIME type of the file
+
+        Returns:
+            Storage path of the uploaded file (may have counter appended)
+
+        Raises:
+            RuntimeError: If unable to generate unique filename after max attempts
+            ValueError: If storage configuration is invalid
+        """
         self._validate_supabase_config()
 
-        self._supabase_client.storage.from_(settings.SUPABASE_STORAGE_BUCKET).upload(
-            file_path, file_content, file_options={"content-type": content_type}
-        )
+        file_options: dict[str, str] = {}
+        if content_type:
+            file_options["content-type"] = content_type
 
-        logger.info(f"File uploaded to cloud storage: {file_path}")
-        return file_path
+        # Extract directory and filename components for counter-based naming
+        path_obj = Path(file_path)
+        directory = str(path_obj.parent) if path_obj.parent != Path(".") else ""
+        base_name = path_obj.stem
+        extension = path_obj.suffix
+
+        # Try to upload, and if duplicate error occurs, append counter and retry
+        current_path = file_path
+        counter = 0
+        max_attempts = 1000
+
+        while counter < max_attempts:
+            try:
+                # Attempt upload
+                self._supabase_client.storage.from_(
+                    settings.SUPABASE_STORAGE_BUCKET
+                ).upload(current_path, file_content, file_options=file_options)
+
+                # Success - file uploaded
+                if counter > 0:
+                    logger.debug(
+                        f"File {file_path} already existed, uploaded as {current_path}"
+                    )
+                logger.info(f"File uploaded to cloud storage: {current_path}")
+                return current_path
+
+            except (RuntimeError, ValueError):
+                # Re-raise configuration/validation errors immediately
+                raise
+            except Exception as e:
+                # Check if error is due to duplicate file
+                # Supabase raises StorageApiError or HTTPStatusError for duplicates
+                error_msg = str(e).lower()
+                error_type = type(e).__name__.lower()
+                is_duplicate = (
+                    "duplicate" in error_msg
+                    or "409" in error_msg
+                    or "already exists" in error_msg
+                    or "resource already exists" in error_msg
+                    or "storageapi" in error_type
+                )
+
+                if is_duplicate and counter < max_attempts - 1:
+                    # Generate new filename with counter
+                    counter += 1
+                    if directory:
+                        current_path = f"{directory}/{base_name}_{counter}{extension}"
+                    else:
+                        current_path = f"{base_name}_{counter}{extension}"
+                    logger.debug(f"File {file_path} exists, trying {current_path}")
+                else:
+                    # Not a duplicate error, or max attempts reached
+                    if counter >= max_attempts - 1:
+                        logger.error(
+                            f"Could not generate unique filename for {file_path} "
+                            f"after {max_attempts} attempts"
+                        )
+                        raise RuntimeError(
+                            f"Could not generate unique filename for {file_path} "
+                            f"after {max_attempts} attempts"
+                        ) from e
+                    # Re-raise if it's a different error
+                    logger.error(f"Upload failed for {current_path}: {e}")
+                    raise
 
     def _download_from_supabase(self, file_path: str) -> bytes:
         """Download file from cloud storage."""

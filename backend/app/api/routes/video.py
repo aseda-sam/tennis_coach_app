@@ -416,9 +416,27 @@ async def get_video_analysis_status(
 
         if video_annotation and video_annotation.annotated_video_path:
             has_annotated_video = True
-            annotated_path = Path(video_annotation.annotated_video_path)
-            if annotated_path.exists():
+            stored_path = video_annotation.annotated_video_path
+
+            # Resolve path based on storage type
+            # Current formats:
+            # - Local storage: "../data/videos/processed/..." (relative path from backend)
+            # - Supabase storage: "processed/..." (cloud path, can't check locally)
+
+            if stored_path.startswith("processed/"):
+                # Supabase cloud storage path - file exists in cloud
                 annotated_video_available = True
+            elif stored_path.startswith("../"):
+                # Local storage relative path - resolve from backend directory
+                backend_dir = Path(__file__).parent.parent.parent
+                annotated_path = (backend_dir / stored_path).resolve()
+                if annotated_path.exists():
+                    annotated_video_available = True
+            elif Path(stored_path).is_absolute():
+                # Absolute path (edge case)
+                annotated_path = Path(stored_path)
+                if annotated_path.exists():
+                    annotated_video_available = True
 
         return VideoAnalysisStatus(
             video_id=video_id,
@@ -508,8 +526,8 @@ async def upload_video(
         # Ensure safe and unique filename
         safe_filename = get_safe_filename(file.filename)
 
-        # For local storage, check uniqueness in local directory
-        # For Supabase, we'll use the filename directly (Supabase handles uniqueness)
+        # For local storage, check uniqueness in local directory before upload
+        # For Supabase, storage service will handle uniqueness automatically (appends counter)
         if settings.STORAGE_TYPE == "local":
             upload_dir = Path(settings.UPLOAD_DIR)
             upload_dir.mkdir(parents=True, exist_ok=True)
@@ -519,6 +537,7 @@ async def upload_video(
         else:
             unique_filename = safe_filename
             # For Supabase, add 'raw/' prefix to match local directory structure
+            # Storage service will automatically append counter if file exists (e.g., raw/test_1.mp4)
             storage_file_path = f"raw/{unique_filename}"
 
         # Read file content
@@ -531,6 +550,10 @@ async def upload_video(
                 file_path=storage_file_path,
                 content_type=file.content_type,
             )
+            # Extract actual filename from storage path (may have counter appended)
+            # Storage service returns the actual path used, which may include counter
+            actual_filename = Path(storage_path).name
+            unique_filename = actual_filename
         except (ValueError, RuntimeError, OSError) as e:
             raise handle_file_error("upload_failed", unique_filename, str(e)) from e
 

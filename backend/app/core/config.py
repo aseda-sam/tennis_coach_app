@@ -97,6 +97,17 @@ class Settings(BaseSettings):
     # Authentication
     REQUIRE_AUTH: bool = True  # Set to False to skip auth in development
 
+    # Redis / RQ Configuration
+    REDIS_URL: Optional[str] = (
+        None  # Redis connection URL for RQ (defaults to localhost in redis_config.py)
+    )
+    ENVIRONMENT: Optional[str] = (
+        None  # Environment: development or production (defaults to development)
+    )
+    SERVICE_TYPE: Optional[str] = (
+        None  # Service type: 'api' or 'worker' (defaults to 'api' in main.py)
+    )
+
     # Rate Limiting Configuration (currently disabled - can be re-enabled in the future)
     # Auth rate limits (per IP)
     # RATE_LIMIT_AUTH_PRODUCTION: str = "5/minute"  # Production auth attempts

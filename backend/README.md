@@ -119,6 +119,13 @@ SUPABASE_SECRET_KEY=your-secret-key
 ### Optional Environment Variables
 
 ```bash
+# Service Configuration
+SERVICE_TYPE=api  # 'api' for API service, 'worker' for Background Worker service (default: 'api')
+ENVIRONMENT=development  # 'development' or 'production'
+
+# Redis Queue (for background tasks)
+REDIS_URL=redis://localhost:6379/0
+
 # Processing Configuration
 MAX_WORKERS=4
 BATCH_SIZE=10
@@ -279,7 +286,8 @@ backend/
 │   ├── profile-configuration.md  # Profile-based configuration
 │   ├── cloud-database-setup.md   # PostgreSQL setup guide
 │   ├── cloud-storage-setup.md    # Cloud storage setup
-│   └── background-tasks.md       # Background task system
+│   ├── background-tasks.md       # Background task system overview
+│   └── background-tasks-rq.md    # Background tasks with Redis Queue (RQ)
 ├── alembic/                 # Database migrations
 ├── tests/                   # Test files
 ├── pyproject.toml           # Project configuration
@@ -393,7 +401,8 @@ uvicorn app.main:app --reload --log-level debug
 - **[Profile Configuration](docs/profile-configuration.md)** - Profile-based configuration system
 - **[Cloud Database Setup](docs/cloud-database-setup.md)** - PostgreSQL/Supabase database setup
 - **[Cloud Storage Setup](docs/cloud-storage-setup.md)** - Supabase storage configuration
-- **[Background Tasks](docs/background-tasks.md)** - Background task system and Redis migration plan
+- **[Background Tasks](docs/background-tasks.md)** - Background task system overview
+- **[Background Tasks with RQ](docs/background-tasks-rq.md)** - Background task system using Redis Queue (RQ)
 
 ## Contributing
 
