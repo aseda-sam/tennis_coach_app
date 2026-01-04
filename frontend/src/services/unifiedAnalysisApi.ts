@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { createAuthInterceptor } from '../utils/authInterceptor';
 
 // API configuration
 const API_BASE_URL =
@@ -11,12 +12,7 @@ const analysisApi = axios.create({
 });
 
 // Add request/response interceptors
-analysisApi.interceptors.request.use((config) => {
-  console.log(
-    `Making ${config.method?.toUpperCase()} request to ${config.url}`
-  );
-  return config;
-});
+createAuthInterceptor(analysisApi, 'Analysis API');
 
 analysisApi.interceptors.response.use(
   (response) => response,

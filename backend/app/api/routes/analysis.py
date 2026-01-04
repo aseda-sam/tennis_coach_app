@@ -1,7 +1,7 @@
 """Unified analysis API routes with RQ background task support."""
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -184,15 +184,28 @@ async def get_task_status(
                 job_result = None
 
         # Extract video_id from job arguments for authorization
-        video_id = None
-        if job.args and len(job.args) > 0:
-            video_id = job.args[0]  # First argument is video_id
+        video_id = _extract_video_id_from_job(job)
+
+        # Require video_id for authorization (fail secure)
+        if not video_id:
+            logger.warning(
+                f"Unable to extract video_id from job {job_id} for authorization check"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unable to determine video ownership for authorization",
+            )
 
         # Check authorization via video access
-        if video_id:
-            video = video_service.get_video_by_id(db, video_id)
-            if video:
-                require_video_access(video, current_user)
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            logger.warning(f"Job {job_id} references non-existent video {video_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Video {video_id} not found",
+            )
+
+        require_video_access(video, current_user)
 
         # Build response
         task_status = TaskStatus(
@@ -266,7 +279,14 @@ async def list_tasks(
         for job_id in job_ids:
             try:
                 job = Job.fetch(job_id, connection=redis_conn)
-                video_id = job.args[0] if job.args and len(job.args) > 0 else None
+                video_id = _extract_video_id_from_job(job)
+
+                # Skip jobs without valid video_id (can't verify ownership)
+                if not video_id:
+                    logger.debug(
+                        f"Skipping job {job_id}: unable to extract video_id for filtering"
+                    )
+                    continue
 
                 # Filter by user's videos unless admin
                 if not is_admin(current_user) and video_id not in user_video_ids:
@@ -408,15 +428,28 @@ async def cancel_task(
             ) from e
 
         # Extract video_id from job arguments for authorization
-        video_id = None
-        if job.args and len(job.args) > 0:
-            video_id = job.args[0]  # First argument is video_id
+        video_id = _extract_video_id_from_job(job)
+
+        # Require video_id for authorization (fail secure)
+        if not video_id:
+            logger.warning(
+                f"Unable to extract video_id from job {job_id} for authorization check"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unable to determine video ownership for authorization",
+            )
 
         # Check authorization via video access
-        if video_id:
-            video = video_service.get_video_by_id(db, video_id)
-            if video:
-                require_video_access(video, current_user)
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            logger.warning(f"Job {job_id} references non-existent video {video_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Video {video_id} not found",
+            )
+
+        require_video_access(video, current_user)
 
         # Cancel job (only if queued or started)
         if job.get_status() in ["queued", "started"]:
@@ -437,6 +470,47 @@ async def cancel_task(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to cancel job: {e!s}",
         ) from e
+
+
+def _extract_video_id_from_job(job: Job) -> Optional[int]:
+    """
+    Extract video_id from RQ job arguments.
+
+    RQ jobs can have arguments in either:
+    - job.args (positional arguments) - legacy support
+    - job.kwargs (keyword arguments) - current implementation
+
+    Args:
+        job: RQ Job object
+
+    Returns:
+        video_id if found and valid (positive integer), None otherwise
+    """
+    video_id = None
+
+    # Check positional arguments first (legacy support)
+    if job.args and len(job.args) > 0:
+        video_id = job.args[0]
+
+    # Check keyword arguments (current implementation)
+    elif job.kwargs and "video_id" in job.kwargs:
+        video_id = job.kwargs["video_id"]
+
+    # Validate that video_id is a positive integer
+    if video_id is not None:
+        if not isinstance(video_id, int):
+            logger.warning(
+                f"Invalid video_id type in job {job.id}: {type(video_id)}, expected int"
+            )
+            return None
+        if video_id <= 0:
+            logger.warning(
+                f"Invalid video_id value in job {job.id}: {video_id}, "
+                f"expected positive integer"
+            )
+            return None
+
+    return video_id
 
 
 def _map_rq_status_to_frontend(rq_status: str) -> str:

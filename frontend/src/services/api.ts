@@ -5,6 +5,7 @@ import {
   VideoUploadResponse,
 } from '../types/video';
 import { supabase } from './supabaseClient';
+import { createAuthInterceptor } from '../utils/authInterceptor';
 
 // API configuration
 const API_BASE_URL =
@@ -21,6 +22,9 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
 });
+
+// Add auth interceptor to analysisApiInstance (used by analysisApi.startAnalysis)
+createAuthInterceptor(analysisApiInstance, 'Analysis API Instance');
 
 // Add request/response interceptors
 api.interceptors.request.use(async (config) => {
