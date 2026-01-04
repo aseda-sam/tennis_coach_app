@@ -12,9 +12,16 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.core.config import settings
 from app.core.database import Base, get_db
 from app.dependencies.auth import get_current_user
 from app.main import app
+
+
+def skip_if_supabase_storage() -> None:
+    """Skip test if using Supabase storage (requires local file access)."""
+    if settings.STORAGE_TYPE == "supabase":
+        pytest.skip("Test requires local storage - skipped for Supabase")
 
 # Test database configuration
 SQLALCHEMY_DATABASE_URL = "sqlite:///./tests/test.db"

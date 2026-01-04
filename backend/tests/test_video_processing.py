@@ -69,6 +69,11 @@ class TestVideoProcessing:
         cleanup_test_files: Generator[None, None, None],
     ) -> None:
         """Test video streaming endpoints."""
+        # Import here to avoid circular imports
+        from app.core.config import settings
+
+        if settings.STORAGE_TYPE == "supabase":
+            pytest.skip("Test requires local storage - skipped for Supabase")
         if not test_video_path.exists():
             pytest.skip("Real test video not available")
 

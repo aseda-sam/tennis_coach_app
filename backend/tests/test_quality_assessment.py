@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
+
 
 class TestQualityAssessment:
     """Tests for video quality assessment endpoints."""
@@ -22,9 +24,13 @@ class TestQualityAssessment:
         ]  # 404 for video not found, 422 for validation error
 
     def test_quality_assessment_with_real_video(
-        self, client: TestClient, test_video_path: Path
+        self,
+        client: TestClient,
+        test_video_path: Path,
     ) -> None:
         """Test quality assessment with a real video file."""
+        if settings.STORAGE_TYPE == "supabase":
+            pytest.skip("Test requires local storage - skipped for Supabase")
         if not test_video_path.exists():
             pytest.skip("Real test video not available")
 
@@ -99,9 +105,13 @@ class TestQualityAssessment:
         assert response.status_code == 422  # Validation error
 
     def test_quality_assessment_already_assessed_video(
-        self, client: TestClient, test_video_path: Path
+        self,
+        client: TestClient,
+        test_video_path: Path,
     ) -> None:
         """Test quality assessment on a video that already has quality metrics."""
+        if settings.STORAGE_TYPE == "supabase":
+            pytest.skip("Test requires local storage - skipped for Supabase")
         if not test_video_path.exists():
             pytest.skip("Real test video not available")
 
