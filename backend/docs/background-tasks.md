@@ -1,6 +1,9 @@
-# Background Tasks System
+# Background Tasks System (Legacy - ThreadPoolExecutor)
 
-This document provides a comprehensive guide to the background task system in the Tennis Coach App, explaining why we need it, what's implemented, and how it works.
+> **⚠️ DEPRECATED**: This document describes the legacy in-memory `ThreadPoolExecutor` system.  
+> **✅ Current System**: See [Background Tasks with Redis Queue (RQ)](background-tasks-rq.md) for the current implementation.
+
+This document provides a historical reference to the legacy background task system using `ThreadPoolExecutor`. The system is being migrated to Redis Queue (RQ) for better persistence, scalability, and reliability.
 
 ## Table of Contents
 
@@ -337,161 +340,76 @@ _active_tasks: Dict[int, Dict[str, Any]] = {}  # Lost on restart!
 - No dynamic scaling based on load
 - No priority queuing
 
-## Redis Migration Plan
+## Migration to Redis Queue (RQ)
 
-### Why Redis?
+**Status**: 🔄 **In Progress** - Migrating from ThreadPoolExecutor to RQ.
 
-**Benefits**:
+The application is being migrated from in-memory `ThreadPoolExecutor` to **Redis Queue (RQ)** for background task processing. RQ provides persistence, scalability, and better reliability for CPU-intensive video analysis tasks.
 
-- **Persistence**: Tasks survive server restarts
-- **Scalability**: Multiple servers can share task queue
-- **Performance**: Fast in-memory operations with disk persistence
-- **Features**: Built-in expiration, pub/sub, clustering
-- **Industry Standard**: Widely used for background task queues
+### Migration Status
 
-### Migration Strategy
+- ✅ Redis configuration and connection setup
+- ✅ RQ worker processes implemented
+- ✅ Task queue system operational
+- ✅ Monitoring dashboard configured
+- ⏳ Full migration of analysis tasks (in progress)
+- ⏳ Deprecation of ThreadPoolExecutor system (planned)
 
-#### Phase 1: Redis Integration (2-3 weeks)
+### Current Documentation
 
-```python
-# New Redis-based task storage
-import redis
-import json
+For the current background task system implementation, see:
 
-class RedisTaskStorage:
-    def __init__(self, redis_url: str):
-        self.redis = redis.from_url(redis_url)
-        self.task_prefix = "task:"
-        self.task_ttl = 86400  # 24 hours
+**[Background Tasks with Redis Queue (RQ)](background-tasks-rq.md)**
 
-    def store_task(self, task_id: int, task_data: Dict[str, Any]) -> None:
-        key = f"{self.task_prefix}{task_id}"
-        self.redis.setex(key, self.task_ttl, json.dumps(task_data))
+This guide covers:
 
-    def get_task(self, task_id: int) -> Optional[Dict[str, Any]]:
-        key = f"{self.task_prefix}{task_id}"
-        data = self.redis.get(key)
-        return json.loads(data) if data else None
+- Local development setup
+- Production setup (Render)
+- Worker management
+- Task implementation
+- Monitoring and troubleshooting
+- Best practices
 
-    def update_task_progress(self, task_id: int, updates: Dict[str, Any]) -> None:
-        key = f"{self.task_prefix}{task_id}"
-        current = self.get_task(task_id)
-        if current:
-            current.update(updates)
-            self.redis.setex(key, self.task_ttl, json.dumps(current))
-```
+### Quick Reference
 
-#### Phase 2: Task Queue Implementation (1-2 weeks)
-
-```python
-# Redis-based task queue
-class RedisTaskQueue:
-    def __init__(self, redis_url: str):
-        self.redis = redis.from_url(redis_url)
-        self.queue_name = "analysis_queue"
-
-    def enqueue_task(self, task_data: Dict[str, Any]) -> int:
-        task_id = self.redis.incr("task_counter")
-        task_data["task_id"] = task_id
-        self.redis.lpush(self.queue_name, json.dumps(task_data))
-        return task_id
-
-    def dequeue_task(self) -> Optional[Dict[str, Any]]:
-        data = self.redis.brpop(self.queue_name, timeout=1)
-        return json.loads(data[1]) if data else None
-```
-
-#### Phase 3: Worker Process Implementation (1-2 weeks)
-
-```python
-# Dedicated worker processes
-class AnalysisWorker:
-    def __init__(self, redis_url: str):
-        self.queue = RedisTaskQueue(redis_url)
-        self.storage = RedisTaskStorage(redis_url)
-
-    def run(self):
-        while True:
-            task = self.queue.dequeue_task()
-            if task:
-                self.process_task(task)
-
-    def process_task(self, task: Dict[str, Any]):
-        task_id = task["task_id"]
-        try:
-            # Update status to processing
-            self.storage.update_task_progress(task_id, {"status": "processing"})
-
-            # Run analysis
-            result = self.run_analysis(task)
-
-            # Mark completed
-            self.storage.update_task_progress(task_id, {
-                "status": "completed",
-                "result": result,
-                "completed_at": datetime.now().isoformat()
-            })
-        except Exception as e:
-            # Mark failed
-            self.storage.update_task_progress(task_id, {
-                "status": "failed",
-                "error": str(e),
-                "completed_at": datetime.now().isoformat()
-            })
-```
-
-### Redis Configuration
-
-#### Environment Variables
+**Start Worker (Local)**:
 
 ```bash
-# Redis Configuration
-REDIS_URL=redis://localhost:6379/0
-REDIS_TASK_TTL=86400  # 24 hours
-REDIS_QUEUE_NAME=analysis_queue
-REDIS_MAX_CONNECTIONS=20
+./scripts/start_rq_worker.sh
 ```
 
-#### Docker Compose
+**Start Worker (Production)**:
 
-```yaml
-services:
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-
-  backend:
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - redis
-
-volumes:
-  redis_data:
+```bash
+rq worker analysis default --url $REDIS_URL
 ```
 
-### Migration Benefits
+**Monitor (Local)**:
 
-#### Before (In-Memory)
+```bash
+rq-dashboard --redis-url=redis://localhost:6379/0 --port 9181
+```
+
+### Benefits Over Previous System
+
+#### Before (In-Memory ThreadPoolExecutor)
 
 - ❌ Tasks lost on restart
 - ❌ Single server only
 - ❌ No horizontal scaling
 - ❌ Memory leaks possible
+- ❌ Fixed worker count
 
-#### After (Redis)
+#### After (Redis Queue)
 
 - ✅ Tasks persist across restarts
 - ✅ Multiple servers supported
 - ✅ Horizontal scaling
 - ✅ Built-in expiration and cleanup
 - ✅ Task queue with priority support
-- ✅ Real-time progress via pub/sub
-- ✅ Performance monitoring
+- ✅ Real-time job status tracking
+- ✅ Performance monitoring via dashboard
+- ✅ Automatic job retry on failure
 
 ## API Integration
 
@@ -815,7 +733,7 @@ def schedule_analysis(video_id: int, run_at: datetime):
 
 ## Summary
 
-The background task system is essential for handling computationally expensive video analysis operations. The current implementation provides:
+The legacy background task system using `ThreadPoolExecutor` provided:
 
 - ✅ **Immediate API responses** with task tracking
 - ✅ **Progress monitoring** with detailed stage information
@@ -823,7 +741,7 @@ The background task system is essential for handling computationally expensive v
 - ✅ **Thread-safe operations** with proper locking
 - ✅ **Modular architecture** supporting different analysis types
 
-**Current limitations** (in-memory storage, single server) are planned to be addressed with **Redis migration**, which will provide:
+**However, it had significant limitations** (in-memory storage, single server) that are being addressed with **Redis Queue (RQ) migration**, which provides:
 
 - ✅ **Persistence** across server restarts
 - ✅ **Horizontal scaling** with multiple servers
@@ -831,4 +749,6 @@ The background task system is essential for handling computationally expensive v
 - ✅ **Real-time notifications** via pub/sub
 - ✅ **Performance monitoring** and analytics
 
-This system enables the Tennis Coach App to provide responsive user experience while performing complex computer vision analysis in the background.
+**For the current implementation, see [Background Tasks with Redis Queue (RQ)](background-tasks-rq.md).**
+
+This legacy system enabled the Tennis Coach App to provide responsive user experience while performing complex computer vision analysis in the background, but is being replaced by RQ for production scalability.

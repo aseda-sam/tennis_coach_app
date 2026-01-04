@@ -279,7 +279,8 @@ backend/
 │   ├── profile-configuration.md  # Profile-based configuration
 │   ├── cloud-database-setup.md   # PostgreSQL setup guide
 │   ├── cloud-storage-setup.md    # Cloud storage setup
-│   └── background-tasks.md       # Background task system
+│   ├── background-tasks.md       # Background task system overview
+│   └── background-tasks-rq.md    # Background tasks with Redis Queue (RQ)
 ├── alembic/                 # Database migrations
 ├── tests/                   # Test files
 ├── pyproject.toml           # Project configuration
@@ -393,7 +394,8 @@ uvicorn app.main:app --reload --log-level debug
 - **[Profile Configuration](docs/profile-configuration.md)** - Profile-based configuration system
 - **[Cloud Database Setup](docs/cloud-database-setup.md)** - PostgreSQL/Supabase database setup
 - **[Cloud Storage Setup](docs/cloud-storage-setup.md)** - Supabase storage configuration
-- **[Background Tasks](docs/background-tasks.md)** - Background task system and Redis migration plan
+- **[Background Tasks](docs/background-tasks.md)** - Background task system overview
+- **[Background Tasks with RQ](docs/background-tasks-rq.md)** - Background task system using Redis Queue (RQ)
 
 ## Contributing
 
