@@ -23,6 +23,7 @@ def skip_if_supabase_storage() -> None:
     if settings.STORAGE_TYPE == "supabase":
         pytest.skip("Test requires local storage - skipped for Supabase")
 
+
 # Test database configuration
 SQLALCHEMY_DATABASE_URL = "sqlite:///./tests/test.db"
 engine = create_engine(
