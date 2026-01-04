@@ -72,7 +72,9 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
     try:
         # Validate redis_url format (basic check)
         if not redis_url.startswith(("redis://", "rediss://")):
-            logger.error(f"Invalid REDIS_URL format: {redis_url}")
+            from app.core.redis_config import _mask_redis_url
+
+            logger.error(f"Invalid REDIS_URL format: {_mask_redis_url(redis_url)}")
             return None
 
         return subprocess.Popen(  # noqa: S603 - rq command is trusted, redis_url validated above

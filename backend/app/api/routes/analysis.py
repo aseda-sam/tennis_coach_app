@@ -470,16 +470,18 @@ def _get_analysis_type_from_job(job: Job) -> str:
     Returns:
         Analysis type string
     """
-    func_name = job.func_name if hasattr(job, "func_name") else ""
-    if "pose_detection" in func_name and "annotation" in func_name:
+    func_name = job.func_name if hasattr(job, "func_name") else str(job.func)
+
+    if "analyze_pose_with_annotation_rq" in func_name:
         return "pose_with_annotation"
-    if "pose_detection" in func_name:
+    elif "analyze_pose_detection_rq" in func_name:
         return "pose_only"
-    if "ball_detection" in func_name:
+    elif "analyze_ball_detection_rq" in func_name:
         return "ball_only"
-    if "video_annotation" in func_name:
+    elif "create_video_annotation_rq" in func_name:
         return "video_annotation_only"
-    return "pose_only"  # Default fallback
+    else:
+        return "pose_only"  # Default fallback
 
 
 def _get_estimated_duration(analysis_type: str) -> float:
@@ -491,58 +493,3 @@ def _get_estimated_duration(analysis_type: str) -> float:
         "pose_with_annotation": 210.0,  # 3.5 minutes (pose + annotation)
     }
     return estimates.get(analysis_type, 180.0)
-
-
-def _map_rq_status_to_frontend(rq_status: str) -> str:
-    """
-    Map RQ status values to frontend-friendly status values.
-
-    RQ statuses: 'queued', 'started', 'finished', 'failed'
-    Frontend statuses: 'queued', 'processing', 'completed', 'failed', 'cancelled'
-    """
-    status_map = {
-        "queued": "queued",
-        "started": "processing",
-        "finished": "completed",
-        "failed": "failed",
-        "deferred": "queued",  # Deferred jobs are queued
-        "scheduled": "queued",  # Scheduled jobs are queued
-    }
-    return status_map.get(rq_status, "queued")
-
-
-@router.get("/queue-stats")
-async def get_queue_statistics(
-    current_user: dict = Depends(get_current_user),
-) -> Dict[str, Any]:
-    """
-    Get RQ queue statistics and worker health.
-
-    Returns:
-        Queue statistics including active workers, queue lengths, and failed jobs
-    """
-    try:
-        stats = get_queue_stats()
-        return stats
-    except Exception as e:
-        logger.error(f"Error getting queue stats: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get queue stats: {e!s}",
-        ) from e
-
-
-def _get_analysis_type_from_job(job: Job) -> str:
-    """Extract analysis type from RQ job function name."""
-    func_name = job.func_name if hasattr(job, "func_name") else str(job.func)
-
-    if "analyze_pose_detection_rq" in func_name:
-        return "pose_only"
-    elif "analyze_ball_detection_rq" in func_name:
-        return "ball_only"
-    elif "create_video_annotation_rq" in func_name:
-        return "video_annotation_only"
-    elif "analyze_pose_with_annotation_rq" in func_name:
-        return "pose_with_annotation"
-    else:
-        return "pose_only"  # Default

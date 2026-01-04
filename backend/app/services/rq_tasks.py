@@ -21,6 +21,36 @@ from app.services.storage_service import storage_service
 logger = logging.getLogger(__name__)
 
 
+def _get_temp_video_path(video_path: str) -> tuple[Path, Path | None]:
+    """
+    Get local file path and determine if it's a temp file that needs cleanup.
+
+    Args:
+        video_path: Path to video file (can be cloud path)
+
+    Returns:
+        Tuple of (local_path, temp_path) where temp_path is None if not a temp file
+    """
+    local_path = storage_service.get_local_file_path(video_path)
+    temp_path = local_path if storage_service.storage_type == "supabase" else None
+    return local_path, temp_path
+
+
+def _cleanup_temp_file(temp_path: Path | None) -> None:
+    """
+    Clean up temporary video file if it exists.
+
+    Args:
+        temp_path: Path to temp file, or None if no cleanup needed
+    """
+    if temp_path and temp_path.exists():
+        try:
+            temp_path.unlink()
+            logger.debug(f"Cleaned up temp video file: {temp_path}")
+        except OSError as e:
+            logger.warning(f"Failed to delete temp video file {temp_path}: {e}")
+
+
 def analyze_pose_detection_rq(
     video_id: int,
     video_path: str,
@@ -58,10 +88,7 @@ def analyze_pose_detection_rq(
                 raise ValueError(f"Video {video_id} not found")
 
             # Get local file path (handles cloud download)
-            local_path = storage_service.get_local_file_path(video_path)
-            temp_video_path = (
-                local_path if storage_service.storage_type == "supabase" else None
-            )
+            local_path, temp_video_path = _get_temp_video_path(video_path)
 
             # Run pose detection
             pose_service = PoseDetectionService()
@@ -104,14 +131,7 @@ def analyze_pose_detection_rq(
 
     finally:
         # Clean up temp video file if created for cloud storage
-        if temp_video_path and temp_video_path.exists():
-            try:
-                temp_video_path.unlink()
-                logger.debug(f"Cleaned up temp video file: {temp_video_path}")
-            except OSError as e:
-                logger.warning(
-                    f"Failed to delete temp video file {temp_video_path}: {e}"
-                )
+        _cleanup_temp_file(temp_video_path)
 
 
 def analyze_ball_detection_rq(
@@ -151,10 +171,7 @@ def analyze_ball_detection_rq(
                 raise ValueError(f"Video {video_id} not found")
 
             # Get local file path (handles cloud download)
-            local_path = storage_service.get_local_file_path(video_path)
-            temp_video_path = (
-                local_path if storage_service.storage_type == "supabase" else None
-            )
+            local_path, temp_video_path = _get_temp_video_path(video_path)
 
             # Run ball detection
             ball_service = BallDetectionService()
@@ -197,14 +214,7 @@ def analyze_ball_detection_rq(
 
     finally:
         # Clean up temp video file if created for cloud storage
-        if temp_video_path and temp_video_path.exists():
-            try:
-                temp_video_path.unlink()
-                logger.debug(f"Cleaned up temp video file: {temp_video_path}")
-            except OSError as e:
-                logger.warning(
-                    f"Failed to delete temp video file {temp_video_path}: {e}"
-                )
+        _cleanup_temp_file(temp_video_path)
 
 
 def create_video_annotation_rq(
@@ -246,10 +256,8 @@ def create_video_annotation_rq(
                 raise ValueError(f"Video {video_id} not found")
 
             # Get local file path (handles cloud download)
-            local_path = storage_service.get_local_file_path(video_path)
-            temp_video_path = (
-                local_path if storage_service.storage_type == "supabase" else None
-            )
+            # Note: local_path not used here, but download ensures file is available locally
+            _, temp_video_path = _get_temp_video_path(video_path)
 
             # Get the most recent ball detection for this video
             ball_detection = (
@@ -302,14 +310,7 @@ def create_video_annotation_rq(
 
     finally:
         # Clean up temp video file if created for cloud storage
-        if temp_video_path and temp_video_path.exists():
-            try:
-                temp_video_path.unlink()
-                logger.debug(f"Cleaned up temp video file: {temp_video_path}")
-            except OSError as e:
-                logger.warning(
-                    f"Failed to delete temp video file {temp_video_path}: {e}"
-                )
+        _cleanup_temp_file(temp_video_path)
 
 
 def analyze_pose_with_annotation_rq(
@@ -354,10 +355,7 @@ def analyze_pose_with_annotation_rq(
                 raise ValueError(f"Video {video_id} not found")
 
             # Get local file path (handles cloud download)
-            local_path = storage_service.get_local_file_path(video_path)
-            temp_video_path = (
-                local_path if storage_service.storage_type == "supabase" else None
-            )
+            local_path, temp_video_path = _get_temp_video_path(video_path)
 
             # Step 1: Run pose detection
             pose_service = PoseDetectionService()
@@ -416,11 +414,4 @@ def analyze_pose_with_annotation_rq(
 
     finally:
         # Clean up temp video file if created for cloud storage
-        if temp_video_path and temp_video_path.exists():
-            try:
-                temp_video_path.unlink()
-                logger.debug(f"Cleaned up temp video file: {temp_video_path}")
-            except OSError as e:
-                logger.warning(
-                    f"Failed to delete temp video file {temp_video_path}: {e}"
-                )
+        _cleanup_temp_file(temp_video_path)

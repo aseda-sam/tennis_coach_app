@@ -5,6 +5,7 @@ Redis configuration for RQ
 import logging
 import multiprocessing
 import os
+from urllib.parse import urlparse, urlunparse
 
 from redis import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -12,6 +13,32 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 from rq import Queue
 
 logger = logging.getLogger(__name__)
+
+
+def _mask_redis_url(url: str) -> str:
+    """
+    Mask password in Redis URL for safe logging.
+
+    Args:
+        url: Redis URL that may contain credentials
+
+    Returns:
+        Redis URL with password masked as ****
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.password:
+            # Mask password while preserving other parts
+            masked_netloc = f"{parsed.username or ''}:****@{parsed.hostname}"
+            if parsed.port:
+                masked_netloc += f":{parsed.port}"
+            masked = parsed._replace(netloc=masked_netloc)
+            return urlunparse(masked)
+        return url
+    except (ValueError, AttributeError):
+        # If parsing fails, return a safe default
+        return "redis://****@****"
+
 
 # Get Redis URL from environment or use default
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -24,10 +51,10 @@ redis_conn = Redis.from_url(REDIS_URL, socket_connect_timeout=1, socket_timeout=
 # This allows tests to run without Redis
 try:
     redis_conn.ping()
-    logger.info(f"Successfully connected to Redis at {REDIS_URL}")
+    logger.info(f"Successfully connected to Redis at {_mask_redis_url(REDIS_URL)}")
 except (RedisConnectionError, RedisTimeoutError, OSError) as e:
     logger.warning(
-        f"Redis not available at {REDIS_URL}: {e}. "
+        f"Redis not available at {_mask_redis_url(REDIS_URL)}: {e}. "
         "Some features (background tasks) will not work until Redis is available."
     )
     # Don't raise - allow module to load for testing
@@ -78,5 +105,5 @@ def get_worker_info() -> dict:
         "cpu_count": get_cpu_count(),
         "recommended_workers": get_recommended_worker_count(),
         "environment": os.getenv("ENVIRONMENT", "development"),
-        "redis_url": REDIS_URL,
+        "redis_url": _mask_redis_url(REDIS_URL),  # Mask credentials in response
     }
