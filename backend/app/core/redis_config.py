@@ -7,6 +7,8 @@ import multiprocessing
 import os
 
 from redis import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import TimeoutError as RedisTimeoutError
 from rq import Queue
 
 logger = logging.getLogger(__name__)
@@ -23,7 +25,7 @@ redis_conn = Redis.from_url(REDIS_URL, socket_connect_timeout=1, socket_timeout=
 try:
     redis_conn.ping()
     logger.info(f"Successfully connected to Redis at {REDIS_URL}")
-except (ConnectionError, TimeoutError, OSError) as e:
+except (RedisConnectionError, RedisTimeoutError, OSError) as e:
     logger.warning(
         f"Redis not available at {REDIS_URL}: {e}. "
         "Some features (background tasks) will not work until Redis is available."
