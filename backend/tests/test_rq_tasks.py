@@ -38,7 +38,7 @@ class TestAnalyzePoseDetectionRq:
 
     @patch("app.services.rq_tasks.video_service.get_video_by_id")
     @patch("app.services.rq_tasks.storage_service.get_local_file_path")
-    @patch("app.services.rq_tasks.PoseDetectionService")
+    @patch("app.services.pose_detection.PoseDetectionService")
     def test_success(
         self,
         mock_pose_service_class,
@@ -87,7 +87,7 @@ class TestAnalyzePoseDetectionRq:
 
     @patch("app.services.rq_tasks.video_service.get_video_by_id")
     @patch("app.services.rq_tasks.storage_service.get_local_file_path")
-    @patch("app.services.rq_tasks.PoseDetectionService")
+    @patch("app.services.pose_detection.PoseDetectionService")
     def test_pose_detection_error(
         self,
         mock_pose_service_class,
@@ -118,7 +118,7 @@ class TestAnalyzeBallDetectionRq:
 
     @patch("app.services.rq_tasks.video_service.get_video_by_id")
     @patch("app.services.rq_tasks.storage_service.get_local_file_path")
-    @patch("app.services.rq_tasks.BallDetectionService")
+    @patch("app.services.ball_detection.BallDetectionService")
     def test_success(
         self,
         mock_ball_service_class,
@@ -161,7 +161,7 @@ class TestCreateVideoAnnotationRq:
 
     @patch("app.services.rq_tasks.video_service.get_video_by_id")
     @patch("app.services.rq_tasks.storage_service.get_local_file_path")
-    @patch("app.services.rq_tasks.VideoAnnotationService")
+    @patch("app.services.video_annotation.annotation_service.VideoAnnotationService")
     def test_success_with_pose_detection(
         self,
         mock_annotation_service_class,
