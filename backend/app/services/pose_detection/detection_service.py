@@ -39,8 +39,6 @@ class PoseDetectionService:
                 PoseLandmarkerOptions,
                 RunningMode,
             )
-            import os
-            from pathlib import Path
 
             # Download model file if not exists
             # MediaPipe 0.10.x requires explicit model file
@@ -73,9 +71,8 @@ class PoseDetectionService:
 
     def _get_or_download_model(self) -> str:
         """Get or download the MediaPipe pose landmarker model file."""
-        import os
-        from pathlib import Path
         import urllib.request
+        from pathlib import Path
 
         # Model URL from MediaPipe GitHub releases
         model_url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task"
@@ -87,16 +84,16 @@ class PoseDetectionService:
         if not model_path.exists():
             logger.info(f"Downloading MediaPipe pose landmarker model to {model_path}")
             try:
-                urllib.request.urlretrieve(model_url, model_path)
-                logger.info(f"✅ Model downloaded successfully")
-            except Exception as e:
+                urllib.request.urlretrieve(model_url, model_path)  # noqa: S310 - Downloading from trusted Google storage
+                logger.info("✅ Model downloaded successfully")
+            except (urllib.error.URLError, OSError) as e:
                 logger.error(f"Failed to download model: {e}")
                 # Try lighter model as fallback
                 model_url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
                 model_path = model_dir / "pose_landmarker_lite.task"
                 if not model_path.exists():
-                    urllib.request.urlretrieve(model_url, model_path)
-                    logger.info(f"✅ Lite model downloaded as fallback")
+                    urllib.request.urlretrieve(model_url, model_path)  # noqa: S310 - Downloading from trusted Google storage
+                    logger.info("✅ Lite model downloaded as fallback")
 
         return str(model_path)
 
@@ -122,7 +119,6 @@ class PoseDetectionService:
 
             # MediaPipe 0.10.x uses Image class and detect() method
             from mediapipe import Image, ImageFormat
-            import mediapipe as mp
 
             # Create MediaPipe Image from numpy array
             mp_image = Image(image_format=ImageFormat.SRGB, data=rgb_frame)

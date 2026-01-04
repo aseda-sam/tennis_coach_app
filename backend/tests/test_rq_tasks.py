@@ -3,6 +3,7 @@ Tests for RQ task functions.
 """
 
 from pathlib import Path
+from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,7 +16,7 @@ from app.services.rq_tasks import (
 
 
 @pytest.fixture
-def mock_video():
+def mock_video() -> MagicMock:
     """Mock video object."""
     video = MagicMock()
     video.id = 1
@@ -24,7 +25,7 @@ def mock_video():
 
 
 @pytest.fixture
-def mock_db_session():
+def mock_db_session() -> Generator[MagicMock, None, None]:
     """Mock database session."""
     with patch("app.services.rq_tasks.SessionLocal") as mock_session:
         db = MagicMock()
@@ -41,12 +42,12 @@ class TestAnalyzePoseDetectionRq:
     @patch("app.services.pose_detection.PoseDetectionService")
     def test_success(
         self,
-        mock_pose_service_class,
-        mock_get_path,
-        mock_get_video,
-        mock_db_session,
-        mock_video,
-    ):
+        mock_pose_service_class: MagicMock,
+        mock_get_path: MagicMock,
+        mock_get_video: MagicMock,
+        mock_db_session: MagicMock,
+        mock_video: MagicMock,
+    ) -> None:
         """Test successful pose detection."""
         mock_get_video.return_value = mock_video
         mock_get_path.return_value = Path("/local/path/video.mp4")
@@ -76,7 +77,9 @@ class TestAnalyzePoseDetectionRq:
         mock_pose_service.analyze_video_file.assert_called_once()
 
     @patch("app.services.rq_tasks.video_service.get_video_by_id")
-    def test_video_not_found(self, mock_get_video, mock_db_session):
+    def test_video_not_found(
+        self, mock_get_video: MagicMock, mock_db_session: MagicMock
+    ) -> None:
         """Test error when video not found."""
         mock_get_video.return_value = None
 
@@ -90,12 +93,12 @@ class TestAnalyzePoseDetectionRq:
     @patch("app.services.pose_detection.PoseDetectionService")
     def test_pose_detection_error(
         self,
-        mock_pose_service_class,
-        mock_get_path,
-        mock_get_video,
-        mock_db_session,
-        mock_video,
-    ):
+        mock_pose_service_class: MagicMock,
+        mock_get_path: MagicMock,
+        mock_get_video: MagicMock,
+        mock_db_session: MagicMock,
+        mock_video: MagicMock,
+    ) -> None:
         """Test error handling when pose detection fails."""
         mock_get_video.return_value = mock_video
         mock_get_path.return_value = Path("/local/path/video.mp4")
@@ -121,12 +124,12 @@ class TestAnalyzeBallDetectionRq:
     @patch("app.services.ball_detection.BallDetectionService")
     def test_success(
         self,
-        mock_ball_service_class,
-        mock_get_path,
-        mock_get_video,
-        mock_db_session,
-        mock_video,
-    ):
+        mock_ball_service_class: MagicMock,
+        mock_get_path: MagicMock,
+        mock_get_video: MagicMock,
+        mock_db_session: MagicMock,
+        mock_video: MagicMock,
+    ) -> None:
         """Test successful ball detection."""
         mock_get_video.return_value = mock_video
         mock_get_path.return_value = Path("/local/path/video.mp4")
@@ -164,12 +167,12 @@ class TestCreateVideoAnnotationRq:
     @patch("app.services.video_annotation.annotation_service.VideoAnnotationService")
     def test_success_with_pose_detection(
         self,
-        mock_annotation_service_class,
-        mock_get_path,
-        mock_get_video,
-        mock_db_session,
-        mock_video,
-    ):
+        mock_annotation_service_class: MagicMock,
+        mock_get_path: MagicMock,
+        mock_get_video: MagicMock,
+        mock_db_session: MagicMock,
+        mock_video: MagicMock,
+    ) -> None:
         """Test successful video annotation with pose detection."""
         mock_get_video.return_value = mock_video
         mock_get_path.return_value = Path("/local/path/video.mp4")
@@ -204,8 +207,12 @@ class TestCreateVideoAnnotationRq:
     @patch("app.services.rq_tasks.video_service.get_video_by_id")
     @patch("app.services.rq_tasks.storage_service.get_local_file_path")
     def test_no_detections_found(
-        self, mock_get_path, mock_get_video, mock_db_session, mock_video
-    ):
+        self,
+        mock_get_path: MagicMock,
+        mock_get_video: MagicMock,
+        mock_db_session: MagicMock,
+        mock_video: MagicMock,
+    ) -> None:
         """Test error when no detections found."""
         mock_get_video.return_value = mock_video
         mock_get_path.return_value = Path("/local/path/video.mp4")

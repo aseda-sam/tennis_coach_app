@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Start RQ worker with proper configuration."""
 
+import contextlib
 import multiprocessing
 import os
 import sys
@@ -14,11 +15,9 @@ os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 # On macOS, configure multiprocessing to use spawn instead of fork
 # This is more compatible with libraries that use Objective-C
 if sys.platform == "darwin":  # macOS
-    try:
-        multiprocessing.set_start_method("spawn", force=True)
-    except RuntimeError:
+    with contextlib.suppress(RuntimeError):
         # Already set, that's fine
-        pass
+        multiprocessing.set_start_method("spawn", force=True)
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -70,7 +69,7 @@ if __name__ == "__main__":
         worker.work()
     except KeyboardInterrupt:
         print("\n\nWorker stopped by user")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - Worker script needs to catch all errors
         print(f"\n\nError: {e}")
         import traceback
 
