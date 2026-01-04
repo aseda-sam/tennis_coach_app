@@ -14,15 +14,21 @@ logger = logging.getLogger(__name__)
 # Get Redis URL from environment or use default
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-# Create Redis connection
+# Create Redis connection (lazy - only connects when used)
+# This allows the module to load even if Redis isn't available (e.g., in CI tests)
+redis_conn = Redis.from_url(REDIS_URL, socket_connect_timeout=1, socket_timeout=1)
+
+# Test connection lazily - only log, don't raise
+# This allows tests to run without Redis
 try:
-    redis_conn = Redis.from_url(REDIS_URL)
-    # Test connection
     redis_conn.ping()
     logger.info(f"Successfully connected to Redis at {REDIS_URL}")
 except Exception as e:
-    logger.error(f"Failed to connect to Redis: {e}")
-    raise
+    logger.warning(
+        f"Redis not available at {REDIS_URL}: {e}. "
+        "Some features (background tasks) will not work until Redis is available."
+    )
+    # Don't raise - allow module to load for testing
 
 # Create default queue
 default_queue = Queue("default", connection=redis_conn)
