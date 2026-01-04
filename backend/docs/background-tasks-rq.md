@@ -180,7 +180,13 @@ For M1 MacBook Pro (8 cores, 8GB RAM):
 ### Render Key Value Service
 
 1. Create Key Value instance in Render dashboard (same region as API service)
-2. **Important**: Set **Maxmemory Policy** to `noeviction` (recommended for job queues to prevent job loss)
+2. **Important**: Set **Maxmemory Policy** to `volatile-ttl` (recommended for job queues with result TTLs)
+   - **Why `volatile-ttl`?**: 
+     - Automatically evicts expired result keys (which have TTLs set via `result_ttl`)
+     - **Protects queued jobs**: Job keys don't have TTLs, so they're never evicted
+     - Prevents memory pressure by cleaning up expired results automatically
+     - More graceful than `noeviction` which rejects writes when memory is full
+   - **Alternative**: `noeviction` prevents all eviction but can cause write failures when memory fills up
 3. Get **internal URL** from Render Dashboard (format: `redis://red-xxxxx:6379`)
    - Use internal URL for lower latency and private network communication
    - Internal URL doesn't require authentication by default
