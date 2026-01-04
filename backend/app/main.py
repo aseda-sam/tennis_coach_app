@@ -105,10 +105,15 @@ async def lifespan(app: FastAPI) -> None:
     logger.info("=" * 60)
     create_tables_if_not_exists()
 
-    # Start RQ worker in production
+    # Start RQ worker in production (only if not running as separate worker service)
     worker_process = None
-    if os.getenv("ENVIRONMENT") == "production":
+    service_type = os.getenv("SERVICE_TYPE", "api").lower()
+    if os.getenv("ENVIRONMENT") == "production" and service_type == "api":
+        # Only start worker if this is the API service
+        # The worker startup function already checks for existing workers to prevent duplicates
         worker_process = start_rq_worker()
+    elif service_type == "worker":
+        logger.info("Running as worker service - skipping API worker startup")
 
     yield
 

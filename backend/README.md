@@ -119,6 +119,13 @@ SUPABASE_SECRET_KEY=your-secret-key
 ### Optional Environment Variables
 
 ```bash
+# Service Configuration
+SERVICE_TYPE=api  # 'api' for API service, 'worker' for Background Worker service (default: 'api')
+ENVIRONMENT=development  # 'development' or 'production'
+
+# Redis Queue (for background tasks)
+REDIS_URL=redis://localhost:6379/0
+
 # Processing Configuration
 MAX_WORKERS=4
 BATCH_SIZE=10

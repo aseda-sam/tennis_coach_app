@@ -190,8 +190,10 @@ For M1 MacBook Pro (8 cores, 8GB RAM):
 3. Get **internal URL** from Render Dashboard (format: `redis://red-xxxxx:6379`)
    - Use internal URL for lower latency and private network communication
    - Internal URL doesn't require authentication by default
-4. Set environment variable: `REDIS_URL=redis://red-xxxxx:6379/0`
-5. Set `ENVIRONMENT=production`
+4. Set environment variables:
+   - `REDIS_URL=redis://red-xxxxx:6379/0`
+   - `ENVIRONMENT=production`
+   - `SERVICE_TYPE=api` (for API service) or `SERVICE_TYPE=worker` (for Background Worker service)
 
 **Instance Configuration:**
 - **Free tier**: 25MB RAM, 10 connections, no persistence (data lost on restart)
@@ -264,11 +266,18 @@ app = FastAPI(lifespan=lifespan)
 
 Create separate Render service for workers:
 
-1. **New Web Service** → Same repo
-2. **Start Command**: `rq worker analysis default --url $REDIS_URL`
-3. **Environment**: Same Redis URL as main service
+1. **New Background Worker Service** → Same repo
+2. **Start Command**: `python scripts/start_rq_worker.py` (or `rq worker analysis default --url $REDIS_URL`)
+3. **Environment Variables**:
+   - `ENVIRONMENT=production`
+   - `REDIS_URL=redis://red-xxxxx:6379/0` (same as API service)
+   - `SERVICE_TYPE=worker` (prevents API service from starting its own worker)
 
 **Benefits**: Independent scaling, better resource allocation
+
+**API Service Configuration** (when using separate worker):
+- Set `SERVICE_TYPE=api` (or omit, defaults to `api`)
+- The API service will detect existing workers and skip starting its own
 
 ### Render Considerations
 
@@ -349,10 +358,15 @@ default_queue = Queue("default", connection=redis_conn)
 
 ### Environment Variables
 
-| Variable      | Description                          | Default                    | Required |
-| ------------- | ------------------------------------ | -------------------------- | -------- |
-| `REDIS_URL`   | Redis connection string for RQ       | `redis://localhost:6379/0` | Yes      |
-| `ENVIRONMENT` | Environment (development/production) | `development`              | No       |
+| Variable       | Description                                                          | Default                    | Required |
+| -------------- | -------------------------------------------------------------------- | -------------------------- | -------- |
+| `REDIS_URL`    | Redis connection string for RQ                                       | `redis://localhost:6379/0` | Yes      |
+| `ENVIRONMENT` | Environment (development/production)                                 | `development`              | No       |
+| `SERVICE_TYPE` | Service type: `api` (API service) or `worker` (Background Worker) | `api`                      | No       |
+
+**Note on `SERVICE_TYPE`**:
+- **API Service**: Set `SERVICE_TYPE=api` (or omit, defaults to `api`). The API service will attempt to start a worker if `ENVIRONMENT=production` and no existing workers are detected.
+- **Worker Service**: Set `SERVICE_TYPE=worker` to explicitly run as a worker service. This prevents the API from starting its own worker.
 
 ## Task Implementation
 
