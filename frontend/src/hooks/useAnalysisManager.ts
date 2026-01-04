@@ -6,7 +6,7 @@ import { useAnalysisProgress } from './useAnalysisProgress';
 
 interface AnalysisState {
   videoId: number;
-  taskId: number | null;
+  jobId: string | null;
   status:
     | 'idle'
     | 'starting'
@@ -15,9 +15,6 @@ interface AnalysisState {
     | 'failed'
     | 'cancelled';
   progress: number;
-  currentStage?: string;
-  stageProgress?: number;
-  stageMessage?: string;
   error: string | null;
 }
 
@@ -44,7 +41,7 @@ export const useAnalysisManager = ({
 }: UseAnalysisManagerOptions): UseAnalysisManagerResult => {
   const [analysisState, setAnalysisState] = useState<AnalysisState>({
     videoId,
-    taskId: null,
+    jobId: null,
     status: 'idle',
     progress: 0,
     error: null,
@@ -58,7 +55,7 @@ export const useAnalysisManager = ({
         ...prev,
         status: 'completed',
         progress: 100,
-        taskId: null,
+        jobId: null,
         error: null,
       }));
       onAnalysisComplete?.(progress.result);
@@ -69,7 +66,7 @@ export const useAnalysisManager = ({
         status: 'failed',
         error,
         progress: 0,
-        taskId: null,
+        jobId: null,
       }));
       onAnalysisError?.(error);
     },
@@ -78,9 +75,6 @@ export const useAnalysisManager = ({
         ...prev,
         status: progress.status as AnalysisState['status'],
         progress: progress.progress,
-        currentStage: progress.currentStage,
-        stageProgress: progress.stageProgress,
-        stageMessage: progress.stageMessage,
         error: null,
       }));
     },
@@ -106,11 +100,11 @@ export const useAnalysisManager = ({
           ...prev,
           status: 'processing',
           progress: 0,
-          taskId: response.task_id,
+          jobId: response.job_id,
         }));
 
         // Start polling for progress
-        startPolling(response.task_id);
+        startPolling(response.job_id);
       } catch (err: any) {
         const errorMessage =
           err?.response?.data?.detail ||
@@ -121,7 +115,7 @@ export const useAnalysisManager = ({
           status: 'failed',
           error: errorMessage,
           progress: 0,
-          taskId: null,
+          jobId: null,
         }));
 
         if (onAnalysisError) {
@@ -134,16 +128,16 @@ export const useAnalysisManager = ({
 
   // Function to cancel analysis
   const cancelAnalysis = useCallback(async () => {
-    if (!analysisState.taskId) return;
+    if (!analysisState.jobId) return;
 
     try {
-      await unifiedAnalysisApi.cancelTask(analysisState.taskId);
+      await unifiedAnalysisApi.cancelTask(analysisState.jobId);
       stopPolling();
       setAnalysisState((prev) => ({
         ...prev,
         status: 'cancelled',
         progress: 0,
-        taskId: null,
+        jobId: null,
       }));
     } catch (err: any) {
       const errorMessage =
@@ -155,7 +149,7 @@ export const useAnalysisManager = ({
         error: errorMessage,
       }));
     }
-  }, [analysisState.taskId, stopPolling]);
+  }, [analysisState.jobId, stopPolling]);
 
   // Function to refresh analysis data (placeholder for now)
   const refreshAnalysis = useCallback(async () => {
@@ -166,7 +160,7 @@ export const useAnalysisManager = ({
       status: 'idle',
       progress: 0,
       error: null,
-      taskId: null,
+      jobId: null,
     }));
   }, []);
 

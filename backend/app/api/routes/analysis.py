@@ -1,9 +1,13 @@
-"""Unified analysis API routes with background task support."""
+"""Unified analysis API routes with RQ background task support."""
 
 import logging
-from typing import Dict
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import TimeoutError as RedisTimeoutError
+from rq import Retry
+from rq.job import Job, NoSuchJobError
 from sqlalchemy.orm import Session
 
 from app.api.schemas.background_tasks import (
@@ -14,9 +18,16 @@ from app.api.schemas.background_tasks import (
     TaskStatus,
 )
 from app.core.database import get_db
+from app.core.redis_config import analysis_queue, redis_conn
 from app.dependencies.auth import get_current_user
 from app.services import video_service
-from app.services.background_service import background_service
+from app.services.rq_monitoring import get_queue_stats
+from app.services.rq_tasks import (
+    analyze_ball_detection_rq,
+    analyze_pose_detection_rq,
+    analyze_pose_with_annotation_rq,
+    create_video_annotation_rq,
+)
 from app.utils.authorization import require_video_access
 
 logger = logging.getLogger(__name__)
@@ -59,33 +70,68 @@ async def start_analysis(
         # Check authorization (only video owner can start analysis)
         require_video_access(video, current_user)
 
-        # Start background task
-        task_id = background_service.start_analysis_task(
-            video_id=video_id,
-            analysis_type=request.analysis_type,
-            confidence_threshold=request.confidence_threshold,
-        )
+        # Select RQ task function based on analysis type
+        task_function_map = {
+            "pose_only": analyze_pose_detection_rq,
+            "ball_only": analyze_ball_detection_rq,
+            "video_annotation_only": create_video_annotation_rq,
+            "pose_with_annotation": analyze_pose_with_annotation_rq,
+        }
 
-        logger.info(
-            f"Started {request.analysis_type} analysis task {task_id} for video {video_id}"
-        )
-
-        # Get initial task status
-        task_status = background_service.get_task_status(task_id)
-        if not task_status:
+        task_function = task_function_map.get(request.analysis_type)
+        if not task_function:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create analysis task",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid analysis type: {request.analysis_type}",
             )
 
-        return AnalysisResponse(
-            task_id=task_id,
-            video_id=video_id,
-            analysis_type=request.analysis_type,
-            status=task_status["status"],
-            message=f"{request.analysis_type} analysis started successfully",
-            estimated_duration=_get_estimated_duration(request.analysis_type),
-        )
+        # Configure retry based on analysis type
+        retry_config = {
+            "pose_only": Retry(max=2, interval=60),
+            "ball_only": Retry(max=2, interval=60),
+            "video_annotation_only": Retry(max=1, interval=30),
+            "pose_with_annotation": Retry(max=1, interval=90),
+        }
+
+        # Configure timeout based on analysis type
+        timeout_config = {
+            "pose_only": 300,  # 5 minutes
+            "ball_only": 300,  # 5 minutes
+            "video_annotation_only": 180,  # 3 minutes
+            "pose_with_annotation": 360,  # 6 minutes
+        }
+
+        try:
+            # Enqueue RQ job
+            job = analysis_queue.enqueue(
+                task_function,
+                video_id=video_id,
+                video_path=video.file_path,
+                confidence_threshold=request.confidence_threshold,
+                retry=retry_config[request.analysis_type],
+                job_timeout=timeout_config[request.analysis_type],
+                result_ttl=3600,  # Keep results for 1 hour
+            )
+
+            logger.info(
+                f"Enqueued {request.analysis_type} analysis job {job.id} for video {video_id}"
+            )
+
+            return AnalysisResponse(
+                job_id=job.id,
+                video_id=video_id,
+                analysis_type=request.analysis_type,
+                status="queued",
+                message=f"{request.analysis_type} analysis started successfully",
+                estimated_duration=_get_estimated_duration(request.analysis_type),
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to enqueue job for video {video_id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to start analysis: {e!s}",
+            ) from e
 
     except HTTPException:
         raise
@@ -97,45 +143,86 @@ async def start_analysis(
         ) from e
 
 
-@router.get("/status/{task_id}", response_model=TaskStatus)
+@router.get("/status/{job_id}", response_model=TaskStatus)
 async def get_task_status(
-    task_id: int,
+    job_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> TaskStatus:
     """
-    Get the status of a background analysis task.
+    Get the status of a background analysis job (RQ).
 
     Args:
-        task_id: ID of the task to check
+        job_id: UUID string identifier of the job to check
 
     Returns:
-        Current task status with progress information
+        Current job status with progress information
     """
     try:
-        task_status = background_service.get_task_status(task_id)
-        if not task_status:
+        # Fetch job from Redis
+        try:
+            job = Job.fetch(job_id, connection=redis_conn)
+        except Exception as e:
+            logger.warning(f"Job {job_id} not found in Redis: {e}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Task {task_id} not found",
-            )
+                detail=f"Job {job_id} not found",
+            ) from e
+
+        # Get job status and map RQ statuses to frontend-friendly values
+        rq_status = job.get_status()
+        mapped_status = _map_rq_status_to_frontend(rq_status)
+
+        # Get job result if available
+        job_result = None
+        if job.is_finished:
+            try:
+                job_result = job.result
+            except (NoSuchJobError, AttributeError, TypeError) as e:
+                # Result may have expired (TTL), job may not exist, or result may be None
+                logger.warning(f"Job {job_id} result expired or unavailable: {e}")
+                job_result = None
+
+        # Extract video_id from job arguments for authorization
+        video_id = None
+        if job.args and len(job.args) > 0:
+            video_id = job.args[0]  # First argument is video_id
 
         # Check authorization via video access
-        video_id = task_status.get("video_id")
         if video_id:
             video = video_service.get_video_by_id(db, video_id)
             if video:
                 require_video_access(video, current_user)
 
-        return TaskStatus.model_validate(task_status)
+        # Build response
+        task_status = TaskStatus(
+            job_id=job_id,
+            video_id=video_id or 0,
+            analysis_type=_get_analysis_type_from_job(job),
+            status=mapped_status,
+            progress=0,  # Client calculates from elapsed time
+            error=str(job.exc_info) if job.is_failed else None,
+            result=job_result,
+            started_at=job.started_at
+            if hasattr(job, "started_at") and job.started_at
+            else None,
+            completed_at=job.ended_at
+            if hasattr(job, "ended_at") and job.ended_at
+            else None,
+            estimated_duration=_get_estimated_duration(
+                _get_analysis_type_from_job(job)
+            ),
+        )
+
+        return task_status
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting task status for task {task_id}: {e}")
+        logger.error(f"Error getting job status for job {job_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get task status: {e!s}",
+            detail=f"Failed to get job status: {e!s}",
         ) from e
 
 
@@ -145,18 +232,23 @@ async def list_tasks(
     db: Session = Depends(get_db),
 ) -> TaskListResponse:
     """
-    List all active background tasks for the current user.
+    List all active background jobs (RQ) for the current user.
 
     Returns:
-        Dictionary of all active tasks with their status
+        Dictionary of all active jobs with their status
     """
     try:
+        from rq import Queue
+
         from app.utils.authorization import is_admin
 
-        all_tasks = background_service.get_all_tasks()
+        # Get all jobs from analysis queue
+        queue = Queue("analysis", connection=redis_conn)
+        job_ids = queue.job_ids
 
-        # Filter tasks by user's videos unless admin
-        filtered_tasks = {}
+        # Filter jobs by user's videos unless admin
+        user_video_ids = None
+
         if not is_admin(current_user):
             from app.models.video import Video
 
@@ -166,35 +258,67 @@ async def list_tasks(
                 .filter(Video.user_id == current_user["id"])
                 .all()
             }
-            for task_id, task_data in all_tasks.items():
-                if task_data.get("video_id") in user_video_ids:
-                    filtered_tasks[task_id] = task_data
-        else:
-            filtered_tasks = all_tasks
 
-        # Convert to TaskStatus objects
+        # Fetch and filter jobs
         task_statuses = {}
         status_counts = {}
 
-        for task_id, task_data in filtered_tasks.items():
-            task_status = TaskStatus.model_validate(task_data)
-            task_statuses[task_id] = task_status
+        for job_id in job_ids:
+            try:
+                job = Job.fetch(job_id, connection=redis_conn)
+                video_id = job.args[0] if job.args and len(job.args) > 0 else None
 
-            # Count statuses
-            status = task_data.get("status", "unknown")
-            status_counts[status] = status_counts.get(status, 0) + 1
+                # Filter by user's videos unless admin
+                if not is_admin(current_user) and video_id not in user_video_ids:
+                    continue
+
+                # Map RQ status to frontend status
+                rq_status = job.get_status()
+                mapped_status = _map_rq_status_to_frontend(rq_status)
+
+                # Build task status
+                task_status = TaskStatus(
+                    job_id=job_id,
+                    video_id=video_id or 0,
+                    analysis_type=_get_analysis_type_from_job(job),
+                    status=mapped_status,
+                    progress=0,
+                    error=str(job.exc_info) if job.is_failed else None,
+                    result=job.result if job.is_finished else None,
+                    started_at=job.started_at
+                    if hasattr(job, "started_at") and job.started_at
+                    else None,
+                    completed_at=job.ended_at
+                    if hasattr(job, "ended_at") and job.ended_at
+                    else None,
+                    estimated_duration=_get_estimated_duration(
+                        _get_analysis_type_from_job(job)
+                    ),
+                )
+
+                task_statuses[job_id] = task_status
+                status_counts[mapped_status] = status_counts.get(mapped_status, 0) + 1
+
+            except (
+                NoSuchJobError,
+                RedisConnectionError,
+                RedisTimeoutError,
+                AttributeError,
+            ) as e:
+                logger.warning(f"Failed to fetch job {job_id}: {e}")
+                continue
 
         return TaskListResponse(
             tasks=task_statuses,
-            total_tasks=len(filtered_tasks),
+            total_tasks=len(task_statuses),
             status_counts=status_counts,
         )
 
     except Exception as e:
-        logger.error(f"Error listing tasks: {e}")
+        logger.error(f"Error listing jobs: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list tasks: {e!s}",
+            detail=f"Failed to list jobs: {e!s}",
         ) from e
 
 
@@ -203,70 +327,159 @@ async def get_task_stats(
     current_user: dict = Depends(get_current_user),
 ) -> TaskStatsResponse:
     """
-    Get background task system statistics.
+    Get background job system statistics (RQ).
 
     Returns:
-        Task system statistics including worker counts and queue status
+        Job system statistics including worker counts and queue status
     """
     try:
-        stats = background_service.get_task_stats()
-        return TaskStatsResponse.model_validate(stats)
+        stats = get_queue_stats()
+
+        # Map RQ statuses to frontend statuses
+        mapped_status_counts = {}
+        for rq_status, count in stats.get("status_counts", {}).items():
+            mapped_status = _map_rq_status_to_frontend(rq_status)
+            mapped_status_counts[mapped_status] = (
+                mapped_status_counts.get(mapped_status, 0) + count
+            )
+
+        response_stats = {
+            "total_tasks": stats.get("total_jobs", 0),
+            "status_counts": mapped_status_counts,
+            "active_workers": stats.get("active_workers", 0),
+            "max_workers": 1,  # Default for free tier
+            "queue_size": stats.get("total_queued", 0),
+        }
+
+        return TaskStatsResponse.model_validate(response_stats)
 
     except Exception as e:
-        logger.error(f"Error getting task stats: {e}")
+        logger.error(f"Error getting job stats: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get task stats: {e!s}",
+            detail=f"Failed to get job stats: {e!s}",
         ) from e
 
 
-@router.delete("/tasks/{task_id}")
+@router.get("/queue-stats")
+async def get_queue_stats_endpoint(
+    current_user: dict = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Get detailed queue statistics (RQ).
+
+    Returns:
+        Detailed queue and worker statistics
+    """
+    try:
+        return get_queue_stats()
+    except Exception as e:
+        logger.error(f"Error getting queue stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get queue stats: {e!s}",
+        ) from e
+
+
+@router.delete("/tasks/{job_id}")
 async def cancel_task(
-    task_id: int,
+    job_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, str]:
     """
-    Cancel a running background task.
+    Cancel a running background job (RQ).
 
     Args:
-        task_id: ID of the task to cancel
+        job_id: UUID string identifier of the job to cancel
 
     Returns:
         Cancellation confirmation
     """
     try:
-        # Check authorization via video access
-        task_status = background_service.get_task_status(task_id)
-        if not task_status:
+        # Fetch job from Redis
+        try:
+            job = Job.fetch(job_id, connection=redis_conn)
+        except Exception as e:
+            logger.warning(f"Job {job_id} not found in Redis: {e}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Task {task_id} not found",
-            )
+                detail=f"Job {job_id} not found",
+            ) from e
 
-        video_id = task_status.get("video_id")
+        # Extract video_id from job arguments for authorization
+        video_id = None
+        if job.args and len(job.args) > 0:
+            video_id = job.args[0]  # First argument is video_id
+
+        # Check authorization via video access
         if video_id:
             video = video_service.get_video_by_id(db, video_id)
             if video:
                 require_video_access(video, current_user)
 
-        success = background_service.cancel_task(task_id)
-        if not success:
+        # Cancel job (only if queued or started)
+        if job.get_status() in ["queued", "started"]:
+            job.cancel()
+            logger.info(f"Cancelled job {job_id}")
+            return {"message": f"Job {job_id} cancelled successfully"}
+        else:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Task {task_id} cannot be cancelled",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Job {job_id} cannot be cancelled (status: {job.get_status()})",
             )
-
-        return {"message": f"Task {task_id} cancelled successfully"}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error cancelling task {task_id}: {e}")
+        logger.error(f"Error cancelling job {job_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to cancel task: {e!s}",
+            detail=f"Failed to cancel job: {e!s}",
         ) from e
+
+
+def _map_rq_status_to_frontend(rq_status: str) -> str:
+    """
+    Map RQ job statuses to frontend-friendly status values.
+
+    Args:
+        rq_status: RQ job status ('queued', 'started', 'finished', 'failed')
+
+    Returns:
+        Frontend-friendly status ('queued', 'processing', 'completed', 'failed', 'cancelled')
+    """
+    status_map = {
+        "queued": "queued",
+        "started": "processing",
+        "finished": "completed",
+        "failed": "failed",
+        "deferred": "queued",
+        "scheduled": "queued",
+    }
+    return status_map.get(rq_status, "queued")
+
+
+def _get_analysis_type_from_job(job: Job) -> str:
+    """
+    Extract analysis type from RQ job function name.
+
+    Args:
+        job: RQ Job object
+
+    Returns:
+        Analysis type string
+    """
+    func_name = job.func_name if hasattr(job, "func_name") else ""
+    if "pose_detection" in func_name and "annotation" in func_name:
+        return "pose_with_annotation"
+    if "pose_detection" in func_name:
+        return "pose_only"
+    if "ball_detection" in func_name:
+        return "ball_only"
+    if "video_annotation" in func_name:
+        return "video_annotation_only"
+    return "pose_only"  # Default fallback
 
 
 def _get_estimated_duration(analysis_type: str) -> float:
@@ -278,3 +491,58 @@ def _get_estimated_duration(analysis_type: str) -> float:
         "pose_with_annotation": 210.0,  # 3.5 minutes (pose + annotation)
     }
     return estimates.get(analysis_type, 180.0)
+
+
+def _map_rq_status_to_frontend(rq_status: str) -> str:
+    """
+    Map RQ status values to frontend-friendly status values.
+
+    RQ statuses: 'queued', 'started', 'finished', 'failed'
+    Frontend statuses: 'queued', 'processing', 'completed', 'failed', 'cancelled'
+    """
+    status_map = {
+        "queued": "queued",
+        "started": "processing",
+        "finished": "completed",
+        "failed": "failed",
+        "deferred": "queued",  # Deferred jobs are queued
+        "scheduled": "queued",  # Scheduled jobs are queued
+    }
+    return status_map.get(rq_status, "queued")
+
+
+@router.get("/queue-stats")
+async def get_queue_statistics(
+    current_user: dict = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Get RQ queue statistics and worker health.
+
+    Returns:
+        Queue statistics including active workers, queue lengths, and failed jobs
+    """
+    try:
+        stats = get_queue_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Error getting queue stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get queue stats: {e!s}",
+        ) from e
+
+
+def _get_analysis_type_from_job(job: Job) -> str:
+    """Extract analysis type from RQ job function name."""
+    func_name = job.func_name if hasattr(job, "func_name") else str(job.func)
+
+    if "analyze_pose_detection_rq" in func_name:
+        return "pose_only"
+    elif "analyze_ball_detection_rq" in func_name:
+        return "ball_only"
+    elif "create_video_annotation_rq" in func_name:
+        return "video_annotation_only"
+    elif "analyze_pose_with_annotation_rq" in func_name:
+        return "pose_with_annotation"
+    else:
+        return "pose_only"  # Default

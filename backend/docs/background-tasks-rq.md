@@ -4,6 +4,8 @@ Complete guide to the background task system using Redis Queue (RQ) in the Tenni
 
 **This is the primary documentation for background task processing.** For information about the deprecated ThreadPoolExecutor system, see [Background Tasks (Legacy)](background-tasks.md).
 
+**Legacy System Reference**: The previous `BackgroundTaskService` implementation using ThreadPoolExecutor can be found in [`backend/app/services/background_service.py`](../app/services/background_service.py). This file contains the original analysis methods (`_run_pose_only_analysis`, `_run_ball_only_analysis`, etc.) that have been migrated to RQ task functions.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -175,36 +177,80 @@ For M1 MacBook Pro (8 cores, 8GB RAM):
 
 ## Production Setup (Render)
 
-### Render Redis Service
+### Render Key Value Service
 
-1. Create Redis service in Render dashboard
-2. Get connection string (format: `redis://red-xxxxx:6379`)
-3. Set environment variable: `REDIS_URL=redis://red-xxxxx:6379/0`
+1. Create Key Value instance in Render dashboard (same region as API service)
+2. **Important**: Set **Maxmemory Policy** to `noeviction` (recommended for job queues to prevent job loss)
+3. Get **internal URL** from Render Dashboard (format: `redis://red-xxxxx:6379`)
+   - Use internal URL for lower latency and private network communication
+   - Internal URL doesn't require authentication by default
+4. Set environment variable: `REDIS_URL=redis://red-xxxxx:6379/0`
+5. Set `ENVIRONMENT=production`
+
+**Instance Configuration:**
+- **Free tier**: 25MB RAM, 10 connections, no persistence (data lost on restart)
+- **Paid tier**: More RAM, more connections, persists data to disk every second
+- Choose instance type based on workload
+- API service and Key Value must be in same region and workspace
 
 ### Worker Deployment Options
 
 #### Option 1: Same Service (Free Tier)
 
-Run worker in the same Render service as API:
+Run worker in the same Render service as API using FastAPI's `lifespan` context manager:
 
 ```python
-# In app startup
+# In backend/app/main.py
 import os
 import subprocess
-from typing import Optional
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from rq import Worker
 
-def start_worker_process() -> Optional[subprocess.Popen]:
-    """Start RQ worker process if in production."""
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> None:
+    # Startup
+    worker_process = None
     if os.getenv("ENVIRONMENT") == "production":
-        redis_url = os.getenv("REDIS_URL")
-        if not redis_url:
-            raise ValueError("REDIS_URL not set in production")
-        return subprocess.Popen([
-            "rq", "worker", "analysis", "default",
-            "--url", redis_url
-        ])
-    return None
+        worker_process = start_rq_worker()
+    
+    yield
+    
+    # Shutdown
+    if worker_process:
+        worker_process.terminate()
+        worker_process.wait()
+
+def start_rq_worker() -> subprocess.Popen:
+    """Start RQ worker process with duplicate check."""
+    # Check for existing workers to prevent duplicates
+    try:
+        from app.core.redis_config import redis_conn
+        existing_workers = Worker.all(connection=redis_conn)
+        if existing_workers:
+            logger.warning(f"Found {len(existing_workers)} existing workers, skipping startup")
+            return None
+    except Exception as e:
+        logger.warning(f"Could not check for existing workers: {e}")
+    
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        raise ValueError("REDIS_URL not set in production")
+    
+    logger.info("Starting RQ worker process")
+    return subprocess.Popen([
+        "rq", "worker", "analysis", "default",
+        "--url", redis_url
+    ])
+
+app = FastAPI(lifespan=lifespan)
 ```
+
+**Integration Steps:**
+1. Add worker startup function to `backend/app/main.py`
+2. Integrate into `lifespan` context manager
+3. Worker auto-starts when API service starts
+4. Worker gracefully terminates on API shutdown
 
 **Limitations**: Free tier (512MB RAM, 0.5 CPU) - **1 worker only**
 
@@ -361,6 +407,87 @@ def start_analysis_task(
 - `job_timeout`: Maximum execution time (seconds)
 - `job_id`: Custom job identifier
 - `result_ttl`: How long to keep result (default: 500 seconds)
+
+### Retry Configuration
+
+RQ supports automatic retries for failed jobs. Configure retries per task type:
+
+```python
+from rq import Retry
+
+# Pose detection: 2 retries with 60s interval
+job = analysis_queue.enqueue(
+    analyze_pose_detection_rq,
+    video_id=video_id,
+    video_path=video_path,
+    retry=Retry(max=2, interval=60),
+    job_timeout=300,
+)
+
+# Ball detection: 2 retries with 60s interval
+job = analysis_queue.enqueue(
+    analyze_ball_detection_rq,
+    video_id=video_id,
+    video_path=video_path,
+    retry=Retry(max=2, interval=60),
+    job_timeout=300,
+)
+
+# Video annotation: 1 retry with 30s interval
+job = analysis_queue.enqueue(
+    create_video_annotation_rq,
+    video_id=video_id,
+    video_path=video_path,
+    retry=Retry(max=1, interval=30),
+    job_timeout=180,
+)
+
+# Combined tasks: 1 retry with 90s interval
+job = analysis_queue.enqueue(
+    analyze_pose_with_annotation_rq,
+    video_id=video_id,
+    video_path=video_path,
+    retry=Retry(max=1, interval=90),
+    job_timeout=360,
+)
+```
+
+### Failure Handling
+
+**Error Handling in Tasks:**
+- Tasks should log errors before re-raising
+- RQ automatically marks jobs as failed when exceptions are raised
+- Failed jobs can be inspected and retried
+
+**Failure Callbacks:**
+```python
+def on_failure(job, exc_type, exc_value, traceback):
+    """Handle job failure."""
+    logger.error(f"Job {job.id} failed: {exc_value}")
+    # Could send alert, update database, etc.
+
+job = analysis_queue.enqueue(
+    analyze_pose_detection_rq,
+    video_id=video_id,
+    on_failure=on_failure,
+)
+```
+
+**Job Timeout Handling:**
+- Jobs exceeding `job_timeout` are automatically killed
+- Worker marks job as failed
+- Timeout should be set based on analysis type (pose: 300s, ball: 300s, annotation: 180s)
+
+**Result TTL:**
+- Results are stored in Redis with TTL (time-to-live)
+- Default: 500 seconds
+- Expired results return `None` when fetching job result
+- Set `result_ttl` based on how long results need to be accessible
+
+**Monitoring Failed Jobs:**
+- Use RQ Dashboard to view failed jobs
+- Use `rq-monitoring` utilities to list and requeue failed jobs
+- Failed jobs can be manually retried via API endpoint
 
 ## Monitoring
 

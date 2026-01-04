@@ -45,7 +45,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       console.log('Analysis started:', response);
 
       // Start polling for progress
-      startPolling(response.task_id);
+      startPolling(response.job_id);
     } catch (err: any) {
       console.error('Failed to start analysis:', err);
       onAnalysisError?.(err.message || 'Failed to start analysis');
@@ -55,9 +55,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   };
 
   const handleCancelAnalysis = async () => {
-    if (progress?.taskId) {
+    if (progress?.jobId) {
       try {
-        await unifiedAnalysisApi.cancelTask(progress.taskId);
+        await unifiedAnalysisApi.cancelTask(progress.jobId);
         stopPolling();
       } catch (err: any) {
         console.error('Failed to cancel analysis:', err);
@@ -173,58 +173,68 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </span>
           </div>
 
-          {/* Overall Progress */}
+          {/* Progress Bar */}
           <div>
             <div className="flex justify-between text-sm text-gray-600 mb-1">
-              <span>Overall Progress</span>
-              <span>{progress.progress}%</span>
+              <span>Progress</span>
+              <span>
+                {progress.status === 'completed'
+                  ? '100%'
+                  : progress.status === 'queued'
+                  ? 'Queued...'
+                  : `${Math.round(progress.progress)}%`}
+              </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${progress.progress}%` }}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  progress.status === 'completed'
+                    ? 'bg-green-600'
+                    : progress.status === 'failed' || progress.status === 'cancelled'
+                    ? 'bg-red-600'
+                    : 'bg-blue-600'
+                }`}
+                style={{
+                  width: `${
+                    progress.status === 'completed'
+                      ? 100
+                      : progress.status === 'queued'
+                      ? 0
+                      : progress.progress
+                  }%`,
+                }}
               />
             </div>
           </div>
 
-          {/* Stage Progress */}
-          {progress.currentStage && (
-            <div>
-              <div className="flex justify-between text-sm text-gray-600 mb-1">
-                <span>{progress.currentStage}</span>
-                {progress.stageProgress !== undefined && (
-                  <span>{progress.stageProgress}%</span>
-                )}
-              </div>
-              {progress.stageProgress !== undefined && (
-                <div className="w-full bg-gray-200 rounded-full h-1">
-                  <div
-                    className="bg-green-600 h-1 rounded-full transition-all duration-300"
-                    style={{ width: `${progress.stageProgress}%` }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Stage Message */}
-          {progress.stageMessage && (
-            <p className="text-sm text-gray-600">{progress.stageMessage}</p>
-          )}
-
-          {/* Frame Progress */}
-          {progress.framesProcessed !== undefined &&
-            progress.totalFrames !== undefined && (
-              <div className="text-sm text-gray-600">
-                Frames: {progress.framesProcessed} / {progress.totalFrames}
-              </div>
-            )}
-
-          {/* Time Remaining */}
-          {progress.estimatedTimeRemaining && (
+          {/* Time Information */}
+          {progress.startedAt && (
             <div className="text-sm text-gray-600">
-              Estimated time remaining:{' '}
-              {Math.round(progress.estimatedTimeRemaining / 1000)}s
+              {progress.status === 'completed' && progress.completedAt ? (
+                <>
+                  Completed in{' '}
+                  {Math.round(
+                    (new Date(progress.completedAt).getTime() -
+                      new Date(progress.startedAt).getTime()) /
+                      1000
+                  )}{' '}
+                  seconds
+                </>
+              ) : progress.status === 'processing' ? (
+                <>
+                  Processing... (
+                  {Math.round(
+                    (Date.now() - new Date(progress.startedAt).getTime()) / 1000
+                  )}{' '}
+                  seconds elapsed
+                  {progress.estimatedDuration
+                    ? `, ~${Math.round(progress.estimatedDuration)}s estimated`
+                    : ''}
+                  )
+                </>
+              ) : progress.status === 'queued' ? (
+                <>Queued... waiting for worker</>
+              ) : null}
             </div>
           )}
 

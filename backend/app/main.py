@@ -1,11 +1,13 @@
 """Main FastAPI application."""
 
 import logging
+import os
+import subprocess
 import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -37,6 +39,52 @@ from app.utils.error_handling import (
 logger = logging.getLogger(__name__)
 
 
+def start_rq_worker() -> Optional[subprocess.Popen]:
+    """
+    Start RQ worker process with duplicate check.
+
+    Returns:
+        Popen process object if started, None if skipped
+    """
+    try:
+        from redis.exceptions import ConnectionError as RedisConnectionError
+        from redis.exceptions import TimeoutError as RedisTimeoutError
+        from rq import Worker
+
+        from app.core.redis_config import redis_conn
+
+        # Check for existing workers to prevent duplicates
+        existing_workers = Worker.all(connection=redis_conn)
+        if existing_workers:
+            logger.warning(
+                f"Found {len(existing_workers)} existing workers, skipping startup"
+            )
+            return None
+    except (RedisConnectionError, RedisTimeoutError, AttributeError) as e:
+        logger.warning(f"Could not check for existing workers: {e}")
+
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        logger.warning("REDIS_URL not set, skipping worker startup")
+        return None
+
+    logger.info("Starting RQ worker process")
+    try:
+        # Validate redis_url format (basic check)
+        if not redis_url.startswith(("redis://", "rediss://")):
+            logger.error(f"Invalid REDIS_URL format: {redis_url}")
+            return None
+
+        return subprocess.Popen(  # noqa: S603 - rq command is trusted, redis_url validated above
+            ["rq", "worker", "analysis", "default", "--url", redis_url],  # noqa: S607 - rq is trusted executable
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except (subprocess.SubprocessError, OSError, ValueError) as e:
+        logger.error(f"Failed to start RQ worker: {e}")
+        return None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:
     """Application lifespan manager."""
@@ -54,8 +102,27 @@ async def lifespan(app: FastAPI) -> None:
     logger.info(f"CORS Origins: {settings.BACKEND_CORS_ORIGINS}")
     logger.info("=" * 60)
     create_tables_if_not_exists()
+
+    # Start RQ worker in production
+    worker_process = None
+    if os.getenv("ENVIRONMENT") == "production":
+        worker_process = start_rq_worker()
+
     yield
+
     # Shutdown
+    if worker_process:
+        logger.info("Terminating RQ worker process")
+        try:
+            worker_process.terminate()
+            worker_process.wait(timeout=10)
+            logger.info("RQ worker terminated successfully")
+        except subprocess.TimeoutExpired:
+            logger.warning("RQ worker did not terminate gracefully, killing")
+            worker_process.kill()
+        except (subprocess.SubprocessError, OSError) as e:
+            logger.error(f"Error terminating RQ worker: {e}")
+
     logger.info("Tennis Coach API - Shutting down")
 
 

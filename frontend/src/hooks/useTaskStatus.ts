@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { analysisApi, TaskStatus } from '../services/api';
 
 interface UseTaskStatusOptions {
-  taskId: number | null;
+  jobId: string | null;
   pollInterval?: number; // milliseconds
   autoStop?: boolean; // stop polling when task completes
   onComplete?: (taskStatus: TaskStatus) => void;
@@ -20,7 +20,7 @@ interface UseTaskStatusResult {
 }
 
 export const useTaskStatus = ({
-  taskId,
+  jobId,
   pollInterval = 2000, // 2 seconds default
   autoStop = true,
   onComplete,
@@ -35,9 +35,9 @@ export const useTaskStatus = ({
   const abortControllerRef = useRef<AbortController | null>(null);
   const isPollingRef = useRef(false);
 
-  // Function to fetch task status
+  // Function to fetch job status
   const fetchTaskStatus = useCallback(async () => {
-    if (!taskId) return;
+    if (!jobId) return;
 
     try {
       setLoading(true);
@@ -46,7 +46,7 @@ export const useTaskStatus = ({
       // Create new abort controller for this request
       abortControllerRef.current = new AbortController();
 
-      const status = await analysisApi.getTaskStatus(taskId);
+      const status = await analysisApi.getTaskStatus(jobId);
       setTaskStatus(status);
 
       // Check if task is completed and we should stop polling
@@ -79,26 +79,22 @@ export const useTaskStatus = ({
         err?.message ||
         'Failed to fetch task status';
 
-      // If task not found (404), treat it as completed/cancelled
+      // If job not found (404), treat it as completed/cancelled
       if (err?.response?.status === 404) {
-        console.log(`Task ${taskId} not found, treating as completed`);
-        setTaskStatus({
-          task_id: taskId,
+        console.log(`Job ${jobId} not found, treating as completed`);
+        const fallbackStatus: TaskStatus = {
+          job_id: jobId,
           video_id: 0,
           analysis_type: 'unknown',
           status: 'completed',
           progress: 100,
-          current_stage: null,
-          stage_progress: null,
-          stage_message: null,
-          estimated_time_remaining: null,
-          frames_processed: null,
-          total_frames: null,
           error: null,
           result: null,
           started_at: new Date().toISOString(),
           completed_at: new Date().toISOString(),
-        });
+          estimated_duration: null,
+        };
+        setTaskStatus(fallbackStatus);
 
         // Stop polling
         setIsPolling(false);
@@ -110,23 +106,7 @@ export const useTaskStatus = ({
 
         // Call completion callback
         if (onComplete) {
-          onComplete({
-            task_id: taskId,
-            video_id: 0,
-            analysis_type: 'unknown',
-            status: 'completed',
-            progress: 100,
-            current_stage: null,
-            stage_progress: null,
-            stage_message: null,
-            estimated_time_remaining: null,
-            frames_processed: null,
-            total_frames: null,
-            error: null,
-            result: null,
-            started_at: new Date().toISOString(),
-            completed_at: new Date().toISOString(),
-          });
+          onComplete(fallbackStatus);
         }
       } else {
         // Handle other errors normally
@@ -147,11 +127,11 @@ export const useTaskStatus = ({
     } finally {
       setLoading(false);
     }
-  }, [taskId, autoStop, onComplete, onError]);
+  }, [jobId, autoStop, onComplete, onError]);
 
   // Function to start polling
   const startPolling = useCallback(() => {
-    if (!taskId || isPollingRef.current) return;
+    if (!jobId || isPollingRef.current) return;
 
     setIsPolling(true);
     isPollingRef.current = true;
@@ -163,7 +143,7 @@ export const useTaskStatus = ({
     intervalRef.current = setInterval(() => {
       fetchTaskStatus();
     }, pollInterval);
-  }, [taskId, fetchTaskStatus, pollInterval]);
+  }, [jobId, fetchTaskStatus, pollInterval]);
 
   // Function to stop polling
   const stopPolling = useCallback(() => {
@@ -187,13 +167,13 @@ export const useTaskStatus = ({
     await fetchTaskStatus();
   }, [fetchTaskStatus]);
 
-  // Effect to handle taskId changes
+  // Effect to handle jobId changes
   useEffect(() => {
-    if (taskId) {
-      // Start polling automatically when taskId is provided
+    if (jobId) {
+      // Start polling automatically when jobId is provided
       startPolling();
     } else {
-      // Stop polling when taskId is null
+      // Stop polling when jobId is null
       stopPolling();
       setTaskStatus(null);
       setError(null);
@@ -203,7 +183,7 @@ export const useTaskStatus = ({
     return () => {
       stopPolling();
     };
-  }, [taskId, startPolling, stopPolling]);
+  }, [jobId, startPolling, stopPolling]);
 
   // Cleanup on unmount
   useEffect(() => {

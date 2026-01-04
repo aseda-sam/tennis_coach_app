@@ -37,7 +37,7 @@ export interface AnalysisRequest {
 }
 
 export interface AnalysisResponse {
-  task_id: number;
+  job_id: string;
   video_id: number;
   analysis_type: string;
   status: string;
@@ -46,7 +46,7 @@ export interface AnalysisResponse {
 }
 
 export interface TaskStatus {
-  task_id: number;
+  job_id: string;
   video_id: number;
   analysis_type:
     | 'pose_only'
@@ -55,20 +55,15 @@ export interface TaskStatus {
     | 'pose_with_annotation';
   status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
-  current_stage?: string;
-  stage_progress?: number;
-  stage_message?: string;
-  estimated_time_remaining?: number;
-  frames_processed?: number;
-  total_frames?: number;
   error?: string;
   result?: any;
-  started_at: string;
+  started_at?: string;
   completed_at?: string;
+  estimated_duration?: number;
 }
 
 export interface TaskListResponse {
-  tasks: Record<number, TaskStatus>;
+  tasks: Record<string, TaskStatus>;
   total_tasks: number;
 }
 
@@ -81,7 +76,7 @@ export interface TaskStatsResponse {
 
 export interface CancellationResponse {
   message: string;
-  task_id: number;
+  job_id: string;
 }
 
 class UnifiedAnalysisApi {
@@ -100,11 +95,11 @@ class UnifiedAnalysisApi {
   }
 
   /**
-   * Get the status of a background analysis task
+   * Get the status of a background analysis job
    */
-  async getTaskStatus(taskId: number): Promise<TaskStatus> {
+  async getTaskStatus(jobId: string): Promise<TaskStatus> {
     const response = await analysisApi.get<TaskStatus>(
-      `/analysis/status/${taskId}`
+      `/analysis/status/${jobId}`
     );
     return response.data;
   }
@@ -128,11 +123,11 @@ class UnifiedAnalysisApi {
   }
 
   /**
-   * Cancel a running background task
+   * Cancel a running background job
    */
-  async cancelTask(taskId: number): Promise<CancellationResponse> {
+  async cancelTask(jobId: string): Promise<CancellationResponse> {
     const response = await analysisApi.delete<CancellationResponse>(
-      `/analysis/tasks/${taskId}`
+      `/analysis/tasks/${jobId}`
     );
     return response.data;
   }
@@ -190,17 +185,17 @@ class UnifiedAnalysisApi {
   }
 
   /**
-   * Poll task status until completion or failure
+   * Poll job status until completion or failure
    */
   async waitForTaskCompletion(
-    taskId: number,
+    jobId: string,
     pollInterval: number = 2000,
     maxWaitTime: number = 300000 // 5 minutes
   ): Promise<TaskStatus> {
     const startTime = Date.now();
 
     while (Date.now() - startTime < maxWaitTime) {
-      const status = await this.getTaskStatus(taskId);
+      const status = await this.getTaskStatus(jobId);
 
       if (
         status.status === 'completed' ||
@@ -214,17 +209,17 @@ class UnifiedAnalysisApi {
       await new Promise((resolve) => setTimeout(resolve, pollInterval));
     }
 
-    throw new Error(`Task ${taskId} did not complete within ${maxWaitTime}ms`);
+    throw new Error(`Job ${jobId} did not complete within ${maxWaitTime}ms`);
   }
 
   /**
-   * Get task progress with real-time updates
+   * Get job progress with real-time updates
    */
   async *getTaskProgress(
-    taskId: number
+    jobId: string
   ): AsyncGenerator<TaskStatus, void, unknown> {
     while (true) {
-      const status = await this.getTaskStatus(taskId);
+      const status = await this.getTaskStatus(jobId);
       yield status;
 
       if (

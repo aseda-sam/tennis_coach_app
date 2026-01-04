@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import unifiedAnalysisApi, { TaskStatus } from '../services/unifiedAnalysisApi';
 
 export interface AnalysisProgress {
-  taskId: number;
+  jobId: string;
   videoId: number;
   analysisType:
     | 'pose_only'
@@ -11,16 +11,12 @@ export interface AnalysisProgress {
     | 'pose_with_annotation';
   status: TaskStatus['status'];
   progress: number;
-  currentStage?: string;
-  stageProgress?: number;
-  stageMessage?: string;
-  estimatedTimeRemaining?: number;
-  framesProcessed?: number;
-  totalFrames?: number;
   error?: string;
   result?: any;
-  startedAt: string;
+  startedAt?: string;
   completedAt?: string;
+  estimatedDuration?: number;
+  elapsedTime?: number;
 }
 
 export interface UseAnalysisProgressOptions {
@@ -35,7 +31,7 @@ export interface UseAnalysisProgressReturn {
   progress: AnalysisProgress | null;
   isLoading: boolean;
   error: string | null;
-  startPolling: (taskId: number) => void;
+  startPolling: (jobId: string) => void;
   stopPolling: () => void;
   isPolling: boolean;
 }
@@ -51,38 +47,52 @@ export function useAnalysisProgress(
   const [isPolling, setIsPolling] = useState(false);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const currentTaskIdRef = useRef<number | null>(null);
+  const currentJobIdRef = useRef<string | null>(null);
 
   const convertTaskStatusToProgress = useCallback(
     (taskStatus: TaskStatus): AnalysisProgress => {
+      // Calculate elapsed time
+      const startedAt = taskStatus.started_at
+        ? new Date(taskStatus.started_at).getTime()
+        : null;
+      const now = Date.now();
+      const elapsed = startedAt ? now - startedAt : 0;
+
+      // Calculate time-based progress
+      let progress = 0;
+      if (taskStatus.status === 'completed') {
+        progress = 100;
+      } else if (taskStatus.status === 'failed' || taskStatus.status === 'cancelled') {
+        progress = taskStatus.progress || 0;
+      } else if (taskStatus.estimated_duration && startedAt) {
+        const estimated = taskStatus.estimated_duration * 1000; // convert to ms
+        progress = estimated > 0 ? Math.min(95, Math.round((elapsed / estimated) * 100)) : 0;
+      }
+
       return {
-        taskId: taskStatus.task_id,
+        jobId: taskStatus.job_id,
         videoId: taskStatus.video_id,
         analysisType: taskStatus.analysis_type,
         status: taskStatus.status,
-        progress: taskStatus.progress,
-        currentStage: taskStatus.current_stage,
-        stageProgress: taskStatus.stage_progress,
-        stageMessage: taskStatus.stage_message,
-        estimatedTimeRemaining: taskStatus.estimated_time_remaining,
-        framesProcessed: taskStatus.frames_processed,
-        totalFrames: taskStatus.total_frames,
-        error: taskStatus.error,
+        progress,
+        error: taskStatus.error || undefined,
         result: taskStatus.result,
-        startedAt: taskStatus.started_at,
-        completedAt: taskStatus.completed_at,
+        startedAt: taskStatus.started_at || undefined,
+        completedAt: taskStatus.completed_at || undefined,
+        estimatedDuration: taskStatus.estimated_duration,
+        elapsedTime: elapsed,
       };
     },
     []
   );
 
   const pollTaskStatus = useCallback(
-    async (taskId: number) => {
+    async (jobId: string) => {
       try {
         setIsLoading(true);
         setError(null);
 
-        const taskStatus = await unifiedAnalysisApi.getTaskStatus(taskId);
+        const taskStatus = await unifiedAnalysisApi.getTaskStatus(jobId);
         const progressData = convertTaskStatusToProgress(taskStatus);
 
         setProgress(progressData);
@@ -103,13 +113,13 @@ export function useAnalysisProgress(
         ) {
           setIsPolling(false);
           setIsLoading(false);
-          const errorMessage = taskStatus.error || `Task ${taskStatus.status}`;
+          const errorMessage = taskStatus.error || `Job ${taskStatus.status}`;
           setError(errorMessage);
           onError?.(errorMessage);
           return;
         }
       } catch (err: any) {
-        const errorMessage = err.message || 'Failed to get task status';
+        const errorMessage = err.message || 'Failed to get job status';
         setError(errorMessage);
         setIsPolling(false);
         setIsLoading(false);
@@ -120,23 +130,23 @@ export function useAnalysisProgress(
   );
 
   const startPolling = useCallback(
-    (taskId: number) => {
+    (jobId: string) => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
 
-      currentTaskIdRef.current = taskId;
+      currentJobIdRef.current = jobId;
       setIsPolling(true);
       setIsLoading(true);
       setError(null);
 
       // Poll immediately
-      pollTaskStatus(taskId);
+      pollTaskStatus(jobId);
 
       // Set up interval for continued polling
       intervalRef.current = setInterval(() => {
-        if (currentTaskIdRef.current === taskId) {
-          pollTaskStatus(taskId);
+        if (currentJobIdRef.current === jobId) {
+          pollTaskStatus(jobId);
         }
       }, pollInterval);
     },
@@ -150,7 +160,7 @@ export function useAnalysisProgress(
     }
     setIsPolling(false);
     setIsLoading(false);
-    currentTaskIdRef.current = null;
+    currentJobIdRef.current = null;
   }, []);
 
   // Cleanup on unmount

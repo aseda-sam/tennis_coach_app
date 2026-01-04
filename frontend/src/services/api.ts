@@ -211,28 +211,23 @@ export interface AnalysisData {
   confidence_threshold_used?: number;
 }
 
-// New interfaces for task status tracking
+// New interfaces for task status tracking (RQ-compatible)
 export interface TaskStatus {
-  task_id: number;
+  job_id: string;
   video_id: number;
   analysis_type: string;
   status: string;
   progress: number;
-  current_stage: string | null;
-  stage_progress: number | null;
-  stage_message: string | null;
-  estimated_time_remaining: number | null;
-  frames_processed: number | null;
-  total_frames: number | null;
   error: string | null;
   result: any | null;
-  started_at: string;
+  started_at: string | null;
   completed_at: string | null;
+  estimated_duration: number | null;
 }
 
 export interface TaskListResponse {
-  tasks: Record<number, TaskStatus>;
-  total: number;
+  tasks: Record<string, TaskStatus>;
+  total_tasks: number;
 }
 
 export interface TaskStatsResponse {
@@ -283,9 +278,9 @@ export const analysisApi = {
   },
 
   // New methods for task status tracking
-  // Get task status by task ID
-  getTaskStatus: async (taskId: number): Promise<TaskStatus> => {
-    const response = await api.get<TaskStatus>(`/analysis/status/${taskId}`);
+  // Get job status by job ID (RQ)
+  getTaskStatus: async (jobId: string): Promise<TaskStatus> => {
+    const response = await api.get<TaskStatus>(`/analysis/status/${jobId}`);
     return response.data;
   },
 
@@ -301,12 +296,12 @@ export const analysisApi = {
     return response.data;
   },
 
-  // Cancel a task
+  // Cancel a job (RQ)
   cancelTask: async (
-    taskId: number
-  ): Promise<{ message: string; task_id: number }> => {
-    const response = await api.delete<{ message: string; task_id: number }>(
-      `/analysis/tasks/${taskId}`
+    jobId: string
+  ): Promise<{ message: string; job_id: string }> => {
+    const response = await api.delete<{ message: string; job_id: string }>(
+      `/analysis/tasks/${jobId}`
     );
     return response.data;
   },
