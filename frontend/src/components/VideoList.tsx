@@ -424,15 +424,17 @@ const VideoList: React.FC<VideoListProps> = ({
                           {analysisProgress.status === 'queued'
                             ? 'Queued...'
                             : analysisProgress.status === 'processing'
-                            ? `Processing... (${
-                                analysisProgress.elapsedTime
-                                  ? Math.round(analysisProgress.elapsedTime / 1000)
-                                  : 0
-                              }s)` +
-                              (analysisProgress.estimatedDuration
-                                ? `, ~${Math.round(analysisProgress.estimatedDuration)}s estimated`
-                                : '')
-                            : analysisProgress.status}
+                              ? `Processing... (${
+                                  analysisProgress.elapsedTime
+                                    ? Math.round(
+                                        analysisProgress.elapsedTime / 1000
+                                      )
+                                    : 0
+                                }s)` +
+                                (analysisProgress.estimatedDuration
+                                  ? `, ~${Math.round(analysisProgress.estimatedDuration)}s estimated`
+                                  : '')
+                              : analysisProgress.status}
                         </span>
                         <ProgressBar
                           progress={analysisProgress.progress}
@@ -440,10 +442,10 @@ const VideoList: React.FC<VideoListProps> = ({
                             analysisProgress.status === 'processing'
                               ? 'processing'
                               : analysisProgress.status === 'completed'
-                              ? 'completed'
-                              : analysisProgress.status === 'failed'
-                              ? 'failed'
-                              : 'processing'
+                                ? 'completed'
+                                : analysisProgress.status === 'failed'
+                                  ? 'failed'
+                                  : 'processing'
                           }
                           size="small"
                           showPercentage={false}

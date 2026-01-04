@@ -416,9 +416,27 @@ async def get_video_analysis_status(
 
         if video_annotation and video_annotation.annotated_video_path:
             has_annotated_video = True
-            annotated_path = Path(video_annotation.annotated_video_path)
-            if annotated_path.exists():
+            stored_path = video_annotation.annotated_video_path
+
+            # Resolve path based on storage type
+            # Current formats:
+            # - Local storage: "../data/videos/processed/..." (relative path from backend)
+            # - Supabase storage: "processed/..." (cloud path, can't check locally)
+
+            if stored_path.startswith("processed/"):
+                # Supabase cloud storage path - file exists in cloud
                 annotated_video_available = True
+            elif stored_path.startswith("../"):
+                # Local storage relative path - resolve from backend directory
+                backend_dir = Path(__file__).parent.parent.parent
+                annotated_path = (backend_dir / stored_path).resolve()
+                if annotated_path.exists():
+                    annotated_video_available = True
+            elif Path(stored_path).is_absolute():
+                # Absolute path (edge case)
+                annotated_path = Path(stored_path)
+                if annotated_path.exists():
+                    annotated_video_available = True
 
         return VideoAnalysisStatus(
             video_id=video_id,

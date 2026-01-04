@@ -62,11 +62,17 @@ export function useAnalysisProgress(
       let progress = 0;
       if (taskStatus.status === 'completed') {
         progress = 100;
-      } else if (taskStatus.status === 'failed' || taskStatus.status === 'cancelled') {
+      } else if (
+        taskStatus.status === 'failed' ||
+        taskStatus.status === 'cancelled'
+      ) {
         progress = taskStatus.progress || 0;
       } else if (taskStatus.estimated_duration && startedAt) {
         const estimated = taskStatus.estimated_duration * 1000; // convert to ms
-        progress = estimated > 0 ? Math.min(95, Math.round((elapsed / estimated) * 100)) : 0;
+        progress =
+          estimated > 0
+            ? Math.min(95, Math.round((elapsed / estimated) * 100))
+            : 0;
       }
 
       return {
