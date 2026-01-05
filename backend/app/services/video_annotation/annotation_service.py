@@ -97,6 +97,39 @@ class VideoAnnotationService:
         """Initialize the video annotation service."""
         self.logger = logger
 
+    def _validate_and_prepare_frame(
+        self, frame: np.ndarray, expected_width: int, expected_height: int
+    ) -> np.ndarray:
+        """
+        Validate and prepare frame for VideoWriter.
+
+        Ensures frame is correct size (width x height) and uint8 BGR format.
+
+        Args:
+            frame: Input frame array
+            expected_width: Expected frame width
+            expected_height: Expected frame height
+
+        Returns:
+            Validated and prepared frame
+        """
+        frame_h, frame_w = frame.shape[:2]
+
+        # Resize if dimensions don't match
+        if frame_w != expected_width or frame_h != expected_height:
+            logger.warning(
+                f"Frame size mismatch: expected {expected_width}x{expected_height}, "
+                f"got {frame_w}x{frame_h}. Resizing."
+            )
+            frame = cv2.resize(frame, (expected_width, expected_height))
+
+        # Ensure uint8 dtype (required by VideoWriter)
+        if frame.dtype != np.uint8:
+            logger.warning(f"Frame dtype is {frame.dtype}, converting to uint8")
+            frame = frame.astype(np.uint8)
+
+        return frame
+
     def create_pose_annotation(
         self,
         db: Session,
@@ -336,13 +369,6 @@ class VideoAnnotationService:
                             f"First frame: shape={frame.shape}, dtype={frame.dtype}, "
                             f"min={frame.min()}, max={frame.max()}"
                         )
-                        # Verify frame dimensions match VideoWriter expectations
-                        frame_h, frame_w = frame.shape[:2]
-                        if frame_w != width or frame_h != height:
-                            logger.error(
-                                f"Frame size mismatch! VideoWriter expects {width}x{height}, "
-                                f"but frame is {frame_w}x{frame_h}"
-                            )
 
                     # Get pose data for this frame
                     frame_pose_data = (
@@ -354,57 +380,29 @@ class VideoAnnotationService:
                         else 0.0
                     )
 
-                    # Ensure frame is in correct format (BGR, uint8, correct size)
-                    # OpenCV VideoWriter requires: (height, width, 3) BGR uint8 array
-                    frame_h, frame_w = frame.shape[:2]
-                    if frame_w != width or frame_h != height:
-                        logger.error(
-                            f"CRITICAL: Frame size mismatch! VideoWriter expects {width}x{height}, "
-                            f"frame is {frame_w}x{frame_h}. Resizing frame."
-                        )
-                        frame = cv2.resize(frame, (width, height))
-
-                    # Ensure frame is uint8 BGR (not float or RGB)
-                    if frame.dtype != np.uint8:
-                        logger.warning(
-                            f"Frame dtype is {frame.dtype}, converting to uint8"
-                        )
-                        frame = frame.astype(np.uint8)
+                    # Validate and prepare frame for VideoWriter
+                    frame = self._validate_and_prepare_frame(frame, width, height)
 
                     # Annotate frame if pose data exists
                     if frame_pose_data and frame_confidence > 0.5:
                         annotated_frame = self._draw_pose_overlay(
                             frame, frame_pose_data, frame_confidence, annotation_style
                         )
-                        # Verify annotated frame dimensions match
-                        ann_h, ann_w = annotated_frame.shape[:2]
-                        if ann_w != width or ann_h != height:
-                            logger.error(
-                                f"CRITICAL: Annotated frame size mismatch! Expected {width}x{height}, "
-                                f"got {ann_w}x{ann_h}. Resizing."
-                            )
-                            annotated_frame = cv2.resize(
-                                annotated_frame, (width, height)
-                            )
-
-                        # Ensure annotated frame is uint8 BGR
-                        if annotated_frame.dtype != np.uint8:
-                            annotated_frame = annotated_frame.astype(np.uint8)
+                        annotated_frame = self._validate_and_prepare_frame(
+                            annotated_frame, width, height
+                        )
 
                         write_success = out.write(annotated_frame)
                         if not write_success and frame_count < 5:
-                            # Only log first few failures to avoid spam
                             logger.error(
                                 f"VideoWriter.write() FAILED for frame {frame_count}: "
-                                f"shape={annotated_frame.shape}, dtype={annotated_frame.dtype}, "
-                                f"min={annotated_frame.min()}, max={annotated_frame.max()}"
+                                f"shape={annotated_frame.shape}, dtype={annotated_frame.dtype}"
                             )
                         annotated_frames += 1
                     else:
                         # Write original frame if no pose detected
                         write_success = out.write(frame)
                         if not write_success and frame_count < 5:
-                            # Only log first few failures to avoid spam
                             logger.error(
                                 f"VideoWriter.write() FAILED for frame {frame_count}: "
                                 f"shape={frame.shape}, dtype={frame.dtype}"
