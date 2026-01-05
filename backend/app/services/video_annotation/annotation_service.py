@@ -338,16 +338,21 @@ class VideoAnnotationService:
                             frame, frame_pose_data, frame_confidence, annotation_style
                         )
                         write_success = out.write(annotated_frame)
+                        # Note: VideoWriter.write() can return False even when write succeeds
+                        # (known OpenCV quirk with some codecs). We validate the final file instead.
                         if not write_success:
-                            logger.warning(
-                                f"Failed to write annotated frame {frame_count}"
+                            logger.debug(
+                                f"VideoWriter.write() returned False for frame {frame_count} (may be false negative)"
                             )
                         annotated_frames += 1
                     else:
                         # Write original frame if no pose detected
                         write_success = out.write(frame)
+                        # Note: VideoWriter.write() can return False even when write succeeds
                         if not write_success:
-                            logger.warning(f"Failed to write frame {frame_count}")
+                            logger.debug(
+                                f"VideoWriter.write() returned False for frame {frame_count} (may be false negative)"
+                            )
 
                     frame_count += 1
 
@@ -372,18 +377,38 @@ class VideoAnnotationService:
         finally:
             cap.release()
 
-        # Validate output
+        # Validate output - check file exists and can be opened as a video
         if annotated_path.exists():
             file_size = annotated_path.stat().st_size
             logger.info(
                 f"Annotated video file created: {annotated_path}, size: {file_size} bytes, frames: {frame_count}, annotated: {annotated_frames}"
             )
             if file_size > 0:
-                logger.info(
-                    f"Successfully created pose annotated video: {annotated_path}"
-                )
-                logger.info(f"Annotated {annotated_frames}/{frame_count} frames")
-                return annotated_path
+                # Verify the video file is actually playable
+                test_cap = cv2.VideoCapture(str(annotated_path))
+                if test_cap.isOpened():
+                    test_frame_count = int(test_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                    test_cap.release()
+                    if test_frame_count > 0:
+                        logger.info(
+                            f"Successfully created pose annotated video: {annotated_path} (validated: {test_frame_count} frames readable)"
+                        )
+                        logger.info(
+                            f"Annotated {annotated_frames}/{frame_count} frames"
+                        )
+                        return annotated_path
+                    else:
+                        logger.error(
+                            f"Annotated video file exists but contains 0 readable frames. File size: {file_size} bytes."
+                        )
+                        annotated_path.unlink()
+                        return None
+                else:
+                    logger.error(
+                        f"Annotated video file exists but cannot be opened as a video. File size: {file_size} bytes."
+                    )
+                    annotated_path.unlink()
+                    return None
             else:
                 logger.error(
                     f"Annotated video file exists but is empty (0 bytes). Processed {frame_count} frames but file is empty."
