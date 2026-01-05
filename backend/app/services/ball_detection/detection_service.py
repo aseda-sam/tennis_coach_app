@@ -180,7 +180,7 @@ class BallDetectionService:
                 all_detections.append(frame_detections)
 
             except (RuntimeError, ValueError) as e:
-                self.logger.warning(f"Error processing frame {i}: {e}")
+                logger.warning(f"Error processing frame {i}: {e}")
                 all_detections.append([])
 
         processing_time = time.time() - start_time
@@ -217,7 +217,7 @@ class BallDetectionService:
             "confidence_stats": confidence_stats,
         }
 
-        self.logger.info(
+        logger.info(
             f"Ball detection completed: {frames_with_balls}/{len(frames)} frames with balls "
             f"({detection_rate:.1%} detection rate), {total_detections} total detections, "
             f"model: {selected_model}, processing: {processing_time:.2f}s"
@@ -248,7 +248,7 @@ class BallDetectionService:
         frames = self._extract_frames(video_path, max_frames)
 
         if not frames:
-            self.logger.warning(f"No frames extracted from {video_path}")
+            logger.warning(f"No frames extracted from {video_path}")
             return self._get_empty_detection_result()
 
         # Perform ball detection on frames
@@ -305,7 +305,7 @@ class BallDetectionService:
         db.commit()
         db.refresh(ball_detection)
 
-        self.logger.info(
+        logger.info(
             f"Saved ball detection results for video {video_id} (detection_id: {ball_detection.id})"
         )
         return ball_detection
@@ -347,12 +347,12 @@ class BallDetectionService:
         try:
             cap = cv2.VideoCapture(str(video_path))
             if not cap.isOpened():
-                self.logger.error(f"Could not open video: {video_path}")
+                logger.error(f"Could not open video: {video_path}")
                 return frames
 
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             if total_frames == 0:
-                self.logger.error(f"Video has no frames: {video_path}")
+                logger.error(f"Video has no frames: {video_path}")
                 cap.release()
                 return frames
 
@@ -381,12 +381,12 @@ class BallDetectionService:
                 frame_count += 1
 
             cap.release()
-            self.logger.info(
+            logger.info(
                 f"Extracted {len(frames)} frames from {total_frames} total frames"
             )
 
         except (OSError, RuntimeError) as e:
-            self.logger.error(f"Error extracting frames from {video_path}: {e}")
+            logger.error(f"Error extracting frames from {video_path}: {e}")
 
         return frames
 
