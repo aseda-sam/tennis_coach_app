@@ -39,6 +39,35 @@ from app.utils.error_handling import (
 logger = logging.getLogger(__name__)
 
 
+def validate_redis_url(url: str) -> bool:
+    """
+    Validate Redis URL format and components to prevent command injection.
+
+    Args:
+        url: Redis connection URL to validate
+
+    Returns:
+        True if URL is valid, False otherwise
+    """
+    import urllib.parse
+
+    try:
+        parsed = urllib.parse.urlparse(url)
+        # Check scheme
+        if parsed.scheme not in ("redis", "rediss"):
+            return False
+        # Check hostname exists and is safe
+        if not parsed.hostname:
+            return False
+        # Validate hostname contains only safe characters
+        if not all(c.isalnum() or c in ".-_" for c in parsed.hostname):
+            return False
+        # Check port exists and is in valid range
+        return bool(parsed.port and 1 <= parsed.port <= 65535)
+    except (ValueError, AttributeError, TypeError):
+        return False
+
+
 def start_rq_worker() -> Optional[subprocess.Popen]:
     """
     Start RQ worker process with duplicate check.
@@ -54,14 +83,25 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
         from app.core.redis_config import redis_conn
 
         # Check for existing workers to prevent duplicates
+        # This should detect Fly.io worker if it's running
         existing_workers = Worker.all(connection=redis_conn)
         if existing_workers:
+            worker_names = [w.name for w in existing_workers]
             logger.warning(
-                f"Found {len(existing_workers)} existing workers, skipping startup"
+                f"Found {len(existing_workers)} existing worker(s): {worker_names}. "
+                "Skipping worker startup on API service."
             )
             return None
+        else:
+            logger.info("No existing workers found in Redis")
     except (RedisConnectionError, RedisTimeoutError, AttributeError) as e:
-        logger.warning(f"Could not check for existing workers: {e}")
+        logger.warning(
+            f"Could not check for existing workers: {e}. "
+            "This might mean Redis is not available or connection failed. "
+            "Worker startup will be skipped to avoid duplicates."
+        )
+        # Don't start worker if we can't check - safer to skip than risk duplicates
+        return None
 
     redis_url = os.getenv("REDIS_URL")
     if not redis_url:
@@ -70,15 +110,15 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
 
     logger.info("Starting RQ worker process")
     try:
-        # Validate redis_url format (basic check)
-        if not redis_url.startswith(("redis://", "rediss://")):
+        # Validate redis_url format and components (security: prevent command injection)
+        if not validate_redis_url(redis_url):
             from app.core.redis_config import _mask_redis_url
 
             logger.error(f"Invalid REDIS_URL format: {_mask_redis_url(redis_url)}")
             return None
 
         return subprocess.Popen(  # noqa: S603 - rq command is trusted, redis_url validated above
-            ["rq", "worker", "analysis", "default", "--url", redis_url],  # noqa: S607 - rq is trusted executable
+            ["rq", "worker", "analysis", "default", "--url", redis_url],  # noqa: S607 - validated URL prevents injection
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -106,12 +146,33 @@ async def lifespan(app: FastAPI) -> None:
     create_tables_if_not_exists()
 
     # Start RQ worker in production (only if not running as separate worker service)
+    # IMPORTANT: With Fly.io worker deployed, Render API should NOT start its own worker
     worker_process = None
     service_type = os.getenv("SERVICE_TYPE", "api").lower()
+
+    # Check if we should start a worker on this API service
+    # Only start if:
+    # 1. This is the API service (not a dedicated worker service)
+    # 2. ENVIRONMENT=production is set (legacy check - will be replaced with PROFILE in PR 3)
+    # 3. No existing workers found (checked inside start_rq_worker)
+    #
+    # With Fly.io worker running, start_rq_worker() should detect it and return None
+    # To be extra safe: Remove ENVIRONMENT=production from Render API env vars
     if os.getenv("ENVIRONMENT") == "production" and service_type == "api":
-        # Only start worker if this is the API service
-        # The worker startup function already checks for existing workers to prevent duplicates
+        logger.info("Checking if worker should start on API service...")
+        # The worker startup function checks for existing workers to prevent duplicates
+        # If Fly.io worker is running, this should return None
         worker_process = start_rq_worker()
+        if worker_process:
+            logger.warning(
+                "Started RQ worker on API service. "
+                "If you have a separate Fly.io worker, remove ENVIRONMENT=production from Render API."
+            )
+        else:
+            logger.info(
+                "Skipped starting worker on API service "
+                "(existing worker detected, REDIS_URL not set, or check failed)"
+            )
     elif service_type == "worker":
         logger.info("Running as worker service - skipping API worker startup")
 

@@ -6,9 +6,10 @@ import json
 import logging
 import time
 import uuid
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -21,6 +22,67 @@ from app.models.video_annotation import VideoAnnotation
 from app.services.storage_service import storage_service
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def video_writer_with_fallback(
+    path: str, fps: float, size: Tuple[int, int]
+) -> cv2.VideoWriter:
+    """
+    Context manager for cv2.VideoWriter with automatic codec fallback and cleanup.
+
+    Tries multiple codecs in order: H264 -> avc1 -> mp4v
+    Ensures proper cleanup even if codec selection fails.
+
+    Args:
+        path: Output video file path
+        fps: Frames per second
+        size: Video dimensions (width, height)
+
+    Yields:
+        cv2.VideoWriter instance if successful
+
+    Raises:
+        RuntimeError: If no codec works
+    """
+    # Try multiple codecs with fallback (H.264 should be available with opencv-python, but fallback for safety)
+    # Order: H264 (best) -> avc1 (H.264 alternative) -> mp4v (widely supported)
+    codecs_to_try = [
+        ("H264", "H.264"),
+        ("avc1", "H.264 (avc1)"),
+        ("mp4v", "MPEG-4"),
+    ]
+
+    writer: Optional[cv2.VideoWriter] = None
+
+    for fourcc_str, codec_name in codecs_to_try:
+        try:
+            fourcc = cv2.VideoWriter_fourcc(*fourcc_str)
+            writer = cv2.VideoWriter(path, fourcc, fps, size)
+
+            if writer.isOpened():
+                logger.info(
+                    f"Successfully created video writer with {codec_name} codec"
+                )
+                break
+            else:
+                writer.release()
+                writer = None
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.debug(f"Failed to use {codec_name} codec: {e}")
+            if writer:
+                writer.release()
+                writer = None
+            continue
+
+    if not writer or not writer.isOpened():
+        raise RuntimeError("Failed to create video writer with any available codec")
+
+    try:
+        yield writer
+    finally:
+        if writer is not None:
+            writer.release()
 
 
 class VideoAnnotationService:
@@ -240,58 +302,56 @@ class VideoAnnotationService:
 
         logger.info(f"Creating annotated video: {annotated_path}")
 
-        # Create video writer with H.264 codec for browser compatibility
-        fourcc = cv2.VideoWriter_fourcc(*"H264")
-        out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
-
-        if not out.isOpened():
-            logger.error("Failed to create video writer")
-            cap.release()
-            return None
-
-        # Process frames
+        # Process frames with context manager for automatic cleanup
         frame_count = 0
         annotated_frames = 0
 
         try:
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
+            with video_writer_with_fallback(
+                str(annotated_path), fps, (width, height)
+            ) as out:
+                while True:
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
 
-                # Get pose data for this frame
-                frame_pose_data = (
-                    pose_data[frame_count] if frame_count < len(pose_data) else None
-                )
-                frame_confidence = (
-                    confidence_scores[frame_count]
-                    if frame_count < len(confidence_scores)
-                    else 0.0
-                )
-
-                # Annotate frame if pose data exists
-                if frame_pose_data and frame_confidence > 0.5:
-                    annotated_frame = self._draw_pose_overlay(
-                        frame, frame_pose_data, frame_confidence, annotation_style
+                    # Get pose data for this frame
+                    frame_pose_data = (
+                        pose_data[frame_count] if frame_count < len(pose_data) else None
                     )
-                    out.write(annotated_frame)
-                    annotated_frames += 1
-                else:
-                    # Write original frame if no pose detected
-                    out.write(frame)
+                    frame_confidence = (
+                        confidence_scores[frame_count]
+                        if frame_count < len(confidence_scores)
+                        else 0.0
+                    )
 
-                frame_count += 1
+                    # Annotate frame if pose data exists
+                    if frame_pose_data and frame_confidence > 0.5:
+                        annotated_frame = self._draw_pose_overlay(
+                            frame, frame_pose_data, frame_confidence, annotation_style
+                        )
+                        out.write(annotated_frame)
+                        annotated_frames += 1
+                    else:
+                        # Write original frame if no pose detected
+                        out.write(frame)
 
-                # Progress logging
-                if frame_count % 100 == 0:
-                    logger.info(f"Processed {frame_count}/{total_frames} frames")
+                    frame_count += 1
 
-        except (OSError, RuntimeError, ValueError) as e:
+                    # Progress logging
+                    if frame_count % 100 == 0:
+                        logger.info(f"Processed {frame_count}/{total_frames} frames")
+
+        except RuntimeError as e:
+            logger.error(f"Failed to create video writer: {e}")
+            cap.release()
+            return None
+        except (OSError, ValueError) as e:
             logger.error(f"Error processing video frames: {e}")
+            cap.release()
             return None
         finally:
             cap.release()
-            out.release()
 
         # Validate output
         if annotated_path.exists() and annotated_path.stat().st_size > 0:

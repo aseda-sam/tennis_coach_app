@@ -63,7 +63,7 @@ tennis_coach_app/
 ├── backend/          # FastAPI + Computer Vision
 ├── frontend/         # React + TypeScript
 ├── ml_models/        # YOLO models
-└── project_docs/     # Project documentation
+└── project_docs/     # Local implementation notes (not in git)
 ```
 
 **Tech Stack:**
@@ -95,7 +95,7 @@ tennis_coach_app/
 
 ### Project Documentation
 
-- **[Architecture](project_docs/backend_architecture_improvements.md)** - System architecture and improvements
+> **Note:** Implementation plans and working documents are stored locally in `project_docs/` (not tracked in git). For operational documentation, see `backend/docs/`.
 
 ### Interactive API Documentation
 
