@@ -240,12 +240,36 @@ class VideoAnnotationService:
 
         logger.info(f"Creating annotated video: {annotated_path}")
 
-        # Create video writer with H.264 codec for browser compatibility
-        fourcc = cv2.VideoWriter_fourcc(*"H264")
-        out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
+        # Try multiple codecs with fallback (H.264 should be available with opencv-python, but fallback for safety)
+        # Order: H264 (best) -> avc1 (H.264 alternative) -> mp4v (widely supported)
+        codecs_to_try = [
+            ("H264", "H.264"),
+            ("avc1", "H.264 (avc1)"),
+            ("mp4v", "MPEG-4"),
+        ]
 
-        if not out.isOpened():
-            logger.error("Failed to create video writer")
+        out = None
+
+        for fourcc_str, codec_name in codecs_to_try:
+            try:
+                fourcc = cv2.VideoWriter_fourcc(*fourcc_str)
+                out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
+
+                if out.isOpened():
+                    logger.info(f"Successfully created video writer with {codec_name} codec")
+                    break
+                else:
+                    out.release()
+                    out = None
+            except (OSError, RuntimeError, ValueError) as e:
+                logger.debug(f"Failed to use {codec_name} codec: {e}")
+                if out:
+                    out.release()
+                    out = None
+                continue
+
+        if not out or not out.isOpened():
+            logger.error("Failed to create video writer with any available codec")
             cap.release()
             return None
 

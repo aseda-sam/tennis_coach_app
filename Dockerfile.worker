@@ -20,8 +20,9 @@ WORKDIR /app/backend
 RUN pip install --no-cache-dir --user \
     torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
-# Install opencv-python-headless instead of opencv-python (smaller, no GUI deps)
-RUN pip install --no-cache-dir --user opencv-python-headless
+# Install opencv-python (full version with H.264 codec support)
+# With 2GB RAM, the extra GUI dependencies are acceptable for better codec support
+RUN pip install --no-cache-dir --user opencv-python
 
 # Now install the rest (ultralytics will use already-installed torch)
 RUN pip install --no-cache-dir --user -e .
