@@ -1,0 +1,87 @@
+# Optimized Worker Dockerfile for Fly.io
+# Uses CPU-only PyTorch to reduce image size from 8GB+ to ~2GB
+
+# Build stage - for installing dependencies
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+
+# Install build dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better layer caching
+COPY backend/pyproject.toml ./backend/
+WORKDIR /app/backend
+
+# CRITICAL: Install CPU-only PyTorch FIRST (200MB vs 2GB)
+# This prevents ultralytics from pulling in CUDA-enabled PyTorch
+RUN pip install --no-cache-dir --user \
+    torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# Install opencv-python-headless instead of opencv-python (smaller, no GUI deps)
+RUN pip install --no-cache-dir --user opencv-python-headless
+
+# Now install the rest (ultralytics will use already-installed torch)
+RUN pip install --no-cache-dir --user -e .
+
+# Clean up Python cache and unnecessary files from installed packages
+RUN find /root/.local -type d -name "__pycache__" -exec rm -r {} + 2>/dev/null || true && \
+    find /root/.local -type d -name "tests" -exec rm -r {} + 2>/dev/null || true && \
+    find /root/.local -type d -name "test" -exec rm -r {} + 2>/dev/null || true && \
+    find /root/.local -type f -name "*.pyc" -delete 2>/dev/null || true && \
+    find /root/.local -type f -name "*.pyo" -delete 2>/dev/null || true && \
+    find /root/.local -type f -name "*.md" -delete 2>/dev/null || true
+
+# Runtime stage - minimal final image
+FROM python:3.11-slim AS runtime
+
+WORKDIR /app
+
+# Install only runtime system dependencies (no build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ffmpeg \
+    libglib2.0-0 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user first (needed before copying to home directory)
+RUN adduser --disabled-password --gecos '' appuser
+
+# Copy Python dependencies from builder to user-accessible location
+COPY --from=builder /root/.local /home/appuser/.local
+
+# Make sure scripts in .local are usable
+ENV PATH=/home/appuser/.local/bin:$PATH
+
+# Copy backend code (models excluded via .dockerignore)
+COPY backend/ ./backend/
+
+WORKDIR /app/backend
+
+# Remove unnecessary files from copied code
+RUN rm -rf tests/ \
+    && rm -rf docs/ \
+    && rm -rf *.md \
+    && find . -type d -name "__pycache__" -exec rm -r {} + 2>/dev/null || true && \
+    find . -type f -name "*.pyc" -delete 2>/dev/null || true && \
+    find . -type f -name "*.pyo" -delete 2>/dev/null || true
+
+# Create required directories (models will be downloaded here at runtime)
+# Set ownership before switching user
+RUN mkdir -p ml_models data/videos/raw data/videos/processed data/analysis_cache data/database && \
+    chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Set working directory
+WORKDIR /app/backend
+
+# Worker runs the RQ worker script
+# Models will be downloaded automatically on first use (not in image)
+# Fly.io will restart the container if this process exits
+CMD ["python", "scripts/start_rq_worker.py"]

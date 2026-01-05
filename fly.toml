@@ -1,0 +1,33 @@
+# Fly.io configuration for Tennis Coach Worker Service
+# This worker processes video analysis jobs from the Redis queue
+
+app = "tennis-coach-worker"
+primary_region = "iad"  # Washington, D.C. (change to your preferred region)
+
+[build]
+  dockerfile = "Dockerfile.worker"
+
+[env]
+  # Service type - tells the app to run as worker, not API
+  SERVICE_TYPE = "worker"
+  # Profile - production mode
+  PROFILE = "production"
+  # Disable fork safety check (needed for RQ worker)
+  OBJC_DISABLE_INITIALIZE_FORK_SAFETY = "YES"
+
+# Process configuration
+# Worker runs the RQ worker script
+# Fly.io will restart the container if this process exits
+[processes]
+  worker = "python scripts/start_rq_worker.py"
+
+# Note: VM resources (memory, CPU) are configured via CLI:
+#   fly scale vm shared-cpu-2x --memory 1024
+#
+# Scaling to zero is configured via:
+#   fly scale count 0
+#
+# Environment variables (secrets) are set via:
+#   fly secrets set REDIS_URL=...
+#   fly secrets set SUPABASE_URL=...
+#   etc.

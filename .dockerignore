@@ -65,6 +65,35 @@ Thumbs.db
 data/
 backend/data/
 
+# ML Models (downloaded at runtime, not included in image)
+ml_models/
+backend/ml_models/
+**/*.pt
+**/*.pth
+
+# Tests and docs (not needed in production)
+**/tests/
+**/test_*.py
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+*.md
+docs/
+backend/docs/
+backend/tests/
+
+# Notebooks
+**/notebooks/
+*.ipynb
+
+# Development files
+.env
+.env.*
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+
 # Test coverage
 coverage/
 .coverage
