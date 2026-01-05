@@ -256,7 +256,9 @@ class VideoAnnotationService:
                 out = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
 
                 if out.isOpened():
-                    logger.info(f"Successfully created video writer with {codec_name} codec")
+                    logger.info(
+                        f"Successfully created video writer with {codec_name} codec"
+                    )
                     break
                 else:
                     out.release()

@@ -39,6 +39,35 @@ from app.utils.error_handling import (
 logger = logging.getLogger(__name__)
 
 
+def validate_redis_url(url: str) -> bool:
+    """
+    Validate Redis URL format and components to prevent command injection.
+
+    Args:
+        url: Redis connection URL to validate
+
+    Returns:
+        True if URL is valid, False otherwise
+    """
+    import urllib.parse
+
+    try:
+        parsed = urllib.parse.urlparse(url)
+        # Check scheme
+        if parsed.scheme not in ("redis", "rediss"):
+            return False
+        # Check hostname exists and is safe
+        if not parsed.hostname:
+            return False
+        # Validate hostname contains only safe characters
+        if not all(c.isalnum() or c in ".-_" for c in parsed.hostname):
+            return False
+        # Check port exists and is in valid range
+        return bool(parsed.port and 1 <= parsed.port <= 65535)
+    except (ValueError, AttributeError, TypeError):
+        return False
+
+
 def start_rq_worker() -> Optional[subprocess.Popen]:
     """
     Start RQ worker process with duplicate check.
@@ -81,15 +110,15 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
 
     logger.info("Starting RQ worker process")
     try:
-        # Validate redis_url format (basic check)
-        if not redis_url.startswith(("redis://", "rediss://")):
+        # Validate redis_url format and components (security: prevent command injection)
+        if not validate_redis_url(redis_url):
             from app.core.redis_config import _mask_redis_url
 
             logger.error(f"Invalid REDIS_URL format: {_mask_redis_url(redis_url)}")
             return None
 
         return subprocess.Popen(  # noqa: S603 - rq command is trusted, redis_url validated above
-            ["rq", "worker", "analysis", "default", "--url", redis_url],  # noqa: S607 - rq is trusted executable
+            ["rq", "worker", "analysis", "default", "--url", redis_url],  # noqa: S607 - validated URL prevents injection
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
