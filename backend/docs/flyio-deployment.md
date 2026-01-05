@@ -124,8 +124,9 @@ fly apps create tennis-coach-worker
 Set all required environment variables as Fly.io secrets:
 
 ```bash
-# Redis connection (from your Render Redis instance)
-fly secrets set REDIS_URL="redis://default:<password>@<host>:<port>/0"
+# Redis connection (use Upstash Redis - see upstash-redis-setup.md for details)
+# Format: redis://default:password@region.upstash.io:6379
+fly secrets set REDIS_URL="redis://default:your-password@your-region.upstash.io:6379"
 
 # Profile (production mode)
 fly secrets set PROFILE="production"
@@ -145,9 +146,11 @@ fly secrets set ENVIRONMENT="production"
 
 **Important**:
 
-- Get `REDIS_URL` from your Render Redis dashboard
+- **Redis**: Use Upstash Redis (public endpoint, no IP whitelisting needed) - see [upstash-redis-setup.md](upstash-redis-setup.md) for setup instructions
 - Get Supabase credentials from your Supabase project settings
 - Never commit secrets to git!
+
+**Note**: Render Redis requires IP whitelisting for external access, which doesn't work with Fly.io's dynamic IPs. Upstash Redis is recommended for this setup.
 
 ### View Current Secrets
 
@@ -578,9 +581,10 @@ git push
 
 ## Related Documentation
 
-- [Infrastructure Recommendations](../project_docs/infrastructure-recommendations.md)
 - [Background Tasks with RQ](background-tasks-rq.md)
 - [Profile Configuration](profile-configuration.md)
+
+> **Note:** Infrastructure recommendations and implementation plans are stored locally in `project_docs/` (not tracked in git).
 
 ## Support
 
