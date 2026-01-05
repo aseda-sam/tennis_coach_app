@@ -46,8 +46,8 @@ def validate_video_file(
     if file_size <= 0:
         raise handle_file_error("invalid", filename, "File size must be positive")
 
-    if file_size > settings.MAX_FILE_SIZE:
-        max_size_mb = settings.MAX_FILE_SIZE / (1024 * 1024)
+    if file_size > settings.effective_max_file_size:
+        max_size_mb = settings.effective_max_file_size / (1024 * 1024)
         raise handle_file_error(
             "too_large", filename, f"Maximum file size is {max_size_mb:.1f}MB"
         )
@@ -97,12 +97,12 @@ def validate_video_file(
         # Duration validation
         if (
             metadata.get("duration")
-            and metadata["duration"] > settings.MAX_VIDEO_DURATION
+            and metadata["duration"] > settings.effective_max_video_duration
         ):
             raise handle_file_error(
                 "duration_too_long",
                 filename,
-                f"Maximum duration is {settings.MAX_VIDEO_DURATION} seconds",
+                f"Maximum duration is {settings.effective_max_video_duration} seconds",
             )
 
 

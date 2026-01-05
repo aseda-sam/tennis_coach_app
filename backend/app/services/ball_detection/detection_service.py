@@ -135,7 +135,7 @@ class BallDetectionService:
             raise RuntimeError(f"Selected YOLO model '{selected_model}' not available")
 
         ball_detector = self.yolo_models[selected_model]
-        self.logger.info(
+        logger.info(
             f"Using YOLO model: {selected_model} (quality: {video_quality_level or 'unknown'})"
         )
 

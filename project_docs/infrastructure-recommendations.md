@@ -1179,4 +1179,571 @@ The existing `config.py` profile pattern is excellent for switching behavior bet
 
 ---
 
-**Document Status:** Updated January 4, 2026 - Includes codebase optimization analysis
+---
+
+## Frontend Optimization Analysis
+
+### Overview
+
+The frontend has several optimization opportunities that can reduce backend load, improve user experience, and decrease costs. This analysis focuses on **state management**, **caching**, **request optimization**, and **data fetching patterns**.
+
+---
+
+### 🚨 Critical Issue: N+1 Query Problem
+
+**Location:** `frontend/src/components/VideoList.tsx` (lines 73-87)
+
+**The Problem:**
+
+When loading the video list, the code makes **one API call per video** to get analysis status:
+
+```typescript
+// VideoList.tsx - loadVideos()
+const videosResponse = await videoApi.getVideos();  // 1 API call
+
+// Then for EACH video, another API call:
+for (const video of videosResponse.videos) {
+  const status = await videoApi.getVideoAnalysisStatus(video.id);  // N API calls!
+  analysisStatusMap.set(video.id, status);
+}
+```
+
+**The Math:**
+
+- 10 videos = **11 API calls** (1 list + 10 status checks)
+- 50 videos = **51 API calls**
+- Each call has network latency (~100-300ms)
+- Total time: **1-15 seconds** just to load the list
+
+**Why This Matters:**
+
+1. **Backend load** - 10x more requests than necessary
+2. **User experience** - Slow page loads
+3. **Cost** - More API requests = more compute time
+4. **Rate limiting risk** - Could hit limits with many videos
+
+**The Fix:**
+
+**Option 1: Backend Optimization (Recommended)** ⭐
+
+Modify backend to return analysis status with video list:
+
+```python
+# backend/app/api/routes/video.py
+@router.get("/", response_model=List[VideoWithAnalysisStatus])
+async def list_videos(...):
+    videos = db.query(Video).all()
+    
+    # Batch load analysis statuses in one query
+    video_ids = [v.id for v in videos]
+    pose_detections = db.query(PoseDetection).filter(
+        PoseDetection.video_id.in_(video_ids)
+    ).all()
+    
+    # Map to videos
+    status_map = {pd.video_id: pd for pd in pose_detections}
+    
+    return [
+        VideoWithAnalysisStatus(
+            **video.dict(),
+            has_analysis=video.id in status_map,
+            analysis_types=["pose"] if video.id in status_map else []
+        )
+        for video in videos
+    ]
+```
+
+**Impact:** 11 API calls → 1 API call (91% reduction)
+
+**Option 2: Frontend Batching**
+
+Batch status requests (if backend can't be changed):
+
+```typescript
+// Batch requests instead of sequential
+const statusPromises = videos.map(v => 
+  videoApi.getVideoAnalysisStatus(v.id)
+);
+const statuses = await Promise.all(statusPromises);
+```
+
+**Impact:** Still N requests, but parallel (faster, but not ideal)
+
+---
+
+### 🔶 Medium Issue: No Caching
+
+**Current State:** Every navigation refetches all data.
+
+**The Problem:**
+
+```typescript
+// VideoList.tsx
+useEffect(() => {
+  loadVideos();  // Always fetches, even if data is fresh
+}, [loadVideos]);
+```
+
+**What Happens:**
+
+1. User views video list → API call
+2. User clicks "View Analysis" → navigates away
+3. User clicks "Back" → **Another API call** (data was just fetched!)
+4. User refreshes page → **Another API call**
+
+**Why Caching Matters:**
+
+- **Reduces backend load** - Don't refetch unchanged data
+- **Faster UX** - Instant display of cached data
+- **Works offline** - Show cached data when network is slow
+- **Cost savings** - Fewer API requests
+
+**The Fix: React Query (TanStack Query)**
+
+React Query is the industry standard for data fetching and caching:
+
+```typescript
+// Install: npm install @tanstack/react-query
+
+// In your App.tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,  // Data fresh for 5 minutes
+      cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    },
+  },
+});
+
+// Wrap your app
+<QueryClientProvider client={queryClient}>
+  <App />
+</QueryClientProvider>
+
+// In VideoList.tsx
+import { useQuery } from '@tanstack/react-query';
+
+const { data: videos, isLoading } = useQuery({
+  queryKey: ['videos'],
+  queryFn: () => videoApi.getVideos(),
+  staleTime: 5 * 60 * 1000,  // 5 minutes
+});
+```
+
+**Benefits:**
+
+- ✅ **Automatic caching** - Data cached after first fetch
+- ✅ **Background refetching** - Updates cache in background
+- ✅ **Request deduplication** - Multiple components requesting same data = 1 request
+- ✅ **Stale-while-revalidate** - Show cached data while fetching fresh
+- ✅ **Optimistic updates** - Update UI immediately, sync later
+
+**Impact:** 
+- 50-80% reduction in API calls
+- Instant page loads (after first visit)
+- Better offline experience
+
+---
+
+### 🔶 Medium Issue: Aggressive Polling
+
+**Location:** `frontend/src/hooks/useAnalysisProgress.ts` (line 42)
+
+**Current:** Polls every 2 seconds (2000ms)
+
+```typescript
+const { pollInterval = 2000 } = options;  // 2 seconds
+```
+
+**The Problem:**
+
+- For a 5-minute analysis job = **150 polls**
+- Each poll = 1 API request
+- If 3 videos analyzing = **450 requests in 5 minutes**
+- Most polls return "processing" (no new data)
+
+**The Fix: Adaptive Polling**
+
+Poll more frequently when job is active, less when queued:
+
+```typescript
+const getPollInterval = (status: string, elapsed: number) => {
+  if (status === 'queued') return 5000;      // 5 seconds when queued
+  if (status === 'processing') return 2000;  // 2 seconds when processing
+  if (elapsed > 60000) return 5000;         // Slow down after 1 minute
+  return 2000;
+};
+```
+
+**Better Fix: Exponential Backoff**
+
+```typescript
+const getPollInterval = (attempt: number) => {
+  // 2s, 4s, 8s, 16s, max 30s
+  return Math.min(2000 * Math.pow(2, attempt), 30000);
+};
+```
+
+**Impact:** 50-70% reduction in polling requests
+
+---
+
+### 🔶 Medium Issue: No Request Deduplication
+
+**Current:** Multiple components can request the same data simultaneously.
+
+**Example:**
+
+```typescript
+// VideoList.tsx requests video list
+const videos = await videoApi.getVideos();
+
+// AnalysisDashboard.tsx also requests analysis status
+const status = await videoApi.getVideoAnalysisStatus(videoId);
+
+// If both components mount at same time = duplicate requests
+```
+
+**The Fix:**
+
+React Query handles this automatically, but you can also use a simple cache:
+
+```typescript
+// Simple request cache
+const requestCache = new Map<string, Promise<any>>();
+
+async function cachedRequest<T>(
+  key: string, 
+  fetcher: () => Promise<T>
+): Promise<T> {
+  if (requestCache.has(key)) {
+    return requestCache.get(key)!;
+  }
+  
+  const promise = fetcher();
+  requestCache.set(key, promise);
+  
+  promise.finally(() => {
+    requestCache.delete(key);  // Clean up after 5 seconds
+    setTimeout(() => requestCache.delete(key), 5000);
+  });
+  
+  return promise;
+}
+```
+
+**Impact:** Prevents duplicate requests when components mount simultaneously
+
+---
+
+### 🔶 Medium Issue: Unnecessary Re-renders
+
+**Location:** Multiple components
+
+**The Problem:**
+
+Components re-render on every state change, even when data hasn't changed:
+
+```typescript
+// VideoList.tsx
+const [videos, setVideos] = useState<VideoMetadata[]>([]);
+const [analysisStatuses, setAnalysisStatuses] = useState<Map<...>>(new Map());
+// ... 6 more useState calls
+```
+
+**The Fix: useMemo and useCallback**
+
+Memoize expensive computations:
+
+```typescript
+// Memoize filtered/sorted videos
+const sortedVideos = useMemo(() => {
+  return [...videos].sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+}, [videos]);
+
+// Memoize status lookup
+const getVideoStatus = useCallback((videoId: number) => {
+  return analysisStatuses.get(videoId);
+}, [analysisStatuses]);
+```
+
+**Impact:** Fewer re-renders = better performance
+
+---
+
+### 🔶 Small Issue: No Optimistic Updates
+
+**Current:** User deletes video → waits for API → then UI updates
+
+**The Fix:** Update UI immediately, rollback on error
+
+```typescript
+const handleDelete = async (videoId: number) => {
+  // Optimistic update
+  const previousVideos = videos;
+  setVideos(videos.filter(v => v.id !== videoId));
+  
+  try {
+    await videoApi.deleteVideo(videoId);
+  } catch (error) {
+    // Rollback on error
+    setVideos(previousVideos);
+    setError('Failed to delete video');
+  }
+};
+```
+
+**Impact:** Feels instant to user
+
+---
+
+## Frontend Optimization Recommendations
+
+### Priority 1: Fix N+1 Query (Critical) ⭐
+
+**Action:** Modify backend to return analysis status with video list
+
+**Effort:** 2-4 hours  
+**Impact:** 91% reduction in API calls for video list  
+**Cost Savings:** Significant (fewer requests = less compute)
+
+**Implementation:**
+
+1. Create new schema: `VideoWithAnalysisStatus`
+2. Modify `list_videos` endpoint to batch load analysis statuses
+3. Update frontend to use new response format
+
+---
+
+### Priority 2: Add React Query (High Impact) ⭐
+
+**Action:** Install and integrate React Query for data fetching
+
+**Effort:** 1-2 days  
+**Impact:** 50-80% reduction in API calls, instant page loads  
+**Cost Savings:** Moderate (fewer redundant requests)
+
+**Implementation:**
+
+1. Install: `npm install @tanstack/react-query`
+2. Wrap app with `QueryClientProvider`
+3. Replace `useState` + `useEffect` patterns with `useQuery`
+4. Configure cache times (5 min stale, 10 min cache)
+
+**Example Migration:**
+
+```typescript
+// BEFORE
+const [videos, setVideos] = useState([]);
+useEffect(() => {
+  videoApi.getVideos().then(setVideos);
+}, []);
+
+// AFTER
+const { data: videos, isLoading } = useQuery({
+  queryKey: ['videos'],
+  queryFn: () => videoApi.getVideos(),
+});
+```
+
+---
+
+### Priority 3: Optimize Polling (Medium Impact)
+
+**Action:** Implement adaptive polling with exponential backoff
+
+**Effort:** 2-4 hours  
+**Impact:** 50-70% reduction in polling requests  
+**Cost Savings:** Small but meaningful for long-running jobs
+
+**Implementation:**
+
+1. Update `useAnalysisProgress` hook
+2. Add adaptive interval based on job status
+3. Implement exponential backoff
+
+---
+
+### Priority 4: Add Memoization (Low-Medium Impact)
+
+**Action:** Use `useMemo` and `useCallback` for expensive operations
+
+**Effort:** 2-3 hours  
+**Impact:** Better performance, fewer re-renders  
+**Cost Savings:** Minimal (client-side only)
+
+---
+
+## Backend Optimization Opportunity
+
+### Include Analysis Status in Video List
+
+**Current Backend Response:**
+
+```python
+# GET /videos/
+[
+  {"id": 1, "filename": "video1.mp4", ...},
+  {"id": 2, "filename": "video2.mp4", ...},
+]
+```
+
+**Optimized Backend Response:**
+
+```python
+# GET /videos/?include_analysis_status=true
+[
+  {
+    "id": 1,
+    "filename": "video1.mp4",
+    "analysis_status": {
+      "has_analysis": true,
+      "has_annotated_video": true,
+      "analysis_types": ["pose_detection"]
+    }
+  },
+  {
+    "id": 2,
+    "filename": "video2.mp4",
+    "analysis_status": {
+      "has_analysis": false,
+      "has_annotated_video": false,
+      "analysis_types": []
+    }
+  }
+]
+```
+
+**Benefits:**
+
+- ✅ **Eliminates N+1 problem** - One query instead of N+1
+- ✅ **Faster response** - Batch database queries
+- ✅ **Less backend load** - Fewer endpoint calls
+- ✅ **Better UX** - Faster page loads
+
+**Implementation:**
+
+```python
+# backend/app/api/routes/video.py
+@router.get("/", response_model=List[VideoListItem])
+async def list_videos(
+    include_analysis_status: bool = False,  # New query param
+    ...
+):
+    videos = db.query(Video).all()
+    
+    if include_analysis_status:
+        # Batch load all analysis statuses in one query
+        video_ids = [v.id for v in videos]
+        
+        # Single query for all pose detections
+        pose_detections = db.query(PoseDetection).filter(
+            PoseDetection.video_id.in_(video_ids),
+            PoseDetection.status == "completed"
+        ).all()
+        
+        # Build status map
+        status_map = {}
+        for pd in pose_detections:
+            if pd.video_id not in status_map:
+                status_map[pd.video_id] = {
+                    "has_analysis": True,
+                    "analysis_types": []
+                }
+            status_map[pd.video_id]["analysis_types"].append("pose_detection")
+        
+        # Attach to videos
+        for video in videos:
+            video.analysis_status = status_map.get(video.id, {
+                "has_analysis": False,
+                "analysis_types": []
+            })
+    
+    return videos
+```
+
+---
+
+## Frontend Optimization: Implementation Roadmap
+
+### Phase 1: Quick Wins (1-2 days)
+
+- [ ] Fix N+1 query (backend optimization)
+- [ ] Add request batching (if backend can't be changed immediately)
+- [ ] Optimize polling intervals
+
+**Impact:** 70-90% reduction in API calls
+
+---
+
+### Phase 2: Add Caching (2-3 days)
+
+- [ ] Install React Query
+- [ ] Migrate VideoList to useQuery
+- [ ] Migrate AnalysisDashboard to useQuery
+- [ ] Configure cache times
+
+**Impact:** 50-80% reduction in redundant requests
+
+---
+
+### Phase 3: Performance Optimization (1-2 days)
+
+- [ ] Add useMemo for expensive computations
+- [ ] Add useCallback for event handlers
+- [ ] Implement optimistic updates
+- [ ] Add request deduplication
+
+**Impact:** Better UX, fewer re-renders
+
+---
+
+## Cost Impact Analysis
+
+### Current State (10 videos, user visits list 5 times/day)
+
+- Video list: 5 requests/day
+- Analysis status: 50 requests/day (10 videos × 5 visits)
+- **Total: 55 requests/day**
+
+### After Optimization
+
+- Video list with status: 5 requests/day
+- Cached on subsequent visits: 0 requests (from cache)
+- **Total: ~5-10 requests/day**
+
+**Reduction: 82-91% fewer API calls**
+
+### At Scale (100 users, 10 videos each)
+
+**Current:**
+- 1,000 videos × 5 visits = 5,000 status requests/day
+- Plus 500 list requests = **5,500 requests/day**
+
+**After Optimization:**
+- 500 list requests (with status included)
+- Cached for most users = **~500-1,000 requests/day**
+
+**Reduction: 82-91% fewer requests = significant cost savings**
+
+---
+
+## Summary: Frontend Optimization Priorities
+
+| Optimization | Priority | Effort | Impact | Cost Savings |
+|--------------|----------|--------|--------|--------------|
+| **Fix N+1 Query** | Critical | 2-4h | 91% fewer calls | High |
+| **Add React Query** | High | 1-2d | 50-80% fewer calls | Moderate |
+| **Optimize Polling** | Medium | 2-4h | 50-70% fewer polls | Small |
+| **Add Memoization** | Low | 2-3h | Better performance | Minimal |
+| **Optimistic Updates** | Low | 1-2h | Better UX | None |
+
+**Recommendation:** Start with N+1 fix (biggest win), then add React Query (industry standard, huge benefits).
+
+---
+
+**Document Status:** Updated January 4, 2026 - Includes frontend optimization analysis
