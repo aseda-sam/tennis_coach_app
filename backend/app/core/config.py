@@ -149,6 +149,27 @@ class Settings(BaseSettings):
         return self.PROFILE != "local"
 
     @property
+    def effective_max_video_duration(self) -> int:
+        """Get max video duration based on profile."""
+        if self.is_production:
+            return 60  # 1 minute for production (memory constraints)
+        return self.MAX_VIDEO_DURATION
+
+    @property
+    def effective_max_file_size(self) -> int:
+        """Get max file size based on profile."""
+        if self.is_production:
+            return 20971520  # 20MB for production (memory constraints)
+        return self.MAX_FILE_SIZE
+
+    @property
+    def effective_frame_skip_ratio(self) -> int:
+        """Get frame skip ratio based on profile."""
+        if self.is_production:
+            return 4  # Every 4th frame for production (memory constraints)
+        return self.FRAME_SKIP_RATIO
+
+    @property
     def STORAGE_TYPE(self) -> str:  # noqa: N802 - Property name matches existing API
         """Get storage type, auto-detected if not explicitly set.
 
@@ -249,14 +270,14 @@ def get_environment_limits() -> dict:
         return {
             "max_resolution": settings.DOCKER_MAX_VIDEO_RESOLUTION,
             "max_fps": settings.DOCKER_MAX_FPS,
-            "frame_skip_ratio": settings.DOCKER_FRAME_SKIP_RATIO,
+            "frame_skip_ratio": settings.effective_frame_skip_ratio,
             "environment": "docker",
         }
     else:
         return {
             "max_resolution": settings.MAX_VIDEO_RESOLUTION,
             "max_fps": settings.MAX_FPS,
-            "frame_skip_ratio": settings.FRAME_SKIP_RATIO,
+            "frame_skip_ratio": settings.effective_frame_skip_ratio,
             "environment": "local",
         }
 
