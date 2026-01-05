@@ -105,7 +105,7 @@ The application is experiencing **Out of Memory (OOM) errors** on Render's free 
 
 - Create `fly.toml` for worker service
 - Deploy worker container with `python scripts/start_rq_worker.py`
-- Set environment variables (REDIS_URL, ENVIRONMENT, etc.)
+- Set environment variables (REDIS_URL, PROFILE=production, etc.)
 
 **Estimated Monthly Cost:**
 
@@ -423,31 +423,9 @@ These can be set via environment variables or enforced in `backend/app/core/conf
 
 ---
 
-## Deployment Checklist
+## Deployment Checklist (Legacy - See Updated Version Below)
 
-### Phase 1: Quick Fixes (Before Migration)
-
-- [ ] Fix ball detection logger bug
-- [ ] Add `ENVIRONMENT=production` to Render API env vars (if not already set)
-- [ ] Enforce stricter video limits (test with short videos)
-- [ ] Monitor for OOM errors
-
-### Phase 2: Fly.io Worker Setup
-
-- [ ] Create Fly.io account
-- [ ] Install Fly CLI
-- [ ] Create `fly.toml` configuration
-- [ ] Set up environment variables
-- [ ] Deploy worker service
-- [ ] Test worker connectivity to Redis
-- [ ] Monitor worker logs
-
-### Phase 3: Optimization
-
-- [ ] Tune video limits based on actual usage
-- [ ] Add worker health monitoring
-- [ ] Set up alerts for failed jobs
-- [ ] Document deployment process
+**Note:** This section has been superseded by the complete "Deployment Checklist" section below which includes all phases.
 
 ---
 
@@ -1092,7 +1070,173 @@ async function quickPreviewAnalysis(videoFile: File) {
 
 ---
 
-## Deployment Checklist (Updated)
+## Recommended Implementation Strategy: Branching & PRs
+
+**Why break into branches?** These optimizations touch multiple areas (backend, frontend, infrastructure, config). Breaking into separate PRs enables:
+
+- ✅ Easier code review (focused, smaller changes)
+- ✅ Independent testing (test each change in isolation)
+- ✅ Safer rollback (if one change causes issues)
+- ✅ Clearer git history (each PR has a single purpose)
+
+### Recommended Branch Structure
+
+#### **PR 1: Critical Bug Fixes** (Do First)
+
+**Branch:** `fix/critical-bugs`  
+**Scope:**
+
+- Fix ball detection logger bug
+- Consolidate `ENVIRONMENT` → `PROFILE`
+- Add missing environment variable documentation
+
+**Why separate:** These are blocking issues that should be fixed before other work.
+
+---
+
+#### **PR 2: Configuration & Limits** (Quick Win)
+
+**Branch:** `feat/production-config-limits`  
+**Scope:**
+
+- Add `MAX_FRAMES_TO_PROCESS` config
+- Set production video limits (duration, resolution, file size)
+- Update `FRAME_SKIP_RATIO` for production
+- Add `YOLO_PRODUCTION_MODEL` and `MEDIAPIPE_MODEL_VARIANT` settings
+
+**Why separate:** Pure configuration changes, no code logic changes. Easy to review and test.
+
+---
+
+#### **PR 3: Model Loading Optimization** (Medium)
+
+**Branch:** `feat/optimize-model-loading`  
+**Scope:**
+
+- Only load the YOLO model that will be used (not all models)
+- Make MediaPipe model variant configurable
+- Apply frame skip consistently across all services
+- Add `max_frames` parameter to RQ tasks
+
+**Why separate:** Focused on memory optimization through smarter model loading. Can be tested independently.
+
+---
+
+#### **PR 4: Frontend N+1 Query Fix** (High Impact)
+
+**Branch:** `feat/fix-frontend-n-plus-one`  
+**Scope:**
+
+- Backend: Modify video list endpoint to include analysis status
+- Frontend: Update to use new response format
+- Remove individual status API calls from VideoList
+
+**Why separate:** This is a complete feature (backend + frontend) that solves a specific problem. High impact, easy to measure.
+
+---
+
+#### **PR 5: Frontend Caching (React Query)** (Medium)
+
+**Branch:** `feat/add-react-query`  
+**Scope:**
+
+- Install `@tanstack/react-query`
+- Migrate VideoList to use `useQuery`
+- Migrate AnalysisDashboard to use `useQuery`
+- Configure cache times
+
+**Why separate:** Adds a new dependency and changes data fetching patterns. Good to test separately from other frontend changes.
+
+---
+
+#### **PR 6: Frontend Polling Optimization** (Small)
+
+**Branch:** `feat/optimize-polling`  
+**Scope:**
+
+- Update `useAnalysisProgress` hook
+- Implement adaptive polling intervals
+- Add exponential backoff
+
+**Why separate:** Small, focused change. Can be merged quickly after React Query is in place.
+
+---
+
+#### **PR 7: Fly.io Worker Deployment** (Infrastructure)
+
+**Branch:** `feat/flyio-worker-deployment`  
+**Scope:**
+
+- Create `fly.toml` configuration
+- Set up Fly.io deployment
+- Configure environment variables
+- Test worker connectivity
+
+**Why separate:** Infrastructure changes should be isolated. Can be tested in staging before production.
+
+---
+
+#### **PR 8: Frame Streaming Refactor** (Large, Long-term)
+
+**Branch:** `feat/frame-streaming`  
+**Scope:**
+
+- Refactor `extract_frames()` to generator pattern
+- Update detection services to process frames one at a time
+- Remove all `List[np.ndarray]` return types
+- Update RQ tasks to use streaming
+
+**Why separate:** This is a major refactor touching core video processing logic. Needs thorough testing. Can be done after other optimizations are in place.
+
+---
+
+#### **PR 9: Frontend Performance (Memoization)** (Optional, Low Priority)
+
+**Branch:** `feat/frontend-memoization`  
+**Scope:**
+
+- Add `useMemo` for expensive computations
+- Add `useCallback` for event handlers
+- Implement optimistic updates
+
+**Why separate:** Nice-to-have optimizations. Can be done anytime after React Query is in place.
+
+---
+
+### PR Dependencies
+
+```
+PR 1 (Critical Bugs)
+  ↓
+PR 2 (Config Limits) ──┐
+                       ├──→ PR 3 (Model Loading)
+PR 4 (N+1 Fix) ────────┘
+                       ├──→ PR 5 (React Query) ──→ PR 6 (Polling)
+                       └──→ PR 9 (Memoization)
+PR 7 (Fly.io) ──→ (can be done in parallel with others)
+PR 8 (Frame Streaming) ──→ (do after PR 2 & 3 are stable)
+```
+
+### Recommended Order
+
+1. **Week 1:** PR 1, PR 2 (critical fixes + config)
+2. **Week 2:** PR 3, PR 4 (model optimization + N+1 fix)
+3. **Week 3:** PR 5, PR 6 (React Query + polling)
+4. **Week 4:** PR 7 (Fly.io deployment)
+5. **Future:** PR 8 (frame streaming - larger refactor)
+6. **Optional:** PR 9 (memoization - nice to have)
+
+### Testing Strategy
+
+- **Each PR should be tested independently** before merging
+- **PR 1-3:** Test with short videos on current Render setup
+- **PR 4-6:** Test frontend with mock data, then with real backend
+- **PR 7:** Test worker deployment in staging before production
+- **PR 8:** Requires thorough integration testing with various video types
+
+---
+
+## Deployment Checklist
 
 ### Phase 1: Quick Fixes (Before Migration)
 
@@ -1179,8 +1323,6 @@ The existing `config.py` profile pattern is excellent for switching behavior bet
 
 ---
 
----
-
 ## Frontend Optimization Analysis
 
 ### Overview
@@ -1199,11 +1341,11 @@ When loading the video list, the code makes **one API call per video** to get an
 
 ```typescript
 // VideoList.tsx - loadVideos()
-const videosResponse = await videoApi.getVideos();  // 1 API call
+const videosResponse = await videoApi.getVideos(); // 1 API call
 
 // Then for EACH video, another API call:
 for (const video of videosResponse.videos) {
-  const status = await videoApi.getVideoAnalysisStatus(video.id);  // N API calls!
+  const status = await videoApi.getVideoAnalysisStatus(video.id); // N API calls!
   analysisStatusMap.set(video.id, status);
 }
 ```
@@ -1230,19 +1372,20 @@ Modify backend to return analysis status with video list:
 
 ```python
 # backend/app/api/routes/video.py
+# Note: This is pseudo-code - actual implementation may vary
 @router.get("/", response_model=List[VideoWithAnalysisStatus])
 async def list_videos(...):
     videos = db.query(Video).all()
-    
+
     # Batch load analysis statuses in one query
     video_ids = [v.id for v in videos]
     pose_detections = db.query(PoseDetection).filter(
         PoseDetection.video_id.in_(video_ids)
     ).all()
-    
+
     # Map to videos
     status_map = {pd.video_id: pd for pd in pose_detections}
-    
+
     return [
         VideoWithAnalysisStatus(
             **video.dict(),
@@ -1253,6 +1396,8 @@ async def list_videos(...):
     ]
 ```
 
+**Note:** When checking for annotated video existence, use your storage service API (Supabase Storage), not local filesystem `Path(...).exists()` since videos are stored in cloud storage.
+
 **Impact:** 11 API calls → 1 API call (91% reduction)
 
 **Option 2: Frontend Batching**
@@ -1261,9 +1406,7 @@ Batch status requests (if backend can't be changed):
 
 ```typescript
 // Batch requests instead of sequential
-const statusPromises = videos.map(v => 
-  videoApi.getVideoAnalysisStatus(v.id)
-);
+const statusPromises = videos.map((v) => videoApi.getVideoAnalysisStatus(v.id));
 const statuses = await Promise.all(statusPromises);
 ```
 
@@ -1280,7 +1423,7 @@ const statuses = await Promise.all(statusPromises);
 ```typescript
 // VideoList.tsx
 useEffect(() => {
-  loadVideos();  // Always fetches, even if data is fresh
+  loadVideos(); // Always fetches, even if data is fresh
 }, [loadVideos]);
 ```
 
@@ -1306,12 +1449,12 @@ React Query is the industry standard for data fetching and caching:
 // Install: npm install @tanstack/react-query
 
 // In your App.tsx
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,  // Data fresh for 5 minutes
+      staleTime: 5 * 60 * 1000, // Data fresh for 5 minutes
       cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     },
   },
@@ -1320,15 +1463,15 @@ const queryClient = new QueryClient({
 // Wrap your app
 <QueryClientProvider client={queryClient}>
   <App />
-</QueryClientProvider>
+</QueryClientProvider>;
 
 // In VideoList.tsx
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 
 const { data: videos, isLoading } = useQuery({
-  queryKey: ['videos'],
+  queryKey: ["videos"],
   queryFn: () => videoApi.getVideos(),
-  staleTime: 5 * 60 * 1000,  // 5 minutes
+  staleTime: 5 * 60 * 1000, // 5 minutes
 });
 ```
 
@@ -1340,7 +1483,8 @@ const { data: videos, isLoading } = useQuery({
 - ✅ **Stale-while-revalidate** - Show cached data while fetching fresh
 - ✅ **Optimistic updates** - Update UI immediately, sync later
 
-**Impact:** 
+**Impact:**
+
 - 50-80% reduction in API calls
 - Instant page loads (after first visit)
 - Better offline experience
@@ -1354,7 +1498,7 @@ const { data: videos, isLoading } = useQuery({
 **Current:** Polls every 2 seconds (2000ms)
 
 ```typescript
-const { pollInterval = 2000 } = options;  // 2 seconds
+const { pollInterval = 2000 } = options; // 2 seconds
 ```
 
 **The Problem:**
@@ -1370,9 +1514,9 @@ Poll more frequently when job is active, less when queued:
 
 ```typescript
 const getPollInterval = (status: string, elapsed: number) => {
-  if (status === 'queued') return 5000;      // 5 seconds when queued
-  if (status === 'processing') return 2000;  // 2 seconds when processing
-  if (elapsed > 60000) return 5000;         // Slow down after 1 minute
+  if (status === "queued") return 5000; // 5 seconds when queued
+  if (status === "processing") return 2000; // 2 seconds when processing
+  if (elapsed > 60000) return 5000; // Slow down after 1 minute
   return 2000;
 };
 ```
@@ -1415,21 +1559,21 @@ React Query handles this automatically, but you can also use a simple cache:
 const requestCache = new Map<string, Promise<any>>();
 
 async function cachedRequest<T>(
-  key: string, 
+  key: string,
   fetcher: () => Promise<T>
 ): Promise<T> {
   if (requestCache.has(key)) {
     return requestCache.get(key)!;
   }
-  
+
   const promise = fetcher();
   requestCache.set(key, promise);
-  
+
   promise.finally(() => {
-    requestCache.delete(key);  // Clean up after 5 seconds
+    requestCache.delete(key); // Clean up after 5 seconds
     setTimeout(() => requestCache.delete(key), 5000);
   });
-  
+
   return promise;
 }
 ```
@@ -1460,15 +1604,19 @@ Memoize expensive computations:
 ```typescript
 // Memoize filtered/sorted videos
 const sortedVideos = useMemo(() => {
-  return [...videos].sort((a, b) => 
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  return [...videos].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 }, [videos]);
 
 // Memoize status lookup
-const getVideoStatus = useCallback((videoId: number) => {
-  return analysisStatuses.get(videoId);
-}, [analysisStatuses]);
+const getVideoStatus = useCallback(
+  (videoId: number) => {
+    return analysisStatuses.get(videoId);
+  },
+  [analysisStatuses]
+);
 ```
 
 **Impact:** Fewer re-renders = better performance
@@ -1485,14 +1633,14 @@ const getVideoStatus = useCallback((videoId: number) => {
 const handleDelete = async (videoId: number) => {
   // Optimistic update
   const previousVideos = videos;
-  setVideos(videos.filter(v => v.id !== videoId));
-  
+  setVideos(videos.filter((v) => v.id !== videoId));
+
   try {
     await videoApi.deleteVideo(videoId);
   } catch (error) {
     // Rollback on error
     setVideos(previousVideos);
-    setError('Failed to delete video');
+    setError("Failed to delete video");
   }
 };
 ```
@@ -1545,7 +1693,7 @@ useEffect(() => {
 
 // AFTER
 const { data: videos, isLoading } = useQuery({
-  queryKey: ['videos'],
+  queryKey: ["videos"],
   queryFn: () => videoApi.getVideos(),
 });
 ```
@@ -1629,23 +1777,24 @@ const { data: videos, isLoading } = useQuery({
 
 ```python
 # backend/app/api/routes/video.py
+# Note: This is pseudo-code - actual implementation may vary
 @router.get("/", response_model=List[VideoListItem])
 async def list_videos(
     include_analysis_status: bool = False,  # New query param
     ...
 ):
     videos = db.query(Video).all()
-    
+
     if include_analysis_status:
         # Batch load all analysis statuses in one query
         video_ids = [v.id for v in videos]
-        
+
         # Single query for all pose detections
         pose_detections = db.query(PoseDetection).filter(
             PoseDetection.video_id.in_(video_ids),
             PoseDetection.status == "completed"
         ).all()
-        
+
         # Build status map
         status_map = {}
         for pd in pose_detections:
@@ -1655,16 +1804,18 @@ async def list_videos(
                     "analysis_types": []
                 }
             status_map[pd.video_id]["analysis_types"].append("pose_detection")
-        
+
         # Attach to videos
         for video in videos:
             video.analysis_status = status_map.get(video.id, {
                 "has_analysis": False,
                 "analysis_types": []
             })
-    
+
     return videos
 ```
+
+**Note:** When checking for annotated video existence, use your storage service API (Supabase Storage), not local filesystem `Path(...).exists()` since videos are stored in cloud storage.
 
 ---
 
@@ -1721,10 +1872,12 @@ async def list_videos(
 ### At Scale (100 users, 10 videos each)
 
 **Current:**
+
 - 1,000 videos × 5 visits = 5,000 status requests/day
 - Plus 500 list requests = **5,500 requests/day**
 
 **After Optimization:**
+
 - 500 list requests (with status included)
 - Cached for most users = **~500-1,000 requests/day**
 
@@ -1734,13 +1887,13 @@ async def list_videos(
 
 ## Summary: Frontend Optimization Priorities
 
-| Optimization | Priority | Effort | Impact | Cost Savings |
-|--------------|----------|--------|--------|--------------|
-| **Fix N+1 Query** | Critical | 2-4h | 91% fewer calls | High |
-| **Add React Query** | High | 1-2d | 50-80% fewer calls | Moderate |
-| **Optimize Polling** | Medium | 2-4h | 50-70% fewer polls | Small |
-| **Add Memoization** | Low | 2-3h | Better performance | Minimal |
-| **Optimistic Updates** | Low | 1-2h | Better UX | None |
+| Optimization           | Priority | Effort | Impact             | Cost Savings |
+| ---------------------- | -------- | ------ | ------------------ | ------------ |
+| **Fix N+1 Query**      | Critical | 2-4h   | 91% fewer calls    | High         |
+| **Add React Query**    | High     | 1-2d   | 50-80% fewer calls | Moderate     |
+| **Optimize Polling**   | Medium   | 2-4h   | 50-70% fewer polls | Small        |
+| **Add Memoization**    | Low      | 2-3h   | Better performance | Minimal      |
+| **Optimistic Updates** | Low      | 1-2h   | Better UX          | None         |
 
 **Recommendation:** Start with N+1 fix (biggest win), then add React Query (industry standard, huge benefits).
 
