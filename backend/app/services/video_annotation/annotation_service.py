@@ -55,21 +55,22 @@ def video_writer_with_fallback(
 
     writer: Optional[cv2.VideoWriter] = None
 
-    for fourcc_str, codec_name in codecs_to_try:
+        for fourcc_str, codec_name in codecs_to_try:
         try:
             fourcc = cv2.VideoWriter_fourcc(*fourcc_str)
             writer = cv2.VideoWriter(path, fourcc, fps, size)
 
             if writer.isOpened():
                 logger.info(
-                    f"Successfully created video writer with {codec_name} codec"
+                    f"Successfully created video writer with {codec_name} codec at {path}, fps={fps}, size={size}"
                 )
                 break
             else:
+                logger.warning(f"VideoWriter.isOpened() returned False for {codec_name} codec")
                 writer.release()
                 writer = None
         except (OSError, RuntimeError, ValueError) as e:
-            logger.debug(f"Failed to use {codec_name} codec: {e}")
+            logger.warning(f"Failed to use {codec_name} codec: {e}")
             if writer:
                 writer.release()
                 writer = None
@@ -275,6 +276,8 @@ class VideoAnnotationService:
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        logger.info(f"Opened video: {video_path}, properties: {width}x{height}, {fps} fps, {total_frames} frames")
 
         # Validate FPS
         if fps <= 0 or fps > 120:
@@ -330,17 +333,23 @@ class VideoAnnotationService:
                         annotated_frame = self._draw_pose_overlay(
                             frame, frame_pose_data, frame_confidence, annotation_style
                         )
-                        out.write(annotated_frame)
+                        write_success = out.write(annotated_frame)
+                        if not write_success:
+                            logger.warning(f"Failed to write annotated frame {frame_count}")
                         annotated_frames += 1
                     else:
                         # Write original frame if no pose detected
-                        out.write(frame)
+                        write_success = out.write(frame)
+                        if not write_success:
+                            logger.warning(f"Failed to write frame {frame_count}")
 
                     frame_count += 1
 
                     # Progress logging
                     if frame_count % 100 == 0:
-                        logger.info(f"Processed {frame_count}/{total_frames} frames")
+                        logger.info(f"Processed {frame_count}/{total_frames} frames (annotated: {annotated_frames})")
+                    elif frame_count == 1:
+                        logger.info(f"Started processing frames (total: {total_frames})")
 
         except RuntimeError as e:
             logger.error(f"Failed to create video writer: {e}")
@@ -354,14 +363,19 @@ class VideoAnnotationService:
             cap.release()
 
         # Validate output
-        if annotated_path.exists() and annotated_path.stat().st_size > 0:
-            logger.info(f"Successfully created pose annotated video: {annotated_path}")
-            logger.info(f"Annotated {annotated_frames}/{frame_count} frames")
-            return annotated_path
-        else:
-            logger.error("Failed to create annotated video")
-            if annotated_path.exists():
+        if annotated_path.exists():
+            file_size = annotated_path.stat().st_size
+            logger.info(f"Annotated video file created: {annotated_path}, size: {file_size} bytes, frames: {frame_count}, annotated: {annotated_frames}")
+            if file_size > 0:
+                logger.info(f"Successfully created pose annotated video: {annotated_path}")
+                logger.info(f"Annotated {annotated_frames}/{frame_count} frames")
+                return annotated_path
+            else:
+                logger.error(f"Annotated video file exists but is empty (0 bytes). Processed {frame_count} frames but file is empty.")
                 annotated_path.unlink()
+                return None
+        else:
+            logger.error(f"Annotated video file was not created at {annotated_path}. Processed {frame_count} frames.")
             return None
 
     def _draw_pose_overlay(
