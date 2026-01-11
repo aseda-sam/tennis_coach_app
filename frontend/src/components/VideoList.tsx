@@ -33,9 +33,7 @@ const VideoList: React.FC<VideoListProps> = ({
       number,
       {
         has_analysis: boolean;
-        has_annotated_video: boolean;
         analysis_types: string[];
-        annotated_video_available: boolean;
       }
     >
   >(new Map());
@@ -65,9 +63,7 @@ const VideoList: React.FC<VideoListProps> = ({
         number,
         {
           has_analysis: boolean;
-          has_annotated_video: boolean;
           analysis_types: string[];
-          annotated_video_available: boolean;
         }
       >();
       for (const video of videosResponse.videos) {
@@ -79,9 +75,7 @@ const VideoList: React.FC<VideoListProps> = ({
           console.debug(`No analysis status for video ${video.id}`);
           analysisStatusMap.set(video.id, {
             has_analysis: false,
-            has_annotated_video: false,
             analysis_types: [],
-            annotated_video_available: false,
           });
         }
       }

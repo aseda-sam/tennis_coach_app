@@ -25,8 +25,6 @@ from app.services.rq_monitoring import get_queue_stats
 from app.services.rq_tasks import (
     analyze_ball_detection_rq,
     analyze_pose_detection_rq,
-    analyze_pose_with_annotation_rq,
-    create_video_annotation_rq,
 )
 from app.utils.authorization import require_video_access
 
@@ -48,8 +46,6 @@ async def start_analysis(
     This endpoint provides a unified interface for starting different types of analysis:
     - pose_only: Extract player pose keypoints using MediaPipe
     - ball_only: Detect tennis balls using YOLO
-    - video_annotation_only: Create annotated videos with detection overlays
-    - pose_with_annotation: Extract pose keypoints AND create annotated video
 
     Args:
         video_id: ID of the video to analyze
@@ -74,8 +70,6 @@ async def start_analysis(
         task_function_map = {
             "pose_only": analyze_pose_detection_rq,
             "ball_only": analyze_ball_detection_rq,
-            "video_annotation_only": create_video_annotation_rq,
-            "pose_with_annotation": analyze_pose_with_annotation_rq,
         }
 
         task_function = task_function_map.get(request.analysis_type)
@@ -89,16 +83,12 @@ async def start_analysis(
         retry_config = {
             "pose_only": Retry(max=2, interval=60),
             "ball_only": Retry(max=2, interval=60),
-            "video_annotation_only": Retry(max=1, interval=30),
-            "pose_with_annotation": Retry(max=1, interval=90),
         }
 
         # Configure timeout based on analysis type
         timeout_config = {
             "pose_only": 300,  # 5 minutes
             "ball_only": 300,  # 5 minutes
-            "video_annotation_only": 180,  # 3 minutes
-            "pose_with_annotation": 360,  # 6 minutes
         }
 
         try:
@@ -546,14 +536,10 @@ def _get_analysis_type_from_job(job: Job) -> str:
     """
     func_name = job.func_name if hasattr(job, "func_name") else str(job.func)
 
-    if "analyze_pose_with_annotation_rq" in func_name:
-        return "pose_with_annotation"
-    elif "analyze_pose_detection_rq" in func_name:
+    if "analyze_pose_detection_rq" in func_name:
         return "pose_only"
     elif "analyze_ball_detection_rq" in func_name:
         return "ball_only"
-    elif "create_video_annotation_rq" in func_name:
-        return "video_annotation_only"
     else:
         return "pose_only"  # Default fallback
 
@@ -563,7 +549,5 @@ def _get_estimated_duration(analysis_type: str) -> float:
     estimates = {
         "pose_only": 120.0,  # 2 minutes
         "ball_only": 180.0,  # 3 minutes
-        "video_annotation_only": 90.0,  # 1.5 minutes
-        "pose_with_annotation": 210.0,  # 3.5 minutes (pose + annotation)
     }
     return estimates.get(analysis_type, 180.0)

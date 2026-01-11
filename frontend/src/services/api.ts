@@ -150,22 +150,21 @@ export const videoApi = {
     return `${API_BASE_URL}/videos/${videoId}/stream`;
   },
 
-  // Stream annotated video
-  streamAnnotatedVideo: async (videoId: number): Promise<string> => {
-    return `${API_BASE_URL}/videos/${videoId}/annotated/stream`;
-  },
-
   // Check video analysis status
   getVideoAnalysisStatus: async (
     videoId: number
   ): Promise<{
     video_id: number;
     has_analysis: boolean;
-    has_annotated_video: boolean;
     analysis_types: string[];
-    annotated_video_available: boolean;
   }> => {
     const response = await api.get(`/videos/${videoId}/analysis-status`);
+    return response.data;
+  },
+
+  // Get overlay data for client-side rendering
+  getOverlayData: async (videoId: number): Promise<any> => {
+    const response = await api.get(`/videos/${videoId}/overlay-data`);
     return response.data;
   },
 };

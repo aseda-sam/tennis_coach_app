@@ -22,6 +22,7 @@ import {
   VolumeOffIcon,
 } from './Icons';
 import PostureAnalysisSidebar from './PostureAnalysisSidebar';
+import VideoOverlay from './VideoOverlay';
 import './VideoPlayer.css';
 
 interface VideoPlayerProps {
@@ -32,6 +33,7 @@ interface VideoPlayerProps {
   aspectRatioMode?: 'cover' | 'contain' | 'auto';
   videoId?: number; // Video ID for fetching ball contacts
   showPostureAnalysis?: boolean; // Show posture analysis sidebar
+  hasPoseData?: boolean; // Whether pose detection data exists
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -42,6 +44,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   aspectRatioMode = 'contain',
   videoId,
   showPostureAnalysis = false,
+  hasPoseData = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -65,6 +68,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(
     null
   );
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [displayedVideoWidth, setDisplayedVideoWidth] = useState(0);
+  const [displayedVideoHeight, setDisplayedVideoHeight] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Use ball contacts hook if videoId is provided
@@ -159,6 +165,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         setVideoAspectRatio(aspectRatio);
         console.log('Video aspect ratio:', aspectRatio);
       }
+
+      // Update displayed video dimensions for overlay
+      const updateDisplayedSize = () => {
+        const rect = video.getBoundingClientRect();
+        setDisplayedVideoWidth(rect.width);
+        setDisplayedVideoHeight(rect.height);
+      };
+      updateDisplayedSize();
+      
+      // Update size on resize
+      const resizeObserver = new ResizeObserver(updateDisplayedSize);
+      resizeObserver.observe(video);
+      
+      // Store observer for cleanup
+      (video as any).__resizeObserver = resizeObserver;
     };
 
     const handleTimeUpdate = () => {
@@ -230,6 +251,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('error', handleError);
+      
+      // Cleanup resize observer
+      if ((video as any).__resizeObserver) {
+        (video as any).__resizeObserver.disconnect();
+        delete (video as any).__resizeObserver;
+      }
     };
   }, [resolvedVideoUrl]);
 
@@ -462,6 +489,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           minHeight: isPostureSidebarOpen ? '500px' : 'auto',
         }}
       >
+        {/* Overlay Toggle - Above Video */}
+        {hasPoseData && (
+          <div className="overlay-toggle-container">
+            <label className="overlay-toggle-label">
+              <input
+                type="checkbox"
+                checked={showOverlay}
+                onChange={(e) => setShowOverlay(e.target.checked)}
+                className="overlay-toggle-checkbox"
+              />
+              <span className="overlay-toggle-text">Show Pose Overlay</span>
+            </label>
+          </div>
+        )}
+
         {/* Video Container */}
         <div
           ref={containerRef}
@@ -469,6 +511,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             isPlaying ? 'playing' : 'paused'
           } ${isScrubbing ? 'scrubbing' : ''}`}
           onClick={handleVideoClick}
+          style={{ position: 'relative' }}
         >
           <video
             ref={videoRef}
@@ -478,6 +521,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             crossOrigin="anonymous"
             data-testid="video-element"
           />
+
+          {/* Video Overlay */}
+          {videoId && (
+            <VideoOverlay
+              videoId={videoId}
+              videoElement={videoRef.current}
+              videoWidth={displayedVideoWidth}
+              videoHeight={displayedVideoHeight}
+              showOverlay={showOverlay}
+              hasPoseData={hasPoseData}
+            />
+          )}
 
           {/* Add Contact Button */}
           <AddContactButton

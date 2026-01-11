@@ -52,9 +52,7 @@ class VideoAnalysisStatus(BaseModel):
 
     video_id: int
     has_analysis: bool
-    has_annotated_video: bool
     analysis_types: List[str] = []
-    annotated_video_available: bool = False
 
 
 router = APIRouter()
@@ -234,130 +232,6 @@ async def stream_video(
         log_and_raise_error(e, "stream_video", {"video_id": video_id})
 
 
-@router.get("/{video_id}/annotated/stream")
-async def stream_annotated_video(
-    video_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> Response:
-    """
-    Stream an annotated video file.
-
-    Args:
-        video_id: Unique video identifier
-
-    Returns:
-        Annotated video file stream or redirect to storage URL
-    """
-    try:
-        # Get video from database
-        db_video = video_service.get_video_by_id(db, video_id)
-        if not db_video:
-            raise handle_not_found_error("video", str(video_id))
-
-        # Check authorization
-        require_video_access(db_video, current_user)
-
-        # Look for annotated video using the new video annotation system
-        from app.models.video_annotation import VideoAnnotation
-
-        # First try to find a video annotation record
-        video_annotation = (
-            db.query(VideoAnnotation)
-            .filter(VideoAnnotation.video_id == video_id)
-            .order_by(VideoAnnotation.created_at.desc())
-            .first()
-        )
-
-        annotated_storage_path = None
-        annotated_filename = None
-
-        if video_annotation and video_annotation.annotated_video_path:
-            # Use the video annotation system
-            annotated_storage_path = video_annotation.annotated_video_path
-            # Extract filename from path (handles both local paths and Supabase paths)
-            annotated_filename = Path(annotated_storage_path).name
-            logger.info(f"Using video annotation: {annotated_filename}")
-        else:
-            # Fallback: Handle cases where filename has suffixes (legacy support)
-            base_name = Path(db_video.filename).stem
-            processed_dir = Path(settings.PROCESSED_DIR)
-
-            # First try the standard naming pattern
-            annotated_filename = f"{base_name}_annotated.mp4"
-            annotated_path = processed_dir / annotated_filename
-
-            # If not found, search for files with suffixes (e.g., _2_annotated.mp4)
-            if not annotated_path.exists():
-                pattern = f"{base_name}_*_annotated.mp4"
-                matching_files = list(processed_dir.glob(pattern))
-                if matching_files:
-                    # Use the most recent file (in case there are multiple)
-                    annotated_path = max(
-                        matching_files, key=lambda p: p.stat().st_mtime
-                    )
-                    annotated_filename = annotated_path.name
-                    logger.info(
-                        f"Found annotated video with suffix: {annotated_filename}"
-                    )
-                else:
-                    # Fallback: search for any file containing the base name
-                    # and "annotated"
-                    pattern = f"*{base_name}*annotated*.mp4"
-                    matching_files = list(processed_dir.glob(pattern))
-                    if matching_files:
-                        annotated_path = max(
-                            matching_files, key=lambda p: p.stat().st_mtime
-                        )
-                        annotated_filename = annotated_path.name
-                        logger.info(
-                            f"Found annotated video with flexible pattern: "
-                            f"{annotated_filename}"
-                        )
-                    else:
-                        raise handle_not_found_error(
-                            "annotated_video", f"for video {video_id}"
-                        )
-
-            annotated_storage_path = str(annotated_path)
-            validate_file_exists(annotated_path, annotated_filename)
-
-        # Handle Supabase vs local storage
-        if settings.STORAGE_TYPE == "supabase":
-            # For Supabase, redirect to public URL or stream from Supabase
-            try:
-                file_url = storage_service.get_file_url(annotated_storage_path)
-                logger.info(
-                    f"Redirecting to Supabase URL for annotated video {video_id}: {file_url}"
-                )
-                # Redirect to Supabase public URL
-                return RedirectResponse(url=file_url)
-            except (ValueError, RuntimeError, OSError) as e:
-                logger.error(
-                    f"Failed to get Supabase URL for annotated video {video_id}, storage_path={annotated_storage_path}: {e}"
-                )
-                # Fallback: download and stream
-                file_data = storage_service.download_file(annotated_storage_path)
-                return StreamingResponse(
-                    iter([file_data]),
-                    media_type="video/mp4",
-                    headers={
-                        "Content-Disposition": f'inline; filename="{get_safe_filename(annotated_filename)}"'
-                    },
-                )
-        else:
-            # For local storage, use FileResponse
-            annotated_path = Path(annotated_storage_path)
-            validate_file_exists(annotated_path, annotated_filename)
-            return FileResponse(
-                path=str(annotated_path),
-                media_type="video/mp4",
-                filename=get_safe_filename(annotated_filename),
-            )
-    except (OSError, ValueError) as e:
-        log_and_raise_error(e, "stream_annotated_video", {"video_id": video_id})
-
-
 @router.get("/{video_id}/analysis-status", response_model=VideoAnalysisStatus)
 async def get_video_analysis_status(
     video_id: int,
@@ -384,8 +258,6 @@ async def get_video_analysis_status(
 
         analysis_types = []
         has_analysis = False
-        has_annotated_video = False
-        annotated_video_available = False
 
         # Check for pose detection
         from app.models.pose_detection import PoseDetection
@@ -397,53 +269,21 @@ async def get_video_analysis_status(
             has_analysis = True
             analysis_types.append("pose_detection")
 
-            # Check if annotated video file exists
-            if pose_detection.annotated_video_path:
-                annotated_path = Path(pose_detection.annotated_video_path)
-                if annotated_path.exists():
-                    has_annotated_video = True
-                    annotated_video_available = True
+        # Check for ball detection
+        from app.models.ball_detection import BallDetection
 
-        # Check for video annotations
-        from app.models.video_annotation import VideoAnnotation
-
-        video_annotation = (
-            db.query(VideoAnnotation)
-            .filter(VideoAnnotation.video_id == video_id)
-            .order_by(VideoAnnotation.created_at.desc())
-            .first()
+        ball_detection = (
+            db.query(BallDetection).filter(BallDetection.video_id == video_id).first()
         )
-
-        if video_annotation and video_annotation.annotated_video_path:
-            has_annotated_video = True
-            stored_path = video_annotation.annotated_video_path
-
-            # Resolve path based on storage type
-            # Current formats:
-            # - Local storage: "../data/videos/processed/..." (relative path from backend)
-            # - Supabase storage: "processed/..." (cloud path, can't check locally)
-
-            if stored_path.startswith("processed/"):
-                # Supabase cloud storage path - file exists in cloud
-                annotated_video_available = True
-            elif stored_path.startswith("../"):
-                # Local storage relative path - resolve from backend directory
-                backend_dir = Path(__file__).parent.parent.parent
-                annotated_path = (backend_dir / stored_path).resolve()
-                if annotated_path.exists():
-                    annotated_video_available = True
-            elif Path(stored_path).is_absolute():
-                # Absolute path (edge case)
-                annotated_path = Path(stored_path)
-                if annotated_path.exists():
-                    annotated_video_available = True
+        if ball_detection and ball_detection.status == "completed":
+            has_analysis = True
+            if "ball_detection" not in analysis_types:
+                analysis_types.append("ball_detection")
 
         return VideoAnalysisStatus(
             video_id=video_id,
             has_analysis=has_analysis,
-            has_annotated_video=has_annotated_video,
             analysis_types=analysis_types,
-            annotated_video_available=annotated_video_available,
         )
 
     except (OSError, ValueError) as e:
