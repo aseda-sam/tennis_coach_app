@@ -11,7 +11,6 @@ import pytest
 from app.services.rq_tasks import (
     analyze_ball_detection_rq,
     analyze_pose_detection_rq,
-    create_video_annotation_rq,
 )
 
 
@@ -159,71 +158,3 @@ class TestAnalyzeBallDetectionRq:
         mock_ball_service.analyze_video_file.assert_called_once()
 
 
-class TestCreateVideoAnnotationRq:
-    """Tests for create_video_annotation_rq."""
-
-    @patch("app.services.rq_tasks.video_service.get_video_by_id")
-    @patch("app.services.rq_tasks.storage_service.get_local_file_path")
-    @patch("app.services.video_annotation.annotation_service.VideoAnnotationService")
-    def test_success_with_pose_detection(
-        self,
-        mock_annotation_service_class: MagicMock,
-        mock_get_path: MagicMock,
-        mock_get_video: MagicMock,
-        mock_db_session: MagicMock,
-        mock_video: MagicMock,
-    ) -> None:
-        """Test successful video annotation with pose detection."""
-        mock_get_video.return_value = mock_video
-        mock_get_path.return_value = Path("/local/path/video.mp4")
-
-        # Mock pose detection in database
-        mock_pose_detection = MagicMock()
-        mock_pose_detection.id = 789
-        mock_db_session.query.return_value.filter.return_value.order_by.return_value.first.side_effect = [
-            None,  # No ball detection
-            mock_pose_detection,  # Pose detection found
-        ]
-
-        mock_annotation_service = MagicMock()
-        mock_annotation_service_class.return_value = mock_annotation_service
-
-        # Mock annotation result
-        mock_annotation_result = MagicMock()
-        mock_annotation_result.id = 999
-        mock_annotation_result.annotated_video_path = "/annotated/video.mp4"
-        mock_annotation_service.create_pose_annotation.return_value = (
-            mock_annotation_result
-        )
-
-        result = create_video_annotation_rq(
-            video_id=1, video_path="/test/path/video.mp4", confidence_threshold=0.7
-        )
-
-        assert result["status"] == "completed"
-        assert result["video_annotation_id"] == 999
-        assert result["analysis_type"] == "video_annotation_only"
-
-    @patch("app.services.rq_tasks.video_service.get_video_by_id")
-    @patch("app.services.rq_tasks.storage_service.get_local_file_path")
-    def test_no_detections_found(
-        self,
-        mock_get_path: MagicMock,
-        mock_get_video: MagicMock,
-        mock_db_session: MagicMock,
-        mock_video: MagicMock,
-    ) -> None:
-        """Test error when no detections found."""
-        mock_get_video.return_value = mock_video
-        mock_get_path.return_value = Path("/local/path/video.mp4")
-
-        # Mock no detections in database
-        mock_db_session.query.return_value.filter.return_value.order_by.return_value.first.side_effect = [
-            None,  # No ball detection
-            None,  # No pose detection
-        ]
-
-        with pytest.raises(ValueError, match="No ball or pose detections found"):
-            create_video_annotation_rq(
-                video_id=1, video_path="/test/path/video.mp4", confidence_threshold=0.7
-            )

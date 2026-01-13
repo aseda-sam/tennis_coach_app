@@ -13,8 +13,6 @@ from pathlib import Path
 from typing import Any, Dict
 
 from app.core.database import SessionLocal
-from app.models.ball_detection import BallDetection
-from app.models.pose_detection import PoseDetection
 from app.services import video_service
 from app.services.storage_service import storage_service
 
@@ -215,4 +213,3 @@ def analyze_ball_detection_rq(
     finally:
         # Clean up temp video file if created for cloud storage
         _cleanup_temp_file(temp_video_path)
-

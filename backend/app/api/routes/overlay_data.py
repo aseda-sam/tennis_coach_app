@@ -2,12 +2,11 @@
 
 import json
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.schemas.overlay_data import PoseOverlayData, PoseFrame
+from app.api.schemas.overlay_data import PoseFrame, PoseOverlayData
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.pose_detection import PoseDetection

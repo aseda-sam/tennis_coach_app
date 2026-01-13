@@ -20,7 +20,9 @@ class PoseFrame(BaseModel):
     """Pose detection data for a single frame."""
 
     frame_index: int = Field(..., description="Frame index in video")
-    timestamp: float = Field(..., description="Timestamp in seconds (calculated from frame_index / fps)")
+    timestamp: float = Field(
+        ..., description="Timestamp in seconds (calculated from frame_index / fps)"
+    )
     keypoints: Dict[str, List[float]] = Field(
         ...,
         description="Keypoints as dict: {'left_shoulder': [x, y], ...}",

@@ -13,8 +13,6 @@ from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.models.ball_detection import BallDetection
-from app.models.pose_detection import PoseDetection
 from app.services import video_service
 from app.services.ball_detection import BallDetectionService
 from app.services.pose_detection import PoseDetectionService
