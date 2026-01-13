@@ -20,12 +20,10 @@ WORKDIR /app/backend
 RUN pip install --no-cache-dir \
     torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
-# Install opencv-python (full version with H.264 codec support)
-# With 2GB RAM, the extra GUI dependencies are acceptable for better codec support
-RUN pip install --no-cache-dir opencv-python
+# Install opencv-python-headless (no GUI dependencies needed - encoding removed)
+RUN pip install --no-cache-dir opencv-python-headless
 
 # Now install the rest (ultralytics will use already-installed torch)
-# This will also install opencv-python if not already installed (from pyproject.toml)
 RUN pip install --no-cache-dir -e .
 
 # Runtime stage - minimal final image
@@ -34,16 +32,13 @@ FROM python:3.11-slim AS runtime
 WORKDIR /app
 
 # Install only runtime system dependencies (no build tools)
-# Note: libsm6, libxext6, libxrender-dev are required for OpenCV
-# ffmpeg is still needed for video decoding (frame extraction)
+# ffmpeg is needed for video decoding (frame extraction)
+# libglib2.0-0 and libgomp1 are required for PyTorch/OpenCV runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ffmpeg \
     libglib2.0-0 \
     libgomp1 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
