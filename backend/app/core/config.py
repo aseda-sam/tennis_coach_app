@@ -165,8 +165,8 @@ class Settings(BaseSettings):
     @property
     def effective_frame_skip_ratio(self) -> int:
         """Get frame skip ratio based on profile."""
-        if self.is_production:
-            return 4  # Every 4th frame for production (memory constraints)
+        # Process all frames by default (no skipping)
+        # Frame skip ratio of 1 means process every frame
         return self.FRAME_SKIP_RATIO
 
     @property

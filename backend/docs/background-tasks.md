@@ -116,12 +116,6 @@ def get_task_status(task_id: int):
 - **Dependencies**: None (independent)
 - **Processing Time**: 2-4 minutes
 
-#### 3. `video_annotation_only`
-
-- **Purpose**: Create annotated videos with detection overlays
-- **Output**: Annotated video files
-- **Dependencies**: Requires existing ball OR pose detections
-- **Processing Time**: 1-2 minutes
 
 ### Task Storage (Current Implementation)
 
