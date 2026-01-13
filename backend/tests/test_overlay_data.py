@@ -47,6 +47,7 @@ class TestOverlayDataAPI:
             total_frames=1,
             pose_data=json.dumps(pose_data),
             confidence_scores=json.dumps(confidence_scores),
+            processing_time_seconds=10.0,
         )
         db_session.add(pose_detection)
         db_session.commit()
@@ -110,6 +111,7 @@ class TestOverlayDataAPI:
             total_frames=1,
             pose_data="invalid json {",
             confidence_scores=None,
+            processing_time_seconds=10.0,
         )
         db_session.add(pose_detection)
         db_session.commit()
@@ -146,6 +148,7 @@ class TestOverlayDataAPI:
             total_frames=1,
             pose_data=large_data,
             confidence_scores=None,
+            processing_time_seconds=10.0,
         )
         db_session.add(pose_detection)
         db_session.commit()
@@ -187,6 +190,7 @@ class TestOverlayDataAPI:
             total_frames=1,
             pose_data=json.dumps([{}]),
             confidence_scores=json.dumps([0.9]),
+            processing_time_seconds=10.0,
         )
         db_session.add(pose_detection)
         db_session.commit()
@@ -220,6 +224,7 @@ class TestOverlayDataAPI:
             total_frames=1,
             pose_data=None,
             confidence_scores=None,
+            processing_time_seconds=10.0,
         )
         db_session.add(pose_detection)
         db_session.commit()
@@ -255,6 +260,7 @@ class TestOverlayDataAPI:
             total_frames=1,
             pose_data=json.dumps(pose_data),
             confidence_scores=json.dumps([0.9]),
+            processing_time_seconds=10.0,
         )
         db_session.add(pose_detection)
         db_session.commit()
