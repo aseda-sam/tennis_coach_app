@@ -33,9 +33,7 @@ const VideoList: React.FC<VideoListProps> = ({
       number,
       {
         has_analysis: boolean;
-        has_annotated_video: boolean;
         analysis_types: string[];
-        annotated_video_available: boolean;
       }
     >
   >(new Map());
@@ -65,9 +63,7 @@ const VideoList: React.FC<VideoListProps> = ({
         number,
         {
           has_analysis: boolean;
-          has_annotated_video: boolean;
           analysis_types: string[];
-          annotated_video_available: boolean;
         }
       >();
       for (const video of videosResponse.videos) {
@@ -79,9 +75,7 @@ const VideoList: React.FC<VideoListProps> = ({
           console.debug(`No analysis status for video ${video.id}`);
           analysisStatusMap.set(video.id, {
             has_analysis: false,
-            has_annotated_video: false,
             analysis_types: [],
-            annotated_video_available: false,
           });
         }
       }
@@ -141,8 +135,8 @@ const VideoList: React.FC<VideoListProps> = ({
       // Clear any previous error for a fresh start
       setError(null);
 
-      // Use the new pose_with_annotation analysis type
-      const response = await unifiedAnalysisApi.startPoseWithAnnotation(
+      // Start pose detection analysis (annotation removed in this branch)
+      const response = await unifiedAnalysisApi.startPoseAnalysis(
         videoId,
         0.5
       );
@@ -162,7 +156,7 @@ const VideoList: React.FC<VideoListProps> = ({
         err?.message ||
         'Failed to start pose detection';
       setError(errorMessage);
-      console.error('Error starting pose analysis with annotation:', err);
+      console.error('Error starting pose analysis:', err);
 
       // Remove from active tasks on error
       setActiveAnalysisTasks((prev) => {

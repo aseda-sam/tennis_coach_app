@@ -10,6 +10,43 @@
   border: 1px solid #f1f5f9;
 }
 
+/* Overlay Toggle */
+.overlay-toggle-container {
+  padding: 12px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fafbfc;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.overlay-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.overlay-toggle-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
+.overlay-toggle-text {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.overlay-toggle-tooltip {
+  font-size: 12px;
+  color: #6b7280;
+  margin-left: auto;
+}
+
 /* Video Player Header */
 .video-player-header {
   display: flex;

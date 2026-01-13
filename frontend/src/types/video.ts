@@ -62,3 +62,19 @@ export interface ApiError {
     details?: any;
   };
 }
+
+export interface PoseFrame {
+  frame_index: number;
+  timestamp: number;
+  keypoints: { [key: string]: number[] }; // {"left_shoulder": [x, y], ...}
+  confidence: number;
+}
+
+export interface OverlayData {
+  video_id: number;
+  fps: number;
+  total_frames: number;
+  width: number;
+  height: number;
+  frames: PoseFrame[];
+}

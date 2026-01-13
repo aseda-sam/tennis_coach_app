@@ -13,13 +13,10 @@ from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.models.ball_detection import BallDetection
-from app.models.pose_detection import PoseDetection
 from app.services import video_service
 from app.services.ball_detection import BallDetectionService
 from app.services.pose_detection import PoseDetectionService
 from app.services.storage_service import storage_service
-from app.services.video_annotation.annotation_service import VideoAnnotationService
 from app.utils.progress_utils import set_task_storage, update_task_progress
 
 logger = logging.getLogger(__name__)
@@ -63,7 +60,7 @@ class BackgroundTaskService:
 
         Args:
             video_id: Video ID to analyze
-            analysis_type: Type of analysis (pose_only, ball_only, video_annotation_only)
+            analysis_type: Type of analysis (pose_only, ball_only)
             confidence_threshold: YOLO confidence threshold
 
         Returns:
@@ -180,25 +177,9 @@ class BackgroundTaskService:
                         confidence_threshold=confidence_threshold,
                         task_id=task_id,
                     )
-                elif analysis_type == "video_annotation_only":
-                    result = self._run_video_annotation_analysis(
-                        db=db,
-                        video_id=video_id,
-                        video_path=str(video_path),
-                        confidence_threshold=confidence_threshold,
-                        task_id=task_id,
-                    )
-                elif analysis_type == "pose_with_annotation":
-                    result = self._run_pose_with_annotation_analysis(
-                        db=db,
-                        video_id=video_id,
-                        video_path=str(video_path),
-                        confidence_threshold=confidence_threshold,
-                        task_id=task_id,
-                    )
                 else:
                     # Unsupported analysis type
-                    error_msg = f"Unsupported analysis type: {analysis_type}. Supported types: pose_only, ball_only, video_annotation_only, pose_with_annotation"
+                    error_msg = f"Unsupported analysis type: {analysis_type}. Supported types: pose_only, ball_only"
                     logger.error(f"Task {task_id}: {error_msg}")
                     raise ValueError(error_msg)
                 logger.info(
@@ -497,170 +478,6 @@ class BackgroundTaskService:
 
         except Exception as e:
             logger.error(f"Task {task_id}: Ball-only analysis failed: {e}")
-            raise
-
-    def _run_video_annotation_analysis(
-        self,
-        db: Session,
-        video_id: int,
-        video_path: str,
-        confidence_threshold: float,
-        task_id: int,
-    ) -> Dict[str, Any]:
-        """Run video annotation analysis (requires existing ball or pose detections)."""
-
-        logger.info(f"Task {task_id}: Starting video annotation analysis")
-
-        try:
-            # Check for existing detections
-            update_task_progress(
-                task_id,
-                "checking_detections",
-                10,
-                "Checking for existing ball and pose detections",
-                20,
-            )
-
-            # Get the most recent ball detection for this video
-            ball_detection = (
-                db.query(BallDetection)
-                .filter(BallDetection.video_id == video_id)
-                .order_by(BallDetection.created_at.desc())
-                .first()
-            )
-
-            # Get the most recent pose detection for this video
-            pose_detection = (
-                db.query(PoseDetection)
-                .filter(PoseDetection.video_id == video_id)
-                .order_by(PoseDetection.created_at.desc())
-                .first()
-            )
-
-            if not ball_detection and not pose_detection:
-                raise ValueError(
-                    "No ball or pose detections found. Please run ball_only or pose_only analysis first."
-                )
-
-            # Run video annotation
-            update_task_progress(
-                task_id,
-                "video_annotation",
-                20,
-                "Creating annotated video",
-                90,
-            )
-
-            annotation_service = VideoAnnotationService()
-            annotation_result = annotation_service.create_pose_annotation(
-                db=db,
-                video_id=video_id,
-                pose_detection_id=pose_detection.id if pose_detection else None,
-            )
-
-            # Update final progress
-            update_task_progress(
-                task_id,
-                "completion",
-                100,
-                "Video annotation completed successfully",
-                100,
-            )
-
-            return {
-                "success": True,
-                "ball_detection_id": ball_detection.id if ball_detection else None,
-                "pose_detection_id": pose_detection.id if pose_detection else None,
-                "video_annotation_id": annotation_result.id,
-                "annotated_video_path": annotation_result.annotated_video_path,
-                "analysis_type": "video_annotation_only",
-            }
-
-        except Exception as e:
-            logger.error(f"Task {task_id}: Video annotation analysis failed: {e!s}")
-            raise
-
-    def _run_pose_with_annotation_analysis(
-        self,
-        db: Session,
-        video_id: int,
-        video_path: str,
-        confidence_threshold: float,
-        task_id: int,
-    ) -> Dict[str, Any]:
-        """Run pose detection followed by video annotation in one task."""
-
-        logger.info(f"Task {task_id}: Starting pose detection with annotation")
-
-        try:
-            # Step 1: Run pose detection
-            update_task_progress(
-                task_id, "pose_detection", 0, "Starting pose detection analysis", 50
-            )
-
-            # Use PoseDetectionService
-            pose_service = PoseDetectionService()
-            pose_results = pose_service.analyze_video_file(
-                video_path=Path(video_path),
-                confidence_threshold=confidence_threshold,
-                detection_threshold=0.5,  # Default detection threshold
-                max_frames=None,  # Process all frames
-            )
-
-            # Check for errors
-            if "error" in pose_results:
-                raise RuntimeError(f"Pose detection failed: {pose_results['error']}")
-
-            # Save pose detection results
-            update_task_progress(
-                task_id, "pose_detection", 40, "Saving pose detection results", 50
-            )
-
-            pose_detection = pose_service.save_detection_results(
-                db=db, video_id=video_id, detection_results=pose_results
-            )
-
-            logger.info(
-                f"Task {task_id}: Pose detection completed, starting video annotation"
-            )
-
-            # Step 2: Run video annotation
-            update_task_progress(
-                task_id, "video_annotation", 50, "Creating annotated video", 90
-            )
-
-            # Use VideoAnnotationService
-            annotation_service = VideoAnnotationService()
-            annotation_result = annotation_service.create_pose_annotation(
-                db=db,
-                video_id=video_id,
-                pose_detection_id=pose_detection.id,
-            )
-
-            # Update final progress
-            update_task_progress(
-                task_id, "completion", 90, "Analysis completed successfully", 100
-            )
-
-            logger.info(
-                f"Task {task_id}: Pose detection with annotation completed successfully"
-            )
-
-            return {
-                "processing_time": pose_results.get("processing_time_seconds", 0.0),
-                "analysis_summary": {
-                    "total_frames": pose_results.get("total_frames", 0),
-                    "frames_with_poses": pose_results.get("frames_with_poses", 0),
-                    "detection_rate": pose_results.get("detection_rate", 0.0),
-                },
-                "pose_detection_id": pose_detection.id,
-                "video_annotation_id": annotation_result.id,
-                "annotated_video_path": annotation_result.annotated_video_path,
-                "analysis_type": "pose_with_annotation",
-            }
-
-        except Exception as e:
-            logger.error(f"Task {task_id}: Pose detection with annotation failed: {e}")
             raise
 
 

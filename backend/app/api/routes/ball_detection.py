@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v0/ball-detection", tags=["ball-detection"])
 
+# Maximum size for detection data JSON (50MB)
+MAX_JSON_SIZE = 50 * 1024 * 1024
+
 
 @router.post("/analyze/{video_id}", response_model=BallDetectionResponse)
 async def analyze_video_ball_detection(
@@ -105,10 +108,10 @@ async def analyze_video_ball_detection(
         # Re-raise HTTP exceptions as-is
         raise
     except (OSError, RuntimeError, ValueError) as e:
-        logger.error(f"Error analyzing ball detection for video {video_id}: {e}")
+        logger.exception("Error analyzing ball detection for video %s", video_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ball detection analysis failed: {e!s}",
+            detail="Ball detection analysis failed. Please try again later.",
         ) from e
 
 
@@ -152,12 +155,12 @@ async def get_ball_detection_results(
         # Re-raise HTTP exceptions as-is
         raise
     except (OSError, RuntimeError, ValueError) as e:
-        logger.error(
-            f"Error retrieving ball detection results for video {video_id}: {e}"
+        logger.exception(
+            "Error retrieving ball detection results for video %s", video_id
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve ball detection results: {e!s}",
+            detail="Failed to retrieve ball detection results. Please try again later.",
         ) from e
 
 
@@ -196,12 +199,23 @@ def _convert_to_response(
     # Parse detection data if requested
     detection_data = None
     if include_detection_data and ball_detection.detection_data:
-        try:
-            detection_data = json.loads(ball_detection.detection_data)
-        except json.JSONDecodeError:
+        # Validate JSON size before parsing
+        detection_data_size = len(ball_detection.detection_data.encode("utf-8"))
+        if detection_data_size > MAX_JSON_SIZE:
             logger.warning(
-                f"Failed to parse detection data for detection {ball_detection.id}"
+                "Detection data too large for detection %s: %d bytes (max: %d)",
+                ball_detection.id,
+                detection_data_size,
+                MAX_JSON_SIZE,
             )
+        else:
+            try:
+                detection_data = json.loads(ball_detection.detection_data)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Failed to parse detection data for detection %s",
+                    ball_detection.id,
+                )
 
     return BallDetectionResponse(
         id=ball_detection.id,

@@ -21,9 +21,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   >('contain');
   const [analysisStatus, setAnalysisStatus] = useState<{
     has_analysis: boolean;
-    has_annotated_video: boolean;
     analysis_types: string[];
-    annotated_video_available: boolean;
   } | null>(null);
 
   // Fetch analysis status
@@ -36,9 +34,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         console.debug('No analysis status available for video:', videoId);
         setAnalysisStatus({
           has_analysis: false,
-          has_annotated_video: false,
           analysis_types: [],
-          annotated_video_available: false,
         });
       }
     };
@@ -47,26 +43,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   }, [videoId]);
 
   // Analysis state for the new unified system
-
-  // Smart video URL selection: use annotated video if available, otherwise original
-  const getVideoUrl = () => {
-    // Check if there's any analysis and annotated video is available
-    if (
-      analysisStatus?.has_analysis &&
-      analysisStatus?.annotated_video_available
-    ) {
-      // Use the annotated video endpoint
-      const baseUrl =
-        process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
-      const annotatedUrl = `${baseUrl}/videos/${videoId}/annotated/stream`;
-      console.log('Using annotated video for:', videoFilename);
-      console.log('Annotated video URL:', annotatedUrl);
-      console.log('Analysis status:', analysisStatus);
-      return annotatedUrl;
-    }
-    console.log('Using original video URL:', videoUrl);
-    return videoUrl;
-  };
 
   return (
     <div className="analysis-dashboard">
@@ -101,25 +77,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           </div>
 
           <VideoPlayer
-            videoUrl={getVideoUrl()}
-            title={
-              analysisStatus?.has_analysis &&
-              analysisStatus?.annotated_video_available
-                ? `${videoFilename} (Annotated)`
-                : videoFilename
-            }
+            videoUrl={videoUrl}
+            title={videoFilename}
             showControls={true}
             aspectRatioMode={aspectRatioMode}
             videoId={videoId}
             showPostureAnalysis={true}
+            hasPoseData={analysisStatus?.has_analysis || false}
           />
-          {analysisStatus?.has_analysis &&
-            analysisStatus?.annotated_video_available && (
-              <div className="ai-analysis-badge">
-                <span className="ai-icon">⚡</span>
-                AI Analysis Active
-              </div>
-            )}
         </div>
       </div>
     </div>

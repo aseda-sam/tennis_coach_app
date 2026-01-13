@@ -1,5 +1,6 @@
 import axios from 'axios';
 import {
+  OverlayData,
   VideoListResponse,
   VideoMetadata,
   VideoUploadResponse,
@@ -150,23 +151,44 @@ export const videoApi = {
     return `${API_BASE_URL}/videos/${videoId}/stream`;
   },
 
-  // Stream annotated video
-  streamAnnotatedVideo: async (videoId: number): Promise<string> => {
-    return `${API_BASE_URL}/videos/${videoId}/annotated/stream`;
-  },
-
   // Check video analysis status
   getVideoAnalysisStatus: async (
     videoId: number
   ): Promise<{
     video_id: number;
     has_analysis: boolean;
-    has_annotated_video: boolean;
     analysis_types: string[];
-    annotated_video_available: boolean;
   }> => {
     const response = await api.get(`/videos/${videoId}/analysis-status`);
     return response.data;
+  },
+
+  // Get overlay data for client-side rendering
+  getOverlayData: async (videoId: number): Promise<OverlayData> => {
+    try {
+      const response = await api.get<OverlayData>(
+        `/videos/${videoId}/overlay-data`
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error(
+          'Pose data not found for this video. Please run pose detection analysis first.'
+        );
+      }
+      if (error.response?.status === 400) {
+        throw new Error(
+          error.response?.data?.detail ||
+            'Invalid request. Please check the video and try again.'
+        );
+      }
+      if (error.response?.status === 500) {
+        throw new Error(
+          'Server error while fetching overlay data. Please try again later.'
+        );
+      }
+      throw error;
+    }
   },
 };
 

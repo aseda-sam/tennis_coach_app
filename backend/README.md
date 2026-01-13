@@ -301,7 +301,7 @@ backend/
 - **Player Management**: Create and manage players with hand preference and backhand style
 - **Video Upload & Management**: Secure file upload with validation and metadata extraction
 - **Computer Vision Analysis**: YOLO ball detection + MediaPipe pose estimation
-- **Annotated Video Creation**: Generate videos with detection overlays
+- **Client-Side Overlays**: Real-time pose skeleton overlays rendered in the browser
 - **Ball Contact System**: Manual and automated ball contact detection with configurable tolerance
 - **Contact Management**: Create, edit, and delete ball contact markers with stroke classification
 - **RESTful API**: FastAPI with automatic OpenAPI documentation and versioning
@@ -326,11 +326,13 @@ backend/
 - **Features**: 11 tennis-relevant keypoints (shoulders, elbows, wrists, hips, knees, ankles)
 - **Output**: Skeleton overlays, pose detection metrics
 
-### Annotated Videos
+### Client-Side Overlays
 
-- **Format**: H.264 MP4 (browser-compatible)
-- **Overlays**: Ball detection (red boxes) + pose estimation (green skeleton)
-- **Processing**: Automatic codec fallback for compatibility
+- **Rendering**: Canvas-based overlay rendering in the browser
+- **Data Source**: Overlay data API endpoint (`GET /v0/videos/{id}/overlay-data`)
+- **Features**: Real-time pose skeleton overlays synchronized with video playback
+- **Styling**: Neon green skeleton with black outline
+- **Performance**: Efficient client-side rendering without server-side video encoding
 
 ### Ball Contact System
 

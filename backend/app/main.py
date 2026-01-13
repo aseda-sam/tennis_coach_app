@@ -20,10 +20,10 @@ from app.api.routes import (
     analysis,
     ball_contacts,
     ball_detection,
+    overlay_data,
     players,
     pose_detection,
     video,
-    video_annotation,
     video_players,
     video_quality,
 )
@@ -326,7 +326,7 @@ app.include_router(
 )
 
 app.include_router(
-    video_annotation.router,
+    analysis.router,
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},
@@ -335,7 +335,7 @@ app.include_router(
 )
 
 app.include_router(
-    analysis.router,
+    overlay_data.router,
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},

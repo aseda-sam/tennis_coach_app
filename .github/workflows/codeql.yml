@@ -32,6 +32,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           queries: +security-extended,security-and-quality # Enable additional security queries
+          config-file: .github/codeql-config.yml
 
       # Setup Node.js for JavaScript/TypeScript analysis
       - name: Setup Node.js (for JavaScript/TypeScript)

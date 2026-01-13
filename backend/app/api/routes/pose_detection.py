@@ -164,7 +164,8 @@ async def get_pose_detection(
     except HTTPException:
         raise
     except (OSError, RuntimeError, ValueError) as e:
+        logger.exception("Error retrieving pose detection for video %s", video_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve pose detection: {e!s}",
+            detail="Failed to retrieve pose detection. Please try again later.",
         ) from e

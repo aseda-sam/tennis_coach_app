@@ -43,7 +43,8 @@ All endpoints are prefixed with the version number (e.g., `/v0/videos/upload`).
 - `GET /v0/videos/` - List all uploaded videos
 - `GET /v0/videos/{video_id}` - Get video details by ID
 - `GET /v0/videos/{video_id}/stream` - Stream original video
-- `GET /v0/videos/{video_id}/annotated/stream` - Stream annotated video with overlays
+- `GET /v0/videos/{video_id}/overlay-data` - Get pose overlay data for client-side rendering
+- `GET /v0/videos/{video_id}/analysis-status` - Get analysis status for a video
 - `DELETE /v0/videos/{video_id}` - Delete video and associated data
 
 ### Analysis
@@ -93,21 +94,21 @@ Video uploads are rate-limited per user:
 - **Maximum resolution**: 4K (3840x2160)
 - **Maximum frame rate**: 60fps
 - **Maximum duration**: 5 minutes (300 seconds)
-- **Frame skip ratio**: 2 (process every 2nd frame)
+- **Frame skip ratio**: 1 (process all frames)
 
 #### Docker Environment
 
 - **Maximum resolution**: 1080p (1920x1080)
 - **Maximum frame rate**: 60fps
 - **Maximum duration**: 5 minutes (300 seconds)
-- **Frame skip ratio**: 3 (process every 3rd frame)
+- **Frame skip ratio**: 1 (process all frames)
 
 #### Production Environment (Render)
 
 - **Maximum resolution**: 1080p (1920x1080)
 - **Maximum frame rate**: 30fps
 - **Maximum duration**: 5 minutes (300 seconds)
-- **Frame skip ratio**: 4 (process every 4th frame)
+- **Frame skip ratio**: 1 (process all frames)
 
 > **Note**: These limits are automatically detected and applied based on the environment. Videos exceeding these limits will be rejected with appropriate error messages.
 
@@ -216,6 +217,55 @@ Deletes a ball contact marker.
   "message": "Ball contact deleted successfully"
 }
 ```
+
+## Overlay Data Endpoints
+
+### Get Overlay Data
+
+**GET** `/v0/videos/{video_id}/overlay-data`
+
+Retrieves pose detection data formatted for client-side overlay rendering. This endpoint formats existing pose detection data for frontend consumption - no new analysis is performed.
+
+**Response:** `200 OK`
+
+```json
+{
+  "video_id": 1,
+  "fps": 30.0,
+  "total_frames": 900,
+  "width": 1920,
+  "height": 1080,
+  "frames": [
+    {
+      "frame_index": 0,
+      "timestamp": 0.0,
+      "keypoints": {
+        "left_shoulder": [320.5, 240.2],
+        "right_shoulder": [450.3, 235.8],
+        "left_elbow": [280.1, 320.5],
+        "right_elbow": [490.2, 315.3],
+        "left_wrist": [250.0, 400.0],
+        "right_wrist": [520.0, 395.0],
+        "left_hip": [350.0, 500.0],
+        "right_hip": [420.0, 495.0],
+        "left_knee": [340.0, 650.0],
+        "right_knee": [430.0, 645.0],
+        "left_ankle": [330.0, 800.0],
+        "right_ankle": [440.0, 795.0]
+      },
+      "confidence": 0.85
+    }
+  ]
+}
+```
+
+**Keypoints Format:**
+- Each keypoint is a dictionary entry with the keypoint name as the key
+- Values are arrays `[x, y]` representing coordinates in original video dimensions
+- Coordinates are scaled client-side to match displayed video dimensions
+
+**Use Case:**
+This endpoint is used by the frontend to render pose skeleton overlays on videos. The overlay is rendered client-side using HTML5 Canvas, eliminating the need for server-side video encoding.
 
 ## Error Responses
 

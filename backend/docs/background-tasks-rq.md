@@ -150,6 +150,29 @@ RQ does **not** store Python code or machine code. It stores:
 
 ### Quick Start
 
+#### Option 1: Docker Compose (Recommended for Local Development)
+
+```bash
+# Start all services (backend, frontend, redis, worker, rq-dashboard)
+docker compose up -d
+
+# View worker logs
+docker compose logs -f worker
+
+# View RQ dashboard at http://localhost:9181
+# Monitor queues, jobs, and workers in real-time
+```
+
+**Services included:**
+
+- `backend`: FastAPI server
+- `frontend`: React development server
+- `redis`: Redis server
+- `worker`: RQ worker (processes background jobs)
+- `rq-dashboard`: Web UI for monitoring queues (http://localhost:9181)
+
+#### Option 2: Manual Setup (Without Docker)
+
 ```bash
 # 1. Start Redis
 docker-compose up redis -d
@@ -181,7 +204,7 @@ For M1 MacBook Pro (8 cores, 8GB RAM):
 
 1. Create Key Value instance in Render dashboard (same region as API service)
 2. **Important**: Set **Maxmemory Policy** to `volatile-ttl` (recommended for job queues with result TTLs)
-   - **Why `volatile-ttl`?**: 
+   - **Why `volatile-ttl`?**:
      - Automatically evicts expired result keys (which have TTLs set via `result_ttl`)
      - **Protects queued jobs**: Job keys don't have TTLs, so they're never evicted
      - Prevents memory pressure by cleaning up expired results automatically
@@ -196,6 +219,7 @@ For M1 MacBook Pro (8 cores, 8GB RAM):
    - `SERVICE_TYPE=api` (for API service) or `SERVICE_TYPE=worker` (for Background Worker service)
 
 **Instance Configuration:**
+
 - **Free tier**: 25MB RAM, 10 connections, no persistence (data lost on restart)
 - **Paid tier**: More RAM, more connections, persists data to disk every second
 - Choose instance type based on workload
@@ -221,9 +245,9 @@ async def lifespan(app: FastAPI) -> None:
     worker_process = None
     if os.getenv("ENVIRONMENT") == "production":
         worker_process = start_rq_worker()
-    
+
     yield
-    
+
     # Shutdown
     if worker_process:
         worker_process.terminate()
@@ -240,11 +264,11 @@ def start_rq_worker() -> subprocess.Popen:
             return None
     except Exception as e:
         logger.warning(f"Could not check for existing workers: {e}")
-    
+
     redis_url = os.getenv("REDIS_URL")
     if not redis_url:
         raise ValueError("REDIS_URL not set in production")
-    
+
     logger.info("Starting RQ worker process")
     return subprocess.Popen([
         "rq", "worker", "analysis", "default",
@@ -255,6 +279,7 @@ app = FastAPI(lifespan=lifespan)
 ```
 
 **Integration Steps:**
+
 1. Add worker startup function to `backend/app/main.py`
 2. Integrate into `lifespan` context manager
 3. Worker auto-starts when API service starts
@@ -276,6 +301,7 @@ Create separate Render service for workers:
 **Benefits**: Independent scaling, better resource allocation
 
 **API Service Configuration** (when using separate worker):
+
 - Set `SERVICE_TYPE=api` (or omit, defaults to `api`)
 - The API service will detect existing workers and skip starting its own
 
@@ -358,13 +384,14 @@ default_queue = Queue("default", connection=redis_conn)
 
 ### Environment Variables
 
-| Variable       | Description                                                          | Default                    | Required |
-| -------------- | -------------------------------------------------------------------- | -------------------------- | -------- |
-| `REDIS_URL`    | Redis connection string for RQ                                       | `redis://localhost:6379/0` | Yes      |
-| `ENVIRONMENT` | Environment (development/production)                                 | `development`              | No       |
+| Variable       | Description                                                       | Default                    | Required |
+| -------------- | ----------------------------------------------------------------- | -------------------------- | -------- |
+| `REDIS_URL`    | Redis connection string for RQ                                    | `redis://localhost:6379/0` | Yes      |
+| `ENVIRONMENT`  | Environment (development/production)                              | `development`              | No       |
 | `SERVICE_TYPE` | Service type: `api` (API service) or `worker` (Background Worker) | `api`                      | No       |
 
 **Note on `SERVICE_TYPE`**:
+
 - **API Service**: Set `SERVICE_TYPE=api` (or omit, defaults to `api`). The API service will attempt to start a worker if `ENVIRONMENT=production` and no existing workers are detected.
 - **Worker Service**: Set `SERVICE_TYPE=worker` to explicitly run as a worker service. This prevents the API from starting its own worker.
 
@@ -475,11 +502,13 @@ job = analysis_queue.enqueue(
 ### Failure Handling
 
 **Error Handling in Tasks:**
+
 - Tasks should log errors before re-raising
 - RQ automatically marks jobs as failed when exceptions are raised
 - Failed jobs can be inspected and retried
 
 **Failure Callbacks:**
+
 ```python
 def on_failure(job, exc_type, exc_value, traceback):
     """Handle job failure."""
@@ -494,17 +523,20 @@ job = analysis_queue.enqueue(
 ```
 
 **Job Timeout Handling:**
+
 - Jobs exceeding `job_timeout` are automatically killed
 - Worker marks job as failed
 - Timeout should be set based on analysis type (pose: 300s, ball: 300s, annotation: 180s)
 
 **Result TTL:**
+
 - Results are stored in Redis with TTL (time-to-live)
 - Default: 500 seconds
 - Expired results return `None` when fetching job result
 - Set `result_ttl` based on how long results need to be accessible
 
 **Monitoring Failed Jobs:**
+
 - Use RQ Dashboard to view failed jobs
 - Use `rq-monitoring` utilities to list and requeue failed jobs
 - Failed jobs can be manually retried via API endpoint
@@ -513,11 +545,28 @@ job = analysis_queue.enqueue(
 
 ### RQ Dashboard
 
+**Docker Compose (Recommended):**
+
+```bash
+# RQ Dashboard is automatically started with docker compose up
+# Access at: http://localhost:9181
+```
+
+**Manual Setup:**
+
 ```bash
 # Local development
 rq-dashboard --redis-url=redis://localhost:6379/0 --port 9181
 # Access at: http://localhost:9181
 ```
+
+**What you can see in RQ Dashboard:**
+
+- **Queues**: View all queues (`default`, `analysis`) and their job counts
+- **Workers**: See active workers and their status
+- **Jobs**: Monitor queued, started, finished, and failed jobs
+- **Job Details**: Click any job to see its arguments, result, and error messages
+- **Real-time Updates**: Dashboard refreshes automatically
 
 **Production**: Not recommended to expose publicly. Use Render logs or internal monitoring.
 
@@ -557,7 +606,42 @@ HGETALL rq:job:<job_id>
 
 **Causes**: No workers running, workers crashed, Redis connection issues
 
-**Solutions**:
+**Solutions (Docker)**:
+
+1. **Check if worker container is running:**
+
+   ```bash
+   docker compose ps worker
+   ```
+
+2. **View worker logs:**
+
+   ```bash
+   docker compose logs -f worker
+   ```
+
+   Look for errors, connection issues, or import problems.
+
+3. **Check RQ Dashboard:**
+
+   - Open http://localhost:9181
+   - Check "Workers" tab - should show active workers
+   - Check "Queues" tab - see if jobs are accumulating
+   - Click on a job to see error details if it failed
+
+4. **Verify Redis connection:**
+
+   ```bash
+   docker compose exec redis redis-cli ping
+   # Should return: PONG
+   ```
+
+5. **Restart worker:**
+   ```bash
+   docker compose restart worker
+   ```
+
+**Solutions (Manual Setup)**:
 
 1. Check workers: `ps aux | grep rq worker`
 2. Check worker logs for errors
