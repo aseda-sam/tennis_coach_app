@@ -158,9 +158,7 @@ class TestOverlayDataAPI:
         assert response.status_code == 400
         assert "exceeds maximum size limit" in response.json()["detail"]
 
-    def test_get_overlay_data_video_not_found(
-        self, client: TestClient
-    ) -> None:
+    def test_get_overlay_data_video_not_found(self, client: TestClient) -> None:
         """Test overlay data when video doesn't exist."""
         response = client.get(
             "/v0/videos/99999/overlay-data",
