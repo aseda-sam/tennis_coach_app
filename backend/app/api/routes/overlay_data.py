@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v0/videos", tags=["overlay-data"])
 
+# Maximum size for pose data JSON (50MB)
+MAX_POSE_DATA_SIZE = 50 * 1024 * 1024
+
 
 @router.get("/{video_id}/overlay-data", response_model=PoseOverlayData)
 async def get_overlay_data(
@@ -73,6 +76,20 @@ async def get_overlay_data(
                 detail=f"No pose data available for video {video_id}",
             )
 
+        # Validate JSON size before parsing
+        pose_data_size = len(pose_detection.pose_data.encode("utf-8"))
+        if pose_data_size > MAX_POSE_DATA_SIZE:
+            logger.error(
+                "Pose data too large for video %s: %d bytes (max: %d)",
+                video_id,
+                pose_data_size,
+                MAX_POSE_DATA_SIZE,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pose data exceeds maximum size limit",
+            )
+
         try:
             raw_pose_data = json.loads(pose_detection.pose_data)
             confidence_scores = (
@@ -81,7 +98,7 @@ async def get_overlay_data(
                 else []
             )
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse pose data JSON: {e}")
+            logger.error("Failed to parse pose data JSON for video %s: %s", video_id, e)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to parse pose detection data",
@@ -91,7 +108,7 @@ async def get_overlay_data(
         fps = video.fps
         if not fps or fps <= 0:
             fps = 30.0  # Default fallback
-            logger.warning(f"Invalid FPS for video {video_id}, using default 30.0")
+            logger.warning("Invalid FPS for video %s, using default 30.0", video_id)
 
         # Format frames
         frames: list[PoseFrame] = []
@@ -143,8 +160,8 @@ async def get_overlay_data(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting overlay data for video {video_id}: {e}")
+        logger.exception("Error getting overlay data for video %s", video_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get overlay data: {e!s}",
+            detail="Failed to get overlay data. Please try again later.",
         ) from e

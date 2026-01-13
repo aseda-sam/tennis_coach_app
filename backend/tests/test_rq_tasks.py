@@ -156,5 +156,3 @@ class TestAnalyzeBallDetectionRq:
         assert result["ball_detection_id"] == 456
         assert result["analysis_type"] == "ball_only"
         mock_ball_service.analyze_video_file.assert_called_once()
-
-

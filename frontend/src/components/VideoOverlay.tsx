@@ -1,22 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { videoApi } from '../services/api';
+import { OverlayData } from '../types/video';
 import './VideoOverlay.css';
-
-interface PoseFrame {
-  frame_index: number;
-  timestamp: number;
-  keypoints: { [key: string]: number[] }; // {"left_shoulder": [x, y], ...}
-  confidence: number;
-}
-
-interface OverlayData {
-  video_id: number;
-  fps: number;
-  total_frames: number;
-  width: number;
-  height: number;
-  frames: PoseFrame[];
-}
 
 interface VideoOverlayProps {
   videoId: number;

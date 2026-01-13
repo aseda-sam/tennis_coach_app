@@ -1,5 +1,6 @@
 import axios from 'axios';
 import {
+  OverlayData,
   VideoListResponse,
   VideoMetadata,
   VideoUploadResponse,
@@ -163,9 +164,31 @@ export const videoApi = {
   },
 
   // Get overlay data for client-side rendering
-  getOverlayData: async (videoId: number): Promise<any> => {
-    const response = await api.get(`/videos/${videoId}/overlay-data`);
-    return response.data;
+  getOverlayData: async (videoId: number): Promise<OverlayData> => {
+    try {
+      const response = await api.get<OverlayData>(
+        `/videos/${videoId}/overlay-data`
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error(
+          'Pose data not found for this video. Please run pose detection analysis first.'
+        );
+      }
+      if (error.response?.status === 400) {
+        throw new Error(
+          error.response?.data?.detail ||
+            'Invalid request. Please check the video and try again.'
+        );
+      }
+      if (error.response?.status === 500) {
+        throw new Error(
+          'Server error while fetching overlay data. Please try again later.'
+        );
+      }
+      throw error;
+    }
   },
 };
 
