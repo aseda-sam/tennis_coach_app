@@ -6,8 +6,6 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-logger = logging.getLogger(__name__)
-
 from app.api.schemas.ball_contact import (
     BallContactCreate,
     BallContactDeleteResponse,
@@ -43,6 +41,8 @@ from app.utils.authorization import (
     require_player_access,
     require_video_access,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["ball-contacts"])
 
