@@ -15,7 +15,7 @@ class TestOverlayDataAPI:
     """Test overlay data API endpoint."""
 
     def test_get_overlay_data_success(
-        self, client: TestClient, db_session: Session, test_user: dict
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test successful retrieval of overlay data."""
         # Create a video
@@ -26,7 +26,7 @@ class TestOverlayDataAPI:
             fps=30.0,
             width=1920,
             height=1080,
-            user_id=test_user["id"],
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -54,7 +54,6 @@ class TestOverlayDataAPI:
         # Make request
         response = client.get(
             f"/v0/videos/{video.id}/overlay-data",
-            headers={"Authorization": f"Bearer {test_user['token']}"},
         )
 
         assert response.status_code == 200
@@ -68,7 +67,7 @@ class TestOverlayDataAPI:
         assert "left_shoulder" in data["frames"][0]["keypoints"]
 
     def test_get_overlay_data_missing_pose_detection(
-        self, client: TestClient, db_session: Session, test_user: dict
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test overlay data when pose detection doesn't exist."""
         # Create a video
@@ -76,7 +75,7 @@ class TestOverlayDataAPI:
             filename="test.mp4",
             file_path="test.mp4",
             file_size=1000000,
-            user_id=test_user["id"],
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -84,14 +83,13 @@ class TestOverlayDataAPI:
         # Make request without pose detection
         response = client.get(
             f"/v0/videos/{video.id}/overlay-data",
-            headers={"Authorization": f"Bearer {test_user['token']}"},
         )
 
         assert response.status_code == 404
         assert "No pose detection found" in response.json()["detail"]
 
     def test_get_overlay_data_malformed_json(
-        self, client: TestClient, db_session: Session, test_user: dict
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test overlay data with malformed JSON."""
         # Create a video
@@ -100,7 +98,7 @@ class TestOverlayDataAPI:
             file_path="test.mp4",
             file_size=1000000,
             fps=30.0,
-            user_id=test_user["id"],
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -119,14 +117,13 @@ class TestOverlayDataAPI:
         # Make request
         response = client.get(
             f"/v0/videos/{video.id}/overlay-data",
-            headers={"Authorization": f"Bearer {test_user['token']}"},
         )
 
         assert response.status_code == 500
         assert "Failed to parse pose detection data" in response.json()["detail"]
 
     def test_get_overlay_data_too_large(
-        self, client: TestClient, db_session: Session, test_user: dict
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test overlay data with JSON exceeding size limit."""
         # Create a video
@@ -135,7 +132,7 @@ class TestOverlayDataAPI:
             file_path="test.mp4",
             file_size=1000000,
             fps=30.0,
-            user_id=test_user["id"],
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -156,25 +153,23 @@ class TestOverlayDataAPI:
         # Make request
         response = client.get(
             f"/v0/videos/{video.id}/overlay-data",
-            headers={"Authorization": f"Bearer {test_user['token']}"},
         )
 
         assert response.status_code == 400
         assert "exceeds maximum size limit" in response.json()["detail"]
 
     def test_get_overlay_data_video_not_found(
-        self, client: TestClient, test_user: dict
+        self, client: TestClient
     ) -> None:
         """Test overlay data when video doesn't exist."""
         response = client.get(
             "/v0/videos/99999/overlay-data",
-            headers={"Authorization": f"Bearer {test_user['token']}"},
         )
 
         assert response.status_code == 404
 
     def test_get_overlay_data_incomplete_pose_detection(
-        self, client: TestClient, db_session: Session, test_user: dict
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test overlay data when pose detection is not completed."""
         # Create a video
@@ -182,7 +177,7 @@ class TestOverlayDataAPI:
             filename="test.mp4",
             file_path="test.mp4",
             file_size=1000000,
-            user_id=test_user["id"],
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -201,14 +196,13 @@ class TestOverlayDataAPI:
         # Make request
         response = client.get(
             f"/v0/videos/{video.id}/overlay-data",
-            headers={"Authorization": f"Bearer {test_user['token']}"},
         )
 
         assert response.status_code == 400
         assert "not completed" in response.json()["detail"]
 
     def test_get_overlay_data_no_pose_data(
-        self, client: TestClient, db_session: Session, test_user: dict
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test overlay data when pose_data is None."""
         # Create a video
@@ -216,7 +210,7 @@ class TestOverlayDataAPI:
             filename="test.mp4",
             file_path="test.mp4",
             file_size=1000000,
-            user_id=test_user["id"],
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -235,14 +229,13 @@ class TestOverlayDataAPI:
         # Make request
         response = client.get(
             f"/v0/videos/{video.id}/overlay-data",
-            headers={"Authorization": f"Bearer {test_user['token']}"},
         )
 
         assert response.status_code == 404
         assert "No pose data available" in response.json()["detail"]
 
     def test_get_overlay_data_default_fps(
-        self, client: TestClient, db_session: Session, test_user: dict
+        self, client: TestClient, db_session: Session, test_user_id: str
     ) -> None:
         """Test overlay data with invalid FPS (should default to 30.0)."""
         # Create a video with invalid FPS
@@ -251,7 +244,7 @@ class TestOverlayDataAPI:
             file_path="test.mp4",
             file_size=1000000,
             fps=0,  # Invalid FPS
-            user_id=test_user["id"],
+            user_id=test_user_id,
         )
         db_session.add(video)
         db_session.commit()
@@ -271,7 +264,6 @@ class TestOverlayDataAPI:
         # Make request
         response = client.get(
             f"/v0/videos/{video.id}/overlay-data",
-            headers={"Authorization": f"Bearer {test_user['token']}"},
         )
 
         assert response.status_code == 200
