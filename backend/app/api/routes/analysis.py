@@ -117,19 +117,19 @@ async def start_analysis(
             )
 
         except Exception as e:
-            logger.error(f"Failed to enqueue job for video {video_id}: {e}")
+            logger.exception("Failed to enqueue job for video %s", video_id)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to start analysis: {e!s}",
+                detail="Failed to start analysis. Please try again later.",
             ) from e
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error starting analysis for video {video_id}: {e}")
+        logger.exception("Error starting analysis for video %s", video_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start analysis: {e!s}",
+            detail="Failed to start analysis. Please try again later.",
         ) from e
 
 
@@ -222,10 +222,10 @@ async def get_task_status(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting job status for job {job_id}: {e}")
+        logger.exception("Error getting job status for job %s", job_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get job status: {e!s}",
+            detail="Failed to get job status. Please try again later.",
         ) from e
 
 
@@ -325,10 +325,10 @@ async def list_tasks(
         )
 
     except Exception as e:
-        logger.error(f"Error listing jobs: {e}")
+        logger.exception("Error listing jobs")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list jobs: {e!s}",
+            detail="Failed to list jobs. Please try again later.",
         ) from e
 
 
@@ -364,10 +364,10 @@ async def get_task_stats(
         return TaskStatsResponse.model_validate(response_stats)
 
     except Exception as e:
-        logger.error(f"Error getting job stats: {e}")
+        logger.exception("Error getting job stats")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get job stats: {e!s}",
+            detail="Failed to get job stats. Please try again later.",
         ) from e
 
 
@@ -384,10 +384,10 @@ async def get_queue_stats_endpoint(
     try:
         return get_queue_stats()
     except Exception as e:
-        logger.error(f"Error getting queue stats: {e}")
+        logger.exception("Error getting queue stats")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get queue stats: {e!s}",
+            detail="Failed to get queue stats. Please try again later.",
         ) from e
 
 
@@ -455,10 +455,10 @@ async def cancel_task(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error cancelling job {job_id}: {e}")
+        logger.exception("Error cancelling job %s", job_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to cancel job: {e!s}",
+            detail="Failed to cancel job. Please try again later.",
         ) from e
 
 

@@ -94,10 +94,10 @@ async def assess_video_quality(
         # Re-raise HTTP exceptions as-is
         raise
     except (OSError, RuntimeError, ValueError) as e:
-        logger.error(f"Error assessing video quality for video {video_id}: {e}")
+        logger.exception("Error assessing video quality for video %s", video_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Video quality assessment failed: {e!s}",
+            detail="Video quality assessment failed. Please try again later.",
         ) from e
 
 
@@ -152,8 +152,8 @@ async def get_video_quality_info(
         # Re-raise HTTP exceptions as-is
         raise
     except (OSError, RuntimeError, ValueError) as e:
-        logger.error(f"Error retrieving video quality info for video {video_id}: {e}")
+        logger.exception("Error retrieving video quality info for video %s", video_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve video quality information: {e!s}",
+            detail="Failed to retrieve video quality information. Please try again later.",
         ) from e

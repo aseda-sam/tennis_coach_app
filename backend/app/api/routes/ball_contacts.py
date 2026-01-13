@@ -375,9 +375,10 @@ def analyze_ball_contact_posture(
             detail=str(e),
         ) from e
     except Exception as e:
+        logger.exception("Posture analysis failed for ball contact %s", ball_contact_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Posture analysis failed: {e!s}",
+            detail="Posture analysis failed. Please try again later.",
         ) from e
 
 
@@ -476,9 +477,10 @@ def analyze_video_posture(
             detail=str(e),
         ) from e
     except Exception as e:
+        logger.exception("Batch posture analysis failed for video %s", video_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Batch posture analysis failed: {e!s}",
+            detail="Batch posture analysis failed. Please try again later.",
         ) from e
 
 
@@ -508,7 +510,8 @@ def get_ball_contact_player_options(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Failed to get player options for video %s", video_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get player options: {e!s}",
+            detail="Failed to get player options. Please try again later.",
         ) from e
