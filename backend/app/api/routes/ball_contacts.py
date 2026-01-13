@@ -1,9 +1,12 @@
 """Ball contact API routes."""
 
+import logging
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.api.schemas.ball_contact import (
     BallContactCreate,

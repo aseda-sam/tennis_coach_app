@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v0/ball-detection", tags=["ball-detection"])
 
+# Maximum size for detection data JSON (50MB)
+MAX_JSON_SIZE = 50 * 1024 * 1024
+
 
 @router.post("/analyze/{video_id}", response_model=BallDetectionResponse)
 async def analyze_video_ball_detection(
@@ -196,8 +199,7 @@ def _convert_to_response(
     # Parse detection data if requested
     detection_data = None
     if include_detection_data and ball_detection.detection_data:
-        # Validate JSON size before parsing (50MB limit)
-        MAX_JSON_SIZE = 50 * 1024 * 1024
+        # Validate JSON size before parsing
         detection_data_size = len(ball_detection.detection_data.encode("utf-8"))
         if detection_data_size > MAX_JSON_SIZE:
             logger.warning(
