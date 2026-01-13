@@ -41,8 +41,6 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [overlayData, setOverlayData] = useState<OverlayData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [canvasStyle, setCanvasStyle] = useState<React.CSSProperties>({
     position: 'absolute',
     top: 0,
@@ -60,15 +58,10 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
 
     const fetchOverlayData = async () => {
       try {
-        setLoading(true);
-        setError(null);
         const data = await videoApi.getOverlayData(videoId);
         setOverlayData(data);
       } catch (err: any) {
         console.error('Failed to fetch overlay data:', err);
-        setError('Failed to load overlay data');
-      } finally {
-        setLoading(false);
       }
     };
 
