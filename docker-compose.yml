@@ -15,6 +15,7 @@ services:
       - DEBUG=True
       - DATABASE_URL=sqlite:///../data/database/tennis_coach.db
       - LOG_LEVEL=DEBUG
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       - redis
     restart: unless-stopped
@@ -44,6 +45,46 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    restart: unless-stopped
+
+  worker:
+    container_name: tennis-coach-worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    volumes:
+      - ./backend:/app/backend
+      - ./data:/app/data
+    working_dir: /app/backend
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=sqlite:///../data/database/tennis_coach.db
+      - LOG_LEVEL=DEBUG
+      - REDIS_URL=redis://redis:6379/0
+      - SERVICE_TYPE=worker
+      - OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+    command: python scripts/start_rq_worker.py
+    depends_on:
+      - redis
+      - backend
+    restart: unless-stopped
+
+  rq-dashboard:
+    container_name: tennis-coach-rq-dashboard
+    image: python:3.11-slim
+    ports:
+      - "9181:9181"
+    working_dir: /app
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    command: >
+      sh -c "
+        pip install --no-cache-dir rq-dashboard &&
+        rq-dashboard --redis-url=redis://redis:6379/0 --host=0.0.0.0 --port=9181
+      "
+    depends_on:
+      - redis
     restart: unless-stopped
 
 volumes:
