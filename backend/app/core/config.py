@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     MAX_FPS: int = 60  # 60fps support (local)
 
     # Docker-specific limits (will be overridden in Docker)
-    DOCKER_MAX_VIDEO_RESOLUTION: tuple[int, int] = (1920, 1080)  # 1080p for Docker
+    DOCKER_MAX_VIDEO_RESOLUTION: tuple[int, int] = (3840, 2160)  # 1080p for Docker
     DOCKER_MAX_FPS: int = 60  # 60fps for Docker
     DOCKER_FRAME_SKIP_RATIO: int = (
         1  # Process every frame in Docker (no skipping by default)
@@ -179,20 +179,25 @@ class Settings(BaseSettings):
         Logic:
             - If _STORAGE_TYPE is explicitly set (via env var), use that
             - Otherwise, auto-detect:
-              - If SUPABASE_DB_URL is set → "supabase"
-              - Else if PROFILE == "local" → "local"
+              - If PROFILE == "local" → "local" (ignores Supabase vars)
+              - Else if SUPABASE_DB_URL is set → "supabase"
               - Else → "supabase"
         """
         # If explicitly set via env var, use that
         if self._STORAGE_TYPE is not None:
             return self._STORAGE_TYPE
 
-        # Auto-detect based on SUPABASE_DB_URL (Supabase DB → Supabase Storage)
+        # Profile-based detection takes precedence
+        # When PROFILE=local, always use local storage (ignores Supabase vars)
+        if self.PROFILE == "local":
+            return "local"
+
+        # For non-local profiles, auto-detect based on SUPABASE_DB_URL
         if self.SUPABASE_DB_URL:
             return "supabase"
 
-        # Fall back to profile-based detection
-        return "local" if self.PROFILE == "local" else "supabase"
+        # Default fallback
+        return "supabase"
 
     class Config:
         env_file = ".env"
