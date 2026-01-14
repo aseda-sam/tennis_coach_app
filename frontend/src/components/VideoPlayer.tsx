@@ -72,7 +72,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(
     null
   );
-  const [showOverlay, setShowOverlay] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Use ball contacts hook if videoId is provided
