@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import './AnalysisRightPanel.css';
 
 interface AnalysisRightPanelProps {
@@ -14,7 +14,6 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
   videoFilename,
   analysisStatus,
 }) => {
-  const [trajectoryView, setTrajectoryView] = useState<'simple' | 'detailed'>('simple');
 
   return (
     <div className="analysis-right-panel">
@@ -36,24 +35,6 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
           <div className="analysis-right-panel__trajectory-title-group">
             <h3 className="analysis-right-panel__card-title">Ball Toss Trajectory</h3>
             <p className="analysis-right-panel__card-subtitle">Vertical height only</p>
-          </div>
-          <div className="analysis-right-panel__trajectory-toggle">
-            <button
-              className={`analysis-right-panel__toggle-btn ${
-                trajectoryView === 'simple' ? 'analysis-right-panel__toggle-btn--active' : ''
-              }`}
-              onClick={() => setTrajectoryView('simple')}
-            >
-              Simple
-            </button>
-            <button
-              className={`analysis-right-panel__toggle-btn ${
-                trajectoryView === 'detailed' ? 'analysis-right-panel__toggle-btn--active' : ''
-              }`}
-              onClick={() => setTrajectoryView('detailed')}
-            >
-              Detailed
-            </button>
           </div>
         </div>
         <div className="analysis-right-panel__trajectory-chart">

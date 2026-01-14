@@ -470,8 +470,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           minHeight: isPostureSidebarOpen ? '500px' : 'auto',
         }}
       >
-        {/* Controls row (kept minimal) */}
-        {hasPoseData && (
+        {/* Controls row (kept minimal) - only show when controlsBelow is false */}
+        {hasPoseData && !controlsBelow && (
           <div className="overlay-toggle-container">
             <label className="overlay-toggle-label">
               <input
@@ -692,30 +692,44 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
           {/* Controls Row */}
           <div className="video-controls-below__controls">
-            <button
-              className="video-controls-below__nav-btn"
-              disabled
-              title="Previous Serve"
-            >
-              <ArrowBackIcon size={16} />
-              Previous Serve
-            </button>
-            <button
-              className="video-controls-below__play-btn"
-              onClick={togglePlay}
-            >
-              {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
-            </button>
-            <button
-              className="video-controls-below__next-btn"
-              disabled
-              title="Next Serve"
-            >
-              Next Serve
-              <span className="video-controls-below__arrow-right">
+            <div className="video-controls-below__center-controls">
+              <button
+                className="video-controls-below__nav-btn"
+                disabled
+                title="Previous Serve"
+              >
                 <ArrowBackIcon size={16} />
-              </span>
-            </button>
+                Previous Serve
+              </button>
+              <button
+                className="video-controls-below__play-btn"
+                onClick={togglePlay}
+              >
+                {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+              </button>
+              <button
+                className="video-controls-below__next-btn"
+                disabled
+                title="Next Serve"
+              >
+                Next Serve
+                <span className="video-controls-below__arrow-right">
+                  <ArrowBackIcon size={16} />
+                </span>
+              </button>
+            </div>
+            {hasPoseData && (
+              <label className="video-controls-below__annotation-toggle">
+                <input
+                  type="checkbox"
+                  checked={showOverlay}
+                  onChange={(e) => setShowOverlay(e.target.checked)}
+                  className="video-controls-below__toggle-input"
+                />
+                <span className="video-controls-below__toggle-slider"></span>
+                <span className="video-controls-below__toggle-label">Show Annotation</span>
+              </label>
+            )}
           </div>
         </div>
       )}

@@ -67,9 +67,6 @@
 
 /* Ball Toss Trajectory Card */
 .analysis-right-panel__trajectory-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
   margin-bottom: var(--spacing-5xl);
 }
 
@@ -93,32 +90,6 @@
   color: var(--color-text-muted);
   margin: 0;
   line-height: var(--line-height-normal);
-}
-
-.analysis-right-panel__trajectory-toggle {
-  display: flex;
-  gap: var(--spacing-xs);
-  background: var(--color-surface-tertiary);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xs);
-}
-
-.analysis-right-panel__toggle-btn {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-normal);
-  cursor: pointer;
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  transition: var(--transition-normal);
-}
-
-.analysis-right-panel__toggle-btn--active {
-  background: var(--color-surface);
-  color: var(--color-text);
-  box-shadow: var(--shadow-sm);
 }
 
 .analysis-right-panel__trajectory-chart {
