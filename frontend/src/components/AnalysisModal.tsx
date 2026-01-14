@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { analysisApi, AnalysisData } from '../services/api';
+import { AnalyticsIcon, CloseIcon, WarningIcon } from './Icons';
 import './AnalysisModal.css';
 
 interface AnalysisModalProps {
@@ -44,9 +45,12 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({
     <div className="analysis-modal-overlay" onClick={onClose}>
       <div className="analysis-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>📊 Analysis Results</h2>
-          <button className="close-btn" onClick={onClose}>
-            ×
+          <h2 className="modal-title">
+            <AnalyticsIcon size={18} />
+            Analysis Results
+          </h2>
+          <button className="close-btn" onClick={onClose} aria-label="Close">
+            <CloseIcon size={18} />
           </button>
         </div>
 
@@ -64,7 +68,10 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({
 
           {error && (
             <div className="error-state">
-              <h3>❌ Error</h3>
+              <h3 className="error-title">
+                <WarningIcon size={18} />
+                Error
+              </h3>
               <p>{error}</p>
             </div>
           )}

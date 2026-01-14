@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
+import { UploadIcon } from './Icons';
 import './VideoUpload.css';
 
 interface VideoUploadProps {
@@ -116,7 +117,9 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
           </div>
         ) : (
           <>
-            <div className="upload-icon">📁</div>
+            <div className="upload-icon" aria-hidden="true">
+              <UploadIcon size={48} color="#64748b" />
+            </div>
             <p>Drag and drop your tennis video here</p>
             <p>or</p>
             <label className="file-input-label">
