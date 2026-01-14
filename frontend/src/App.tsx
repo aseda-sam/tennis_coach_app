@@ -4,6 +4,7 @@ import AnalysisDashboard from './components/AnalysisDashboard';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
 import { AuthForm } from './components/AuthForm';
+import { ListIcon, UploadIcon } from './components/Icons';
 import { useAuth } from './hooks/useAuth';
 import { VideoMetadata } from './types/video';
 
@@ -53,42 +54,66 @@ function App() {
     );
   }
 
+  const renderHeader = () => {
+    if (currentView === 'dashboard') return null;
+
+    return (
+      <div className="app-header">
+        <div className="app-header-left">
+          <h1 className="app-title">Tennis Coach</h1>
+        </div>
+
+        <div className="app-header-center" role="tablist" aria-label="Primary navigation">
+          <div className="view-toggle">
+            <button
+              type="button"
+              className={`view-toggle-btn ${currentView === 'upload' ? 'active' : ''}`}
+              onClick={() => setCurrentView('upload')}
+              aria-selected={currentView === 'upload'}
+            >
+              <UploadIcon size={18} />
+              Upload
+            </button>
+            <button
+              type="button"
+              className={`view-toggle-btn ${currentView === 'list' ? 'active' : ''}`}
+              onClick={() => setCurrentView('list')}
+              aria-selected={currentView === 'list'}
+            >
+              <ListIcon size={18} />
+              My Videos
+            </button>
+          </div>
+        </div>
+
+        <div className="app-header-right">
+          <button className="logout-btn" onClick={signOut}>
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const renderCurrentView = () => {
     switch (currentView) {
       case 'upload':
         return (
           <div className="app-container">
+            {renderHeader()}
+            
             <div className="upload-section">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                  <h1 className="app-title">Tennis Video Analyzer</h1>
-                  <p className="app-subtitle">
-                    Upload your tennis videos for advanced performance analysis and technique insights
-                  </p>
-                </div>
-                <button 
-                  onClick={signOut}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#ef4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Logout
-                </button>
+              <div className="header-content">
+                <p className="app-subtitle">
+                  Upload your tennis video and get personalized feedback
+                </p>
+                <p className="app-description">
+                  Share a video of your serve or groundstrokes, and we'll help you understand 
+                  what's working well and where you can improve. More shot types coming soon!
+                </p>
               </div>
+
               <VideoUpload onUploadSuccess={handleVideoUploaded} />
-              <div className="view-videos-section">
-                <button 
-                  className="view-videos-btn"
-                  onClick={() => setCurrentView('list')}
-                >
-                  View My Videos
-                </button>
-              </div>
             </div>
           </div>
         );
@@ -96,40 +121,8 @@ function App() {
       case 'list':
         return (
           <div className="app-container">
-            <div className="list-section">
-              <div className="list-header">
-                <button 
-                  className="back-to-upload-btn"
-                  onClick={() => setCurrentView('upload')}
-                >
-                  ← Back to Upload
-                </button>
-                <button 
-                  className="upload-new-btn"
-                  onClick={() => setCurrentView('upload')}
-                >
-                  Upload New Video
-                </button>
-                <button 
-                  onClick={signOut}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#ef4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    marginLeft: '10px',
-                  }}
-                >
-                  Logout
-                </button>
-              </div>
-              <VideoList 
-                onVideoDeleted={handleVideoDeleted}
-                onViewAnalysis={handleViewAnalysis}
-              />
-            </div>
+            {renderHeader()}
+            <VideoList onVideoDeleted={handleVideoDeleted} onViewAnalysis={handleViewAnalysis} />
           </div>
         );
 

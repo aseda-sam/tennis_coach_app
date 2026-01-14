@@ -97,8 +97,6 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
 
   return (
     <div className="video-upload">
-      <h2>Upload Tennis Video</h2>
-      
       <div
         className={`upload-area ${isDragOver ? 'drag-over' : ''} ${isUploading ? 'uploading' : ''}`}
         onDragOver={handleDragOver}
@@ -120,8 +118,8 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
             <div className="upload-icon" aria-hidden="true">
               <UploadIcon size={48} color="#64748b" />
             </div>
-            <p>Drag and drop your tennis video here</p>
-            <p>or</p>
+            <p className="upload-main-text">Drag and drop your tennis video here</p>
+            <p className="upload-or-text">or</p>
             <label className="file-input-label">
               Choose File
               <input
@@ -132,12 +130,21 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
                 style={{ display: 'none' }}
               />
             </label>
-            <p className="file-info">
-              Supported formats: MP4, AVI, MOV, WMV, FLV<br />
-              Maximum size: 100MB
-            </p>
           </>
         )}
+      </div>
+
+      <div className="upload-guidance">
+        <h3 className="guidance-title">What videos work best?</h3>
+        <ul className="guidance-list">
+          <li>Record from the side or slightly behind for serves</li>
+          <li>Capture your full body and the ball in frame</li>
+          <li>Good lighting helps us see your form clearly</li>
+          <li>Videos should be at least a few seconds long</li>
+        </ul>
+        <p className="file-info">
+          Supported formats: MP4, AVI, MOV, WMV, FLV • Maximum size: 100MB
+        </p>
       </div>
 
       {error && (
