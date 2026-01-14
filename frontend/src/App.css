@@ -19,12 +19,18 @@
 
 /* App Header */
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 20px 0 40px;
+  padding: 16px 0;
+  background: rgba(250, 251, 252, 0.95);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid #e2e8f0;
-  margin-bottom: 40px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .app-header-left {
@@ -257,8 +263,8 @@
   }
   
   .app-header {
-    padding: 16px 0 32px;
-    margin-bottom: 32px;
+    padding: 12px 0;
+    margin-bottom: 20px;
     grid-template-columns: 1fr;
     row-gap: 14px;
   }

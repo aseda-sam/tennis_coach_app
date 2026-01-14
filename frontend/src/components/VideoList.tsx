@@ -10,14 +10,10 @@ import {
 } from '../hooks/useVideos';
 import unifiedAnalysisApi from '../services/unifiedAnalysisApi';
 import { VideoMetadata } from '../types/video';
-import { clsx } from 'clsx';
 import {
   AnalyticsIcon,
   DeleteIcon,
   EyeIcon,
-  GridIcon,
-  ListIcon,
-  PlayIcon,
   VideoIcon,
 } from './Icons';
 import './VideoList.css';
@@ -46,7 +42,6 @@ const VideoList: React.FC<VideoListProps> = ({
   } = useVideoAnalysisStatuses(videoIds);
 
   const deleteVideoMutation = useDeleteVideo();
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Track active analysis tasks using the unified system
   const [activeAnalysisTasks, setActiveAnalysisTasks] = useState<
@@ -175,7 +170,7 @@ const VideoList: React.FC<VideoListProps> = ({
           case 'failed':
             return { text: 'Failed', color: 'error' };
           case 'completed':
-            return { text: 'Completed', color: 'completed' };
+            return { text: 'Ready', color: 'completed' };
         }
       }
       // Fallback: show processing if job is tracked but state not yet loaded
@@ -183,49 +178,13 @@ const VideoList: React.FC<VideoListProps> = ({
     }
 
     if (analysisStatus?.has_analysis) {
-      return { text: 'Completed', color: 'completed' };
+      return { text: 'Ready', color: 'completed' };
     }
 
-    return { text: 'Not Analyzed', color: 'not-analyzed' };
+    return { text: 'No analysis', color: 'not-analyzed' };
   };
 
-  const getQualityStatus = (video: VideoMetadata) => {
-    if (!video.quality_level || video.quality_level === 'unknown') {
-      return { text: 'Quality Unknown', color: 'unknown' };
-    }
 
-    switch (video.quality_level) {
-      case 'excellent':
-        return { text: 'Excellent Quality', color: 'excellent' };
-      case 'good':
-        return { text: 'Good Quality', color: 'good' };
-      case 'fair':
-        return { text: 'Fair Quality', color: 'fair' };
-      case 'poor':
-        return { text: 'Poor Quality', color: 'poor' };
-      default:
-        return { text: 'Quality Unknown', color: 'unknown' };
-    }
-  };
-
-  const getQualityMessage = (video: VideoMetadata): string => {
-    if (!video.quality_level || video.quality_level === 'unknown') {
-      return 'Quality not assessed yet';
-    }
-
-    switch (video.quality_level) {
-      case 'excellent':
-        return 'Great video quality! Ready for analysis.';
-      case 'good':
-        return 'Good quality. Analysis should work well.';
-      case 'fair':
-        return 'Fair quality. Analysis may have reduced accuracy.';
-      case 'poor':
-        return 'Poor quality detected. Consider re-recording with better lighting/steadier camera.';
-      default:
-        return 'Quality not assessed yet';
-    }
-  };
 
   if (loading) {
     return (
@@ -253,27 +212,11 @@ const VideoList: React.FC<VideoListProps> = ({
 
   return (
     <div className="video-list-container">
-      {/* Enhanced Header */}
+      {/* Header */}
       <div className="video-list-header">
         <div className="header-left">
-          <h1 className="page-title">My Videos</h1>
-          <p className="video-count">{videos.length} videos uploaded</p>
-        </div>
-        <div className="header-right">
-          <div className="view-toggle">
-            <button
-              className={`toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
-              onClick={() => setViewMode('grid')}
-            >
-              <GridIcon size={18} />
-            </button>
-            <button
-              className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
-              onClick={() => setViewMode('list')}
-            >
-              <ListIcon size={18} />
-            </button>
-          </div>
+          <h2 className="page-title">Videos</h2>
+          <p className="video-count">{videos.length} uploaded</p>
         </div>
       </div>
 
@@ -286,139 +229,86 @@ const VideoList: React.FC<VideoListProps> = ({
           <p>Upload your first tennis video to get started with analysis</p>
         </div>
       ) : (
-        <div className={`video-grid ${viewMode}`}>
+        <div className="video-list">
           {videos.map((video: VideoMetadata) => {
             const analysisStatus = analysisStatusesMap[video.id];
             const isCurrentlyAnalyzing = isAnalyzing(video.id);
-            const status = getStatusTag(null, video.id); // No legacy analysis
-            const qualityStatus = getQualityStatus(video);
+            const status = getStatusTag(null, video.id);
 
             return (
-              <div key={video.id} className="video-card-enhanced">
+              <div
+                key={video.id}
+                className="video-item"
+                onClick={() => {
+                  // Only make clickable if analysis exists or not analyzing
+                  if (analysisStatus?.has_analysis || !isCurrentlyAnalyzing) {
+                    handleViewAnalysis(video.id);
+                  }
+                }}
+                style={{
+                  cursor: analysisStatus?.has_analysis || !isCurrentlyAnalyzing ? 'pointer' : 'default',
+                }}
+              >
                 <div className="video-thumbnail-container">
                   <div className="video-thumbnail">
-                    <VideoIcon size={48} color="white" />
-                    <div className="play-overlay">
-                      <PlayIcon size={32} color="#3b82f6" />
-                    </div>
+                    <VideoIcon size={32} color="white" />
                     {video.duration && (
                       <div className="duration-badge">
                         {formatDuration(video.duration)}
                       </div>
                     )}
                   </div>
-                  <div className={`status-tag ${status.color}`}>
-                    {status.text}
-                  </div>
-                  {/* Quality status tag */}
-                  <div className={`quality-tag ${qualityStatus.color}`}>
-                    {qualityStatus.text}
-                  </div>
                 </div>
 
                 <div className="video-content">
-                  <h3 className="video-title">{video.filename}</h3>
-
-                  {/* Quality message */}
-                  {video.quality_level && video.quality_level !== 'unknown' && (
-                    <div className="quality-message">
-                      {getQualityMessage(video)}
+                  <div className="video-header">
+                    <h3 className="video-title">{video.filename}</h3>
+                    <div className="video-meta-list">
+                      {formatFileSize(video.file_size)}
+                      {video.width && video.height && (
+                        <> • {video.width}×{video.height}</>
+                      )}
                     </div>
-                  )}
-
-                  <div className="video-metadata-enhanced">
-                    <div className="metadata-row">
-                      <span className="metadata-label">File Size:</span>
-                      <span className="metadata-value">
-                        {formatFileSize(video.file_size)}
-                      </span>
-                    </div>
-
-                    {video.width && video.height && (
-                      <div className="metadata-row">
-                        <span className="metadata-label">Resolution:</span>
-                        <span className="metadata-value">
-                          {video.width}×{video.height}
-                        </span>
-                      </div>
-                    )}
-
-                    {video.fps && (
-                      <div className="metadata-row">
-                        <span className="metadata-label">Frame Rate:</span>
-                        <span className="metadata-value">{video.fps} fps</span>
-                      </div>
-                    )}
-
-                    {video.status && video.status !== 'uploaded' && (
-                      <div className="metadata-row">
-                        <span className="metadata-label">Status:</span>
-                        <span className="metadata-value">{video.status}</span>
-                      </div>
-                    )}
                   </div>
-                </div>
 
-                <div className="video-actions-enhanced">
-                  {!analysisStatus?.has_analysis && !isCurrentlyAnalyzing && (
-                    <button
-                      className="action-btn pose-btn"
-                      onClick={() => handlePoseAnalyze(video.id)}
-                    >
-                      <AnalyticsIcon size={16} />
-                      Pose Only
-                    </button>
-                  )}
+                  <div className="video-actions">
+                    <span className={`analysis-pill ${status.color}`}>
+                      {status.color === 'completed' && (
+                        <>
+                          <EyeIcon size={14} />
+                          <span>{status.text}</span>
+                        </>
+                      )}
+                      {status.color !== 'completed' && <span>{status.text}</span>}
+                    </span>
 
-                  {/* Show analysis status if currently analyzing */}
-                  {isCurrentlyAnalyzing && analysisState.status !== 'idle' && (
-                    <div className="analysis-status-container">
-                      <span
-                        className={clsx(
-                          'px-2 py-1 text-xs font-medium rounded-full',
-                          analysisState.status === 'processing' &&
-                            'bg-blue-100 text-blue-700',
-                          analysisState.status === 'queued' &&
-                            'bg-yellow-100 text-yellow-700',
-                          analysisState.status === 'completed' &&
-                            'bg-green-100 text-green-700',
-                          analysisState.status === 'failed' &&
-                            'bg-red-100 text-red-700'
-                        )}
+                    {!analysisStatus?.has_analysis && !isCurrentlyAnalyzing && (
+                      <button
+                        className="btn btn-secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePoseAnalyze(video.id);
+                        }}
+                        type="button"
                       >
-                        {analysisState.status.toUpperCase()}
-                      </span>
-                    </div>
-                  )}
+                        <AnalyticsIcon size={16} />
+                        Analyze
+                      </button>
+                    )}
 
-                  {/* Always show View Video button */}
-                  <button
-                    className="action-btn view-btn"
-                    onClick={() => handleViewAnalysis(video.id)}
-                  >
-                    <PlayIcon size={16} />
-                    View Video
-                  </button>
-
-                  {/* Show View Analysis button when analysis exists */}
-                  {analysisStatus?.has_analysis && (
                     <button
-                      className="action-btn analysis-btn"
-                      onClick={() => handleViewAnalysis(video.id)}
+                      className="icon-btn delete-icon-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(video.id);
+                      }}
+                      disabled={deleteVideoMutation.isPending}
+                      title="Delete"
+                      type="button"
                     >
-                      <EyeIcon size={16} />
-                      View Analysis
+                      <DeleteIcon size={18} />
                     </button>
-                  )}
-
-                  <button
-                    className="action-btn delete-btn"
-                    onClick={() => handleDelete(video.id)}
-                    disabled={deleteVideoMutation.isPending}
-                  >
-                    <DeleteIcon size={16} />
-                    {deleteVideoMutation.isPending ? 'Deleting...' : 'Delete'}
-                  </button>
+                  </div>
                 </div>
               </div>
             );
