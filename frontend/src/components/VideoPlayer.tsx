@@ -266,7 +266,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, [aspectRatioMode, videoAspectRatio]);
 
-  const togglePlay = async () => {
+  const togglePlay = useCallback(async () => {
     const video = videoRef.current;
     if (!video) return;
 
@@ -285,7 +285,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       console.error('Error playing video:', err);
       setError('Failed to play video. Please try again.');
     }
-  };
+  }, [isPlaying]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const video = videoRef.current;
@@ -383,7 +383,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     navigateFrame('backward');
   }, [navigateFrame]);
 
-  // Keyboard shortcuts for frame navigation
+  // Keyboard shortcuts for frame navigation and play/pause
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Only handle keyboard shortcuts when video player is focused or when not in input fields
@@ -395,6 +395,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       }
 
       switch (event.key) {
+        case ' ':
+        case 'Space':
+          event.preventDefault();
+          togglePlay();
+          break;
         case 'ArrowLeft':
           event.preventDefault();
           navigateToPreviousFrame();
@@ -415,7 +420,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [navigateToPreviousFrame, navigateToNextFrame]);
+  }, [togglePlay, navigateToPreviousFrame, navigateToNextFrame]);
 
   // Memoize formatted time strings to prevent unnecessary re-renders
   const formattedCurrentTime = useMemo(
@@ -685,17 +690,52 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Controls Below Video (when controlsBelow is true) - Outside video wrapper */}
       {showControls && controlsBelow && (
         <div className="video-controls-below">
-          {/* Serve Segmentation */}
-          <div className="serve-segmentation">
-            <div className="serve-segmentation__track">
-              <div className="serve-segmentation__segment serve-segmentation__segment--active">
-                Serve 1
-              </div>
-              <div className="serve-segmentation__segment">Serve 2</div>
-              <div className="serve-segmentation__segment">Serve 3</div>
-              <div className="serve-segmentation__marker"></div>
+          {/* Video Scrubber */}
+          <div className="video-controls-below__scrubber">
+            <div className="video-controls-below__scrubber-track">
+              <input
+                type="range"
+                className="video-controls-below__scrubber-input"
+                min="0"
+                max={duration || 0}
+                value={currentTime}
+                onChange={handleSeek}
+                onMouseDown={handleSeekStart}
+                onMouseUp={handleSeekEnd}
+                onTouchStart={handleSeekStart}
+                onTouchEnd={handleSeekEnd}
+                step={frameStep}
+              />
+              {/* Contact markers */}
+              {ballContacts.length > 0 && duration > 0 && (
+                <div className="video-controls-below__contact-markers">
+                  {ballContacts.map((contact) => {
+                    const position =
+                      (contact.video_timestamp / duration) * 100;
+                    const isSelected = selectedContactId === contact.id;
+
+                    return (
+                      <BallContactMarker
+                        key={contact.id}
+                        contact={contact}
+                        position={position}
+                        isSelected={isSelected}
+                        onClick={() => {
+                          setSelectedContact(contact);
+                          setSelectedContactId(contact.id);
+                          setIsModalOpen(true);
+                        }}
+                        onAnalyzeClick={() => {
+                          setSelectedContactId(contact.id);
+                        }}
+                        showAnalysisButton={isPostureSidebarOpen}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <div className="serve-segmentation__time-labels">
+            <div className="video-controls-below__time-labels">
               <span>{formattedCurrentTime}</span>
               <span>{formattedDuration}</span>
             </div>
@@ -705,9 +745,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <div className="video-controls-below__controls">
             <div className="video-controls-below__center-controls">
               <button
-                className="video-controls-below__nav-btn"
+                className="video-controls-below__nav-btn video-controls-below__nav-btn--coming-soon"
                 disabled
-                title="Previous Serve"
+                title="Coming soon"
               >
                 <ArrowBackIcon size={16} />
                 Previous Serve
@@ -719,9 +759,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
               </button>
               <button
-                className="video-controls-below__next-btn"
+                className="video-controls-below__next-btn video-controls-below__next-btn--coming-soon"
                 disabled
-                title="Next Serve"
+                title="Coming soon"
               >
                 Next Serve
                 <span className="video-controls-below__arrow-right">

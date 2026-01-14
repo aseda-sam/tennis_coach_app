@@ -90,19 +90,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 </div>
                 <div className="analysis-dashboard__shortcut-item">
                   <kbd className="analysis-dashboard__kbd">← →</kbd>
-                  <span>Navigate serves</span>
-                </div>
-                <div className="analysis-dashboard__shortcut-item">
-                  <kbd className="analysis-dashboard__kbd">↑ ↓</kbd>
                   <span>Frame by frame</span>
-                </div>
-                <div className="analysis-dashboard__shortcut-item">
-                  <kbd className="analysis-dashboard__kbd">R</kbd>
-                  <span>Loop serve</span>
-                </div>
-                <div className="analysis-dashboard__shortcut-item">
-                  <kbd className="analysis-dashboard__kbd">V</kbd>
-                  <span>Analyze</span>
                 </div>
               </div>
             </div>
