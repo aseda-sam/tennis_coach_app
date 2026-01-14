@@ -163,6 +163,24 @@ export const videoApi = {
     return response.data;
   },
 
+  // Bulk check video analysis statuses (optimized)
+  getBulkVideoAnalysisStatus: async (
+    videoIds: number[]
+  ): Promise<{
+    video_id: number;
+    has_analysis: boolean;
+    analysis_types: string[];
+  }[]> => {
+    const response = await api.post<{
+      statuses: {
+        video_id: number;
+        has_analysis: boolean;
+        analysis_types: string[];
+      }[];
+    }>('/videos/analysis-status/bulk', { video_ids: videoIds });
+    return response.data.statuses;
+  },
+
   // Get overlay data for client-side rendering
   getOverlayData: async (videoId: number): Promise<OverlayData> => {
     try {

@@ -1,11 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-  AnalysisProgress,
-  useAnalysisProgress,
-} from '../hooks/useAnalysisProgress';
-import { videoApi } from '../services/api';
+  useAnalysisStatus,
+  AnalysisState,
+} from '../hooks/useAnalysisStatus';
+import {
+  useVideos,
+  useVideoAnalysisStatuses,
+  useDeleteVideo,
+} from '../hooks/useVideos';
 import unifiedAnalysisApi from '../services/unifiedAnalysisApi';
 import { VideoMetadata } from '../types/video';
+import { clsx } from 'clsx';
 import {
   AnalyticsIcon,
   DeleteIcon,
@@ -15,7 +20,6 @@ import {
   PlayIcon,
   VideoIcon,
 } from './Icons';
-import ProgressBar from './ProgressBar';
 import './VideoList.css';
 
 interface VideoListProps {
@@ -27,21 +31,21 @@ const VideoList: React.FC<VideoListProps> = ({
   onVideoDeleted,
   onViewAnalysis,
 }) => {
-  const [videos, setVideos] = useState<VideoMetadata[]>([]);
-  const [analysisStatuses, setAnalysisStatuses] = useState<
-    Map<
-      number,
-      {
-        has_analysis: boolean;
-        analysis_types: string[];
-      }
-    >
-  >(new Map());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [, setModalOpen] = useState(false);
-  const [, setSelectedVideo] = useState<number | null>(null);
+  // Use React Query hooks for data fetching
+  const {
+    data: videos = [],
+    isLoading: videosLoading,
+    error: videosError,
+    refetch: refetchVideos,
+  } = useVideos();
+
+  const videoIds = videos.map((v: VideoMetadata) => v.id);
+  const {
+    data: analysisStatusesMap = {},
+    isLoading: statusesLoading,
+  } = useVideoAnalysisStatuses(videoIds);
+
+  const deleteVideoMutation = useDeleteVideo();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Track active analysis tasks using the unified system
@@ -49,82 +53,43 @@ const VideoList: React.FC<VideoListProps> = ({
     Map<number, string> // videoId -> jobId
   >(new Map());
 
-  // Removed legacy analysis verification
+  const loading = videosLoading || statusesLoading;
+  const error = videosError
+    ? 'Failed to load videos. Please try again.'
+    : null;
 
-  const loadVideos = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const videosResponse = await videoApi.getVideos();
-      setVideos(videosResponse.videos);
-
-      // Load analysis status for each video
-      const analysisStatusMap = new Map<
-        number,
-        {
-          has_analysis: boolean;
-          analysis_types: string[];
-        }
-      >();
-      for (const video of videosResponse.videos) {
-        try {
-          const status = await videoApi.getVideoAnalysisStatus(video.id);
-          analysisStatusMap.set(video.id, status);
-        } catch (error) {
-          // No analysis status for this video, which is fine
-          console.debug(`No analysis status for video ${video.id}`);
-          analysisStatusMap.set(video.id, {
-            has_analysis: false,
-            analysis_types: [],
-          });
-        }
-      }
-      setAnalysisStatuses(analysisStatusMap);
-    } catch (err: any) {
-      setError('Failed to load videos. Please try again.');
-      console.error('Error loading videos:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadVideos();
-  }, [loadVideos]);
-
-  // Use the unified analysis progress system
-  const { progress: analysisProgress, startPolling } = useAnalysisProgress({
+  // Use the unified analysis status system
+  const { state: analysisState, startPolling } = useAnalysisStatus({
     onComplete: useCallback(
-      async (progress: AnalysisProgress) => {
+      async (
+        completedState: Extract<AnalysisState, { status: 'completed' }>
+      ) => {
         // Task completed, refresh videos and clear active tasks
         try {
-          await loadVideos();
+          await refetchVideos();
           setActiveAnalysisTasks(new Map());
         } catch (err) {
           console.error('Error refreshing videos after analysis:', err);
           setActiveAnalysisTasks(new Map());
         }
       },
-      [loadVideos]
+      [refetchVideos]
     ),
-    onError: useCallback((error: string) => {
-      console.error('Analysis task failed:', error);
-      setError(error);
-      setActiveAnalysisTasks(new Map());
-    }, []),
+    onError: useCallback(
+      (failedState: Extract<AnalysisState, { status: 'failed' }>) => {
+        console.error('Analysis task failed:', failedState.error);
+        setActiveAnalysisTasks(new Map());
+      },
+      []
+    ),
   });
 
   const handleDelete = async (videoId: number) => {
     try {
-      setDeletingId(videoId);
-      await videoApi.deleteVideo(videoId);
-      await loadVideos();
+      await deleteVideoMutation.mutateAsync(videoId);
       onVideoDeleted?.();
     } catch (err: any) {
-      setError('Failed to delete video. Please try again.');
       console.error('Error deleting video:', err);
-    } finally {
-      setDeletingId(null);
     }
   };
 
@@ -132,9 +97,6 @@ const VideoList: React.FC<VideoListProps> = ({
 
   const handlePoseAnalyze = async (videoId: number) => {
     try {
-      // Clear any previous error for a fresh start
-      setError(null);
-
       // Start pose detection analysis (annotation removed in this branch)
       const response = await unifiedAnalysisApi.startPoseAnalysis(
         videoId,
@@ -151,11 +113,6 @@ const VideoList: React.FC<VideoListProps> = ({
       // Start polling for progress
       startPolling(response.job_id);
     } catch (err: any) {
-      const errorMessage =
-        err?.response?.data?.detail ||
-        err?.message ||
-        'Failed to start pose detection';
-      setError(errorMessage);
       console.error('Error starting pose analysis:', err);
 
       // Remove from active tasks on error
@@ -175,13 +132,10 @@ const VideoList: React.FC<VideoListProps> = ({
 
   const handleViewAnalysis = (videoId: number) => {
     if (onViewAnalysis) {
-      const video = videos.find((v) => v.id === videoId);
+      const video = videos.find((v: VideoMetadata) => v.id === videoId);
       if (video) {
         onViewAnalysis(video);
       }
-    } else {
-      setSelectedVideo(videoId);
-      setModalOpen(true);
     }
   };
 
@@ -205,22 +159,27 @@ const VideoList: React.FC<VideoListProps> = ({
   };
 
   const getStatusTag = (analysis: any, videoId: number) => {
-    const analysisStatus = analysisStatuses.get(videoId);
+    const analysisStatus = analysisStatusesMap[videoId];
     const isCurrentlyAnalyzing = isAnalyzing(videoId);
 
-    if (isCurrentlyAnalyzing && analysisProgress) {
-      if (analysisProgress.status === 'processing') {
-        return {
-          text: `Processing (${analysisProgress.progress}%)`,
-          color: 'processing',
-        };
-      } else if (analysisProgress.status === 'queued') {
-        return { text: 'Queued...', color: 'processing' };
-      } else if (analysisProgress.status === 'failed') {
-        return { text: 'Failed', color: 'error' };
-      } else if (analysisProgress.status === 'cancelled') {
-        return { text: 'Cancelled', color: 'error' };
+    // Show current analysis state if this video is being analyzed
+    if (isCurrentlyAnalyzing && analysisState.status !== 'idle') {
+      const jobId = activeAnalysisTasks.get(videoId);
+      // Only show status if this is the active job
+      if (jobId && 'jobId' in analysisState && analysisState.jobId === jobId) {
+        switch (analysisState.status) {
+          case 'processing':
+            return { text: 'Processing', color: 'processing' };
+          case 'queued':
+            return { text: 'Queued', color: 'queued' };
+          case 'failed':
+            return { text: 'Failed', color: 'error' };
+          case 'completed':
+            return { text: 'Completed', color: 'completed' };
+        }
       }
+      // Fallback: show processing if job is tracked but state not yet loaded
+      return { text: 'Processing', color: 'processing' };
     }
 
     if (analysisStatus?.has_analysis) {
@@ -284,7 +243,7 @@ const VideoList: React.FC<VideoListProps> = ({
       <div className="video-list-container">
         <div className="error-message">
           <p>{error}</p>
-          <button onClick={loadVideos} className="retry-btn">
+          <button onClick={() => refetchVideos()} className="retry-btn">
             Try Again
           </button>
         </div>
@@ -328,8 +287,8 @@ const VideoList: React.FC<VideoListProps> = ({
         </div>
       ) : (
         <div className={`video-grid ${viewMode}`}>
-          {videos.map((video) => {
-            const analysisStatus = analysisStatuses.get(video.id);
+          {videos.map((video: VideoMetadata) => {
+            const analysisStatus = analysisStatusesMap[video.id];
             const isCurrentlyAnalyzing = isAnalyzing(video.id);
             const status = getStatusTag(null, video.id); // No legacy analysis
             const qualityStatus = getQualityStatus(video);
@@ -411,41 +370,24 @@ const VideoList: React.FC<VideoListProps> = ({
                     </button>
                   )}
 
-                  {isCurrentlyAnalyzing && analysisProgress && (
-                    <div className="analysis-progress-container">
-                      <div className="pose-analysis-progress">
-                        <span>
-                          {analysisProgress.status === 'queued'
-                            ? 'Queued...'
-                            : analysisProgress.status === 'processing'
-                              ? `Processing... (${
-                                  analysisProgress.elapsedTime
-                                    ? Math.round(
-                                        analysisProgress.elapsedTime / 1000
-                                      )
-                                    : 0
-                                }s)` +
-                                (analysisProgress.estimatedDuration
-                                  ? `, ~${Math.round(analysisProgress.estimatedDuration)}s estimated`
-                                  : '')
-                              : analysisProgress.status}
-                        </span>
-                        <ProgressBar
-                          progress={analysisProgress.progress}
-                          status={
-                            analysisProgress.status === 'processing'
-                              ? 'processing'
-                              : analysisProgress.status === 'completed'
-                                ? 'completed'
-                                : analysisProgress.status === 'failed'
-                                  ? 'failed'
-                                  : 'processing'
-                          }
-                          size="small"
-                          showPercentage={false}
-                          showStatus={false}
-                        />
-                      </div>
+                  {/* Show analysis status if currently analyzing */}
+                  {isCurrentlyAnalyzing && analysisState.status !== 'idle' && (
+                    <div className="analysis-status-container">
+                      <span
+                        className={clsx(
+                          'px-2 py-1 text-xs font-medium rounded-full',
+                          analysisState.status === 'processing' &&
+                            'bg-blue-100 text-blue-700',
+                          analysisState.status === 'queued' &&
+                            'bg-yellow-100 text-yellow-700',
+                          analysisState.status === 'completed' &&
+                            'bg-green-100 text-green-700',
+                          analysisState.status === 'failed' &&
+                            'bg-red-100 text-red-700'
+                        )}
+                      >
+                        {analysisState.status.toUpperCase()}
+                      </span>
                     </div>
                   )}
 
@@ -472,10 +414,10 @@ const VideoList: React.FC<VideoListProps> = ({
                   <button
                     className="action-btn delete-btn"
                     onClick={() => handleDelete(video.id)}
-                    disabled={deletingId === video.id}
+                    disabled={deleteVideoMutation.isPending}
                   >
                     <DeleteIcon size={16} />
-                    {deletingId === video.id ? 'Deleting...' : 'Delete'}
+                    {deleteVideoMutation.isPending ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </div>

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { videoApi } from '../services/api';
+import React, { useState } from 'react';
+import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import './AnalysisDashboard.css';
+import { ArrowBackIcon } from './Icons';
 import VideoPlayer from './VideoPlayer';
 
 interface AnalysisDashboardProps {
@@ -19,28 +20,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [aspectRatioMode, setAspectRatioMode] = useState<
     'cover' | 'contain' | 'auto'
   >('contain');
-  const [analysisStatus, setAnalysisStatus] = useState<{
-    has_analysis: boolean;
-    analysis_types: string[];
-  } | null>(null);
 
-  // Fetch analysis status
-  useEffect(() => {
-    const fetchAnalysisStatus = async () => {
-      try {
-        const status = await videoApi.getVideoAnalysisStatus(videoId);
-        setAnalysisStatus(status);
-      } catch (error) {
-        console.debug('No analysis status available for video:', videoId);
-        setAnalysisStatus({
-          has_analysis: false,
-          analysis_types: [],
-        });
-      }
-    };
-
-    fetchAnalysisStatus();
-  }, [videoId]);
+  // Use React Query hook for analysis status (with caching)
+  const { data: analysisStatus } = useVideoAnalysisStatus(videoId);
 
   // Analysis state for the new unified system
 
@@ -48,7 +30,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     <div className="analysis-dashboard">
       <div className="dashboard-header">
         <button className="back-btn" onClick={onClose}>
-          <span className="back-icon">←</span>
+          <ArrowBackIcon size={18} />
           Back to Videos
         </button>
         <h1 className="dashboard-title">{videoFilename}</h1>
