@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import { UploadIcon } from './Icons';
@@ -9,6 +9,7 @@ interface VideoUploadProps {
 }
 
 const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +96,12 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
     }
   }, [handleFileSelect]);
 
+  const handleAreaClick = useCallback(() => {
+    if (!isUploading && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, [isUploading]);
+
   return (
     <div className="video-upload">
       <div
@@ -102,6 +109,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onClick={handleAreaClick}
       >
         {isUploading ? (
           <div className="upload-progress">
@@ -120,9 +128,10 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
             </div>
             <p className="upload-main-text">Drag and drop your tennis video here</p>
             <p className="upload-or-text">or</p>
-            <label className="file-input-label">
+            <label className="file-input-label" onClick={(e) => e.stopPropagation()}>
               Choose File
               <input
+                ref={fileInputRef}
                 type="file"
                 accept="video/*"
                 onChange={handleFileInput}
