@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import useAnalysisProgress from '../hooks/useAnalysisProgress';
+import {
+  useAnalysisStatus,
+  AnalysisState,
+} from '../hooks/useAnalysisStatus';
 import unifiedAnalysisApi, {
   AnalysisRequest,
 } from '../services/unifiedAnalysisApi';
+import { clsx } from 'clsx';
 
 interface AnalysisPanelProps {
   videoId: number;
@@ -20,15 +24,15 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.5);
   const [isStarting, setIsStarting] = useState(false);
 
-  const { progress, error, startPolling, stopPolling, isPolling } =
-    useAnalysisProgress({
-      onComplete: (progress) => {
-        console.log('Analysis completed:', progress);
-        onAnalysisComplete?.(progress.result);
+  const { state, error, startPolling, stopPolling, isPolling, refetch } =
+    useAnalysisStatus({
+      onComplete: (completedState) => {
+        console.log('Analysis completed:', completedState);
+        onAnalysisComplete?.(completedState.result);
       },
-      onError: (error) => {
-        console.error('Analysis error:', error);
-        onAnalysisError?.(error);
+      onError: (failedState) => {
+        console.error('Analysis error:', failedState.error);
+        onAnalysisError?.(failedState.error);
       },
     });
 
@@ -55,9 +59,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   };
 
   const handleCancelAnalysis = async () => {
-    if (progress?.jobId) {
+    if (state.status !== 'idle' && 'jobId' in state) {
       try {
-        await unifiedAnalysisApi.cancelTask(progress.jobId);
+        await unifiedAnalysisApi.cancelTask(state.jobId);
         stopPolling();
       } catch (err: any) {
         console.error('Failed to cancel analysis:', err);
@@ -78,25 +82,26 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: AnalysisState['status']) => {
+    const baseClasses =
+      'px-2 py-1 text-xs font-medium rounded-full transition-colors duration-200';
     switch (status) {
       case 'completed':
-        return 'text-green-600';
+        return clsx(baseClasses, 'bg-green-100 text-green-700');
       case 'failed':
-      case 'cancelled':
-        return 'text-red-600';
+        return clsx(baseClasses, 'bg-red-100 text-red-700');
       case 'processing':
-        return 'text-blue-600';
+        return clsx(baseClasses, 'bg-blue-100 text-blue-700');
       case 'queued':
-        return 'text-yellow-600';
+        return clsx(baseClasses, 'bg-yellow-100 text-yellow-700');
       default:
-        return 'text-gray-600';
+        return clsx(baseClasses, 'bg-gray-100 text-gray-700');
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-lg font-semibold mb-4">Video Analysis</h3>
+    <div className="bg-white rounded-lg shadow-md p-6 transition-shadow duration-200">
+      <h3 className="text-lg font-semibold mb-4 text-gray-900">Video Analysis</h3>
 
       {/* Analysis Configuration */}
       <div className="space-y-4 mb-6">
@@ -152,97 +157,69 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
         ) : (
           <button
             onClick={handleCancelAnalysis}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200"
           >
             Cancel Analysis
           </button>
         )}
       </div>
 
-      {/* Progress Display */}
-      {progress && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
+      {/* Status Display - Status-first UX */}
+      {state.status !== 'idle' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">
-              {getAnalysisTypeLabel(progress.analysisType)}
+              {getAnalysisTypeLabel(
+                state.status === 'queued' || state.status === 'processing'
+                  ? selectedAnalysisType
+                  : 'pose_only'
+              )}
             </span>
-            <span
-              className={`text-sm font-medium ${getStatusColor(progress.status)}`}
-            >
-              {progress.status.toUpperCase()}
+            <span className={getStatusBadge(state.status)}>
+              {state.status.toUpperCase()}
             </span>
           </div>
 
-          {/* Progress Bar */}
-          <div>
-            <div className="flex justify-between text-sm text-gray-600 mb-1">
-              <span>Progress</span>
-              <span>
-                {progress.status === 'completed'
-                  ? '100%'
-                  : progress.status === 'queued'
-                  ? 'Queued...'
-                  : `${Math.round(progress.progress)}%`}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  progress.status === 'completed'
-                    ? 'bg-green-600'
-                    : progress.status === 'failed' || progress.status === 'cancelled'
-                    ? 'bg-red-600'
-                    : 'bg-blue-600'
-                }`}
-                style={{
-                  width: `${
-                    progress.status === 'completed'
-                      ? 100
-                      : progress.status === 'queued'
-                      ? 0
-                      : progress.progress
-                  }%`,
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Time Information */}
-          {progress.startedAt && (
+          {/* Status Messages */}
+          {state.status === 'queued' && (
             <div className="text-sm text-gray-600">
-              {progress.status === 'completed' && progress.completedAt ? (
-                <>
-                  Completed in{' '}
-                  {Math.round(
-                    (new Date(progress.completedAt).getTime() -
-                      new Date(progress.startedAt).getTime()) /
-                      1000
-                  )}{' '}
-                  seconds
-                </>
-              ) : progress.status === 'processing' ? (
-                <>
-                  Processing... (
-                  {Math.round(
-                    (Date.now() - new Date(progress.startedAt).getTime()) / 1000
-                  )}{' '}
-                  seconds elapsed
-                  {progress.estimatedDuration
-                    ? `, ~${Math.round(progress.estimatedDuration)}s estimated`
-                    : ''}
-                  )
-                </>
-              ) : progress.status === 'queued' ? (
-                <>Queued... waiting for worker</>
-              ) : null}
+              Analysis started. You can leave this page.
             </div>
           )}
 
-          {/* Error Display */}
+          {state.status === 'processing' && (
+            <div className="text-sm text-gray-600">
+              Processing... This may take a few minutes.
+            </div>
+          )}
+
+          {state.status === 'completed' && (
+            <div className="text-sm text-green-600">
+              Analysis completed successfully!
+            </div>
+          )}
+
+          {state.status === 'failed' && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <p className="text-sm text-red-600">{state.error}</p>
+            </div>
+          )}
+
+          {/* Error Display (from hook) */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-3">
               <p className="text-sm text-red-600">{error}</p>
             </div>
+          )}
+
+          {/* Manual Refresh Button */}
+          {state.status !== 'completed' && state.status !== 'failed' && (
+            <button
+              onClick={refetch}
+              className="text-sm text-blue-600 hover:text-blue-700 underline transition-colors duration-200"
+            >
+              Refresh status
+            </button>
           )}
         </div>
       )}
