@@ -66,8 +66,12 @@
 }
 
 /* Ball Toss Trajectory Card */
+.analysis-right-panel__card--coming-soon {
+  padding-bottom: var(--spacing-lg);
+}
+
 .analysis-right-panel__trajectory-header {
-  margin-bottom: var(--spacing-5xl);
+  margin-bottom: var(--spacing-lg);
 }
 
 .analysis-right-panel__trajectory-title-group {
@@ -93,8 +97,8 @@
 }
 
 .analysis-right-panel__trajectory-chart {
-  min-height: 184px;
-  margin-bottom: var(--spacing-lg);
+  min-height: 160px;
+  margin-bottom: 0;
 }
 
 .analysis-right-panel__chart-placeholder {
@@ -103,69 +107,32 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg);
   background: var(--color-surface-secondary);
   border-radius: var(--radius-lg);
   text-align: center;
+  position: relative;
 }
 
-.analysis-right-panel__chart-placeholder p {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+.analysis-right-panel__chart-blurred {
+  width: 100%;
+  height: 140px;
+  position: relative;
+  filter: blur(3px);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.analysis-right-panel__chart-svg {
+  width: 100%;
+  height: 100%;
 }
 
 .analysis-right-panel__chart-note {
-  margin-top: var(--spacing-sm);
+  margin-top: var(--spacing-md);
   font-size: var(--font-size-xs);
-  color: var(--color-text-disabled);
-}
-
-.analysis-right-panel__trajectory-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
-}
-
-.analysis-right-panel__legend-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
-.analysis-right-panel__legend-line {
-  width: 24px;
-  height: 2px;
-  border-radius: var(--radius-xs);
-}
-
-.analysis-right-panel__legend-line--ball {
-  background: #2b7fff;
-}
-
-.analysis-right-panel__legend-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: var(--radius-full);
-}
-
-.analysis-right-panel__legend-dot--release {
-  background: #00b8db;
-}
-
-.analysis-right-panel__legend-dot--contact {
-  background: #ff6900;
-}
-
-.analysis-right-panel__legend-zone {
-  width: 20px;
-  height: 12px;
-  background: var(--color-primary);
-  border: 1px solid rgba(0, 188, 125, 0.3);
-  border-radius: var(--radius-xs);
-  opacity: 0.1;
+  color: var(--color-text-secondary);
+  font-style: italic;
 }
 
 /* Measurements Card */
