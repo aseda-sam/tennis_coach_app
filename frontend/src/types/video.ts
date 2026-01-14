@@ -87,5 +87,3 @@ export interface VideoMetrics {
   toss_height: number | null;
   contact_height: number | null;
 }
-
-export type VideoMetricsByVideo = Record<number, VideoMetrics>;

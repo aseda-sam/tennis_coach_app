@@ -8,7 +8,6 @@ import {
   useVideoAnalysisStatuses,
   useDeleteVideo,
 } from '../hooks/useVideos';
-import { useVideoMetricsBulk } from '../hooks/useVideoMetrics';
 import { VideoMetadata } from '../types/video';
 import {
   DeleteIcon,
@@ -39,11 +38,6 @@ const VideoList: React.FC<VideoListProps> = ({
     isLoading: statusesLoading,
   } = useVideoAnalysisStatuses(videoIds);
 
-  const {
-    data: metricsMap = {},
-    isLoading: metricsLoading,
-  } = useVideoMetricsBulk(videoIds);
-
   const deleteVideoMutation = useDeleteVideo();
 
   // Track active analysis tasks using the unified system
@@ -51,7 +45,7 @@ const VideoList: React.FC<VideoListProps> = ({
     Map<number, string> // videoId -> jobId
   >(new Map());
 
-  const loading = videosLoading || statusesLoading || metricsLoading;
+  const loading = videosLoading || statusesLoading;
   const error = videosError
     ? 'Failed to load videos. Please try again.'
     : null;
@@ -190,7 +184,6 @@ const VideoList: React.FC<VideoListProps> = ({
           {videos.map((video: VideoMetadata) => {
             const analysisStatus = analysisStatusesMap[video.id];
             const isCurrentlyAnalyzing = isAnalyzing(video.id);
-            const metrics = metricsMap[video.id];
 
             return (
               <div
@@ -211,11 +204,6 @@ const VideoList: React.FC<VideoListProps> = ({
                   <div className="video-card-thumbnail-placeholder">
                     <VideoIcon size={48} color="#64748b" />
                   </div>
-                  {metrics?.serve_count && metrics.serve_count > 0 && (
-                    <div className="serves-badge">
-                      {metrics.serve_count} {metrics.serve_count === 1 ? 'serve' : 'serves'}
-                    </div>
-                  )}
                 </div>
 
                 {/* Metadata Section */}
@@ -248,28 +236,6 @@ const VideoList: React.FC<VideoListProps> = ({
                       >
                         <DeleteIcon size={16} />
                       </button>
-                    </div>
-                  </div>
-
-                  {/* Metrics */}
-                  <div className="video-card-metrics">
-                    <div className="metric-item">
-                      <span className="metric-label">Toss</span>
-                      <span className="metric-value">
-                        {metrics?.toss_height ? `${Math.round(metrics.toss_height)} cm` : '—'}
-                      </span>
-                    </div>
-                    <div className="metric-item">
-                      <span className="metric-label">Contact</span>
-                      <span className="metric-value">
-                        {metrics?.contact_height ? `${Math.round(metrics.contact_height)} cm` : '—'}
-                      </span>
-                    </div>
-                    <div className="metric-item">
-                      <span className="metric-label">Elbow</span>
-                      <span className="metric-value">
-                        {metrics?.avg_elbow_angle ? `${metrics.avg_elbow_angle}°` : '—'}
-                      </span>
                     </div>
                   </div>
 

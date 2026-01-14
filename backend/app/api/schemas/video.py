@@ -173,22 +173,6 @@ class VideoMetrics(BaseModel):
     )
 
 
-class BulkVideoMetricsRequest(BaseModel):
-    """Request model for bulk video metrics."""
-
-    video_ids: List[int] = Field(
-        description="List of video IDs to get metrics for",
-        min_length=1,
-        max_length=100,
-    )
-
-
-class BulkVideoMetricsResponse(BaseModel):
-    """Response model for bulk video metrics."""
-
-    metrics: Dict[int, VideoMetrics] = Field(description="Metrics keyed by video ID")
-
-
 # Validation functions
 def validate_video_filename(filename: str) -> str:
     """Validate video filename format."""

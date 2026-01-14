@@ -19,8 +19,6 @@ from sqlalchemy.orm import Session
 
 from app.api.schemas.common import PaginationParams
 from app.api.schemas.video import (
-    BulkVideoMetricsRequest,
-    BulkVideoMetricsResponse,
     VideoDeleteResponse,
     VideoInfo,
     VideoListItem,
@@ -461,93 +459,6 @@ async def get_video_metrics(
 
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "get_video_metrics", {"video_id": video_id})
-
-
-@router.post("/metrics/bulk", response_model=BulkVideoMetricsResponse)
-async def get_bulk_video_metrics(
-    request: BulkVideoMetricsRequest = Body(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> BulkVideoMetricsResponse:
-    """
-    Get aggregated performance metrics for multiple videos in a single request.
-
-    This endpoint optimizes the N+1 query problem by fetching all metrics
-    in bulk using efficient database queries.
-
-    Args:
-        request: Bulk request containing list of video IDs
-
-    Returns:
-        Metrics for each requested video
-    """
-    try:
-        from app.models.ball_contact import BallContact
-        from app.models.video import Video
-        from app.utils.authorization import is_admin
-
-        video_ids = request.video_ids
-
-        # Verify all videos exist and user has access
-        query = db.query(Video).filter(Video.id.in_(video_ids))
-        if not is_admin(current_user):
-            query = query.filter(Video.user_id == current_user["id"])
-
-        accessible_videos = {video.id for video in query.all()}
-
-        # Check for unauthorized access
-        unauthorized_ids = set(video_ids) - accessible_videos
-        if unauthorized_ids:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Videos not found or access denied: {list(unauthorized_ids)}",
-            )
-
-        # Fetch all ball contacts in one query
-        all_contacts = (
-            db.query(BallContact).filter(BallContact.video_id.in_(video_ids)).all()
-        )
-
-        # Group contacts by video_id
-        contacts_by_video: Dict[int, List[BallContact]] = {
-            video_id: [] for video_id in video_ids
-        }
-        for contact in all_contacts:
-            if contact.video_id in contacts_by_video:
-                contacts_by_video[contact.video_id].append(contact)
-
-        # Calculate metrics for each video
-        metrics_dict: Dict[int, VideoMetrics] = {}
-        for video_id in video_ids:
-            contacts = contacts_by_video.get(video_id, [])
-
-            # Filter serves
-            serves = [c for c in contacts if c.stroke_type == "serve"]
-            serve_count = len(serves)
-
-            # Calculate average elbow angle from serves
-            elbow_angles = [s.elbow_angle for s in serves if s.elbow_angle is not None]
-            avg_elbow = (
-                round(sum(elbow_angles) / len(elbow_angles)) if elbow_angles else None
-            )
-
-            metrics_dict[video_id] = VideoMetrics(
-                video_id=video_id,
-                serve_count=serve_count,
-                avg_elbow_angle=avg_elbow,
-                total_contacts=len(contacts),
-                toss_height=None,  # Placeholder for future implementation
-                contact_height=None,  # Placeholder for future implementation
-            )
-
-        return BulkVideoMetricsResponse(metrics=metrics_dict)
-
-    except HTTPException:
-        raise
-    except (OSError, ValueError) as e:
-        log_and_raise_error(
-            e, "get_bulk_video_metrics", {"video_ids": request.video_ids}
-        )
 
 
 @router.delete("/{video_id}", response_model=VideoDeleteResponse)
