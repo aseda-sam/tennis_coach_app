@@ -81,7 +81,7 @@ services:
     command: >
       sh -c "
         pip install --no-cache-dir rq-dashboard &&
-        rq-dashboard --redis-url=redis://redis:6379/0 --host=0.0.0.0 --port=9181
+        rq-dashboard --redis-url=redis://redis:6379/0 --port=9181
       "
     depends_on:
       - redis
