@@ -101,7 +101,11 @@
 
 .stage-progress .progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(59, 130, 246, 0.1) 0%,
+    rgba(59, 130, 246, 0.05) 100%
+  );
   border-radius: 8px;
   transition: width 0.3s ease;
 }
@@ -183,9 +187,15 @@
 
 /* Animation for progress bars */
 @keyframes progressPulse {
-  0% { opacity: 0.7; }
-  50% { opacity: 1; }
-  100% { opacity: 0.7; }
+  0% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
 }
 
 .stage-progress .progress-bar {
@@ -204,4 +214,3 @@
   background: var(--color-info-light);
   transition: background-color var(--transition-normal);
 }
-

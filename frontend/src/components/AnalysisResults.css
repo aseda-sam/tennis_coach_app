@@ -57,7 +57,8 @@
   padding: var(--spacing-md);
   border-radius: var(--radius-md);
   transition: var(--transition-normal);
-  margin: calc(-1 * var(--spacing-md)) calc(-1 * var(--spacing-md)) var(--spacing-lg) calc(-1 * var(--spacing-md));
+  margin: calc(-1 * var(--spacing-md)) calc(-1 * var(--spacing-md))
+    var(--spacing-lg) calc(-1 * var(--spacing-md));
 }
 
 .section-header.clickable:hover {

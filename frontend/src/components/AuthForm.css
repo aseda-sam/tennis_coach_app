@@ -38,7 +38,7 @@
   cursor: not-allowed;
 }
 
-.auth-form button[type="submit"] {
+.auth-form button[type='submit'] {
   padding: var(--spacing-md);
   background-color: var(--color-info);
   color: white;
@@ -49,16 +49,16 @@
   font-weight: var(--font-weight-medium);
 }
 
-.auth-form button[type="submit"]:hover:not(:disabled) {
+.auth-form button[type='submit']:hover:not(:disabled) {
   background-color: var(--color-info-dark);
 }
 
-.auth-form button[type="submit"]:disabled {
+.auth-form button[type='submit']:disabled {
   background-color: var(--color-text-disabled);
   cursor: not-allowed;
 }
 
-.auth-form button[type="button"] {
+.auth-form button[type='button'] {
   margin-top: var(--spacing-md);
   padding: var(--spacing-sm);
   background: none;
@@ -69,11 +69,11 @@
   text-decoration: underline;
 }
 
-.auth-form button[type="button"]:hover:not(:disabled) {
+.auth-form button[type='button']:hover:not(:disabled) {
   color: var(--color-info-dark);
 }
 
-.auth-form button[type="button"]:disabled {
+.auth-form button[type='button']:disabled {
   color: var(--color-text-disabled);
   cursor: not-allowed;
 }

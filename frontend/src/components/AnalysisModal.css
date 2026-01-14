@@ -38,7 +38,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-2xl) var(--spacing-2xl) var(--spacing-lg) var(--spacing-2xl);
+  padding: var(--spacing-2xl) var(--spacing-2xl) var(--spacing-lg)
+    var(--spacing-2xl);
   border-bottom: 2px solid var(--color-border-light);
 }
 
@@ -99,8 +100,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-state p {
