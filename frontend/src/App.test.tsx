@@ -58,8 +58,8 @@ test('renders video library button', () => {
 
 test('renders app subtitle', () => {
   render(<App />);
-  const subtitleElement = screen.getByText(/Upload your tennis videos for advanced performance analysis/i);
+  const subtitleElement = screen.getByText(
+    /Upload your tennis videos for advanced performance analysis/i
+  );
   expect(subtitleElement).toBeInTheDocument();
 });
-
-

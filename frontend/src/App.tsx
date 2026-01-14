@@ -1,18 +1,22 @@
 import { useState } from 'react';
 import './App.css';
 import AnalysisDashboard from './components/AnalysisDashboard';
-import VideoList from './components/VideoList';
-import VideoUpload from './components/VideoUpload';
 import { AuthForm } from './components/AuthForm';
 import { ListIcon, UploadIcon } from './components/Icons';
+import VideoList from './components/VideoList';
+import VideoUpload from './components/VideoUpload';
 import { useAuth } from './hooks/useAuth';
 import { VideoMetadata } from './types/video';
 
 function App() {
   const profile = process.env.REACT_APP_PROFILE || 'local';
   const { user, loading, signOut } = useAuth();
-  const [currentView, setCurrentView] = useState<'upload' | 'list' | 'dashboard'>('upload');
-  const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(null);
+  const [currentView, setCurrentView] = useState<
+    'upload' | 'list' | 'dashboard'
+  >('upload');
+  const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(
+    null
+  );
 
   const handleVideoUploaded = () => {
     setCurrentView('list');
@@ -63,7 +67,11 @@ function App() {
           <h1 className="app-title">Tennis Coach</h1>
         </div>
 
-        <div className="app-header-center" role="tablist" aria-label="Primary navigation">
+        <div
+          className="app-header-center"
+          role="tablist"
+          aria-label="Primary navigation"
+        >
           <div className="view-toggle">
             <button
               type="button"
@@ -101,15 +109,16 @@ function App() {
         return (
           <div className="app-container">
             {renderHeader()}
-            
+
             <div className="upload-section">
               <div className="header-content">
                 <p className="app-subtitle">
                   Upload your tennis video and get personalized feedback
                 </p>
                 <p className="app-description">
-                  Share a video of your serve or groundstrokes, and we'll help you understand 
-                  what's working well and where you can improve. More shot types coming soon!
+                  Share a video of your serve or groundstrokes, and we'll help
+                  you understand what's working well and where you can improve.
+                  More shot types coming soon!
                 </p>
               </div>
 
@@ -122,7 +131,10 @@ function App() {
         return (
           <div className="app-container">
             {renderHeader()}
-            <VideoList onVideoDeleted={handleVideoDeleted} onViewAnalysis={handleViewAnalysis} />
+            <VideoList
+              onVideoDeleted={handleVideoDeleted}
+              onViewAnalysis={handleViewAnalysis}
+            />
           </div>
         );
 
@@ -152,11 +164,7 @@ function App() {
     }
   };
 
-  return (
-    <div className="App">
-      {renderCurrentView()}
-    </div>
-  );
+  return <div className="App">{renderCurrentView()}</div>;
 }
 
 export default App;
