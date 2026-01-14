@@ -48,7 +48,9 @@ def cleanup_stale_workers() -> None:
                         print(f"  Cleaning up stale worker: {worker.name}")
                         worker.register_death()
                     else:
-                        print(f"  Worker {worker.name} is still alive, skipping cleanup")
+                        print(
+                            f"  Worker {worker.name} is still alive, skipping cleanup"
+                        )
                 except Exception:  # noqa: BLE001
                     # Worker registration exists but worker is not responding
                     print(f"  Cleaning up stale worker registration: {worker.name}")
@@ -130,7 +132,9 @@ if __name__ == "__main__":
             error_msg = str(e)
             if "active worker" in error_msg.lower() and retry_count < max_retries - 1:
                 retry_count += 1
-                print(f"\n⚠️  Worker registration conflict detected (attempt {retry_count}/{max_retries})")
+                print(
+                    f"\n⚠️  Worker registration conflict detected (attempt {retry_count}/{max_retries})"
+                )
                 print("Cleaning up stale registrations and retrying...")
                 cleanup_stale_workers()
                 # Generate a new unique name for retry

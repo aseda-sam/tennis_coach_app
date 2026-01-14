@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { videoApi } from '../services/api';
 import { OverlayData } from '../types/video';
 import './VideoOverlay.css';
@@ -6,10 +6,84 @@ import './VideoOverlay.css';
 interface VideoOverlayProps {
   videoId: number;
   videoElement: HTMLVideoElement | null;
-  videoWidth: number;
-  videoHeight: number;
   showOverlay: boolean;
   hasPoseData: boolean;
+}
+
+/**
+ * Compute the rendered video content rectangle accounting for object-fit.
+ * Only handles 'contain' and 'cover' modes (the ones actually used).
+ */
+function computeVideoContentRect(
+  elementWidth: number,
+  elementHeight: number,
+  videoWidth: number,
+  videoHeight: number,
+  objectFit: 'contain' | 'cover'
+): {
+  contentX: number;
+  contentY: number;
+  contentWidth: number;
+  contentHeight: number;
+  scaleX: number;
+  scaleY: number;
+} {
+  const elementAspect = elementWidth / elementHeight;
+  const videoAspect = videoWidth / videoHeight;
+
+  let contentX = 0;
+  let contentY = 0;
+  let contentWidth = elementWidth;
+  let contentHeight = elementHeight;
+
+  if (objectFit === 'contain') {
+    // Video scaled to fit within element, maintaining aspect ratio
+    if (videoAspect > elementAspect) {
+      // Video is wider - letterboxing (black bars top/bottom)
+      contentWidth = elementWidth;
+      contentHeight = elementWidth / videoAspect;
+      contentY = (elementHeight - contentHeight) / 2;
+    } else {
+      // Video is taller - pillarboxing (black bars left/right)
+      contentHeight = elementHeight;
+      contentWidth = elementHeight * videoAspect;
+      contentX = (elementWidth - contentWidth) / 2;
+    }
+  } else {
+    // objectFit === 'cover' - video covers entire element, may be cropped
+    if (videoAspect > elementAspect) {
+      // Video is wider - crop left/right
+      contentHeight = elementHeight;
+      contentWidth = elementHeight * videoAspect;
+      contentX = (elementWidth - contentWidth) / 2;
+    } else {
+      // Video is taller - crop top/bottom
+      contentWidth = elementWidth;
+      contentHeight = elementWidth / videoAspect;
+      contentY = (elementHeight - contentHeight) / 2;
+    }
+  }
+
+  // Calculate scale from original video dimensions to rendered content dimensions
+  const scaleX = contentWidth / videoWidth;
+  const scaleY = contentHeight / videoHeight;
+
+  return {
+    contentX,
+    contentY,
+    contentWidth,
+    contentHeight,
+    scaleX,
+    scaleY,
+  };
+}
+
+/**
+ * Rotate point coordinates for 90° clockwise rotation.
+ * Used when overlay dimensions don't match video dimensions (phone rotation metadata issue).
+ */
+function rotatePoint90(x: number, y: number, width: number, height: number): { x: number; y: number } {
+  return { x: height - y, y: x };
 }
 
 // Skeleton connections for full body
@@ -34,21 +108,13 @@ const SKELETON_CONNECTIONS = [
 const VideoOverlay: React.FC<VideoOverlayProps> = ({
   videoId,
   videoElement,
-  videoWidth,
-  videoHeight,
   showOverlay,
   hasPoseData,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastRenderedFrameRef = useRef<number>(-1);
+  const animationFrameRef = useRef<number | null>(null);
   const [overlayData, setOverlayData] = useState<OverlayData | null>(null);
-  const [canvasStyle, setCanvasStyle] = useState<React.CSSProperties>({
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    pointerEvents: 'none',
-  });
 
   // Fetch overlay data when overlay is enabled
   useEffect(() => {
@@ -68,6 +134,27 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
     fetchOverlayData();
   }, [showOverlay, hasPoseData, videoId, overlayData]);
 
+  // Detect rotation once when overlay data and video element are available
+  // This handles phone videos where OpenCV dimensions don't match browser dimensions
+  const needsRotation = useMemo(() => {
+    if (!overlayData || !videoElement) return false;
+    
+    const videoNaturalWidth = videoElement.videoWidth;
+    const videoNaturalHeight = videoElement.videoHeight;
+    
+    if (!videoNaturalWidth || !videoNaturalHeight) return false;
+    
+    // Check if dimensions match (accounting for possible 90° rotation)
+    const dimensionsMatch = 
+      (overlayData.width === videoNaturalWidth && overlayData.height === videoNaturalHeight) ||
+      (overlayData.width === videoNaturalHeight && overlayData.height === videoNaturalWidth);
+    
+    // If dimensions don't match, we need to rotate (90° clockwise)
+    return !dimensionsMatch && 
+           overlayData.width === videoNaturalHeight && 
+           overlayData.height === videoNaturalWidth;
+  }, [overlayData, videoElement]);
+
   // Draw overlay on canvas
   useEffect(() => {
     if (!showOverlay || !overlayData || !videoElement || !canvasRef.current) {
@@ -81,51 +168,65 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
     const drawFrame = () => {
       if (!videoElement || !overlayData) return;
 
-      // Get video element's displayed dimensions
-      // Use offsetWidth/Height to get the actual rendered size (accounts for CSS object-fit)
-      const displayedVideoWidth = videoElement.offsetWidth;
-      const displayedVideoHeight = videoElement.offsetHeight;
+      const elementWidth = videoElement.offsetWidth;
+      const elementHeight = videoElement.offsetHeight;
       const videoNaturalWidth = videoElement.videoWidth;
       const videoNaturalHeight = videoElement.videoHeight;
       
-      if (!videoNaturalWidth || !videoNaturalHeight || !displayedVideoWidth || !displayedVideoHeight) return;
+      if (!videoNaturalWidth || !videoNaturalHeight || !elementWidth || !elementHeight) return;
 
-      // Set canvas size to match video element's displayed size exactly
-      canvas.width = displayedVideoWidth;
-      canvas.height = displayedVideoHeight;
+      // Get object-fit mode from computed styles (default to 'contain')
+      const computedStyle = window.getComputedStyle(videoElement);
+      const objectFit = (computedStyle.objectFit === 'cover' ? 'cover' : 'contain') as 'contain' | 'cover';
+
+      // Compute the rendered video content rectangle accounting for object-fit
+      const contentRect = computeVideoContentRect(
+        elementWidth,
+        elementHeight,
+        videoNaturalWidth,
+        videoNaturalHeight,
+        objectFit
+      );
+
+      // Set canvas size to match video element's displayed size
+      canvas.width = elementWidth;
+      canvas.height = elementHeight;
 
       // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Get current video time
+      // Get current video time and find matching frame
       const currentTime = videoElement.currentTime;
-
-      // Find matching frame (exact match or nearest)
       let frameIndex = Math.round(currentTime * overlayData.fps);
       if (frameIndex < 0) frameIndex = 0;
       if (frameIndex >= overlayData.frames.length) {
         frameIndex = overlayData.frames.length - 1;
       }
 
+      // Skip redraw if frame hasn't changed (performance optimization)
+      if (frameIndex === lastRenderedFrameRef.current) {
+        return;
+      }
+
+      lastRenderedFrameRef.current = frameIndex;
+
       const frame = overlayData.frames[frameIndex];
       if (!frame || !frame.keypoints || Object.keys(frame.keypoints).length === 0) {
         return; // No pose data for this frame
       }
 
-      // Calculate scale from original video dimensions to displayed video dimensions
-      // The canvas now matches the video element exactly, so we scale directly
-      const scaleX = displayedVideoWidth / overlayData.width;
-      const scaleY = displayedVideoHeight / overlayData.height;
+      // Determine effective overlay dimensions (accounting for rotation)
+      const overlayWidth = needsRotation ? overlayData.height : overlayData.width;
+      const overlayHeight = needsRotation ? overlayData.width : overlayData.height;
 
-      // Color scheme: neon green with black outline
-      const keypointColor = '#00FF00'; // Neon green
-      const connectionColor = '#00FF00'; // Neon green
-      const outlineColor = '#000000'; // Black
+      // Scale from overlay coordinate space to rendered content rect
+      const scaleX = contentRect.contentWidth / overlayWidth;
+      const scaleY = contentRect.contentHeight / overlayHeight;
 
-      // Draw connections first (so keypoints appear on top)
-      ctx.strokeStyle = connectionColor;
+      // Draw skeleton connections
+      ctx.strokeStyle = '#00FF00'; // Neon green
       ctx.lineWidth = 2;
-      ctx.shadowColor = outlineColor;
+      ctx.shadowColor = '#000000'; // Black outline
       ctx.shadowBlur = 2;
 
       for (const [startKey, endKey] of SKELETON_CONNECTIONS) {
@@ -133,11 +234,20 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
         const endPoint = frame.keypoints[endKey];
 
         if (startPoint && endPoint && startPoint.length >= 2 && endPoint.length >= 2) {
-          // Scale coordinates from original video dimensions to displayed dimensions
-          const x1 = startPoint[0] * scaleX;
-          const y1 = startPoint[1] * scaleY;
-          const x2 = endPoint[0] * scaleX;
-          const y2 = endPoint[1] * scaleY;
+          // Apply rotation if needed
+          let p1 = { x: startPoint[0], y: startPoint[1] };
+          let p2 = { x: endPoint[0], y: endPoint[1] };
+          
+          if (needsRotation) {
+            p1 = rotatePoint90(p1.x, p1.y, overlayData.width, overlayData.height);
+            p2 = rotatePoint90(p2.x, p2.y, overlayData.width, overlayData.height);
+          }
+
+          // Scale + offset into rendered content rect
+          const x1 = p1.x * scaleX + contentRect.contentX;
+          const y1 = p1.y * scaleY + contentRect.contentY;
+          const x2 = p2.x * scaleX + contentRect.contentX;
+          const y2 = p2.y * scaleY + contentRect.contentY;
 
           // Use dashed line for low confidence
           if (frame.confidence < 0.5) {
@@ -153,91 +263,52 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
         }
       }
 
-      // Draw keypoints
-      ctx.fillStyle = keypointColor;
-      ctx.shadowColor = outlineColor;
-      ctx.shadowBlur = 3;
-
-      for (const [, coordinates] of Object.entries(frame.keypoints)) {
-        if (coordinates && coordinates.length >= 2) {
-          // Scale coordinates from original video dimensions to displayed dimensions
-          const x = coordinates[0] * scaleX;
-          const y = coordinates[1] * scaleY;
-
-          // Draw keypoint circle
-          ctx.beginPath();
-          ctx.arc(x, y, 5, 0, 2 * Math.PI);
-          ctx.fill();
-          ctx.strokeStyle = outlineColor;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
-      }
-
       // Reset line dash
       ctx.setLineDash([]);
     };
 
-    // Draw on timeupdate
+    // Use requestAnimationFrame for smooth rendering while playing
     const handleTimeUpdate = () => {
+      if (animationFrameRef.current === null) {
+        animationFrameRef.current = requestAnimationFrame(() => {
+          drawFrame();
+          animationFrameRef.current = null;
+        });
+      }
+    };
+
+    // Update on resize or seek (immediate draw)
+    const handleResize = () => {
+      lastRenderedFrameRef.current = -1; // Force redraw
       drawFrame();
     };
 
-    // Also update on resize
-    const handleResize = () => {
+    const handleSeeked = () => {
+      lastRenderedFrameRef.current = -1; // Force redraw on seek
       drawFrame();
     };
 
     videoElement.addEventListener('timeupdate', handleTimeUpdate);
+    videoElement.addEventListener('seeked', handleSeeked);
     window.addEventListener('resize', handleResize);
     drawFrame(); // Initial draw
 
     return () => {
       videoElement.removeEventListener('timeupdate', handleTimeUpdate);
+      videoElement.removeEventListener('seeked', handleSeeked);
       window.removeEventListener('resize', handleResize);
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      lastRenderedFrameRef.current = -1;
     };
-  }, [showOverlay, overlayData, videoElement]);
-
-  // Update canvas position to match video element
-  useEffect(() => {
-    if (!videoElement || !showOverlay) return;
-
-    const updateCanvasPosition = () => {
-      const container = videoElement.parentElement;
-      if (!container) return;
-
-      const containerRect = container.getBoundingClientRect();
-      const videoRect = videoElement.getBoundingClientRect();
-
-      // Calculate offset of video within container
-      const offsetX = videoRect.left - containerRect.left;
-      const offsetY = videoRect.top - containerRect.top;
-
-      setCanvasStyle({
-        position: 'absolute',
-        top: `${offsetY}px`,
-        left: `${offsetX}px`,
-        width: `${videoRect.width}px`,
-        height: `${videoRect.height}px`,
-        pointerEvents: 'none',
-      });
-    };
-
-    updateCanvasPosition();
-    const resizeObserver = new ResizeObserver(updateCanvasPosition);
-    resizeObserver.observe(videoElement);
-    resizeObserver.observe(videoElement.parentElement!);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [videoElement, showOverlay]);
+  }, [showOverlay, overlayData, videoElement, needsRotation]);
 
   return (
     <canvas
       ref={canvasRef}
       className="video-overlay-canvas"
-      style={canvasStyle}
     />
   );
 };

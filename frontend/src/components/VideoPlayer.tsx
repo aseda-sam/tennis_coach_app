@@ -20,6 +20,8 @@ import {
   PlayIcon,
   VolumeIcon,
   VolumeOffIcon,
+  AnalyticsIcon,
+  WarningIcon,
 } from './Icons';
 import PostureAnalysisSidebar from './PostureAnalysisSidebar';
 import VideoOverlay from './VideoOverlay';
@@ -69,8 +71,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     null
   );
   const [showOverlay, setShowOverlay] = useState(false);
-  const [displayedVideoWidth, setDisplayedVideoWidth] = useState(0);
-  const [displayedVideoHeight, setDisplayedVideoHeight] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Use ball contacts hook if videoId is provided
@@ -165,21 +165,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         setVideoAspectRatio(aspectRatio);
         console.log('Video aspect ratio:', aspectRatio);
       }
-
-      // Update displayed video dimensions for overlay
-      const updateDisplayedSize = () => {
-        const rect = video.getBoundingClientRect();
-        setDisplayedVideoWidth(rect.width);
-        setDisplayedVideoHeight(rect.height);
-      };
-      updateDisplayedSize();
-      
-      // Update size on resize
-      const resizeObserver = new ResizeObserver(updateDisplayedSize);
-      resizeObserver.observe(video);
-      
-      // Store observer for cleanup
-      (video as any).__resizeObserver = resizeObserver;
     };
 
     const handleTimeUpdate = () => {
@@ -253,10 +238,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('error', handleError);
       
       // Cleanup resize observer
-      if ((video as any).__resizeObserver) {
-        (video as any).__resizeObserver.disconnect();
-        delete (video as any).__resizeObserver;
-      }
     };
   }, [resolvedVideoUrl]);
 
@@ -477,7 +458,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               onClick={() => setIsPostureSidebarOpen(!isPostureSidebarOpen)}
               title="Toggle posture analysis"
             >
-              📊
+              <AnalyticsIcon size={18} />
             </button>
           )}
         </div>
@@ -489,7 +470,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           minHeight: isPostureSidebarOpen ? '500px' : 'auto',
         }}
       >
-        {/* Overlay Toggle - Above Video */}
+        {/* Controls row (kept minimal) */}
         {hasPoseData && (
           <div className="overlay-toggle-container">
             <label className="overlay-toggle-label">
@@ -499,40 +480,39 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onChange={(e) => setShowOverlay(e.target.checked)}
                 className="overlay-toggle-checkbox"
               />
-              <span className="overlay-toggle-text">Show Pose Overlay</span>
+              <span className="overlay-toggle-text">Pose overlay</span>
             </label>
           </div>
         )}
 
-        {/* Video Container */}
-        <div
-          ref={containerRef}
-          className={`video-container video-container-${aspectRatioMode} ${
-            isPlaying ? 'playing' : 'paused'
-          } ${isScrubbing ? 'scrubbing' : ''}`}
-          onClick={handleVideoClick}
-          style={{ position: 'relative' }}
-        >
-          <video
-            ref={videoRef}
-            src={resolvedVideoUrl}
-            className={`video-element video-element-${aspectRatioMode}`}
-            preload="metadata"
-            crossOrigin="anonymous"
-            data-testid="video-element"
-          />
-
-          {/* Video Overlay */}
-          {videoId && (
-            <VideoOverlay
-              videoId={videoId}
-              videoElement={videoRef.current}
-              videoWidth={displayedVideoWidth}
-              videoHeight={displayedVideoHeight}
-              showOverlay={showOverlay}
-              hasPoseData={hasPoseData}
+        <div className={`video-player-main ${isPostureSidebarOpen ? 'with-sidebar' : ''}`}>
+          {/* Video Container */}
+          <div
+            ref={containerRef}
+            className={`video-container video-container-${aspectRatioMode} ${
+              isPlaying ? 'playing' : 'paused'
+            } ${isScrubbing ? 'scrubbing' : ''}`}
+            onClick={handleVideoClick}
+            style={{ position: 'relative' }}
+          >
+            <video
+              ref={videoRef}
+              src={resolvedVideoUrl}
+              className={`video-element video-element-${aspectRatioMode}`}
+              preload="metadata"
+              crossOrigin="anonymous"
+              data-testid="video-element"
             />
-          )}
+
+            {/* Video Overlay */}
+            {videoId && (
+              <VideoOverlay
+                videoId={videoId}
+                videoElement={videoRef.current}
+                showOverlay={showOverlay}
+                hasPoseData={hasPoseData}
+              />
+            )}
 
           {/* Add Contact Button */}
           <AddContactButton
@@ -548,7 +528,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           {error && (
             <div className="error-overlay">
               <div className="error-message">
-                <span className="error-icon">⚠️</span>
+                <span className="error-icon">
+                  <WarningIcon size={24} color="white" />
+                </span>
                 <p>{error}</p>
               </div>
             </div>
@@ -674,25 +656,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           )}
         </div>
 
-        {/* Posture Analysis Sidebar */}
-        {videoId && (
-          <PostureAnalysisSidebar
-            ballContacts={ballContacts}
-            videoId={videoId}
-            onContactSelect={(contact) => {
-              setSelectedContact(contact);
-              setSelectedContactId(contact.id);
-              // Seek to the contact time
-              const video = videoRef.current;
-              if (video) {
-                video.currentTime = contact.video_timestamp;
-              }
-            }}
-            selectedContactId={selectedContactId}
-            isVisible={isPostureSidebarOpen}
-            onClose={() => setIsPostureSidebarOpen(false)}
-          />
-        )}
+          {/* Posture Analysis Sidebar */}
+          {videoId && (
+            <PostureAnalysisSidebar
+              ballContacts={ballContacts}
+              videoId={videoId}
+              onContactSelect={(contact) => {
+                setSelectedContact(contact);
+                setSelectedContactId(contact.id);
+                // Seek to the contact time
+                const video = videoRef.current;
+                if (video) {
+                  video.currentTime = contact.video_timestamp;
+                }
+              }}
+              selectedContactId={selectedContactId}
+              isVisible={isPostureSidebarOpen}
+              onClose={() => setIsPostureSidebarOpen(false)}
+            />
+          )}
+        </div>
       </div>
 
       {/* Ball Contact Management Modal */}
