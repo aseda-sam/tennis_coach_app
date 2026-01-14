@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import './AnalysisDashboard.css';
@@ -19,8 +19,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   videoUrl,
   onClose,
 }) => {
-  const [activeTab, setActiveTab] = useState<'per-serve' | 'session'>('per-serve');
-
   // Use React Query hook for analysis status (with caching)
   const { data: analysisStatus } = useVideoAnalysisStatus(videoId);
 
@@ -70,26 +68,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           {isAnalysisLoading || analysisState.status === 'processing'
             ? 'Analyzing...'
             : 'Focus Analysis'}
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="analysis-dashboard__tabs">
-        <button
-          className={`analysis-dashboard__tab ${
-            activeTab === 'per-serve' ? 'analysis-dashboard__tab--active' : ''
-          }`}
-          onClick={() => setActiveTab('per-serve')}
-        >
-          Per Serve Analysis
-        </button>
-        <button
-          className={`analysis-dashboard__tab ${
-            activeTab === 'session' ? 'analysis-dashboard__tab--active' : ''
-          }`}
-          onClick={() => setActiveTab('session')}
-        >
-          Session Overview
         </button>
       </div>
 
