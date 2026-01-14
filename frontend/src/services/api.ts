@@ -3,6 +3,8 @@ import {
   OverlayData,
   VideoListResponse,
   VideoMetadata,
+  VideoMetrics,
+  VideoMetricsByVideo,
   VideoUploadResponse,
 } from '../types/video';
 import { supabase } from './supabaseClient';
@@ -179,6 +181,23 @@ export const videoApi = {
       }[];
     }>('/videos/analysis-status/bulk', { video_ids: videoIds });
     return response.data.statuses;
+  },
+
+  // Get video performance metrics
+  getVideoMetrics: async (videoId: number): Promise<VideoMetrics> => {
+    const response = await api.get<VideoMetrics>(`/videos/${videoId}/metrics`);
+    return response.data;
+  },
+
+  // Bulk get video performance metrics (optimized)
+  getBulkVideoMetrics: async (
+    videoIds: number[]
+  ): Promise<VideoMetricsByVideo> => {
+    const response = await api.post<{ metrics: VideoMetricsByVideo }>(
+      '/videos/metrics/bulk',
+      { video_ids: videoIds }
+    );
+    return response.data.metrics;
   },
 
   // Get overlay data for client-side rendering

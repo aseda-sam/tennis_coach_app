@@ -1,5 +1,4 @@
-import React, { useCallback, useState, useMemo } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import React, { useCallback, useState } from 'react';
 import {
   useAnalysisStatus,
   AnalysisState,
@@ -9,8 +8,8 @@ import {
   useVideoAnalysisStatuses,
   useDeleteVideo,
 } from '../hooks/useVideos';
+import { useVideoMetricsBulk } from '../hooks/useVideoMetrics';
 import { VideoMetadata } from '../types/video';
-import { ballContactApi, BallContact } from '../services/ballContactApi';
 import {
   DeleteIcon,
   VideoIcon,
@@ -40,6 +39,11 @@ const VideoList: React.FC<VideoListProps> = ({
     isLoading: statusesLoading,
   } = useVideoAnalysisStatuses(videoIds);
 
+  const {
+    data: metricsMap = {},
+    isLoading: metricsLoading,
+  } = useVideoMetricsBulk(videoIds);
+
   const deleteVideoMutation = useDeleteVideo();
 
   // Track active analysis tasks using the unified system
@@ -47,7 +51,7 @@ const VideoList: React.FC<VideoListProps> = ({
     Map<number, string> // videoId -> jobId
   >(new Map());
 
-  const loading = videosLoading || statusesLoading;
+  const loading = videosLoading || statusesLoading || metricsLoading;
   const error = videosError
     ? 'Failed to load videos. Please try again.'
     : null;
@@ -135,51 +139,6 @@ const VideoList: React.FC<VideoListProps> = ({
     }
   };
 
-  // Fetch ball contacts for all videos using React Query
-  const contactsQueries = useQueries({
-    queries: videos.map((video) => ({
-      queryKey: ['ball-contacts', video.id],
-      queryFn: () => ballContactApi.getContacts(video.id),
-      staleTime: 2 * 60 * 1000, // 2 minutes
-      retry: 1,
-    })),
-  });
-
-  // Create a map of video ID to contacts
-  const ballContactsMap = useMemo(() => {
-    const map: Record<number, BallContact[]> = {};
-    contactsQueries.forEach((query, index) => {
-      const videoId = videos[index]?.id;
-      if (videoId) {
-        map[videoId] = query.data || [];
-      }
-    });
-    return map;
-  }, [contactsQueries, videos]);
-
-  const getVideoMetrics = (videoId: number) => {
-    const contacts = ballContactsMap[videoId] || [];
-    const serves = contacts.filter(c => c.stroke_type === 'serve');
-    const serveCount = serves.length;
-    
-    // Calculate average elbow angle from serves
-    const elbowAngles = serves
-      .map(s => s.elbow_angle)
-      .filter((angle): angle is number => angle !== undefined);
-    const avgElbow = elbowAngles.length > 0
-      ? Math.round(elbowAngles.reduce((a, b) => a + b, 0) / elbowAngles.length)
-      : null;
-
-    // For now, we don't have toss/contact height data, so we'll show placeholders
-    // These would come from analysis data if available
-    return {
-      serveCount,
-      avgElbow,
-      tossHeight: null, // Placeholder - would come from analysis
-      contactHeight: null, // Placeholder - would come from analysis
-    };
-  };
-
   // Removed getStatusTag - not used in card layout
 
 
@@ -231,7 +190,7 @@ const VideoList: React.FC<VideoListProps> = ({
           {videos.map((video: VideoMetadata) => {
             const analysisStatus = analysisStatusesMap[video.id];
             const isCurrentlyAnalyzing = isAnalyzing(video.id);
-            const metrics = getVideoMetrics(video.id);
+            const metrics = metricsMap[video.id];
 
             return (
               <div
@@ -252,9 +211,9 @@ const VideoList: React.FC<VideoListProps> = ({
                   <div className="video-card-thumbnail-placeholder">
                     <VideoIcon size={48} color="#64748b" />
                   </div>
-                  {metrics.serveCount > 0 && (
+                  {metrics?.serve_count && metrics.serve_count > 0 && (
                     <div className="serves-badge">
-                      {metrics.serveCount} {metrics.serveCount === 1 ? 'serve' : 'serves'}
+                      {metrics.serve_count} {metrics.serve_count === 1 ? 'serve' : 'serves'}
                     </div>
                   )}
                 </div>
@@ -297,19 +256,19 @@ const VideoList: React.FC<VideoListProps> = ({
                     <div className="metric-item">
                       <span className="metric-label">Toss</span>
                       <span className="metric-value">
-                        {metrics.tossHeight ? `${Math.round(metrics.tossHeight)} cm` : '—'}
+                        {metrics?.toss_height ? `${Math.round(metrics.toss_height)} cm` : '—'}
                       </span>
                     </div>
                     <div className="metric-item">
                       <span className="metric-label">Contact</span>
                       <span className="metric-value">
-                        {metrics.contactHeight ? `${Math.round(metrics.contactHeight)} cm` : '—'}
+                        {metrics?.contact_height ? `${Math.round(metrics.contact_height)} cm` : '—'}
                       </span>
                     </div>
                     <div className="metric-item">
                       <span className="metric-label">Elbow</span>
                       <span className="metric-value">
-                        {metrics.avgElbow ? `${metrics.avgElbow}°` : '—'}
+                        {metrics?.avg_elbow_angle ? `${metrics.avg_elbow_angle}°` : '—'}
                       </span>
                     </div>
                   </div>

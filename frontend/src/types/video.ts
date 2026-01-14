@@ -78,3 +78,14 @@ export interface OverlayData {
   height: number;
   frames: PoseFrame[];
 }
+
+export interface VideoMetrics {
+  video_id: number;
+  serve_count: number;
+  avg_elbow_angle: number | null;
+  total_contacts: number;
+  toss_height: number | null;
+  contact_height: number | null;
+}
+
+export type VideoMetricsByVideo = Record<number, VideoMetrics>;

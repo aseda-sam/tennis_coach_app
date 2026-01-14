@@ -1,7 +1,7 @@
 """Ball contact-related API schemas."""
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -132,6 +132,24 @@ class BallContactDeleteResponse(BaseModel):
     """Model for ball contact deletion response."""
 
     message: str = Field(description="Deletion confirmation message")
+
+
+class BulkBallContactRequest(BaseModel):
+    """Request model for bulk ball contact fetch."""
+
+    video_ids: List[int] = Field(
+        description="List of video IDs to fetch ball contacts for",
+        min_length=1,
+        max_length=100,
+    )
+
+
+class BulkBallContactResponse(BaseModel):
+    """Response model for bulk ball contact fetch."""
+
+    contacts: Dict[int, List[BallContactListItem]] = Field(
+        description="Ball contacts keyed by video ID"
+    )
 
 
 class PostureAnalysisResponse(BaseModel):

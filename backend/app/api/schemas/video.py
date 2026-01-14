@@ -1,7 +1,7 @@
 """Video-related API schemas."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -147,6 +147,46 @@ class VideoDeleteResponse(BaseModel):
     message: str = Field(description="Deletion status message")
     video_id: int = Field(description="Deleted video ID")
     filename: str = Field(description="Deleted filename")
+
+
+class VideoMetrics(BaseModel):
+    """Video performance metrics aggregated from ball contacts."""
+
+    video_id: int = Field(description="Video ID")
+    serve_count: int = Field(ge=0, description="Number of serves detected")
+    avg_elbow_angle: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=180,
+        description="Average elbow angle in degrees (0-180°)",
+    )
+    total_contacts: int = Field(ge=0, description="Total number of ball contacts")
+    toss_height: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description="Average toss height in cm (placeholder for future)",
+    )
+    contact_height: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description="Average contact height in cm (placeholder for future)",
+    )
+
+
+class BulkVideoMetricsRequest(BaseModel):
+    """Request model for bulk video metrics."""
+
+    video_ids: List[int] = Field(
+        description="List of video IDs to get metrics for",
+        min_length=1,
+        max_length=100,
+    )
+
+
+class BulkVideoMetricsResponse(BaseModel):
+    """Response model for bulk video metrics."""
+
+    metrics: Dict[int, VideoMetrics] = Field(description="Metrics keyed by video ID")
 
 
 # Validation functions

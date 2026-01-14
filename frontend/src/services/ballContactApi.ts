@@ -15,6 +15,8 @@ export interface BallContact {
   updated_at?: string;
 }
 
+export type BallContactsByVideo = Record<number, BallContact[]>;
+
 export interface BallContactCreate {
   video_id: number;
   video_timestamp: number;
@@ -48,6 +50,15 @@ export const ballContactApi = {
   getContacts: async (videoId: number): Promise<BallContact[]> => {
     const response = await api.get(`/ball-contacts/video/${videoId}`);
     return response.data;
+  },
+
+  // Get ball contacts for multiple videos
+  getContactsBulk: async (videoIds: number[]): Promise<BallContactsByVideo> => {
+    const response = await api.post<{ contacts: BallContactsByVideo }>(
+      '/ball-contacts/video/bulk',
+      { video_ids: videoIds }
+    );
+    return response.data.contacts;
   },
 
   // Get contact timestamps for video player markers
