@@ -36,6 +36,9 @@ export const useVideoAnalysisStatus = (videoId: number) => {
       }
     },
     staleTime: 2 * 60 * 1000, // 2 minutes - analysis status doesn't change often
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+    refetchOnMount: false, // Don't refetch on component mount if data is fresh
+    refetchInterval: false, // Disable automatic polling - we'll refetch manually when needed
   });
 };
 

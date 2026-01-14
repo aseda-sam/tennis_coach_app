@@ -109,6 +109,11 @@ export function useAnalysisProgress(
         if (taskStatus.status === 'completed') {
           setIsPolling(false);
           setIsLoading(false);
+          // Clear interval to stop polling
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
           onComplete?.(progressData);
           return;
         }
@@ -120,6 +125,11 @@ export function useAnalysisProgress(
         ) {
           setIsPolling(false);
           setIsLoading(false);
+          // Clear interval to stop polling
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
           const errorMessage = taskStatus.error || `Job ${taskStatus.status}`;
           setError(errorMessage);
           onError?.(errorMessage);
