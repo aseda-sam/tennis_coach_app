@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import './App.css';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
@@ -11,6 +12,7 @@ import { VideoMetadata } from './types/video';
 function App() {
   const profile = process.env.REACT_APP_PROFILE || 'local';
   const { user, loading, signOut } = useAuth();
+  const queryClient = useQueryClient();
   const [currentView, setCurrentView] = useState<
     'upload' | 'list' | 'dashboard'
   >('upload');
@@ -19,6 +21,8 @@ function App() {
   );
 
   const handleVideoUploaded = () => {
+    // Invalidate videos cache to refetch the list with the new video
+    queryClient.invalidateQueries({ queryKey: ['videos'] });
     setCurrentView('list');
   };
 
