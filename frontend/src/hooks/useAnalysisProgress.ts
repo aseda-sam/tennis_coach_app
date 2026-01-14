@@ -39,7 +39,7 @@ export interface UseAnalysisProgressReturn {
 export function useAnalysisProgress(
   options: UseAnalysisProgressOptions = {}
 ): UseAnalysisProgressReturn {
-  const { pollInterval = 2000, onComplete, onError, onProgress } = options;
+  const { pollInterval = 12000, onComplete, onError, onProgress } = options;
 
   const [progress, setProgress] = useState<AnalysisProgress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,6 +48,7 @@ export function useAnalysisProgress(
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentJobIdRef = useRef<string | null>(null);
+  const isVisibleRef = useRef(true);
 
   const convertTaskStatusToProgress = useCallback(
     (taskStatus: TaskStatus): AnalysisProgress => {
@@ -127,8 +128,8 @@ export function useAnalysisProgress(
       } catch (err: any) {
         const errorMessage = err.message || 'Failed to get job status';
         setError(errorMessage);
-        setIsPolling(false);
         setIsLoading(false);
+        // Keep polling on transient errors
         onError?.(errorMessage);
       }
     },
@@ -149,9 +150,12 @@ export function useAnalysisProgress(
       // Poll immediately
       pollTaskStatus(jobId);
 
-      // Set up interval for continued polling
+      // Set up interval for continued polling (only when visible)
       intervalRef.current = setInterval(() => {
-        if (currentJobIdRef.current === jobId) {
+        if (
+          currentJobIdRef.current === jobId &&
+          isVisibleRef.current
+        ) {
           pollTaskStatus(jobId);
         }
       }, pollInterval);
@@ -168,6 +172,23 @@ export function useAnalysisProgress(
     setIsLoading(false);
     currentJobIdRef.current = null;
   }, []);
+
+  // Visibility API: pause polling when tab hidden, resume on focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isVisibleRef.current = !document.hidden;
+
+      if (!document.hidden && currentJobIdRef.current && isPolling) {
+        pollTaskStatus(currentJobIdRef.current);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isPolling, pollTaskStatus]);
 
   // Cleanup on unmount
   useEffect(() => {

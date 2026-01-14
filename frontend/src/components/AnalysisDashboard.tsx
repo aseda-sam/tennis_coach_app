@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import './AnalysisDashboard.css';
@@ -20,8 +21,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   videoUrl,
   onClose,
 }) => {
+  const queryClient = useQueryClient();
+
   // Use React Query hook for analysis status (with caching)
-  const { data: analysisStatus } = useVideoAnalysisStatus(videoId);
+  const { data: analysisStatus, refetch: refetchAnalysisStatus } =
+    useVideoAnalysisStatus(videoId);
 
   // Analysis manager for pose analysis
   const {
@@ -31,9 +35,13 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   } = useAnalysisManager({
     videoId,
     autoRefresh: true,
-    onAnalysisComplete: () => {
-      // Refresh analysis status after completion
-      window.location.reload();
+    onAnalysisComplete: async () => {
+      // Refresh analysis status after completion without reloading page
+      await refetchAnalysisStatus();
+      // Also invalidate the query to ensure fresh data
+      queryClient.invalidateQueries({
+        queryKey: ['video-analysis-status', videoId],
+      });
     },
   });
 
@@ -127,7 +135,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               {analysisState.status === 'failed' && (
                 <div className="analysis-dashboard__error-card">
                   <p className="analysis-dashboard__error-message">
-                    {analysisState.error || 'Analysis failed. Please try again.'}
+                    {analysisState.error ||
+                      'Analysis failed. Please try again.'}
                   </p>
                   <button
                     className="analysis-dashboard__analyze-btn"

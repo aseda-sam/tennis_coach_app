@@ -92,20 +92,46 @@ async def start_analysis(
         }
 
         try:
-            # Enqueue RQ job
-            job = analysis_queue.enqueue(
-                task_function,
-                video_id=video_id,
-                video_path=video.file_path,
-                confidence_threshold=request.confidence_threshold,
-                retry=retry_config[request.analysis_type],
-                job_timeout=timeout_config[request.analysis_type],
-                result_ttl=3600,  # Keep results for 1 hour
+            logger.info(
+                f"Starting analysis request: video_id={video_id}, "
+                f"analysis_type={request.analysis_type}, "
+                f"confidence_threshold={request.confidence_threshold}"
             )
 
-            logger.info(
-                f"Enqueued {request.analysis_type} analysis job {job.id} for video {video_id}"
-            )
+            # Check Redis connection before enqueueing
+            try:
+                logger.debug("Checking Redis connection...")
+                redis_conn.ping()
+                logger.debug("Redis connection successful")
+            except (RedisConnectionError, RedisTimeoutError) as e:
+                logger.error(f"Redis connection failed: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Redis service is unavailable. Cannot start analysis. Please check Redis connection.",
+                ) from e
+
+            # Enqueue RQ job
+            logger.info(f"Enqueueing {request.analysis_type} job to Redis queue...")
+            try:
+                job = analysis_queue.enqueue(
+                    task_function,
+                    video_id=video_id,
+                    video_path=video.file_path,
+                    confidence_threshold=request.confidence_threshold,
+                    retry=retry_config[request.analysis_type],
+                    job_timeout=timeout_config[request.analysis_type],
+                    result_ttl=3600,  # Keep results for 1 hour
+                )
+                logger.info(
+                    f"Successfully enqueued {request.analysis_type} analysis job {job.id} "
+                    f"for video {video_id} to queue '{analysis_queue.name}'"
+                )
+            except (RedisConnectionError, RedisTimeoutError) as e:
+                logger.error(f"Failed to enqueue job to Redis: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=f"Failed to enqueue job to Redis: {str(e)}",
+                ) from e
 
             return AnalysisResponse(
                 job_id=job.id,
@@ -116,6 +142,14 @@ async def start_analysis(
                 estimated_duration=_get_estimated_duration(request.analysis_type),
             )
 
+        except HTTPException:
+            raise
+        except (RedisConnectionError, RedisTimeoutError) as e:
+            logger.exception("Redis error while enqueueing job for video %s", video_id)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Redis service error. Cannot start analysis. Please check Redis connection.",
+            ) from e
         except Exception as e:
             logger.exception("Failed to enqueue job for video %s", video_id)
             raise HTTPException(

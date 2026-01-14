@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { videoApi } from '../services/api';
 import { OverlayData } from '../types/video';
 import './VideoOverlay.css';
@@ -82,7 +82,12 @@ function computeVideoContentRect(
  * Rotate point coordinates for 90° clockwise rotation.
  * Used when overlay dimensions don't match video dimensions (phone rotation metadata issue).
  */
-function rotatePoint90(x: number, y: number, width: number, height: number): { x: number; y: number } {
+function rotatePoint90(
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): { x: number; y: number } {
   return { x: height - y, y: x };
 }
 
@@ -138,21 +143,25 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
   // This handles phone videos where OpenCV dimensions don't match browser dimensions
   const needsRotation = useMemo(() => {
     if (!overlayData || !videoElement) return false;
-    
+
     const videoNaturalWidth = videoElement.videoWidth;
     const videoNaturalHeight = videoElement.videoHeight;
-    
+
     if (!videoNaturalWidth || !videoNaturalHeight) return false;
-    
+
     // Check if dimensions match (accounting for possible 90° rotation)
-    const dimensionsMatch = 
-      (overlayData.width === videoNaturalWidth && overlayData.height === videoNaturalHeight) ||
-      (overlayData.width === videoNaturalHeight && overlayData.height === videoNaturalWidth);
-    
+    const dimensionsMatch =
+      (overlayData.width === videoNaturalWidth &&
+        overlayData.height === videoNaturalHeight) ||
+      (overlayData.width === videoNaturalHeight &&
+        overlayData.height === videoNaturalWidth);
+
     // If dimensions don't match, we need to rotate (90° clockwise)
-    return !dimensionsMatch && 
-           overlayData.width === videoNaturalHeight && 
-           overlayData.height === videoNaturalWidth;
+    return (
+      !dimensionsMatch &&
+      overlayData.width === videoNaturalHeight &&
+      overlayData.height === videoNaturalWidth
+    );
   }, [overlayData, videoElement]);
 
   // Clear canvas when overlay is disabled
@@ -197,12 +206,20 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       const elementHeight = videoElement.offsetHeight;
       const videoNaturalWidth = videoElement.videoWidth;
       const videoNaturalHeight = videoElement.videoHeight;
-      
-      if (!videoNaturalWidth || !videoNaturalHeight || !elementWidth || !elementHeight) return;
+
+      if (
+        !videoNaturalWidth ||
+        !videoNaturalHeight ||
+        !elementWidth ||
+        !elementHeight
+      )
+        return;
 
       // Get object-fit mode from computed styles (default to 'contain')
       const computedStyle = window.getComputedStyle(videoElement);
-      const objectFit = (computedStyle.objectFit === 'cover' ? 'cover' : 'contain') as 'contain' | 'cover';
+      const objectFit = (
+        computedStyle.objectFit === 'cover' ? 'cover' : 'contain'
+      ) as 'contain' | 'cover';
 
       // Compute the rendered video content rectangle accounting for object-fit
       const contentRect = computeVideoContentRect(
@@ -236,13 +253,21 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       lastRenderedFrameRef.current = frameIndex;
 
       const frame = overlayData.frames[frameIndex];
-      if (!frame || !frame.keypoints || Object.keys(frame.keypoints).length === 0) {
+      if (
+        !frame ||
+        !frame.keypoints ||
+        Object.keys(frame.keypoints).length === 0
+      ) {
         return; // No pose data for this frame
       }
 
       // Determine effective overlay dimensions (accounting for rotation)
-      const overlayWidth = needsRotation ? overlayData.height : overlayData.width;
-      const overlayHeight = needsRotation ? overlayData.width : overlayData.height;
+      const overlayWidth = needsRotation
+        ? overlayData.height
+        : overlayData.width;
+      const overlayHeight = needsRotation
+        ? overlayData.width
+        : overlayData.height;
 
       // Scale from overlay coordinate space to rendered content rect
       const scaleX = contentRect.contentWidth / overlayWidth;
@@ -258,14 +283,29 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
         const startPoint = frame.keypoints[startKey];
         const endPoint = frame.keypoints[endKey];
 
-        if (startPoint && endPoint && startPoint.length >= 2 && endPoint.length >= 2) {
+        if (
+          startPoint &&
+          endPoint &&
+          startPoint.length >= 2 &&
+          endPoint.length >= 2
+        ) {
           // Apply rotation if needed
           let p1 = { x: startPoint[0], y: startPoint[1] };
           let p2 = { x: endPoint[0], y: endPoint[1] };
-          
+
           if (needsRotation) {
-            p1 = rotatePoint90(p1.x, p1.y, overlayData.width, overlayData.height);
-            p2 = rotatePoint90(p2.x, p2.y, overlayData.width, overlayData.height);
+            p1 = rotatePoint90(
+              p1.x,
+              p1.y,
+              overlayData.width,
+              overlayData.height
+            );
+            p2 = rotatePoint90(
+              p2.x,
+              p2.y,
+              overlayData.width,
+              overlayData.height
+            );
           }
 
           // Scale + offset into rendered content rect
@@ -334,12 +374,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
     return null;
   }
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="video-overlay-canvas"
-    />
-  );
+  return <canvas ref={canvasRef} className="video-overlay-canvas" />;
 };
 
 export default VideoOverlay;

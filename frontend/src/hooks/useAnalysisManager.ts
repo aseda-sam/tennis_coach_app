@@ -91,10 +91,21 @@ export const useAnalysisManager = ({
           error: null,
         }));
 
+        console.log('Starting analysis request...', {
+          videoId,
+          analysisRequest,
+        });
+
         const response = await unifiedAnalysisApi.startAnalysis(
           videoId,
           analysisRequest
         );
+
+        console.log('Analysis started successfully:', {
+          jobId: response.job_id,
+          videoId: response.video_id,
+          analysisType: response.analysis_type,
+        });
 
         setAnalysisState((prev) => ({
           ...prev,
@@ -106,10 +117,19 @@ export const useAnalysisManager = ({
         // Start polling for progress
         startPolling(response.job_id);
       } catch (err: any) {
+        console.error('Failed to start analysis:', {
+          error: err,
+          response: err?.response,
+          message: err?.message,
+          code: err?.code,
+        });
+
         const errorMessage =
           err?.response?.data?.detail ||
           err?.message ||
-          'Failed to start analysis';
+          (err?.code === 'ECONNABORTED'
+            ? 'Request timed out. The server may be busy or Redis may be unavailable.'
+            : 'Failed to start analysis');
         setAnalysisState((prev) => ({
           ...prev,
           status: 'failed',

@@ -17,7 +17,25 @@ createAuthInterceptor(analysisApi, 'Analysis API');
 analysisApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('Analysis API Error:', error.response?.data || error.message);
+    // Enhanced error logging
+    if (error.code === 'ECONNABORTED') {
+      console.error('Analysis API Error: Request timeout (30s exceeded)', {
+        url: error.config?.url,
+        method: error.config?.method,
+      });
+    } else if (error.response) {
+      console.error('Analysis API Error:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        url: error.config?.url,
+      });
+    } else {
+      console.error('Analysis API Error:', error.message, {
+        code: error.code,
+        url: error.config?.url,
+      });
+    }
     return Promise.reject(error);
   }
 );
