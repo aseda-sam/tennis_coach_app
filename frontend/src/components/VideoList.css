@@ -8,6 +8,7 @@
 .video-list-header {
   display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: var(--spacing-md);
   margin: 0 0 var(--spacing-2xl) 0;
   padding: 0 2px;
@@ -17,6 +18,37 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  box-shadow: var(--shadow-primary-sm);
+}
+
+.upload-btn:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-primary-md);
+}
+
+.upload-btn:active {
+  transform: translateY(0);
 }
 
 .page-title {
@@ -504,6 +536,81 @@
   cursor: not-allowed;
 }
 
+/* Upload Modal */
+.upload-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal-backdrop);
+  backdrop-filter: blur(5px);
+}
+
+.upload-modal {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-3xl);
+  max-width: 900px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.upload-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-2xl) var(--spacing-2xl) var(--spacing-lg) var(--spacing-2xl);
+  border-bottom: 2px solid var(--color-border-light);
+}
+
+.upload-modal .modal-title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+.upload-modal .close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-xs);
+  transition: var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-modal .close-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.upload-modal .modal-content {
+  padding: var(--spacing-2xl);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .video-grid {
@@ -526,5 +633,22 @@
 
   .video-actions {
     justify-content: space-between;
+  }
+
+  .upload-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .upload-modal .modal-header {
+    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md) var(--spacing-lg);
+  }
+
+  .upload-modal .modal-content {
+    padding: var(--spacing-lg);
+  }
+
+  .upload-modal .modal-title {
+    font-size: var(--font-size-3xl);
   }
 }

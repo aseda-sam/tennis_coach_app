@@ -130,7 +130,7 @@ async def start_analysis(
                 logger.error(f"Failed to enqueue job to Redis: {e}")
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail=f"Failed to enqueue job to Redis: {str(e)}",
+                    detail=f"Failed to enqueue job to Redis: {e!s}",
                 ) from e
 
             return AnalysisResponse(

@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useAnalysisStatus,
   AnalysisState,
@@ -10,9 +11,12 @@ import {
 } from '../hooks/useVideos';
 import { VideoMetadata } from '../types/video';
 import {
+  CloseIcon,
   DeleteIcon,
+  UploadIcon,
   VideoIcon,
 } from './Icons';
+import VideoUpload from './VideoUpload';
 import './VideoList.css';
 
 interface VideoListProps {
@@ -24,6 +28,9 @@ const VideoList: React.FC<VideoListProps> = ({
   onVideoDeleted,
   onViewAnalysis,
 }) => {
+  const queryClient = useQueryClient();
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
   // Use React Query hooks for data fetching
   const {
     data: videos = [],
@@ -103,6 +110,12 @@ const VideoList: React.FC<VideoListProps> = ({
     }
   };
 
+  const handleUploadSuccess = useCallback((video: VideoMetadata) => {
+    // Invalidate videos cache to refetch the list with the new video
+    queryClient.invalidateQueries({ queryKey: ['videos'] });
+    setIsUploadModalOpen(false);
+  }, [queryClient]);
+
   // Removed handleCancelAnalysis - we now only use pose detection
 
   // Removed getAnalysisForVideo - we now only use pose detection
@@ -168,6 +181,16 @@ const VideoList: React.FC<VideoListProps> = ({
         <div className="header-left">
           <h2 className="page-title">Video Library</h2>
           <p className="video-count">{videos.length} of {videos.length} sessions</p>
+        </div>
+        <div className="header-right">
+          <button
+            className="upload-btn"
+            onClick={() => setIsUploadModalOpen(true)}
+            type="button"
+          >
+            <UploadIcon size={18} />
+            Upload
+          </button>
         </div>
       </div>
 
@@ -250,7 +273,22 @@ const VideoList: React.FC<VideoListProps> = ({
         </div>
       )}
 
-      {/* Removed AnalysisModal - we now use pose detection only */}
+      {/* Upload Modal */}
+      {isUploadModalOpen && (
+        <div className="upload-modal-overlay" onClick={() => setIsUploadModalOpen(false)}>
+          <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Upload Video</h2>
+              <button className="close-btn" onClick={() => setIsUploadModalOpen(false)} aria-label="Close">
+                <CloseIcon size={18} />
+              </button>
+            </div>
+            <div className="modal-content">
+              <VideoUpload onUploadSuccess={handleUploadSuccess} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
