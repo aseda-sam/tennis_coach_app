@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
+import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import './AnalysisDashboard.css';
-import { ArrowBackIcon } from './Icons';
+import { ArrowBackIcon, AnalyticsIcon } from './Icons';
 import VideoPlayer from './VideoPlayer';
+import AnalysisRightPanel from './AnalysisRightPanel';
 
 interface AnalysisDashboardProps {
   videoId: number;
@@ -17,55 +19,132 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   videoUrl,
   onClose,
 }) => {
-  const [aspectRatioMode, setAspectRatioMode] = useState<
-    'cover' | 'contain' | 'auto'
-  >('contain');
+  const [activeTab, setActiveTab] = useState<'per-serve' | 'session'>('per-serve');
 
   // Use React Query hook for analysis status (with caching)
   const { data: analysisStatus } = useVideoAnalysisStatus(videoId);
 
-  // Analysis state for the new unified system
+  // Analysis manager for pose analysis
+  const {
+    analysisState,
+    startAnalysis,
+    isLoading: isAnalysisLoading,
+  } = useAnalysisManager({
+    videoId,
+    autoRefresh: true,
+    onAnalysisComplete: () => {
+      // Refresh analysis status after completion
+      window.location.reload();
+    },
+  });
+
+  const handleFocusAnalysis = useCallback(async () => {
+    try {
+      await startAnalysis({
+        analysis_type: 'pose_only',
+        confidence_threshold: 0.5,
+      });
+    } catch (error) {
+      console.error('Failed to start pose analysis:', error);
+    }
+  }, [startAnalysis]);
 
   return (
     <div className="analysis-dashboard">
-      <div className="dashboard-header">
-        <button className="back-btn" onClick={onClose}>
-          <ArrowBackIcon size={18} />
-          Back to Videos
+      {/* Header */}
+      <div className="analysis-dashboard__header">
+        <button className="analysis-dashboard__back-btn" onClick={onClose}>
+          <ArrowBackIcon size={16} />
+          Back
         </button>
-        <h1 className="dashboard-title">{videoFilename}</h1>
-        <div className="upload-info">Uploaded recently</div>
+        <div className="analysis-dashboard__header-content">
+          <h1 className="analysis-dashboard__title">Serve Analysis</h1>
+          <p className="analysis-dashboard__subtitle">{videoFilename}</p>
+        </div>
+        <button
+          className="analysis-dashboard__focus-analysis-btn"
+          onClick={handleFocusAnalysis}
+          disabled={isAnalysisLoading || analysisState.status === 'processing'}
+        >
+          <AnalyticsIcon size={16} />
+          {isAnalysisLoading || analysisState.status === 'processing'
+            ? 'Analyzing...'
+            : 'Focus Analysis'}
+        </button>
       </div>
 
-      <div className="dashboard-content">
-        <div className="video-section">
-          {/* Aspect Ratio Mode Selector */}
-          <div className="aspect-ratio-controls">
-            <label htmlFor="aspect-ratio-mode">Video Display Mode:</label>
-            <select
-              id="aspect-ratio-mode"
-              value={aspectRatioMode}
-              onChange={(e) =>
-                setAspectRatioMode(
-                  e.target.value as 'cover' | 'contain' | 'auto'
-                )
-              }
-              className="aspect-ratio-select"
-            >
-              <option value="contain">Fit with Black Bars (Default)</option>
-              <option value="cover">Crop to Fit</option>
-              <option value="auto">Auto Adjust</option>
-            </select>
-          </div>
+      {/* Tabs */}
+      <div className="analysis-dashboard__tabs">
+        <button
+          className={`analysis-dashboard__tab ${
+            activeTab === 'per-serve' ? 'analysis-dashboard__tab--active' : ''
+          }`}
+          onClick={() => setActiveTab('per-serve')}
+        >
+          Per Serve Analysis
+        </button>
+        <button
+          className={`analysis-dashboard__tab ${
+            activeTab === 'session' ? 'analysis-dashboard__tab--active' : ''
+          }`}
+          onClick={() => setActiveTab('session')}
+        >
+          Session Overview
+        </button>
+      </div>
 
+      {/* Main Content */}
+      <div className="analysis-dashboard__content">
+        {/* Left Column - Video Player */}
+        <div className="analysis-dashboard__video-column">
           <VideoPlayer
             videoUrl={videoUrl}
             title={videoFilename}
             showControls={true}
-            aspectRatioMode={aspectRatioMode}
+            aspectRatioMode="contain"
             videoId={videoId}
-            showPostureAnalysis={true}
+            showPostureAnalysis={false}
             hasPoseData={analysisStatus?.has_analysis || false}
+            controlsBelow={true}
+          />
+
+          {/* Keyboard Shortcuts Banner */}
+          <div className="analysis-dashboard__keyboard-shortcuts">
+            <div className="analysis-dashboard__shortcuts-icon">⌨️</div>
+            <div className="analysis-dashboard__shortcuts-content">
+              <h4 className="analysis-dashboard__shortcuts-title">Keyboard Shortcuts</h4>
+              <div className="analysis-dashboard__shortcuts-list">
+                <div className="analysis-dashboard__shortcut-item">
+                  <kbd className="analysis-dashboard__kbd">Space</kbd>
+                  <span>Play/Pause</span>
+                </div>
+                <div className="analysis-dashboard__shortcut-item">
+                  <kbd className="analysis-dashboard__kbd">← →</kbd>
+                  <span>Navigate serves</span>
+                </div>
+                <div className="analysis-dashboard__shortcut-item">
+                  <kbd className="analysis-dashboard__kbd">↑ ↓</kbd>
+                  <span>Frame by frame</span>
+                </div>
+                <div className="analysis-dashboard__shortcut-item">
+                  <kbd className="analysis-dashboard__kbd">R</kbd>
+                  <span>Loop serve</span>
+                </div>
+                <div className="analysis-dashboard__shortcut-item">
+                  <kbd className="analysis-dashboard__kbd">V</kbd>
+                  <span>Focus analysis</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Analysis Panel */}
+        <div className="analysis-dashboard__analysis-column">
+          <AnalysisRightPanel
+            videoId={videoId}
+            videoFilename={videoFilename}
+            analysisStatus={analysisStatus}
           />
         </div>
       </div>

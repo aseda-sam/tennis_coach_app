@@ -22,6 +22,7 @@ import {
   VolumeOffIcon,
   AnalyticsIcon,
   WarningIcon,
+  ArrowBackIcon,
 } from './Icons';
 import PostureAnalysisSidebar from './PostureAnalysisSidebar';
 import VideoOverlay from './VideoOverlay';
@@ -36,6 +37,7 @@ interface VideoPlayerProps {
   videoId?: number; // Video ID for fetching ball contacts
   showPostureAnalysis?: boolean; // Show posture analysis sidebar
   hasPoseData?: boolean; // Whether pose detection data exists
+  controlsBelow?: boolean; // Render controls below video instead of overlaying
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -47,6 +49,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   videoId,
   showPostureAnalysis = false,
   hasPoseData = false,
+  controlsBelow = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -54,7 +57,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-  const [showPlayOverlay, setShowPlayOverlay] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -173,12 +175,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     const handlePlay = () => {
       setIsPlaying(true);
-      setShowPlayOverlay(false);
     };
 
     const handlePause = () => {
       setIsPlaying(false);
-      setShowPlayOverlay(true);
     };
 
     const handleError = (e: Event) => {
@@ -220,7 +220,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       }
 
       setError(errorMessage);
-      setShowPlayOverlay(true);
       setIsPlaying(false);
     };
 
@@ -424,7 +423,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   );
 
   const handleVideoClick = () => {
-    if (showPlayOverlay) {
+    // When controlsBelow is true, clicking video toggles play/pause
+    if (controlsBelow) {
       togglePlay();
     }
   };
@@ -445,7 +445,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   return (
-    <div className="video-player-container">
+    <div className={`video-player-container ${controlsBelow ? 'controls-below' : ''}`}>
       {onClose && (
         <div className="video-player-header">
           <button className="close-btn" onClick={onClose}>
@@ -536,15 +536,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
           )}
 
-          {showPlayOverlay && !error && (
-            <div className="play-overlay">
-              <div className="play-button">
-                <PlayIcon size={32} color="#3b82f6" />
-              </div>
-            </div>
-          )}
 
-          {showControls && (
+          {showControls && !controlsBelow && (
             <div className="video-controls">
               <div className="progress-container">
                 <div className="progress-bar-wrapper">
@@ -677,6 +670,55 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           )}
         </div>
       </div>
+
+      {/* Controls Below Video (when controlsBelow is true) - Outside video wrapper */}
+      {showControls && controlsBelow && (
+        <div className="video-controls-below">
+          {/* Serve Segmentation */}
+          <div className="serve-segmentation">
+            <div className="serve-segmentation__track">
+              <div className="serve-segmentation__segment serve-segmentation__segment--active">
+                Serve 1
+              </div>
+              <div className="serve-segmentation__segment">Serve 2</div>
+              <div className="serve-segmentation__segment">Serve 3</div>
+              <div className="serve-segmentation__marker"></div>
+            </div>
+            <div className="serve-segmentation__time-labels">
+              <span>{formattedCurrentTime}</span>
+              <span>{formattedDuration}</span>
+            </div>
+          </div>
+
+          {/* Controls Row */}
+          <div className="video-controls-below__controls">
+            <button
+              className="video-controls-below__nav-btn"
+              disabled
+              title="Previous Serve"
+            >
+              <ArrowBackIcon size={16} />
+              Previous Serve
+            </button>
+            <button
+              className="video-controls-below__play-btn"
+              onClick={togglePlay}
+            >
+              {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+            </button>
+            <button
+              className="video-controls-below__next-btn"
+              disabled
+              title="Next Serve"
+            >
+              Next Serve
+              <span className="video-controls-below__arrow-right">
+                <ArrowBackIcon size={16} />
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Ball Contact Management Modal */}
       <BallContactModal
