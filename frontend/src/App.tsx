@@ -3,7 +3,7 @@ import { useState } from 'react';
 import './App.css';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
-import { ListIcon, UploadIcon, VideoIcon } from './components/Icons';
+import { VideoIcon } from './components/Icons';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
 import { useAuth } from './hooks/useAuth';
@@ -89,7 +89,6 @@ function App() {
                 onClick={() => setCurrentView('upload')}
                 aria-selected={currentView === 'upload'}
               >
-                <UploadIcon size={18} />
                 Home
               </button>
               <button
@@ -98,7 +97,6 @@ function App() {
                 onClick={() => setCurrentView('list')}
                 aria-selected={currentView === 'list'}
               >
-                <ListIcon size={18} />
                 Library
               </button>
             </div>
