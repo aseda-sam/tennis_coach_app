@@ -4,6 +4,7 @@
 import contextlib
 import multiprocessing
 import os
+import socket
 import sys
 from pathlib import Path
 
@@ -31,6 +32,51 @@ from app.core.redis_config import (
     redis_conn,
 )
 
+
+def cleanup_stale_workers() -> None:
+    """Clean up stale worker registrations from Redis."""
+    try:
+        existing_workers = Worker.all(connection=redis_conn)
+        if existing_workers:
+            print(f"Found {len(existing_workers)} existing worker(s) in Redis")
+            for worker in existing_workers:
+                # Check if worker is actually alive by trying to access its connection
+                try:
+                    # If worker is alive, it will respond to ping
+                    # If stale, this will fail or worker won't respond
+                    if not worker.is_alive():
+                        print(f"  Cleaning up stale worker: {worker.name}")
+                        worker.register_death()
+                    else:
+                        print(f"  Worker {worker.name} is still alive, skipping cleanup")
+                except Exception:  # noqa: BLE001
+                    # Worker registration exists but worker is not responding
+                    print(f"  Cleaning up stale worker registration: {worker.name}")
+                    try:
+                        worker.register_death()
+                    except Exception:  # noqa: BLE001
+                        # If register_death fails, try to delete the key directly
+                        try:
+                            redis_conn.delete(f"rq:worker:{worker.name}")
+                            redis_conn.delete(f"rq:worker:{worker.name}:birth")
+                        except Exception:  # noqa: BLE001, S110
+                            pass  # Ignore cleanup failures - worker may already be cleaned up
+        else:
+            print("No existing workers found in Redis")
+    except Exception as e:  # noqa: BLE001
+        print(f"Warning: Could not check for stale workers: {e}")
+        print("Proceeding anyway...")
+
+
+def generate_worker_name() -> str:
+    """Generate a unique worker name using hostname and PID."""
+    hostname = socket.gethostname()
+    pid = os.getpid()
+    # Use container name if available (from docker-compose), otherwise hostname
+    container_name = os.environ.get("HOSTNAME", hostname)
+    return f"worker-{container_name}-{pid}"
+
+
 if __name__ == "__main__":
     # Verify environment variable is set
     fork_safety = os.environ.get("OBJC_DISABLE_INITIALIZE_FORK_SAFETY")
@@ -41,9 +87,16 @@ if __name__ == "__main__":
     else:
         print(f"✓ Fork safety disabled: {fork_safety}")
 
+    # Clean up stale workers before starting
+    print("\nChecking for stale worker registrations...")
+    cleanup_stale_workers()
+
     # Get worker info
     info = get_worker_info()
     recommended = info["recommended_workers"]
+
+    # Generate unique worker name
+    worker_name = generate_worker_name()
 
     print("=" * 60)
     print("RQ Worker Startup")
@@ -54,24 +107,49 @@ if __name__ == "__main__":
     print(f"Redis URL: {info['redis_url']}")
     print(f"Platform: {sys.platform}")
     print(f"Multiprocessing start method: {multiprocessing.get_start_method()}")
+    print(f"Worker Name: {worker_name}")
     print("=" * 60)
     print(f"\nStarting 1 worker (start {recommended - 1} more in separate terminals)")
     print("Listening on queues: default, analysis")
     print("\nPress Ctrl+C to stop\n")
 
-    try:
-        # Create worker with connection
-        worker = Worker(
-            [default_queue, analysis_queue],
-            connection=redis_conn,
-            name=f"worker-{os.getpid()}",
-        )
-        worker.work()
-    except KeyboardInterrupt:
-        print("\n\nWorker stopped by user")
-    except Exception as e:  # noqa: BLE001 - Worker script needs to catch all errors
-        print(f"\n\nError: {e}")
-        import traceback
+    max_retries = 3
+    retry_count = 0
 
-        traceback.print_exc()
-        sys.exit(1)
+    while retry_count < max_retries:
+        try:
+            # Create worker with connection
+            worker = Worker(
+                [default_queue, analysis_queue],
+                connection=redis_conn,
+                name=worker_name,
+            )
+            worker.work()
+            break  # Success, exit retry loop
+        except ValueError as e:
+            error_msg = str(e)
+            if "active worker" in error_msg.lower() and retry_count < max_retries - 1:
+                retry_count += 1
+                print(f"\n⚠️  Worker registration conflict detected (attempt {retry_count}/{max_retries})")
+                print("Cleaning up stale registrations and retrying...")
+                cleanup_stale_workers()
+                # Generate a new unique name for retry
+                worker_name = generate_worker_name()
+                print(f"Retrying with worker name: {worker_name}\n")
+                continue
+            else:
+                # Max retries reached or different ValueError
+                print(f"\n\nError: {e}")
+                import traceback
+
+                traceback.print_exc()
+                sys.exit(1)
+        except KeyboardInterrupt:
+            print("\n\nWorker stopped by user")
+            break
+        except Exception as e:  # noqa: BLE001 - Worker script needs to catch all errors
+            print(f"\n\nError: {e}")
+            import traceback
+
+            traceback.print_exc()
+            sys.exit(1)
