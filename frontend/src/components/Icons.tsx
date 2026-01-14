@@ -157,3 +157,11 @@ export const LoadingIcon: React.FC<IconProps> = ({ size = 24, className = '', co
     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill={color} />
   </svg>
 );
+
+export const AngleIcon: React.FC<IconProps> = ({ size = 24, className = '', color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M12 2L2 22h20L12 2z" fill={color} opacity="0.1" />
+    <path d="M12 2L2 22M12 2l10 20" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <circle cx="12" cy="12" r="1.5" fill={color} />
+  </svg>
+);

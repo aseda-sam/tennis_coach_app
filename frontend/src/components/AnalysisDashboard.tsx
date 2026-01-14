@@ -1,10 +1,10 @@
 import React, { useCallback } from 'react';
-import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
+import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import './AnalysisDashboard.css';
-import { ArrowBackIcon, AnalyticsIcon } from './Icons';
-import VideoPlayer from './VideoPlayer';
 import AnalysisRightPanel from './AnalysisRightPanel';
+import { ArrowBackIcon } from './Icons';
+import VideoPlayer from './VideoPlayer';
 
 interface AnalysisDashboardProps {
   videoId: number;
@@ -59,16 +59,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           <h1 className="analysis-dashboard__title">Serve Analysis</h1>
           <p className="analysis-dashboard__subtitle">{videoFilename}</p>
         </div>
-        <button
-          className="analysis-dashboard__focus-analysis-btn"
-          onClick={handleFocusAnalysis}
-          disabled={isAnalysisLoading || analysisState.status === 'processing'}
-        >
-          <AnalyticsIcon size={16} />
-          {isAnalysisLoading || analysisState.status === 'processing'
-            ? 'Analyzing...'
-            : 'Focus Analysis'}
-        </button>
       </div>
 
       {/* Main Content */}
@@ -90,7 +80,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           <div className="analysis-dashboard__keyboard-shortcuts">
             <div className="analysis-dashboard__shortcuts-icon">⌨️</div>
             <div className="analysis-dashboard__shortcuts-content">
-              <h4 className="analysis-dashboard__shortcuts-title">Keyboard Shortcuts</h4>
+              <h4 className="analysis-dashboard__shortcuts-title">
+                Keyboard Shortcuts
+              </h4>
               <div className="analysis-dashboard__shortcuts-list">
                 <div className="analysis-dashboard__shortcut-item">
                   <kbd className="analysis-dashboard__kbd">Space</kbd>
@@ -110,7 +102,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 </div>
                 <div className="analysis-dashboard__shortcut-item">
                   <kbd className="analysis-dashboard__kbd">V</kbd>
-                  <span>Focus analysis</span>
+                  <span>Analyze</span>
                 </div>
               </div>
             </div>
@@ -119,6 +111,17 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
         {/* Right Column - Analysis Panel */}
         <div className="analysis-dashboard__analysis-column">
+          {!analysisStatus?.has_analysis && (
+            <button
+              className="analysis-dashboard__analyze-btn"
+              onClick={handleFocusAnalysis}
+              disabled={isAnalysisLoading || analysisState.status === 'processing'}
+            >
+              {isAnalysisLoading || analysisState.status === 'processing'
+                ? 'Analyzing...'
+                : 'Analyze'}
+            </button>
+          )}
           <AnalysisRightPanel
             videoId={videoId}
             videoFilename={videoFilename}
