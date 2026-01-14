@@ -112,25 +112,6 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.ai-analysis-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  margin-top: 12px;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-  animation: fadeIn 0.3s ease-out;
-}
-
-.ai-icon {
-  font-size: 0.9rem;
-}
-
 @keyframes fadeIn {
   0% {
     opacity: 0;

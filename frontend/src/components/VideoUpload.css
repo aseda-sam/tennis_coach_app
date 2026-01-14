@@ -1,24 +1,25 @@
 .video-upload {
   max-width: 600px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 24px;
 }
 
 .video-upload h2 {
   text-align: center;
-  color: #333;
-  margin-bottom: 30px;
-  font-size: 24px;
+  color: #1a1a1a;
+  margin-bottom: 24px;
+  font-size: 1.5rem;
   font-weight: 600;
+  letter-spacing: -0.025em;
 }
 
 .upload-area {
-  border: 3px dashed #ddd;
+  border: 2px dashed #d1d5db;
   border-radius: 12px;
-  padding: 40px 20px;
+  padding: 48px 24px;
   text-align: center;
-  background: #fafafa;
-  transition: all 0.3s ease;
+  background: #fafbfc;
+  transition: all 0.2s ease;
   cursor: pointer;
   position: relative;
 }
@@ -54,18 +55,20 @@
 
 .file-input-label {
   display: inline-block;
-  background: #007bff;
+  background: #3b82f6;
   color: white;
   padding: 12px 24px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
-  transition: background-color 0.3s ease;
-  margin: 15px 0;
+  transition: all 0.2s ease;
+  margin: 16px 0;
 }
 
 .file-input-label:hover {
-  background: #0056b3;
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .file-info {
@@ -96,12 +99,13 @@
 }
 
 .error-message {
-  background: #f8d7da;
-  color: #721c24;
+  background: #fef2f2;
+  color: #991b1b;
   padding: 12px 16px;
-  border-radius: 6px;
-  margin-top: 20px;
-  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  margin-top: 16px;
+  border: 1px solid #fecaca;
   text-align: center;
-  font-size: 14px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
 }
