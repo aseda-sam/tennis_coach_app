@@ -1,4 +1,5 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import {
   useAnalysisStatus,
   AnalysisState,
@@ -8,12 +9,10 @@ import {
   useVideoAnalysisStatuses,
   useDeleteVideo,
 } from '../hooks/useVideos';
-import unifiedAnalysisApi from '../services/unifiedAnalysisApi';
 import { VideoMetadata } from '../types/video';
+import { ballContactApi, BallContact } from '../services/ballContactApi';
 import {
-  AnalyticsIcon,
   DeleteIcon,
-  EyeIcon,
   VideoIcon,
 } from './Icons';
 import './VideoList.css';
@@ -53,8 +52,8 @@ const VideoList: React.FC<VideoListProps> = ({
     ? 'Failed to load videos. Please try again.'
     : null;
 
-  // Use the unified analysis status system
-  const { state: analysisState, startPolling } = useAnalysisStatus({
+  // Use the unified analysis status system (callbacks kept for future analyze functionality)
+  useAnalysisStatus({
     onComplete: useCallback(
       async (
         completedState: Extract<AnalysisState, { status: 'completed' }>
@@ -89,35 +88,7 @@ const VideoList: React.FC<VideoListProps> = ({
   };
 
   // Removed handleAnalyze - we now only use pose detection
-
-  const handlePoseAnalyze = async (videoId: number) => {
-    try {
-      // Start pose detection analysis (annotation removed in this branch)
-      const response = await unifiedAnalysisApi.startPoseAnalysis(
-        videoId,
-        0.5
-      );
-
-      // Analysis started in background - track the task
-      setActiveAnalysisTasks((prev) => {
-        const newMap = new Map(prev);
-        newMap.set(videoId, response.job_id);
-        return newMap;
-      });
-
-      // Start polling for progress
-      startPolling(response.job_id);
-    } catch (err: any) {
-      console.error('Error starting pose analysis:', err);
-
-      // Remove from active tasks on error
-      setActiveAnalysisTasks((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(videoId);
-        return newMap;
-      });
-    }
-  };
+  // Removed handlePoseAnalyze - not used in card layout (can be re-added if needed for analyze button)
 
   // Removed pollTaskStatus - legacy function no longer needed
 
@@ -142,47 +113,74 @@ const VideoList: React.FC<VideoListProps> = ({
     return activeAnalysisTasks.has(videoId);
   };
 
-  const formatDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
   const formatFileSize = (bytes: number): string => {
     const mb = bytes / (1024 * 1024);
     return `${mb.toFixed(2)} MB`;
   };
 
-  const getStatusTag = (analysis: any, videoId: number) => {
-    const analysisStatus = analysisStatusesMap[videoId];
-    const isCurrentlyAnalyzing = isAnalyzing(videoId);
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    // Show current analysis state if this video is being analyzed
-    if (isCurrentlyAnalyzing && analysisState.status !== 'idle') {
-      const jobId = activeAnalysisTasks.get(videoId);
-      // Only show status if this is the active job
-      if (jobId && 'jobId' in analysisState && analysisState.jobId === jobId) {
-        switch (analysisState.status) {
-          case 'processing':
-            return { text: 'Processing', color: 'processing' };
-          case 'queued':
-            return { text: 'Queued', color: 'queued' };
-          case 'failed':
-            return { text: 'Failed', color: 'error' };
-          case 'completed':
-            return { text: 'Ready', color: 'completed' };
-        }
-      }
-      // Fallback: show processing if job is tracked but state not yet loaded
-      return { text: 'Processing', color: 'processing' };
+    if (diffDays === 0) {
+      return 'Today';
+    } else if (diffDays === 1) {
+      return 'Yesterday';
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
-
-    if (analysisStatus?.has_analysis) {
-      return { text: 'Ready', color: 'completed' };
-    }
-
-    return { text: 'No analysis', color: 'not-analyzed' };
   };
+
+  // Fetch ball contacts for all videos using React Query
+  const contactsQueries = useQueries({
+    queries: videos.map((video) => ({
+      queryKey: ['ball-contacts', video.id],
+      queryFn: () => ballContactApi.getContacts(video.id),
+      staleTime: 2 * 60 * 1000, // 2 minutes
+      retry: 1,
+    })),
+  });
+
+  // Create a map of video ID to contacts
+  const ballContactsMap = useMemo(() => {
+    const map: Record<number, BallContact[]> = {};
+    contactsQueries.forEach((query, index) => {
+      const videoId = videos[index]?.id;
+      if (videoId) {
+        map[videoId] = query.data || [];
+      }
+    });
+    return map;
+  }, [contactsQueries, videos]);
+
+  const getVideoMetrics = (videoId: number) => {
+    const contacts = ballContactsMap[videoId] || [];
+    const serves = contacts.filter(c => c.stroke_type === 'serve');
+    const serveCount = serves.length;
+    
+    // Calculate average elbow angle from serves
+    const elbowAngles = serves
+      .map(s => s.elbow_angle)
+      .filter((angle): angle is number => angle !== undefined);
+    const avgElbow = elbowAngles.length > 0
+      ? Math.round(elbowAngles.reduce((a, b) => a + b, 0) / elbowAngles.length)
+      : null;
+
+    // For now, we don't have toss/contact height data, so we'll show placeholders
+    // These would come from analysis data if available
+    return {
+      serveCount,
+      avgElbow,
+      tossHeight: null, // Placeholder - would come from analysis
+      contactHeight: null, // Placeholder - would come from analysis
+    };
+  };
+
+  // Removed getStatusTag - not used in card layout
 
 
 
@@ -215,8 +213,8 @@ const VideoList: React.FC<VideoListProps> = ({
       {/* Header */}
       <div className="video-list-header">
         <div className="header-left">
-          <h2 className="page-title">Videos</h2>
-          <p className="video-count">{videos.length} uploaded</p>
+          <h2 className="page-title">Video Library</h2>
+          <p className="video-count">{videos.length} of {videos.length} sessions</p>
         </div>
       </div>
 
@@ -229,16 +227,16 @@ const VideoList: React.FC<VideoListProps> = ({
           <p>Upload your first tennis video to get started with analysis</p>
         </div>
       ) : (
-        <div className="video-list">
+        <div className="video-grid">
           {videos.map((video: VideoMetadata) => {
             const analysisStatus = analysisStatusesMap[video.id];
             const isCurrentlyAnalyzing = isAnalyzing(video.id);
-            const status = getStatusTag(null, video.id);
+            const metrics = getVideoMetrics(video.id);
 
             return (
               <div
                 key={video.id}
-                className="video-item"
+                className="video-card"
                 onClick={() => {
                   // Only make clickable if analysis exists or not analyzing
                   if (analysisStatus?.has_analysis || !isCurrentlyAnalyzing) {
@@ -249,65 +247,76 @@ const VideoList: React.FC<VideoListProps> = ({
                   cursor: analysisStatus?.has_analysis || !isCurrentlyAnalyzing ? 'pointer' : 'default',
                 }}
               >
-                <div className="video-thumbnail-container">
-                  <div className="video-thumbnail">
-                    <VideoIcon size={32} color="white" />
-                    {video.duration && (
-                      <div className="duration-badge">
-                        {formatDuration(video.duration)}
-                      </div>
-                    )}
+                {/* Thumbnail Area */}
+                <div className="video-card-thumbnail">
+                  <div className="video-card-thumbnail-placeholder">
+                    <VideoIcon size={48} color="#64748b" />
                   </div>
+                  {metrics.serveCount > 0 && (
+                    <div className="serves-badge">
+                      {metrics.serveCount} {metrics.serveCount === 1 ? 'serve' : 'serves'}
+                    </div>
+                  )}
                 </div>
 
-                <div className="video-content">
-                  <div className="video-header">
-                    <h3 className="video-title">{video.filename}</h3>
-                    <div className="video-meta-list">
-                      {formatFileSize(video.file_size)}
-                      {video.width && video.height && (
-                        <> • {video.width}×{video.height}</>
-                      )}
+                {/* Metadata Section */}
+                <div className="video-card-content">
+                  <h3 className="video-card-filename">{video.filename}</h3>
+                  
+                  <div className="video-card-meta">
+                    <div className="video-card-user-date">
+                      <span className="user-info">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="user-icon">
+                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/>
+                        </svg>
+                        Myself
+                      </span>
+                      <span className="date-info">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="calendar-icon">
+                          <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" fill="currentColor"/>
+                        </svg>
+                        {formatDate(video.created_at)}
+                      </span>
+                      <button
+                        className="delete-card-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(video.id);
+                        }}
+                        disabled={deleteVideoMutation.isPending}
+                        title="Delete"
+                        type="button"
+                      >
+                        <DeleteIcon size={16} />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="video-actions">
-                    <span className={`analysis-pill ${status.color}`}>
-                      {status.color === 'completed' && (
-                        <>
-                          <EyeIcon size={14} />
-                          <span>{status.text}</span>
-                        </>
-                      )}
-                      {status.color !== 'completed' && <span>{status.text}</span>}
-                    </span>
+                  {/* Metrics */}
+                  <div className="video-card-metrics">
+                    <div className="metric-item">
+                      <span className="metric-label">Toss</span>
+                      <span className="metric-value">
+                        {metrics.tossHeight ? `${Math.round(metrics.tossHeight)} cm` : '—'}
+                      </span>
+                    </div>
+                    <div className="metric-item">
+                      <span className="metric-label">Contact</span>
+                      <span className="metric-value">
+                        {metrics.contactHeight ? `${Math.round(metrics.contactHeight)} cm` : '—'}
+                      </span>
+                    </div>
+                    <div className="metric-item">
+                      <span className="metric-label">Elbow</span>
+                      <span className="metric-value">
+                        {metrics.avgElbow ? `${metrics.avgElbow}°` : '—'}
+                      </span>
+                    </div>
+                  </div>
 
-                    {!analysisStatus?.has_analysis && !isCurrentlyAnalyzing && (
-                      <button
-                        className="btn btn-secondary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePoseAnalyze(video.id);
-                        }}
-                        type="button"
-                      >
-                        <AnalyticsIcon size={16} />
-                        Analyze
-                      </button>
-                    )}
-
-                    <button
-                      className="icon-btn delete-icon-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(video.id);
-                      }}
-                      disabled={deleteVideoMutation.isPending}
-                      title="Delete"
-                      type="button"
-                    >
-                      <DeleteIcon size={18} />
-                    </button>
+                  {/* File Size */}
+                  <div className="video-card-size">
+                    {formatFileSize(video.file_size)}
                   </div>
                 </div>
               </div>

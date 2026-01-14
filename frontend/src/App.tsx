@@ -81,7 +81,7 @@ function App() {
               aria-selected={currentView === 'list'}
             >
               <ListIcon size={18} />
-              My Videos
+              Video Library
             </button>
           </div>
         </div>

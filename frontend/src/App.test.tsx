@@ -50,10 +50,10 @@ test('renders upload section', () => {
   expect(uploadElement).toBeInTheDocument();
 });
 
-test('renders view videos button', () => {
+test('renders video library button', () => {
   render(<App />);
-  const viewVideosButton = screen.getByText(/View My Videos/i);
-  expect(viewVideosButton).toBeInTheDocument();
+  const videoLibraryButton = screen.getByText(/Video Library/i);
+  expect(videoLibraryButton).toBeInTheDocument();
 });
 
 test('renders app subtitle', () => {
