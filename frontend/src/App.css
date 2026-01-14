@@ -1,32 +1,10 @@
 /* App Container */
 .App {
   min-height: 100vh;
-  background: #f8fafc;
-  font-family:
-    'Inter',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'Roboto',
-    'Oxygen',
-    'Ubuntu',
-    'Cantarell',
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
-    sans-serif;
+  background: var(--color-background-alt);
+  font-family: var(--font-family-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-:root {
-  --color-primary: #00bc7d;
-  --color-primary-dark: #009966;
-  --color-primary-soft: #ecfdf5;
-  --color-text: #101828;
-  --color-muted: #4a5565;
-  --color-border: #e5e7eb;
-  --color-surface: #ffffff;
 }
 
 /* App Container */
@@ -51,13 +29,13 @@
 }
 
 .app-header-wrapper {
-  max-width: 1200px;
+  max-width: var(--container-max-width);
   margin: 0 auto;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
+  padding: var(--spacing-lg) var(--spacing-2xl);
 }
 
 .app-header-left {
@@ -74,13 +52,13 @@
 .app-logo {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--transition-normal);
 }
 
 .app-brand:hover .app-logo {
@@ -107,18 +85,18 @@
 .view-toggle-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-lg);
   border: none;
   cursor: pointer;
   background: transparent;
   color: var(--color-text);
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  transition: var(--transition-slow);
   white-space: nowrap;
   position: relative;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
 }
 
 .view-toggle-btn:hover {
@@ -142,16 +120,16 @@
 }
 
 .logout-btn {
-  padding: 8px 16px;
+  padding: var(--spacing-sm) var(--spacing-lg);
   background: var(--color-surface);
-  color: var(--color-muted);
+  color: var(--color-text-muted);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  transition: var(--transition-slow);
+  box-shadow: var(--shadow-primary-sm);
 }
 
 .logout-btn:hover {
@@ -165,7 +143,7 @@
 .upload-section {
   max-width: 980px;
   margin: 0 auto;
-  padding: 24px 20px 80px;
+  padding: var(--spacing-2xl) var(--spacing-xl) var(--spacing-9xl);
 }
 
 .header-content {
@@ -174,12 +152,12 @@
 }
 
 .app-subtitle {
-  font-size: 2rem;
+  font-size: var(--font-size-6xl);
   color: var(--color-text);
-  margin: 0 0 16px 0;
-  line-height: 1.4;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  margin: 0 0 var(--spacing-lg) 0;
+  line-height: var(--line-height-normal);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 .app-description {
@@ -191,7 +169,7 @@
 }
 
 .view-videos-section {
-  margin-top: 40px;
+  margin-top: var(--spacing-5xl);
 }
 
 .view-videos-btn {
@@ -202,13 +180,13 @@
   );
   color: white;
   border: none;
-  padding: 14px 28px;
-  border-radius: 12px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  padding: var(--button-padding-lg);
+  border-radius: var(--radius-xl);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 8px 16px rgba(0, 188, 125, 0.25);
+  transition: var(--transition-normal);
+  box-shadow: var(--shadow-primary-lg);
 }
 
 .view-videos-btn:hover {
@@ -264,13 +242,13 @@
   );
   color: white;
   border: none;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: var(--spacing-md) var(--spacing-2xl);
+  border-radius: var(--radius-xl);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 6px 14px rgba(0, 188, 125, 0.28);
+  transition: var(--transition-normal);
+  box-shadow: var(--shadow-primary-md);
 }
 
 .upload-new-btn:hover {
@@ -383,7 +361,7 @@
 
 /* Smooth Transitions */
 .app-container {
-  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity var(--duration-slower) var(--ease-in-out);
 }
 
 /* Focus States */

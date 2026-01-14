@@ -4,116 +4,112 @@
 }
 
 .upload-area {
-  border: 1px dashed #d1d5db;
-  border-radius: 14px;
-  padding: 52px 24px;
+  border: 1px dashed var(--color-border-dark);
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-7xl) var(--spacing-2xl);
   text-align: center;
-  background: #ffffff;
-  transition: all 0.2s ease;
+  background: var(--color-surface);
+  transition: var(--transition-normal);
   cursor: pointer;
   position: relative;
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-xl);
 }
 
 .upload-area:hover {
-  border-color: #00bc7d;
-  background: #f0fdf7;
+  border-color: var(--color-primary);
+  background: var(--color-primary-softest);
 }
 
 .upload-area.drag-over {
-  border-color: #00bc7d;
-  background: #ecfdf5;
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
   transform: scale(1.02);
 }
 
 .upload-area.uploading {
-  border-color: #00bc7d;
-  background: #f0fdf7;
+  border-color: var(--color-primary);
+  background: var(--color-primary-softest);
   cursor: not-allowed;
 }
 
 .upload-icon {
   font-size: 48px;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-xl);
   opacity: 0.7;
 }
 
 .upload-main-text {
-  margin: 10px 0;
-  color: #101828;
-  font-size: 1.05rem;
-  font-weight: 600;
+  margin: var(--spacing-md) 0;
+  color: var(--color-text);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
 }
 
 .upload-or-text {
-  margin: 10px 0;
-  color: #6b7280;
-  font-size: 0.9rem;
+  margin: var(--spacing-md) 0;
+  color: var(--color-text-disabled);
+  font-size: var(--font-size-md);
 }
 
 .upload-area p {
-  margin: 10px 0;
-  color: #4a5565;
+  margin: var(--spacing-md) 0;
+  color: var(--color-text-muted);
   font-size: 15px;
 }
 
 .file-input-label {
   display: inline-block;
-  background: #ffffff;
-  color: #0f172a;
-  padding: 10px 20px;
-  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  margin: 16px 0;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.06),
-    0 1px 3px rgba(15, 23, 42, 0.08);
+  font-weight: var(--font-weight-medium);
+  transition: var(--transition-normal);
+  margin: var(--spacing-lg) 0;
+  border: 1px solid var(--color-overlay-light);
+  box-shadow: var(--shadow-sm);
 }
 
 .file-input-label:hover {
-  background: #f8fafc;
+  background: var(--color-surface-secondary);
   transform: translateY(-1px);
-  box-shadow:
-    0 4px 10px rgba(15, 23, 42, 0.12),
-    0 2px 4px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
 .upload-guidance {
-  margin-top: 32px;
-  padding: 28px;
-  background: #ffffff;
-  border-radius: 14px;
+  margin-top: var(--spacing-4xl);
+  padding: var(--spacing-3xl);
+  background: var(--color-surface);
+  border-radius: var(--radius-2xl);
   text-align: left;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--color-overlay-light);
+  box-shadow: var(--shadow-xl);
 }
 
 .guidance-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #101828;
-  margin: 0 0 16px 0;
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-lg) 0;
 }
 
 .guidance-list {
-  margin: 0 0 20px 0;
-  padding-left: 24px;
-  color: #4a5565;
-  line-height: 1.8;
+  margin: 0 0 var(--spacing-xl) 0;
+  padding-left: var(--spacing-2xl);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-extra-loose);
 }
 
 .guidance-list li {
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .file-info {
-  font-size: 0.875rem;
-  color: #4a5565;
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
   margin: 0;
-  line-height: 1.6;
+  line-height: var(--line-height-relaxed);
   text-align: center;
 }
 
@@ -124,27 +120,27 @@
 .progress-bar {
   width: 100%;
   height: 8px;
-  background: #e5e7eb;
-  border-radius: 4px;
+  background: var(--color-border);
+  border-radius: var(--radius-xs);
   overflow: hidden;
   margin-bottom: 15px;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00bc7d, #009966);
-  transition: width 0.3s ease;
-  border-radius: 4px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
+  transition: width var(--duration-slower) var(--ease-linear);
+  border-radius: var(--radius-xs);
 }
 
 .error-message {
-  background: #fef2f2;
-  color: #991b1b;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-top: 16px;
-  border: 1px solid #fecaca;
+  background: var(--color-error-soft);
+  color: var(--color-error-dark);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  margin-top: var(--spacing-lg);
+  border: 1px solid var(--color-error-light);
   text-align: center;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
+  font-size: var(--font-size-base);
+  transition: var(--transition-normal);
 }
