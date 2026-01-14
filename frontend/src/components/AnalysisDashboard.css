@@ -70,7 +70,11 @@
 
 .analysis-dashboard__analyze-btn {
   width: 100%;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-primary-dark) 100%
+  );
   border: none;
   color: white;
   font-size: var(--font-size-sm);
@@ -84,7 +88,11 @@
 }
 
 .analysis-dashboard__analyze-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary-darker) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-dark) 0%,
+    var(--color-primary-darker) 100%
+  );
   box-shadow: var(--shadow-primary-md);
   transform: translateY(-1px);
 }
@@ -101,6 +109,31 @@
   background: var(--color-surface-secondary);
   color: var(--color-text-muted);
   box-shadow: none;
+}
+
+.analysis-dashboard__progress-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.analysis-dashboard__error-card {
+  background: var(--color-error-soft);
+  border: 1px solid var(--color-error-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.analysis-dashboard__error-message {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-error-dark);
+  font-weight: var(--font-weight-medium);
 }
 
 /* Main Content - Two Column Layout */
@@ -482,7 +515,6 @@
     gap: var(--spacing-md);
     padding: var(--spacing-lg);
   }
-
 
   .analysis-dashboard__title {
     font-size: var(--font-size-lg);

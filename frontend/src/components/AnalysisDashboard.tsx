@@ -4,6 +4,7 @@ import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import './AnalysisDashboard.css';
 import AnalysisRightPanel from './AnalysisRightPanel';
 import { ArrowBackIcon } from './Icons';
+import ProgressBar from './ProgressBar';
 import VideoPlayer from './VideoPlayer';
 
 interface AnalysisDashboardProps {
@@ -100,15 +101,44 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         {/* Right Column - Analysis Panel */}
         <div className="analysis-dashboard__analysis-column">
           {!analysisStatus?.has_analysis && (
-            <button
-              className="analysis-dashboard__analyze-btn"
-              onClick={handleFocusAnalysis}
-              disabled={isAnalysisLoading || analysisState.status === 'processing'}
-            >
-              {isAnalysisLoading || analysisState.status === 'processing'
-                ? 'Analyzing...'
-                : 'Analyze'}
-            </button>
+            <>
+              {(analysisState.status === 'starting' ||
+                analysisState.status === 'processing') && (
+                <div className="analysis-dashboard__progress-card">
+                  <ProgressBar
+                    progress={analysisState.progress}
+                    status={analysisState.status}
+                    showPercentage={true}
+                    showStatus={true}
+                    size="medium"
+                    animated={true}
+                  />
+                </div>
+              )}
+              {analysisState.status === 'idle' && (
+                <button
+                  className="analysis-dashboard__analyze-btn"
+                  onClick={handleFocusAnalysis}
+                  disabled={isAnalysisLoading}
+                >
+                  Analyze
+                </button>
+              )}
+              {analysisState.status === 'failed' && (
+                <div className="analysis-dashboard__error-card">
+                  <p className="analysis-dashboard__error-message">
+                    {analysisState.error || 'Analysis failed. Please try again.'}
+                  </p>
+                  <button
+                    className="analysis-dashboard__analyze-btn"
+                    onClick={handleFocusAnalysis}
+                    disabled={isAnalysisLoading}
+                  >
+                    Retry Analysis
+                  </button>
+                </div>
+              )}
+            </>
           )}
           <AnalysisRightPanel
             videoId={videoId}
