@@ -67,41 +67,43 @@ function App() {
 
     return (
       <div className="app-header">
-        <div className="app-header-left">
-          <h1 className="app-title">Tennis Coach</h1>
-        </div>
+        <div className="app-header-wrapper">
+          <div className="app-header-left">
+            <h1 className="app-title">Tennis Coach</h1>
+          </div>
 
-        <div
-          className="app-header-center"
-          role="tablist"
-          aria-label="Primary navigation"
-        >
-          <div className="view-toggle">
-            <button
-              type="button"
-              className={`view-toggle-btn ${currentView === 'upload' ? 'active' : ''}`}
-              onClick={() => setCurrentView('upload')}
-              aria-selected={currentView === 'upload'}
-            >
-              <UploadIcon size={18} />
-              Upload
-            </button>
-            <button
-              type="button"
-              className={`view-toggle-btn ${currentView === 'list' ? 'active' : ''}`}
-              onClick={() => setCurrentView('list')}
-              aria-selected={currentView === 'list'}
-            >
-              <ListIcon size={18} />
-              Video Library
+          <div
+            className="app-header-center"
+            role="tablist"
+            aria-label="Primary navigation"
+          >
+            <div className="view-toggle">
+              <button
+                type="button"
+                className={`view-toggle-btn ${currentView === 'upload' ? 'active' : ''}`}
+                onClick={() => setCurrentView('upload')}
+                aria-selected={currentView === 'upload'}
+              >
+                <UploadIcon size={18} />
+                Upload
+              </button>
+              <button
+                type="button"
+                className={`view-toggle-btn ${currentView === 'list' ? 'active' : ''}`}
+                onClick={() => setCurrentView('list')}
+                aria-selected={currentView === 'list'}
+              >
+                <ListIcon size={18} />
+                Video Library
+              </button>
+            </div>
+          </div>
+
+          <div className="app-header-right">
+            <button className="logout-btn" onClick={signOut}>
+              Logout
             </button>
           </div>
-        </div>
-
-        <div className="app-header-right">
-          <button className="logout-btn" onClick={signOut}>
-            Logout
-          </button>
         </div>
       </div>
     );
@@ -112,8 +114,6 @@ function App() {
       case 'upload':
         return (
           <div className="app-container">
-            {renderHeader()}
-
             <div className="upload-section">
               <div className="header-content">
                 <p className="app-subtitle">
@@ -134,7 +134,6 @@ function App() {
       case 'list':
         return (
           <div className="app-container">
-            {renderHeader()}
             <VideoList
               onVideoDeleted={handleVideoDeleted}
               onViewAnalysis={handleViewAnalysis}
@@ -168,7 +167,12 @@ function App() {
     }
   };
 
-  return <div className="App">{renderCurrentView()}</div>;
+  return (
+    <div className="App">
+      {renderHeader()}
+      {renderCurrentView()}
+    </div>
+  );
 }
 
 export default App;
