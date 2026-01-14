@@ -3,7 +3,7 @@ import { useState } from 'react';
 import './App.css';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
-import { ListIcon, UploadIcon } from './components/Icons';
+import { ListIcon, UploadIcon, VideoIcon } from './components/Icons';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
 import { useAuth } from './hooks/useAuth';
@@ -69,7 +69,12 @@ function App() {
       <div className="app-header">
         <div className="app-header-wrapper">
           <div className="app-header-left">
-            <h1 className="app-title">Tennis Coach</h1>
+            <div className="app-brand">
+              <div className="app-logo">
+                <VideoIcon size={20} color="white" />
+              </div>
+              <h1 className="app-title">Tennis Coach</h1>
+            </div>
           </div>
 
           <div
@@ -85,7 +90,7 @@ function App() {
                 aria-selected={currentView === 'upload'}
               >
                 <UploadIcon size={18} />
-                Upload
+                Home
               </button>
               <button
                 type="button"
@@ -94,7 +99,7 @@ function App() {
                 aria-selected={currentView === 'list'}
               >
                 <ListIcon size={18} />
-                Video Library
+                Library
               </button>
             </div>
           </div>
