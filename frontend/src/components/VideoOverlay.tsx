@@ -155,9 +155,34 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
            overlayData.height === videoNaturalWidth;
   }, [overlayData, videoElement]);
 
+  // Clear canvas when overlay is disabled
+  useEffect(() => {
+    if (!showOverlay && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx && canvas.width > 0 && canvas.height > 0) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      lastRenderedFrameRef.current = -1;
+      // Cancel any pending animation frames
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    }
+  }, [showOverlay]);
+
   // Draw overlay on canvas
   useEffect(() => {
     if (!showOverlay || !overlayData || !videoElement || !canvasRef.current) {
+      // Clear canvas if overlay is disabled
+      if (!showOverlay && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx && canvas.width > 0 && canvas.height > 0) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
       return;
     }
 
@@ -304,6 +329,10 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       lastRenderedFrameRef.current = -1;
     };
   }, [showOverlay, overlayData, videoElement, needsRotation]);
+
+  if (!showOverlay) {
+    return null;
+  }
 
   return (
     <canvas
