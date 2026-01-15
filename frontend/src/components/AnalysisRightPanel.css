@@ -408,6 +408,11 @@
   line-height: 1;
 }
 
+.analysis-right-panel__angle-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
 .analysis-right-panel__angle-desc {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);

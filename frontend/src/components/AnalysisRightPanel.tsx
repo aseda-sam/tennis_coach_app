@@ -1,7 +1,10 @@
 import React, { useMemo } from 'react';
+import {
+  STROKE_SUBTYPE_LABELS,
+  STROKE_TYPE_LABELS,
+} from '../constants/shotTypes';
 import { useBallContacts } from '../hooks/useBallContacts';
 import { formatTime } from '../utils/validation';
-import { STROKE_TYPE_LABELS, STROKE_SUBTYPE_LABELS } from '../constants/shotTypes';
 import './AnalysisRightPanel.css';
 
 interface AnalysisRightPanelProps {
@@ -38,7 +41,7 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
           <div className="analysis-right-panel__trajectory-header">
             <div className="analysis-right-panel__trajectory-title-group">
               <h3 className="analysis-right-panel__card-title">
-                Elbow Angle Metrics
+                Shot Analysis
               </h3>
             </div>
           </div>
@@ -50,9 +53,9 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
                   ? STROKE_SUBTYPE_LABELS[contact.stroke_subtype] ||
                     contact.stroke_subtype
                   : contact.stroke_type
-                  ? STROKE_TYPE_LABELS[contact.stroke_type] ||
-                    contact.stroke_type
-                  : 'Unknown';
+                    ? STROKE_TYPE_LABELS[contact.stroke_type] ||
+                      contact.stroke_type
+                    : 'Unknown';
 
                 return (
                   <div
@@ -73,6 +76,9 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
                     <div className="analysis-right-panel__metric-angle">
                       <span className="analysis-right-panel__angle-value">
                         {Math.round(angle || 0)}°
+                      </span>
+                      <span className="analysis-right-panel__angle-label">
+                        Elbow Angle
                       </span>
                     </div>
                   </div>
@@ -164,7 +170,6 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
           </div>
         </div>
       </div>
-
     </div>
   );
 };
