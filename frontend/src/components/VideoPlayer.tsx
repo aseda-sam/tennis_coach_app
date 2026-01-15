@@ -74,6 +74,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   );
   const [showOverlay, setShowOverlay] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
 
   // Use ball contacts hook if videoId is provided
   const {
@@ -86,51 +87,65 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     autoRefresh: !!videoId,
   });
 
-  const [resolvedVideoUrl, setResolvedVideoUrl] = useState<string>(videoUrl);
+  // Don't set initial URL if it's a stream endpoint - wait for signed URL to prevent error flash
+  const [resolvedVideoUrl, setResolvedVideoUrl] = useState<string>(
+    videoId && videoUrl.includes('/stream') ? '' : videoUrl
+  );
 
-  // Resolve redirect URL for video (handles Supabase redirects)
+  // Resolve video URL using signed URL endpoint (preferred) or legacy redirect resolution
   useEffect(() => {
     const resolveVideoUrl = async () => {
-      // If URL is a backend stream endpoint, resolve the redirect with auth
-      if (videoUrl.includes('/stream')) {
+      // If we have a videoId and the URL is a stream endpoint, use the new signed URL API
+      if (videoId && videoUrl.includes('/stream')) {
+        setIsLoadingUrl(true);
+        // Clear URL immediately to prevent video element from trying to load
+        setResolvedVideoUrl('');
         try {
-          // Get auth token if needed
-          const profile = process.env.REACT_APP_PROFILE || 'local';
-          let authHeaders: HeadersInit = {};
+          // Use the new signed URL endpoint to avoid redirect race conditions
+          const signedUrl = await videoApi.getVideoUrl(videoId, 3600); // 1 hour expiry
+          setResolvedVideoUrl(signedUrl);
+        } catch (error) {
+          // Fallback to legacy redirect resolution if signed URL fails
+          console.warn('Failed to get signed URL, falling back to redirect resolution', error);
+          try {
+            const profile = process.env.REACT_APP_PROFILE || 'local';
+            let authHeaders: HeadersInit = {};
 
-          if (profile !== 'local' && supabase) {
-            const {
-              data: { session },
-            } = await supabase.auth.getSession();
-            if (session?.access_token) {
-              authHeaders = { Authorization: `Bearer ${session.access_token}` };
+            if (profile !== 'local' && supabase) {
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+              if (session?.access_token) {
+                authHeaders = { Authorization: `Bearer ${session.access_token}` };
+              }
             }
-          }
 
-          // Use GET to follow redirect and get final URL
-          const response = await fetch(videoUrl, {
-            method: 'GET',
-            redirect: 'follow',
-            headers: authHeaders,
-          });
+            const response = await fetch(videoUrl, {
+              method: 'GET',
+              redirect: 'follow',
+              headers: authHeaders,
+            });
 
-          // If redirect happened, use the final URL; otherwise use original
-          if (response.ok && response.url !== videoUrl) {
-            setResolvedVideoUrl(response.url);
-          } else {
+            if (response.ok && response.url !== videoUrl) {
+              setResolvedVideoUrl(response.url);
+            } else {
+              setResolvedVideoUrl(videoUrl);
+            }
+          } catch (fallbackError) {
+            // Final fallback: use original URL
             setResolvedVideoUrl(videoUrl);
           }
-        } catch (error) {
-          // Fallback to original URL if redirect resolution fails
-          setResolvedVideoUrl(videoUrl);
+        } finally {
+          setIsLoadingUrl(false);
         }
       } else {
+        // Not a stream endpoint or no videoId - use URL directly
         setResolvedVideoUrl(videoUrl);
       }
     };
 
     resolveVideoUrl();
-  }, [videoUrl]);
+  }, [videoUrl, videoId]);
 
   // Reset aspect ratio when video URL changes
   useEffect(() => {
@@ -188,6 +203,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       const currentVideo = videoRef.current;
       if (!currentVideo) return;
 
+      // Suppress errors during URL loading to prevent error flash
+      if (isLoadingUrl) {
+        return;
+      }
+
+      // Suppress errors if video src is empty (we're still loading the URL)
+      if (!currentVideo.currentSrc || currentVideo.currentSrc === '') {
+        return;
+      }
+
       // Provide more specific error messages based on error type
       let errorMessage =
         'Failed to load video. Please check if the video file exists.';
@@ -233,7 +258,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       cleanupVideo.removeEventListener('pause', handlePause);
       cleanupVideo.removeEventListener('error', handleError);
     };
-  }, [resolvedVideoUrl]);
+  }, [resolvedVideoUrl, isLoadingUrl]);
 
   // Handle aspect ratio mode changes
   useEffect(() => {
@@ -497,14 +522,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onClick={handleVideoClick}
             style={{ position: 'relative' }}
           >
-            <video
-              ref={videoRef}
-              src={resolvedVideoUrl}
-              className={`video-element video-element-${aspectRatioMode}`}
-              preload="metadata"
-              crossOrigin="anonymous"
-              data-testid="video-element"
-            />
+            {resolvedVideoUrl && (
+              <video
+                ref={videoRef}
+                src={resolvedVideoUrl}
+                className={`video-element video-element-${aspectRatioMode}`}
+                preload="metadata"
+                crossOrigin="anonymous"
+                data-testid="video-element"
+              />
+            )}
 
             {/* Video Overlay */}
             {videoId && showOverlay && (
@@ -514,6 +541,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 showOverlay={showOverlay}
                 hasPoseData={hasPoseData}
               />
+            )}
+
+            {/* Loading overlay while resolving URL */}
+            {isLoadingUrl && (
+              <div className="loading-overlay">
+                <div className="loading-spinner" />
+                <p>Loading video...</p>
+              </div>
             )}
 
             {/* Add Contact Button */}
@@ -527,7 +562,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               isVisible={!!videoId && !error && duration > 0}
             />
 
-            {error && (
+            {error && !isLoadingUrl && (
               <div className="error-overlay">
                 <div className="error-message">
                   <span className="error-icon">

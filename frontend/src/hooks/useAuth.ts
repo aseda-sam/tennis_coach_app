@@ -115,9 +115,18 @@ export function useAuth() {
 
   const signOut = async () => {
     if (!supabase) {
+      // In local mode, just clear the mock user state
+      setUser(null);
+      setSession(null);
       return;
     }
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Logout error:', error);
+      // Still clear state even if signOut fails
+      setUser(null);
+      setSession(null);
+    }
   };
 
   const resendConfirmationEmail = async (email: string) => {

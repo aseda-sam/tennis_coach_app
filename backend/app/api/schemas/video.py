@@ -149,6 +149,13 @@ class VideoDeleteResponse(BaseModel):
     filename: str = Field(description="Deleted filename")
 
 
+class VideoSignedUrlResponse(BaseModel):
+    """Response model for video signed URL."""
+
+    url: str = Field(description="Signed URL for video access")
+    expires_in: int = Field(description="Number of seconds until URL expires")
+
+
 class VideoMetrics(BaseModel):
     """Video performance metrics aggregated from ball contacts."""
 
