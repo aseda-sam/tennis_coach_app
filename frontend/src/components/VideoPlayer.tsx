@@ -359,6 +359,52 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     [ballContacts, isPlaying, onContactNavigate]
   );
 
+  // Get sorted contacts for navigation
+  const sortedContacts = useMemo(() => {
+    return [...ballContacts].sort((a, b) => a.video_timestamp - b.video_timestamp);
+  }, [ballContacts]);
+
+  // Navigate to previous/next contact
+  const navigateToPreviousContact = useCallback(() => {
+    if (sortedContacts.length === 0) return;
+
+    // Find the contact before current time (with small tolerance)
+    const tolerance = 0.1;
+    const previousContacts = sortedContacts.filter(
+      (c) => c.video_timestamp < currentTime - tolerance
+    );
+
+    if (previousContacts.length > 0) {
+      const previousContact = previousContacts[previousContacts.length - 1];
+      navigateToContactById(previousContact.id);
+    }
+  }, [sortedContacts, currentTime, navigateToContactById]);
+
+  const navigateToNextContact = useCallback(() => {
+    if (sortedContacts.length === 0) return;
+
+    // Find the contact after current time (with small tolerance)
+    const tolerance = 0.1;
+    const nextContact = sortedContacts.find(
+      (c) => c.video_timestamp > currentTime + tolerance
+    );
+
+    if (nextContact) {
+      navigateToContactById(nextContact.id);
+    }
+  }, [sortedContacts, currentTime, navigateToContactById]);
+
+  // Check if previous/next navigation is available
+  const hasPreviousContact = useMemo(() => {
+    const tolerance = 0.1;
+    return sortedContacts.some((c) => c.video_timestamp < currentTime - tolerance);
+  }, [sortedContacts, currentTime]);
+
+  const hasNextContact = useMemo(() => {
+    const tolerance = 0.1;
+    return sortedContacts.some((c) => c.video_timestamp > currentTime + tolerance);
+  }, [sortedContacts, currentTime]);
+
   const navigateRef = useRef(navigateToContactById);
 
   useEffect(() => {
@@ -403,6 +449,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           event.preventDefault();
           navigateToNextFrame();
           break;
+        case '[':
+          event.preventDefault();
+          navigateToPreviousContact();
+          break;
+        case ']':
+          event.preventDefault();
+          navigateToNextContact();
+          break;
         default:
           break;
       }
@@ -419,6 +473,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     togglePlay,
     navigateToPreviousFrame,
     navigateToNextFrame,
+    navigateToPreviousContact,
+    navigateToNextContact,
   ]);
 
   // Memoize formatted time strings to prevent unnecessary re-renders
@@ -651,6 +707,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   </div>
                   <div className="keyboard-shortcuts">
                     <span className="shortcut-hint">← → frame by frame</span>
+                    <span className="shortcut-hint">[ ] previous/next contact</span>
                   </div>
                 </div>
 
@@ -791,9 +848,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <div className="video-controls-below__controls">
             <div className="video-controls-below__center-controls">
               <button
-                className="video-controls-below__nav-btn video-controls-below__nav-btn--coming-soon"
-                disabled={true}
-                title="Coming soon"
+                className="video-controls-below__nav-btn"
+                disabled={!hasPreviousContact}
+                onClick={navigateToPreviousContact}
+                title={hasPreviousContact ? 'Go to previous contact' : 'No previous contact'}
               >
                 <ArrowBackIcon size={16} />
                 Previous Contact
@@ -805,9 +863,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
               </button>
               <button
-                className="video-controls-below__next-btn video-controls-below__next-btn--coming-soon"
-                disabled={true}
-                title="Coming soon"
+                className="video-controls-below__next-btn"
+                disabled={!hasNextContact}
+                onClick={navigateToNextContact}
+                title={hasNextContact ? 'Go to next contact' : 'No next contact'}
               >
                 Next Contact
                 <span className="video-controls-below__arrow-right">

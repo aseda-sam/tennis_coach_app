@@ -126,6 +126,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   <kbd className="analysis-dashboard__kbd">← →</kbd>
                   <span>Frame by frame</span>
                 </div>
+                <div className="analysis-dashboard__shortcut-item">
+                  <kbd className="analysis-dashboard__kbd">[ ]</kbd>
+                  <span>Previous/Next contact</span>
+                </div>
               </div>
             </div>
           </div>
