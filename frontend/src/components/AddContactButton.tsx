@@ -160,6 +160,14 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
 
   const lockedFrameNumber = lockedTimestamp !== null ? getFrameNumber(lockedTimestamp) : null;
 
+  // Calculate position for scrubber placement
+  const formPosition =
+    placement === 'scrubber' && lockedTimestamp !== null && videoDuration > 0
+      ? {
+          left: `${(lockedTimestamp / videoDuration) * 100}%`,
+        }
+      : undefined;
+
   const handleTimestampChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTimestamp = parseFloat(e.target.value) || 0;
     setFormData({
@@ -197,7 +205,11 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
           </button>
         )
       ) : (
-        <div className={formClassName} onClick={(e) => e.stopPropagation()}>
+        <div
+          className={formClassName}
+          onClick={(e) => e.stopPropagation()}
+          style={formPosition}
+        >
           <div className="form-header">
             <div className="timestamp-header">
               <div className="timestamp-label">Add contact at:</div>
@@ -220,102 +232,73 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
           </div>
 
           <div className="form-fields">
-            <div className="form-group">
-              <label>Timestamp (seconds):</label>
-              <div className="timestamp-input-group">
-                <input
-                  type="number"
-                  step={fps && fps > 0 ? 1 / fps : 0.1}
-                  min="0"
-                  max={videoDuration > 0 ? videoDuration : undefined}
-                  value={formData.video_timestamp}
-                  onChange={handleTimestampChange}
-                  className={validationError ? 'error' : ''}
-                />
-                <button
-                  type="button"
-                  className="use-current-time-btn"
-                  onClick={handleUseCurrentTime}
-                  title={`Use current time: ${formatTime(currentTime)}`}
+            <div className="form-row">
+              <div className="form-group form-group--compact">
+                <label>Hand</label>
+                <select
+                  value={formData.contact_hand}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      contact_hand: e.target.value as 'left' | 'right',
+                    })
+                  }
                 >
-                  Use current time
-                </button>
+                  <option value="right">Right</option>
+                  <option value="left">Left</option>
+                </select>
               </div>
-              {validationError && (
-                <div className="validation-error">{validationError}</div>
-              )}
-              {videoDuration > 0 && (
-                <div className="timestamp-info">
-                  Video duration: {formatTime(videoDuration)}
-                  {fps && fps > 0 && ` • ${fps.toFixed(1)} fps`}
+
+              <div className="form-group form-group--compact">
+                <label>Stroke</label>
+                <select
+                  value={formData.stroke_type || ''}
+                  onChange={(e) => {
+                    const newStrokeType = e.target.value as
+                      | StrokeType
+                      | undefined;
+                    const allowedSubtypes = getSubtypesForType(newStrokeType);
+                    setFormData({
+                      ...formData,
+                      stroke_type: newStrokeType || undefined,
+                      stroke_subtype: allowedSubtypes.includes(
+                        formData.stroke_subtype || ''
+                      )
+                        ? formData.stroke_subtype
+                        : undefined,
+                    });
+                  }}
+                >
+                  <option value="">Type</option>
+                  {Object.entries(STROKE_TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {formData.stroke_type && (
+                <div className="form-group form-group--compact">
+                  <label>Subtype</label>
+                  <select
+                    value={formData.stroke_subtype || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        stroke_subtype: e.target.value || undefined,
+                      })
+                    }
+                  >
+                    <option value="">Optional</option>
+                    {getSubtypesForType(formData.stroke_type).map((subtype) => (
+                      <option key={subtype} value={subtype}>
+                        {STROKE_SUBTYPE_LABELS[subtype] || subtype}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
-            </div>
-
-            <div className="form-group">
-              <label>Contact Hand:</label>
-              <select
-                value={formData.contact_hand}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    contact_hand: e.target.value as 'left' | 'right',
-                  })
-                }
-              >
-                <option value="right">Right</option>
-                <option value="left">Left</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Stroke Type:</label>
-              <select
-                value={formData.stroke_type || ''}
-                onChange={(e) => {
-                  const newStrokeType = e.target.value as
-                    | StrokeType
-                    | undefined;
-                  const allowedSubtypes = getSubtypesForType(newStrokeType);
-                  setFormData({
-                    ...formData,
-                    stroke_type: newStrokeType || undefined,
-                    stroke_subtype: allowedSubtypes.includes(
-                      formData.stroke_subtype || ''
-                    )
-                      ? formData.stroke_subtype
-                      : undefined,
-                  });
-                }}
-              >
-                <option value="">Select stroke type</option>
-                {Object.entries(STROKE_TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Stroke Subtype:</label>
-              <select
-                value={formData.stroke_subtype || ''}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    stroke_subtype: e.target.value || undefined,
-                  })
-                }
-                disabled={!formData.stroke_type}
-              >
-                <option value="">Select subtype (optional)</option>
-                {getSubtypesForType(formData.stroke_type).map((subtype) => (
-                  <option key={subtype} value={subtype}>
-                    {STROKE_SUBTYPE_LABELS[subtype] || subtype}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
 
@@ -338,7 +321,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
               }}
               disabled={isLoading || !!validationError}
             >
-              {isLoading ? 'Adding...' : 'Add Contact'}
+              {isLoading ? 'Adding...' : 'Add'}
             </button>
           </div>
         </div>
