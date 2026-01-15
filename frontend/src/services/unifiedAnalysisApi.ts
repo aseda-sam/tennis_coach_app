@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { createAuthInterceptor } from '../utils/authInterceptor';
+import { AnalysisData } from './api';
 
 // API configuration
 const API_BASE_URL =
@@ -17,25 +18,7 @@ createAuthInterceptor(analysisApi, 'Analysis API');
 analysisApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Enhanced error logging
-    if (error.code === 'ECONNABORTED') {
-      console.error('Analysis API Error: Request timeout (30s exceeded)', {
-        url: error.config?.url,
-        method: error.config?.method,
-      });
-    } else if (error.response) {
-      console.error('Analysis API Error:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-        url: error.config?.url,
-      });
-    } else {
-      console.error('Analysis API Error:', error.message, {
-        code: error.code,
-        url: error.config?.url,
-      });
-    }
+    // Errors are handled by calling code through error callbacks
     return Promise.reject(error);
   }
 );
@@ -70,7 +53,7 @@ export interface TaskStatus {
   status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   error?: string;
-  result?: any;
+  result?: AnalysisData | null;
   started_at?: string;
   completed_at?: string;
   estimated_duration?: number;

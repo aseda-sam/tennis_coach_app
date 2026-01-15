@@ -62,7 +62,6 @@ export const useVideoAnalysisStatuses = (videoIds: number[]) => {
         }, {} as VideoAnalysisStatusById);
       } catch (error) {
         // Fallback: return empty statuses for all videos
-        console.error('Error fetching bulk analysis statuses:', error);
         return videoIds.reduce((acc, videoId) => {
           acc[videoId] = {
             video_id: videoId,

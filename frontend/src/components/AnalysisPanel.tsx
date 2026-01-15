@@ -6,11 +6,12 @@ import {
 import unifiedAnalysisApi, {
   AnalysisRequest,
 } from '../services/unifiedAnalysisApi';
+import { AnalysisData } from '../services/api';
 import { clsx } from 'clsx';
 
 interface AnalysisPanelProps {
   videoId: number;
-  onAnalysisComplete?: (result: any) => void;
+  onAnalysisComplete?: (result: AnalysisData | null) => void;
   onAnalysisError?: (error: string) => void;
 }
 
@@ -27,11 +28,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   const { state, error, startPolling, stopPolling, isPolling, refetch } =
     useAnalysisStatus({
       onComplete: (completedState) => {
-        console.log('Analysis completed:', completedState);
         onAnalysisComplete?.(completedState.result);
       },
       onError: (failedState) => {
-        console.error('Analysis error:', failedState.error);
         onAnalysisError?.(failedState.error);
       },
     });
@@ -46,13 +45,12 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       };
 
       const response = await unifiedAnalysisApi.startAnalysis(videoId, request);
-      console.log('Analysis started:', response);
 
       // Start polling for progress
       startPolling(response.job_id);
-    } catch (err: any) {
-      console.error('Failed to start analysis:', err);
-      onAnalysisError?.(err.message || 'Failed to start analysis');
+    } catch (err: unknown) {
+      const axiosError = err as { message?: string };
+      onAnalysisError?.(axiosError?.message || 'Failed to start analysis');
     } finally {
       setIsStarting(false);
     }
@@ -63,8 +61,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       try {
         await unifiedAnalysisApi.cancelTask(state.jobId);
         stopPolling();
-      } catch (err: any) {
-        console.error('Failed to cancel analysis:', err);
+      } catch (err: unknown) {
+        // Silently handle cancellation errors
       }
     }
   };

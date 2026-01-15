@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import unifiedAnalysisApi, { TaskStatus } from '../services/unifiedAnalysisApi';
+import { AnalysisData } from '../services/api';
 
 export interface AnalysisProgress {
   jobId: string;
@@ -12,7 +13,7 @@ export interface AnalysisProgress {
   status: TaskStatus['status'];
   progress: number;
   error?: string;
-  result?: any;
+  result?: AnalysisData | null;
   startedAt?: string;
   completedAt?: string;
   estimatedDuration?: number;
@@ -135,8 +136,9 @@ export function useAnalysisProgress(
           onError?.(errorMessage);
           return;
         }
-      } catch (err: any) {
-        const errorMessage = err.message || 'Failed to get job status';
+      } catch (err: unknown) {
+        const axiosError = err as { message?: string };
+        const errorMessage = axiosError?.message || 'Failed to get job status';
         setError(errorMessage);
         setIsLoading(false);
         // Keep polling on transient errors

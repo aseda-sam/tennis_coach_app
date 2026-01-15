@@ -40,18 +40,7 @@ api.interceptors.request.use(async (config) => {
 
     if (session?.access_token) {
       config.headers.Authorization = `Bearer ${session.access_token}`;
-      console.log(
-        `[API] ${config.method?.toUpperCase()} ${config.url} - Auth token added (profile: ${profile})`
-      );
-    } else {
-      console.warn(
-        `[API] ${config.method?.toUpperCase()} ${config.url} - No session token available (profile: ${profile})`
-      );
     }
-  } else {
-    console.log(
-      `[API] ${config.method?.toUpperCase()} ${config.url} - No auth required (profile: ${profile})`
-    );
   }
 
   return config;
@@ -60,54 +49,35 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const status = error.response?.status;
-    const statusText = error.response?.statusText;
-    const data = error.response?.data;
-
-    if (status === 401) {
-      console.error(
-        `[API] 401 Unauthorized on ${error.config?.method?.toUpperCase()} ${error.config?.url}`,
-        {
-          profile: process.env.REACT_APP_PROFILE || 'local',
-          detail: data?.detail || 'Not authenticated',
-          hasAuthHeader: !!error.config?.headers?.Authorization,
-        }
-      );
-    } else if (status === 429) {
-      console.warn(
-        `[API] 429 Rate Limit Exceeded on ${error.config?.method?.toUpperCase()} ${error.config?.url}:`,
-        data?.detail || 'Rate limit exceeded'
-      );
-    } else {
-      console.error(
-        `[API] Error ${status} ${statusText} on ${error.config?.method?.toUpperCase()} ${error.config?.url}:`,
-        data || error.message
-      );
-    }
+    // Errors are handled by calling code through error callbacks
+    // No need to log here - let the application handle errors appropriately
     return Promise.reject(error);
   }
 );
 
 // Normalize analysis data to ensure arrays are always returned
-const normalizeAnalysis = (data: any): AnalysisData => ({
-  ...data,
-  ball_detections:
-    typeof data.ball_detections === 'string'
-      ? JSON.parse(data.ball_detections || '[]')
-      : (data.ball_detections ?? []),
-  pose_detections:
-    typeof data.pose_detections === 'string'
-      ? JSON.parse(data.pose_detections || '[]')
-      : (data.pose_detections ?? []),
-  contact_timestamps:
-    typeof data.contact_timestamps === 'string'
-      ? JSON.parse(data.contact_timestamps || '[]')
-      : (data.contact_timestamps ?? []),
-  contact_detections:
-    typeof data.contact_detections === 'string'
-      ? JSON.parse(data.contact_detections || '[]')
-      : (data.contact_detections ?? []),
-});
+const normalizeAnalysis = (data: unknown): AnalysisData => {
+  const analysisData = data as Record<string, unknown>;
+  return {
+    ...analysisData,
+    ball_detections:
+      typeof analysisData.ball_detections === 'string'
+        ? JSON.parse(analysisData.ball_detections || '[]')
+        : (analysisData.ball_detections ?? []),
+    pose_detections:
+      typeof analysisData.pose_detections === 'string'
+        ? JSON.parse(analysisData.pose_detections || '[]')
+        : (analysisData.pose_detections ?? []),
+    contact_timestamps:
+      typeof analysisData.contact_timestamps === 'string'
+        ? JSON.parse(analysisData.contact_timestamps as string || '[]')
+        : (analysisData.contact_timestamps ?? []),
+    contact_detections:
+      typeof analysisData.contact_detections === 'string'
+        ? JSON.parse(analysisData.contact_detections as string || '[]')
+        : (analysisData.contact_detections ?? []),
+  } as AnalysisData;
+};
 
 export const videoApi = {
   // Upload a video file
@@ -195,19 +165,20 @@ export const videoApi = {
         `/videos/${videoId}/overlay-data`
       );
       return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status?: number; data?: { detail?: string } } };
+      if (axiosError.response?.status === 404) {
         throw new Error(
           'Pose data not found for this video. Please run pose detection analysis first.'
         );
       }
-      if (error.response?.status === 400) {
+      if (axiosError.response?.status === 400) {
         throw new Error(
-          error.response?.data?.detail ||
+          axiosError.response?.data?.detail ||
             'Invalid request. Please check the video and try again.'
         );
       }
-      if (error.response?.status === 500) {
+      if (axiosError.response?.status === 500) {
         throw new Error(
           'Server error while fetching overlay data. Please try again later.'
         );
@@ -245,9 +216,9 @@ export interface AnalysisData {
   pose_detection_rate?: number;
   contact_frames?: number;
   contact_timestamps?: number[];
-  contact_detections?: any[];
-  ball_detections: any[];
-  pose_detections: any[];
+  contact_detections?: unknown[];
+  ball_detections: unknown[];
+  pose_detections: unknown[];
   created_at: string;
   updated_at?: string;
   // New timing information
@@ -270,7 +241,7 @@ export interface TaskStatus {
   status: string;
   progress: number;
   error: string | null;
-  result: any | null;
+  result: AnalysisData | null;
   started_at: string | null;
   completed_at: string | null;
   estimated_duration: number | null;

@@ -44,7 +44,7 @@ const PostureAnalysisSidebar: React.FC<PostureAnalysisSidebarProps> = ({
           try {
             await getContactAnalysis(contact.id);
           } catch (err) {
-            console.debug('Could not load analysis for contact:', contact.id);
+            // Silently skip contacts without analysis data
           }
         }
       }
@@ -60,7 +60,7 @@ const PostureAnalysisSidebar: React.FC<PostureAnalysisSidebarProps> = ({
     try {
       await analyzeContact(contact.id);
     } catch (err) {
-      console.error('Failed to analyze contact:', err);
+      // Error handling is done by the analyzeContact function
     }
   };
 
@@ -68,7 +68,7 @@ const PostureAnalysisSidebar: React.FC<PostureAnalysisSidebarProps> = ({
     try {
       await analyzeVideo(videoId);
     } catch (err) {
-      console.error('Failed to analyze video:', err);
+      // Error handling is done by the analyzeVideo function
     }
   };
 

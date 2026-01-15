@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import unifiedAnalysisApi, { TaskStatus } from '../services/unifiedAnalysisApi';
+import { AnalysisData } from '../services/api';
 
 /**
  * Discriminated union for analysis status state.
@@ -9,7 +10,7 @@ export type AnalysisState =
   | { status: 'idle' }
   | { status: 'queued'; jobId: string; startedAt: string }
   | { status: 'processing'; jobId: string; startedAt: string }
-  | { status: 'completed'; jobId: string; result: any; completedAt: string }
+  | { status: 'completed'; jobId: string; result: AnalysisData | null; completedAt: string }
   | { status: 'failed'; jobId: string; error: string; startedAt: string };
 
 export interface UseAnalysisStatusOptions {
@@ -80,7 +81,7 @@ export function useAnalysisStatus(
           return {
             status: 'completed',
             jobId: taskStatus.job_id,
-            result: taskStatus.result,
+            result: taskStatus.result ?? null,
             completedAt: taskStatus.completed_at || new Date().toISOString(),
           };
         case 'failed':
@@ -141,9 +142,10 @@ export function useAnalysisStatus(
           onError?.(newState);
           return;
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         // If job not found (404), treat as completed
-        if (err?.response?.status === 404) {
+        const axiosError = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
+        if (axiosError?.response?.status === 404) {
           const completedState: AnalysisState = {
             status: 'completed',
             jobId,
@@ -163,8 +165,8 @@ export function useAnalysisStatus(
         }
 
         const errorMessage =
-          err?.response?.data?.detail ||
-          err?.message ||
+          axiosError?.response?.data?.detail ||
+          axiosError?.message ||
           'Failed to fetch task status';
         setError(errorMessage);
         setIsLoading(false);

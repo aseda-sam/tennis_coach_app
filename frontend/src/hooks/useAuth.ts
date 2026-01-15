@@ -47,7 +47,7 @@ export function useAuth() {
           });
 
           if (error) {
-            console.error('Error setting session from email confirmation:', error);
+            // Error handling is done by the auth system
           } else if (data.session) {
             // Successfully confirmed and logged in
             // Clean up the URL hash

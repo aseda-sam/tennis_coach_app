@@ -59,7 +59,7 @@ export interface ApiError {
     // CHANGED: new error structure
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
 }
 

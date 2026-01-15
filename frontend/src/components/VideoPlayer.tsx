@@ -121,10 +121,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             setResolvedVideoUrl(videoUrl);
           }
         } catch (error) {
-          console.warn(
-            'Failed to resolve video URL redirect, using original:',
-            error
-          );
+          // Fallback to original URL if redirect resolution fails
           setResolvedVideoUrl(videoUrl);
         }
       } else {
@@ -148,7 +145,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           const metadata = await videoApi.getVideo(videoId);
           setVideoMetadata(metadata);
         } catch (error) {
-          console.error('Failed to fetch video metadata:', error);
+          // Silently handle metadata fetch errors - video can still play without metadata
         }
       }
     };
@@ -157,25 +154,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [videoId]);
 
   useEffect(() => {
-    console.log('VideoPlayer: resolvedVideoUrl changed to:', resolvedVideoUrl);
     const video = videoRef.current;
     if (!video) return;
 
     const handleLoadedMetadata = () => {
-      console.log('Video loaded metadata - duration:', video.duration);
-      setDuration(video.duration);
+      const currentVideo = videoRef.current;
+      if (!currentVideo) return;
+      setDuration(currentVideo.duration);
       setError(null);
 
       // Calculate and store the video's natural aspect ratio
-      if (video.videoWidth && video.videoHeight) {
-        const aspectRatio = video.videoWidth / video.videoHeight;
+      if (currentVideo.videoWidth && currentVideo.videoHeight) {
+        const aspectRatio = currentVideo.videoWidth / currentVideo.videoHeight;
         setVideoAspectRatio(aspectRatio);
-        console.log('Video aspect ratio:', aspectRatio);
       }
     };
 
     const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime);
+      const currentVideo = videoRef.current;
+      if (!currentVideo) return;
+      setCurrentTime(currentVideo.currentTime);
     };
 
     const handlePlay = () => {
@@ -187,22 +185,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
 
     const handleError = (e: Event) => {
-      console.error('Video error event:', e);
-      const video = videoRef.current;
-      if (video) {
-        console.error('Video error code:', video.error?.code);
-        console.error('Video error message:', video.error?.message);
-        console.error('Video ready state:', video.readyState);
-        console.error('Video network state:', video.networkState);
-        console.error('Video current src:', video.currentSrc);
-        console.error('Video src:', video.src);
-      }
+      const currentVideo = videoRef.current;
+      if (!currentVideo) return;
 
       // Provide more specific error messages based on error type
       let errorMessage =
         'Failed to load video. Please check if the video file exists.';
-      if (video?.error) {
-        switch (video.error.code) {
+      if (currentVideo.error) {
+        switch (currentVideo.error.code) {
           case MediaError.MEDIA_ERR_ABORTED:
             errorMessage = 'Video loading was aborted.';
             break;
@@ -220,8 +210,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       }
 
       // Add URL information to error message for debugging
-      if (video?.currentSrc) {
-        errorMessage += ` (URL: ${video.currentSrc})`;
+      if (currentVideo.currentSrc) {
+        errorMessage += ` (URL: ${currentVideo.currentSrc})`;
       }
 
       setError(errorMessage);
@@ -234,14 +224,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     video.addEventListener('pause', handlePause);
     video.addEventListener('error', handleError);
 
+    // Capture video element for cleanup to avoid ESLint warning
+    const cleanupVideo = video;
     return () => {
-      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      video.removeEventListener('timeupdate', handleTimeUpdate);
-      video.removeEventListener('play', handlePlay);
-      video.removeEventListener('pause', handlePause);
-      video.removeEventListener('error', handleError);
-
-      // Cleanup resize observer
+      cleanupVideo.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      cleanupVideo.removeEventListener('timeupdate', handleTimeUpdate);
+      cleanupVideo.removeEventListener('play', handlePlay);
+      cleanupVideo.removeEventListener('pause', handlePause);
+      cleanupVideo.removeEventListener('error', handleError);
     };
   }, [resolvedVideoUrl]);
 
@@ -279,10 +269,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     } catch (err) {
       // Handle AbortError specifically (common when play is interrupted by pause)
       if (err instanceof Error && err.name === 'AbortError') {
-        console.log('Play request was interrupted - this is normal behavior');
-        return; // Don't show error for this case
+        return; // Don't show error for this case - this is normal behavior
       }
-      console.error('Error playing video:', err);
       setError('Failed to play video. Please try again.');
     }
   }, [isPlaying]);
@@ -444,12 +432,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (!video) return;
 
     if (!document.fullscreenElement) {
-      video.requestFullscreen().catch((err) => {
-        console.error('Error attempting to enable fullscreen:', err);
+      video.requestFullscreen().catch(() => {
+        // Silently handle fullscreen errors - browser may not support it
       });
     } else {
-      document.exitFullscreen().catch((err) => {
-        console.error('Error attempting to exit fullscreen:', err);
+      document.exitFullscreen().catch(() => {
+        // Silently handle fullscreen exit errors
       });
     }
   };

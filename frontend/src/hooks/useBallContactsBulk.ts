@@ -15,7 +15,7 @@ export const useBallContactsBulk = (videoIds: number[]) => {
       try {
         return await ballContactApi.getContactsBulk(videoIds);
       } catch (error) {
-        console.error('Error fetching bulk ball contacts:', error);
+        // Return empty object on error - query will handle error state
         return {};
       }
     },

@@ -23,18 +23,7 @@ export function createAuthInterceptor(
 
       if (session?.access_token) {
         config.headers.Authorization = `Bearer ${session.access_token}`;
-        console.log(
-          `[${instanceName}] ${config.method?.toUpperCase()} ${config.url} - Auth token added (profile: ${profile})`
-        );
-      } else {
-        console.warn(
-          `[${instanceName}] ${config.method?.toUpperCase()} ${config.url} - No session token available (profile: ${profile})`
-        );
       }
-    } else {
-      console.log(
-        `[${instanceName}] ${config.method?.toUpperCase()} ${config.url} - No auth required (profile: ${profile})`
-      );
     }
 
     return config;

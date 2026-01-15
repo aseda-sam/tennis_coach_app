@@ -68,7 +68,7 @@ const VideoList: React.FC<VideoListProps> = ({
           await refetchVideos();
           setActiveAnalysisTasks(new Map());
         } catch (err) {
-          console.error('Error refreshing videos after analysis:', err);
+          // Silently handle refresh errors - component will continue with existing state
           setActiveAnalysisTasks(new Map());
         }
       },
@@ -76,7 +76,7 @@ const VideoList: React.FC<VideoListProps> = ({
     ),
     onError: useCallback(
       (failedState: Extract<AnalysisState, { status: 'failed' }>) => {
-        console.error('Analysis task failed:', failedState.error);
+        // Error is already handled by the failed state - just clear active tasks
         setActiveAnalysisTasks(new Map());
       },
       []
@@ -87,8 +87,8 @@ const VideoList: React.FC<VideoListProps> = ({
     try {
       await deleteVideoMutation.mutateAsync(videoId);
       onVideoDeleted?.();
-    } catch (err: any) {
-      console.error('Error deleting video:', err);
+    } catch (err: unknown) {
+      // Silently handle deletion errors - mutation already handles error state
     }
   };
 

@@ -78,7 +78,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
       });
       setValidationError(null);
     } catch (error) {
-      console.error('Failed to add contact:', error);
+      // Error is shown to user via alert
       alert('Failed to add contact. Please try again.');
     } finally {
       setIsLoading(false);

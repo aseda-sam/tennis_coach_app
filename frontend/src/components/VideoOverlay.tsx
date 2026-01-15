@@ -131,8 +131,8 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       try {
         const data = await videoApi.getOverlayData(videoId);
         setOverlayData(data);
-      } catch (err: any) {
-        console.error('Failed to fetch overlay data:', err);
+      } catch (err: unknown) {
+        // Silently handle overlay data fetch errors - component will handle missing data
       }
     };
 
@@ -147,7 +147,17 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
     const videoNaturalWidth = videoElement.videoWidth;
     const videoNaturalHeight = videoElement.videoHeight;
 
-    if (!videoNaturalWidth || !videoNaturalHeight) return false;
+    // Validate video dimensions - handle malformed/invalid dimensions
+    if (
+      !videoNaturalWidth ||
+      !videoNaturalHeight ||
+      videoNaturalWidth <= 0 ||
+      videoNaturalHeight <= 0 ||
+      !Number.isFinite(videoNaturalWidth) ||
+      !Number.isFinite(videoNaturalHeight)
+    ) {
+      return false;
+    }
 
     // Check if dimensions match (accounting for possible 90° rotation)
     const dimensionsMatch =
@@ -207,13 +217,24 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       const videoNaturalWidth = videoElement.videoWidth;
       const videoNaturalHeight = videoElement.videoHeight;
 
+      // Validate dimensions - handle malformed/invalid dimensions gracefully
       if (
         !videoNaturalWidth ||
         !videoNaturalHeight ||
         !elementWidth ||
-        !elementHeight
-      )
+        !elementHeight ||
+        videoNaturalWidth <= 0 ||
+        videoNaturalHeight <= 0 ||
+        elementWidth <= 0 ||
+        elementHeight <= 0 ||
+        !Number.isFinite(videoNaturalWidth) ||
+        !Number.isFinite(videoNaturalHeight) ||
+        !Number.isFinite(elementWidth) ||
+        !Number.isFinite(elementHeight)
+      ) {
+        // Silently skip drawing if dimensions are invalid - video may still be loading
         return;
+      }
 
       // Get object-fit mode from computed styles (default to 'contain')
       const computedStyle = window.getComputedStyle(videoElement);

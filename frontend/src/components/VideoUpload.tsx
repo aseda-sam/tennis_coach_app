@@ -57,9 +57,10 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
       
       onUploadSuccess(video);
       setUploadProgress(100);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { detail?: string; error?: { message?: string } } } };
       // Handle error responses
-      const detail = err.response?.data?.detail || err.response?.data?.error?.message;
+      const detail = axiosError.response?.data?.detail || axiosError.response?.data?.error?.message;
       
       // Handle errors
       const errorMessage = detail || 'Upload failed. Please try again.';

@@ -24,10 +24,10 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({
       setError(null);
       const analysisData = await analysisApi.getAnalysisByVideo(videoId);
       setAnalysis(analysisData);
-    } catch (err: any) {
-      const message = err?.response?.data?.error?.message || 'Failed to load analysis results. Please try again.';
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { error?: { message?: string } } } };
+      const message = axiosError?.response?.data?.error?.message || 'Failed to load analysis results. Please try again.';
       setError(message);
-      console.error('Error loading analysis:', err);
     } finally {
       setLoading(false);
     }

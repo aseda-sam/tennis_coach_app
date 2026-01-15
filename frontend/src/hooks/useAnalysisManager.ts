@@ -3,6 +3,7 @@ import unifiedAnalysisApi, {
   AnalysisRequest,
 } from '../services/unifiedAnalysisApi';
 import { useAnalysisProgress } from './useAnalysisProgress';
+import { AnalysisData } from '../services/api';
 
 interface AnalysisState {
   videoId: number;
@@ -21,7 +22,7 @@ interface AnalysisState {
 interface UseAnalysisManagerOptions {
   videoId: number;
   autoRefresh?: boolean;
-  onAnalysisComplete?: (result: any) => void;
+  onAnalysisComplete?: (result: AnalysisData | null) => void;
   onAnalysisError?: (error: string) => void;
 }
 
@@ -58,7 +59,7 @@ export const useAnalysisManager = ({
         jobId: null,
         error: null,
       }));
-      onAnalysisComplete?.(progress.result);
+      onAnalysisComplete?.(progress.result ?? null);
     },
     onError: (error) => {
       setAnalysisState((prev) => ({
@@ -91,21 +92,10 @@ export const useAnalysisManager = ({
           error: null,
         }));
 
-        console.log('Starting analysis request...', {
-          videoId,
-          analysisRequest,
-        });
-
         const response = await unifiedAnalysisApi.startAnalysis(
           videoId,
           analysisRequest
         );
-
-        console.log('Analysis started successfully:', {
-          jobId: response.job_id,
-          videoId: response.video_id,
-          analysisType: response.analysis_type,
-        });
 
         setAnalysisState((prev) => ({
           ...prev,
@@ -116,18 +106,13 @@ export const useAnalysisManager = ({
 
         // Start polling for progress
         startPolling(response.job_id);
-      } catch (err: any) {
-        console.error('Failed to start analysis:', {
-          error: err,
-          response: err?.response,
-          message: err?.message,
-          code: err?.code,
-        });
+      } catch (err: unknown) {
 
+        const axiosError = err as { response?: { data?: { detail?: string } }; message?: string; code?: string };
         const errorMessage =
-          err?.response?.data?.detail ||
-          err?.message ||
-          (err?.code === 'ECONNABORTED'
+          axiosError?.response?.data?.detail ||
+          axiosError?.message ||
+          (axiosError?.code === 'ECONNABORTED'
             ? 'Request timed out. The server may be busy or Redis may be unavailable.'
             : 'Failed to start analysis');
         setAnalysisState((prev) => ({
@@ -159,10 +144,11 @@ export const useAnalysisManager = ({
         progress: 0,
         jobId: null,
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
       const errorMessage =
-        err?.response?.data?.detail ||
-        err?.message ||
+        axiosError?.response?.data?.detail ||
+        axiosError?.message ||
         'Failed to cancel analysis';
       setAnalysisState((prev) => ({
         ...prev,

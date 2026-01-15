@@ -98,17 +98,8 @@ async def start_analysis(
                 f"confidence_threshold={request.confidence_threshold}"
             )
 
-            # Check Redis connection before enqueueing
-            try:
-                logger.debug("Checking Redis connection...")
-                redis_conn.ping()
-                logger.debug("Redis connection successful")
-            except (RedisConnectionError, RedisTimeoutError) as e:
-                logger.error(f"Redis connection failed: {e}")
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Redis service is unavailable. Cannot start analysis. Please check Redis connection.",
-                ) from e
+            # Redis connection is already checked in redis_config.py on module load
+            # If Redis is unavailable, the connection will fail when enqueueing, which is handled below
 
             # Enqueue RQ job
             logger.info(f"Enqueueing {request.analysis_type} job to Redis queue...")

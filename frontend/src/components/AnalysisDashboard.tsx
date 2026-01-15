@@ -52,7 +52,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         confidence_threshold: 0.5,
       });
     } catch (error) {
-      console.error('Failed to start pose analysis:', error);
+      // Error handling is done by the startAnalysis hook
     }
   }, [startAnalysis]);
 
