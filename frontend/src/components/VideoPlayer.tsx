@@ -438,7 +438,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [onNavigateReady, stableNavigateToContactById]);
 
+  // Open add contact form at current time (for keyboard shortcut)
+  const openAddContactForm = useCallback(() => {
+    if (!isAddContactVisible) return;
 
+    const video = videoRef.current;
+    const timestamp = video?.currentTime ?? currentTime;
+
+    // Pause video if playing
+    if (video && isPlaying) {
+      video.pause();
+      wasPlayingRef.current = true;
+    } else {
+      wasPlayingRef.current = false;
+    }
+
+    if (controlsBelow) {
+      // For scrubber mode, use the programmatic open mechanism
+      setOpenTimestamp(timestamp);
+      setOpenRequestId((prev) => prev + 1);
+      setHighlightTimestamp(timestamp);
+    } else {
+      // For overlay mode, trigger via the button's onFormOpen callback
+      // We'll handle this by setting a state that the overlay AddContactButton can react to
+      setHighlightTimestamp(timestamp);
+      // The overlay AddContactButton will be triggered via a ref or we can add a similar mechanism
+      // For now, let's use the same mechanism for consistency
+      setOpenTimestamp(timestamp);
+      setOpenRequestId((prev) => prev + 1);
+    }
+  }, [isAddContactVisible, currentTime, isPlaying, controlsBelow]);
 
   // Keyboard shortcuts for frame navigation, play/pause, and contact navigation
   useEffect(() => {
@@ -555,37 +584,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     },
     [getTimestampFromClientX, isAddContactVisible]
   );
-
-  // Open add contact form at current time (for keyboard shortcut)
-  const openAddContactForm = useCallback(() => {
-    if (!isAddContactVisible) return;
-
-    const video = videoRef.current;
-    const timestamp = video?.currentTime ?? currentTime;
-
-    // Pause video if playing
-    if (video && isPlaying) {
-      video.pause();
-      wasPlayingRef.current = true;
-    } else {
-      wasPlayingRef.current = false;
-    }
-
-    if (controlsBelow) {
-      // For scrubber mode, use the programmatic open mechanism
-      setOpenTimestamp(timestamp);
-      setOpenRequestId((prev) => prev + 1);
-      setHighlightTimestamp(timestamp);
-    } else {
-      // For overlay mode, trigger via the button's onFormOpen callback
-      // We'll handle this by setting a state that the overlay AddContactButton can react to
-      setHighlightTimestamp(timestamp);
-      // The overlay AddContactButton will be triggered via a ref or we can add a similar mechanism
-      // For now, let's use the same mechanism for consistency
-      setOpenTimestamp(timestamp);
-      setOpenRequestId((prev) => prev + 1);
-    }
-  }, [isAddContactVisible, currentTime, isPlaying, controlsBelow]);
 
   const toggleFullscreen = () => {
     const video = videoRef.current;
