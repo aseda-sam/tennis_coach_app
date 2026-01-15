@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   STROKE_SUBTYPE_LABELS,
   STROKE_TYPE_LABELS,
@@ -51,15 +51,18 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
 
   const lastOpenRequestId = useRef<number | null>(null);
 
-  const openAtTimestamp = (timestamp: number) => {
-    setLockedTimestamp(timestamp);
-    setFormData((prev) => ({
-      ...prev,
-      video_timestamp: timestamp,
-    }));
-    setIsOpen(true);
-    onFormOpen?.(timestamp);
-  };
+  const openAtTimestamp = useCallback(
+    (timestamp: number) => {
+      setLockedTimestamp(timestamp);
+      setFormData((prev) => ({
+        ...prev,
+        video_timestamp: timestamp,
+      }));
+      setIsOpen(true);
+      onFormOpen?.(timestamp);
+    },
+    [onFormOpen]
+  );
 
   // Lock timestamp when form opens
   const handleOpen = () => {
@@ -91,7 +94,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
 
     lastOpenRequestId.current = openRequestId;
     openAtTimestamp(openTimestamp);
-  }, [openRequestId, openTimestamp]);
+  }, [openRequestId, openTimestamp, openAtTimestamp]);
 
   // Validate timestamp whenever form data changes
   useEffect(() => {
