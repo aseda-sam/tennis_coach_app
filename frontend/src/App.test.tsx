@@ -17,6 +17,18 @@ const renderWithProviders = (ui: React.ReactElement) => {
   );
 };
 
+// Mock the useAuth hook to avoid async loading state
+jest.mock('./hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: {
+      id: 'test-user-id',
+      email: 'test@example.com',
+    },
+    loading: false,
+    signOut: jest.fn(),
+  }),
+}));
+
 // Mock the API service to avoid axios import issues
 jest.mock('./services/api', () => ({
   videoApi: {
@@ -26,6 +38,7 @@ jest.mock('./services/api', () => ({
     deleteVideo: jest.fn(),
     streamVideo: jest.fn(),
     streamAnnotatedVideo: jest.fn(),
+    getVideoUrl: jest.fn(),
   },
   analysisApi: {
     startAnalysis: jest.fn(),

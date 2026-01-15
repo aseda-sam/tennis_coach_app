@@ -105,7 +105,16 @@ function App() {
           </div>
 
           <div className="app-header-right">
-            <button className="logout-btn" onClick={signOut}>
+            <button 
+              className="logout-btn" 
+              onClick={async () => {
+                try {
+                  await signOut();
+                } catch (error) {
+                  console.error('Logout failed:', error);
+                }
+              }}
+            >
               Logout
             </button>
           </div>

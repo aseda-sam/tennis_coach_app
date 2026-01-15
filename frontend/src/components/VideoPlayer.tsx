@@ -6,10 +6,9 @@ import React, {
   useState,
 } from 'react';
 import { useBallContacts } from '../hooks/useBallContacts';
-import { videoApi } from '../services/api';
+import { useVideoMetadata } from '../hooks/useVideos';
+import { useVideoUrl } from '../hooks/useVideoUrl';
 import { BallContact, BallContactCreate } from '../services/ballContactApi';
-import { supabase } from '../services/supabaseClient';
-import { VideoMetadata } from '../types/video';
 import AddContactButton from './AddContactButton';
 import BallContactMarker from './BallContactMarker';
 import BallContactModal from './BallContactModal';
@@ -69,9 +68,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [selectedContactId, setSelectedContactId] = useState<
     number | undefined
   >();
-  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(
-    null
-  );
   const [showOverlay, setShowOverlay] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -86,72 +82,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     autoRefresh: !!videoId,
   });
 
-  const [resolvedVideoUrl, setResolvedVideoUrl] = useState<string>(videoUrl);
+  // Use React Query hook for video URL resolution
+  const { resolvedUrl: resolvedVideoUrl, isLoading: isLoadingUrl } = useVideoUrl({
+    videoId,
+    videoUrl,
+    expiresIn: 3600,
+  });
 
-  // Resolve redirect URL for video (handles Supabase redirects)
-  useEffect(() => {
-    const resolveVideoUrl = async () => {
-      // If URL is a backend stream endpoint, resolve the redirect with auth
-      if (videoUrl.includes('/stream')) {
-        try {
-          // Get auth token if needed
-          const profile = process.env.REACT_APP_PROFILE || 'local';
-          let authHeaders: HeadersInit = {};
-
-          if (profile !== 'local' && supabase) {
-            const {
-              data: { session },
-            } = await supabase.auth.getSession();
-            if (session?.access_token) {
-              authHeaders = { Authorization: `Bearer ${session.access_token}` };
-            }
-          }
-
-          // Use GET to follow redirect and get final URL
-          const response = await fetch(videoUrl, {
-            method: 'GET',
-            redirect: 'follow',
-            headers: authHeaders,
-          });
-
-          // If redirect happened, use the final URL; otherwise use original
-          if (response.ok && response.url !== videoUrl) {
-            setResolvedVideoUrl(response.url);
-          } else {
-            setResolvedVideoUrl(videoUrl);
-          }
-        } catch (error) {
-          // Fallback to original URL if redirect resolution fails
-          setResolvedVideoUrl(videoUrl);
-        }
-      } else {
-        setResolvedVideoUrl(videoUrl);
-      }
-    };
-
-    resolveVideoUrl();
-  }, [videoUrl]);
+  // Use React Query hook for video metadata
+  const { data: videoMetadata } = useVideoMetadata(videoId);
 
   // Reset aspect ratio when video URL changes
   useEffect(() => {
     setVideoAspectRatio(null);
   }, [resolvedVideoUrl]);
 
-  // Fetch video metadata when videoId is available
+  // Clear error state when URL changes
   useEffect(() => {
-    const fetchVideoMetadata = async () => {
-      if (videoId) {
-        try {
-          const metadata = await videoApi.getVideo(videoId);
-          setVideoMetadata(metadata);
-        } catch (error) {
-          // Silently handle metadata fetch errors - video can still play without metadata
-        }
-      }
-    };
-
-    fetchVideoMetadata();
-  }, [videoId]);
+    setError(null);
+  }, [resolvedVideoUrl]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -187,6 +136,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const handleError = (e: Event) => {
       const currentVideo = videoRef.current;
       if (!currentVideo) return;
+
+      // Suppress errors during URL loading to prevent error flash
+      if (isLoadingUrl) {
+        return;
+      }
+
+      // Suppress errors if video src is empty (we're still loading the URL)
+      if (!currentVideo.currentSrc || currentVideo.currentSrc === '') {
+        return;
+      }
 
       // Provide more specific error messages based on error type
       let errorMessage =
@@ -233,7 +192,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       cleanupVideo.removeEventListener('pause', handlePause);
       cleanupVideo.removeEventListener('error', handleError);
     };
-  }, [resolvedVideoUrl]);
+  }, [resolvedVideoUrl, isLoadingUrl]);
 
   // Handle aspect ratio mode changes
   useEffect(() => {
@@ -497,14 +456,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onClick={handleVideoClick}
             style={{ position: 'relative' }}
           >
-            <video
-              ref={videoRef}
-              src={resolvedVideoUrl}
-              className={`video-element video-element-${aspectRatioMode}`}
-              preload="metadata"
-              crossOrigin="anonymous"
-              data-testid="video-element"
-            />
+            {resolvedVideoUrl && (
+              <video
+                ref={videoRef}
+                src={resolvedVideoUrl}
+                className={`video-element video-element-${aspectRatioMode}`}
+                preload="metadata"
+                crossOrigin="anonymous"
+                data-testid="video-element"
+              />
+            )}
 
             {/* Video Overlay */}
             {videoId && showOverlay && (
@@ -513,7 +474,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 videoElement={videoRef.current}
                 showOverlay={showOverlay}
                 hasPoseData={hasPoseData}
+                currentTime={currentTime}
               />
+            )}
+
+            {/* Loading overlay while resolving URL */}
+            {isLoadingUrl && (
+              <div className="loading-overlay">
+                <div className="loading-spinner" />
+                <p>Loading video...</p>
+              </div>
             )}
 
             {/* Add Contact Button */}
@@ -527,7 +497,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               isVisible={!!videoId && !error && duration > 0}
             />
 
-            {error && (
+            {error && !isLoadingUrl && (
               <div className="error-overlay">
                 <div className="error-message">
                   <span className="error-icon">
@@ -698,8 +668,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               {ballContacts.length > 0 && duration > 0 && (
                 <div className="video-controls-below__contact-markers">
                   {ballContacts.map((contact) => {
-                    const position =
-                      (contact.video_timestamp / duration) * 100;
+                    const position = (contact.video_timestamp / duration) * 100;
                     const isSelected = selectedContactId === contact.id;
 
                     return (

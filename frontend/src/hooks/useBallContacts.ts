@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ballContactApi, BallContact, BallContactCreate, BallContactUpdate } from '../services/ballContactApi';
 
 interface UseBallContactsOptions {
@@ -25,123 +26,136 @@ export const useBallContacts = ({
   onContactsLoaded,
   onError,
 }: UseBallContactsOptions): UseBallContactsResult => {
-  const [contacts, setContacts] = useState<BallContact[]>([]);
-  const [timestamps, setTimestamps] = useState<number[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Use ref to store current contacts state to avoid stale closures
-  const contactsRef = useRef<BallContact[]>([]);
-  contactsRef.current = contacts;
+  const queryClient = useQueryClient();
 
-  const loadContacts = useCallback(async () => {
-    if (!videoId) return;
+  // Fetch contacts using React Query
+  const contactsQuery = useQuery<BallContact[]>({
+    queryKey: ['ball-contacts', videoId],
+    queryFn: async () => {
+      if (!videoId) return [];
+      return await ballContactApi.getContacts(videoId);
+    },
+    enabled: !!videoId && autoRefresh,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
 
-    try {
-      setLoading(true);
-      setError(null);
+  // Fetch timestamps using React Query
+  const timestampsQuery = useQuery<number[]>({
+    queryKey: ['ball-contacts-timestamps', videoId],
+    queryFn: async () => {
+      if (!videoId) return [];
+      return await ballContactApi.getContactTimestamps(videoId);
+    },
+    enabled: !!videoId && autoRefresh,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
 
-      // Load both contacts and timestamps in parallel
-      const [contactsData, timestampsData] = await Promise.all([
-        ballContactApi.getContacts(videoId),
-        ballContactApi.getContactTimestamps(videoId),
-      ]);
-
-      setContacts(contactsData);
-      setTimestamps(timestampsData);
-
-      if (onContactsLoaded) {
-        onContactsLoaded(contactsData);
-      }
-    } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
-      const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to load ball contacts';
-      setError(errorMessage);
-      if (onError) {
-        onError(errorMessage);
-      }
-      // Error is handled by setError and onError callback
-    } finally {
-      setLoading(false);
+  // Call onContactsLoaded callback when contacts are loaded
+  useEffect(() => {
+    if (contactsQuery.data && onContactsLoaded) {
+      onContactsLoaded(contactsQuery.data);
     }
-  }, [videoId, onContactsLoaded, onError]);
+  }, [contactsQuery.data, onContactsLoaded]);
+
+  // Call onError callback when there's an error
+  useEffect(() => {
+    if (contactsQuery.error && onError) {
+      const axiosError = contactsQuery.error as { response?: { data?: { detail?: string } }; message?: string };
+      const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to load ball contacts';
+      onError(errorMessage);
+    }
+  }, [contactsQuery.error, onError]);
+
+  // Create contact mutation
+  const createMutation = useMutation({
+    mutationFn: (contact: BallContactCreate) => ballContactApi.createContact(contact),
+    onSuccess: (newContact) => {
+      // Invalidate and refetch contacts and timestamps
+      queryClient.invalidateQueries({ queryKey: ['ball-contacts', videoId] });
+      queryClient.invalidateQueries({ queryKey: ['ball-contacts-timestamps', videoId] });
+    },
+  });
+
+  // Update contact mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ contactId, updates }: { contactId: number; updates: BallContactUpdate }) =>
+      ballContactApi.updateContact(contactId, updates),
+    onSuccess: () => {
+      // Invalidate and refetch contacts and timestamps
+      queryClient.invalidateQueries({ queryKey: ['ball-contacts', videoId] });
+      queryClient.invalidateQueries({ queryKey: ['ball-contacts-timestamps', videoId] });
+    },
+  });
+
+  // Delete contact mutation
+  const deleteMutation = useMutation({
+    mutationFn: (contactId: number) => ballContactApi.deleteContact(contactId),
+    onSuccess: () => {
+      // Invalidate and refetch contacts and timestamps
+      queryClient.invalidateQueries({ queryKey: ['ball-contacts', videoId] });
+      queryClient.invalidateQueries({ queryKey: ['ball-contacts-timestamps', videoId] });
+    },
+  });
 
   const refreshContacts = useCallback(async () => {
-    await loadContacts();
-  }, [loadContacts]);
+    await queryClient.invalidateQueries({ queryKey: ['ball-contacts', videoId] });
+    await queryClient.invalidateQueries({ queryKey: ['ball-contacts-timestamps', videoId] });
+  }, [queryClient, videoId]);
 
-  const createContact = useCallback(async (contact: BallContactCreate): Promise<BallContact> => {
-    try {
-      const newContact = await ballContactApi.createContact(contact);
-      setContacts(prev => [...prev, newContact]);
-      setTimestamps(prev => [...prev, newContact.video_timestamp].sort((a, b) => a - b));
-      return newContact;
-    } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
-      const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to create ball contact';
-      throw new Error(errorMessage);
-    }
-  }, []);
-
-  const updateContact = useCallback(async (contactId: number, updates: BallContactUpdate): Promise<BallContact> => {
-    try {
-      const updatedContact = await ballContactApi.updateContact(contactId, updates);
-      
-      setContacts(prev => prev.map(contact => 
-        contact.id === contactId ? updatedContact : contact
-      ));
-      
-      // Update timestamps if video_timestamp changed
-      if (updates.video_timestamp !== undefined) {
-        setTimestamps(prev => {
-          // Get the old timestamp from the current contacts state using ref
-          const oldContact = contactsRef.current.find(c => c.id === contactId);
-          const oldTimestamp = oldContact?.video_timestamp;
-          const newTimestamp = updatedContact.video_timestamp;
-          
-          // Remove old timestamp and add new one
-          const filtered = oldTimestamp !== undefined ? prev.filter(t => t !== oldTimestamp) : prev;
-          return [...filtered, newTimestamp].sort((a, b) => a - b);
-        });
+  const createContact = useCallback(
+    async (contact: BallContactCreate): Promise<BallContact> => {
+      try {
+        return await createMutation.mutateAsync(contact);
+      } catch (err: unknown) {
+        const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
+        const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to create ball contact';
+        throw new Error(errorMessage);
       }
-      
-      return updatedContact;
-    } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
-      const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to update ball contact';
-      throw new Error(errorMessage);
-    }
-  }, []); // No dependencies needed since we use ref
+    },
+    [createMutation]
+  );
 
-  const deleteContact = useCallback(async (contactId: number): Promise<void> => {
-    try {
-      await ballContactApi.deleteContact(contactId);
-      
-      // Get the deleted contact from current state using ref
-      const deletedContact = contactsRef.current.find(c => c.id === contactId);
-      
-      setContacts(prev => prev.filter(contact => contact.id !== contactId));
-      
-      if (deletedContact) {
-        setTimestamps(prev => prev.filter(t => t !== deletedContact.video_timestamp));
+  const updateContact = useCallback(
+    async (contactId: number, updates: BallContactUpdate): Promise<BallContact> => {
+      try {
+        return await updateMutation.mutateAsync({ contactId, updates });
+      } catch (err: unknown) {
+        const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
+        const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to update ball contact';
+        throw new Error(errorMessage);
       }
-    } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
-      const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to delete ball contact';
-      throw new Error(errorMessage);
-    }
-  }, []); // No dependencies needed since we use ref
+    },
+    [updateMutation]
+  );
 
-  // Load contacts when videoId changes
-  useEffect(() => {
-    if (autoRefresh) {
-      loadContacts();
-    }
-  }, [videoId, autoRefresh, loadContacts]);
+  const deleteContact = useCallback(
+    async (contactId: number): Promise<void> => {
+      try {
+        await deleteMutation.mutateAsync(contactId);
+      } catch (err: unknown) {
+        const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
+        const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to delete ball contact';
+        throw new Error(errorMessage);
+      }
+    },
+    [deleteMutation]
+  );
+
+  // Combine loading states
+  const loading = contactsQuery.isLoading || timestampsQuery.isLoading;
+
+  // Combine error states
+  const error = contactsQuery.error || timestampsQuery.error
+    ? (() => {
+        const err = contactsQuery.error || timestampsQuery.error;
+        const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
+        return axiosError?.response?.data?.detail || axiosError?.message || 'Failed to load ball contacts';
+      })()
+    : null;
 
   return {
-    contacts,
-    timestamps,
+    contacts: contactsQuery.data || [],
+    timestamps: timestampsQuery.data || [],
     loading,
     error,
     refreshContacts,

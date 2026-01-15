@@ -170,6 +170,26 @@ class StorageService:
             return self._get_supabase_url(file_path)
         return file_path  # Local storage - API route handles serving
 
+    def create_signed_url(self, file_path: str, expires_in: int = 3600) -> str:
+        """
+        Create a signed URL for secure, time-limited access to a file.
+
+        Args:
+            file_path: Path to the file in storage
+            expires_in: Number of seconds the URL should remain valid (default: 1 hour)
+
+        Returns:
+            Signed URL string for cloud storage, or file path for local storage
+
+        Raises:
+            ValueError: If storage configuration is invalid
+            RuntimeError: If signed URL creation fails
+        """
+        self._validate_file_path(file_path)
+        if self.storage_type == "supabase":
+            return self._create_supabase_signed_url(file_path, expires_in)
+        return file_path  # Local storage - API route handles serving
+
     def get_local_file_path(
         self, file_path: str, temp_dir: Optional[str] = None
     ) -> Path:
@@ -344,6 +364,29 @@ class StorageService:
         return self._supabase_client.storage.from_(
             settings.SUPABASE_STORAGE_BUCKET
         ).get_public_url(file_path)
+
+    def _create_supabase_signed_url(self, file_path: str, expires_in: int) -> str:
+        """Create a signed URL for secure, time-limited access to a file in cloud storage."""
+        self._validate_supabase_config()
+
+        try:
+            response = self._supabase_client.storage.from_(
+                settings.SUPABASE_STORAGE_BUCKET
+            ).create_signed_url(file_path, expires_in)
+
+            # Supabase returns dict with 'signedURL' key
+            if isinstance(response, dict) and "signedURL" in response:
+                return response["signedURL"]
+            elif isinstance(response, dict) and "url" in response:
+                # Fallback for different response formats
+                return response["url"]
+            else:
+                raise RuntimeError(
+                    f"Unexpected response format from Supabase signed URL: {response}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to create signed URL for {file_path}: {e}")
+            raise RuntimeError(f"Failed to create signed URL: {e}") from e
 
     # Local storage methods
 

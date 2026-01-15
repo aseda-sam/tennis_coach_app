@@ -1,5 +1,21 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
 import VideoPlayer from './VideoPlayer';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
+const renderWithProviders = (ui: React.ReactElement) => {
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+  );
+};
 
 // Mock the Icons component
 jest.mock('./Icons', () => ({
@@ -23,6 +39,20 @@ jest.mock('../hooks/useBallContacts', () => ({
     createContact: jest.fn(),
     updateContact: jest.fn(),
     deleteContact: jest.fn(),
+  }),
+}));
+
+jest.mock('../hooks/useVideoUrl', () => ({
+  useVideoUrl: ({ videoUrl }: { videoUrl: string }) => ({
+    resolvedUrl: videoUrl,
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+jest.mock('../hooks/useVideos', () => ({
+  useVideoMetadata: () => ({
+    data: undefined,
   }),
 }));
 
@@ -72,6 +102,8 @@ describe('VideoPlayer', () => {
   beforeEach(() => {
     // Mock console.log to reduce noise in tests
     jest.spyOn(console, 'log').mockImplementation(() => {});
+    // Clear query cache before each test
+    queryClient.clear();
   });
 
   afterEach(() => {
@@ -80,7 +112,7 @@ describe('VideoPlayer', () => {
 
   describe('Basic Rendering', () => {
     it('renders video player with correct video source', () => {
-      render(<VideoPlayer {...defaultProps} />);
+      renderWithProviders(<VideoPlayer {...defaultProps} />);
 
       const video = screen.getByTestId('video-element');
       expect(video).toBeInTheDocument();
@@ -89,21 +121,23 @@ describe('VideoPlayer', () => {
 
     it('renders video title when onClose is provided', () => {
       const onCloseMock = jest.fn();
-      render(<VideoPlayer {...defaultProps} onClose={onCloseMock} />);
+      renderWithProviders(
+        <VideoPlayer {...defaultProps} onClose={onCloseMock} />
+      );
 
       expect(screen.getByText(defaultProps.title)).toBeInTheDocument();
       expect(screen.getByTestId('close-icon')).toBeInTheDocument();
     });
 
     it('does not render header when onClose is not provided', () => {
-      render(<VideoPlayer {...defaultProps} />);
+      renderWithProviders(<VideoPlayer {...defaultProps} />);
 
       expect(screen.queryByText(defaultProps.title)).not.toBeInTheDocument();
       expect(screen.queryByTestId('close-icon')).not.toBeInTheDocument();
     });
 
     it('shows play overlay by default', () => {
-      render(<VideoPlayer {...defaultProps} />);
+      renderWithProviders(<VideoPlayer {...defaultProps} />);
 
       const playIcons = screen.getAllByTestId('play-icon');
       expect(playIcons.length).toBeGreaterThan(0);
@@ -112,7 +146,9 @@ describe('VideoPlayer', () => {
 
   describe('Controls', () => {
     it('renders video controls when showControls is true', () => {
-      render(<VideoPlayer {...defaultProps} showControls={true} />);
+      renderWithProviders(
+        <VideoPlayer {...defaultProps} showControls={true} />
+      );
 
       const sliders = screen.getAllByRole('slider');
       expect(sliders.length).toBeGreaterThan(0);
@@ -121,7 +157,9 @@ describe('VideoPlayer', () => {
     });
 
     it('does not render controls when showControls is false', () => {
-      render(<VideoPlayer {...defaultProps} showControls={false} />);
+      renderWithProviders(
+        <VideoPlayer {...defaultProps} showControls={false} />
+      );
 
       expect(screen.queryByRole('slider')).not.toBeInTheDocument();
       expect(screen.queryByTestId('volume-icon')).not.toBeInTheDocument();
@@ -130,7 +168,9 @@ describe('VideoPlayer', () => {
     it('calls onClose when close button is clicked', () => {
       const onCloseMock = jest.fn();
 
-      render(<VideoPlayer {...defaultProps} onClose={onCloseMock} />);
+      renderWithProviders(
+        <VideoPlayer {...defaultProps} onClose={onCloseMock} />
+      );
 
       const closeButton = screen.getByRole('button', { name: /close/i });
       fireEvent.click(closeButton);
@@ -140,7 +180,7 @@ describe('VideoPlayer', () => {
 
   describe('Video Element', () => {
     it('has correct video attributes', () => {
-      render(<VideoPlayer {...defaultProps} />);
+      renderWithProviders(<VideoPlayer {...defaultProps} />);
 
       const video = screen.getByTestId('video-element');
       expect(video).toHaveAttribute('preload', 'metadata');
@@ -149,7 +189,7 @@ describe('VideoPlayer', () => {
     });
 
     it('handles play and pause events', () => {
-      render(<VideoPlayer {...defaultProps} />);
+      renderWithProviders(<VideoPlayer {...defaultProps} />);
 
       const video = screen.getByTestId('video-element');
 
@@ -166,7 +206,7 @@ describe('VideoPlayer', () => {
 
   describe('Accessibility', () => {
     it('video element is accessible', () => {
-      render(<VideoPlayer {...defaultProps} />);
+      renderWithProviders(<VideoPlayer {...defaultProps} />);
 
       const video = screen.getByTestId('video-element');
       expect(video).toBeInTheDocument();
@@ -174,7 +214,9 @@ describe('VideoPlayer', () => {
 
     it('close button is accessible when provided', () => {
       const onCloseMock = jest.fn();
-      render(<VideoPlayer {...defaultProps} onClose={onCloseMock} />);
+      renderWithProviders(
+        <VideoPlayer {...defaultProps} onClose={onCloseMock} />
+      );
 
       const closeButton = screen.getByRole('button', { name: /close/i });
       expect(closeButton).toBeInTheDocument();
@@ -183,7 +225,7 @@ describe('VideoPlayer', () => {
 
   describe('Event Handling', () => {
     it('handles video load event', () => {
-      render(<VideoPlayer {...defaultProps} />);
+      renderWithProviders(<VideoPlayer {...defaultProps} />);
 
       const video = screen.getByTestId('video-element');
       fireEvent.loadedMetadata(video);
@@ -192,7 +234,7 @@ describe('VideoPlayer', () => {
     });
 
     it('handles video error event', () => {
-      render(<VideoPlayer {...defaultProps} />);
+      renderWithProviders(<VideoPlayer {...defaultProps} />);
 
       const video = screen.getByTestId('video-element');
       fireEvent.error(video);

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Dict, List
 
 import cv2
-from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import (
     FileResponse,
     RedirectResponse,
@@ -26,6 +26,7 @@ from app.api.schemas.video import (
     VideoMetrics,
     VideoQualityAssessmentResponse,
     VideoQualityMetrics,
+    VideoSignedUrlResponse,
     VideoUploadResponse,
 )
 from app.core.config import settings
@@ -249,6 +250,74 @@ async def stream_video(
             )
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "stream_video", {"video_id": video_id})
+
+
+@router.get("/{video_id}/url", response_model=VideoSignedUrlResponse)
+async def get_video_url(
+    video_id: int,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    expires_in: int = 3600,
+) -> VideoSignedUrlResponse:
+    """
+    Get a signed URL for video access (for cloud storage) or file path (for local).
+
+    This endpoint returns a direct URL that can be used by the frontend without
+    requiring redirect resolution, eliminating race conditions and error flashes.
+
+    Args:
+        video_id: Unique video identifier
+        expires_in: Number of seconds the signed URL should remain valid (default: 3600)
+
+    Returns:
+        VideoSignedUrlResponse with signed URL and expiration time
+    """
+    try:
+        # Get video from database
+        db_video = video_service.get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Check authorization
+        require_video_access(db_video, current_user)
+
+        # Validate expires_in (reasonable range: 60 seconds to 24 hours)
+        if expires_in < 60 or expires_in > 86400:
+            raise ValueError("expires_in must be between 60 and 86400 seconds")
+
+        # Use storage service to get signed URL or file path
+        if settings.STORAGE_TYPE == "supabase":
+            storage_path = db_video.file_path
+            try:
+                signed_url = storage_service.create_signed_url(
+                    storage_path, expires_in=expires_in
+                )
+                logger.info(
+                    f"Generated signed URL for video {video_id}, expires in {expires_in}s"
+                )
+                return VideoSignedUrlResponse(url=signed_url, expires_in=expires_in)
+            except (ValueError, RuntimeError) as e:
+                logger.error(
+                    f"Failed to create signed URL for video {video_id}, storage_path={storage_path}: {e}"
+                )
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to generate video URL: {e!s}",
+                ) from e
+        else:
+            # For local storage, construct full URL to the stream endpoint
+            # Use the request's base URL to ensure it works with any deployment
+            # Note: Router is mounted at /v0/videos, so include /v0 prefix
+            base_url = str(request.base_url).rstrip("/")
+            stream_url = f"{base_url}/v0/videos/{video_id}/stream"
+            logger.debug(
+                f"Returning stream URL for local video {video_id}: {stream_url}"
+            )
+            return VideoSignedUrlResponse(url=stream_url, expires_in=expires_in)
+
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_video_url", {"video_id": video_id})
 
 
 @router.get("/{video_id}/analysis-status", response_model=VideoAnalysisStatus)

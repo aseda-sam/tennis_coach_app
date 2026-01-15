@@ -117,9 +117,17 @@ export const videoApi = {
     await api.delete(`/videos/${videoId}`);
   },
 
-  // Stream original video
+  // Stream original video (legacy - returns stream endpoint URL)
   streamVideo: async (videoId: number): Promise<string> => {
     return `${API_BASE_URL}/videos/${videoId}/stream`;
+  },
+
+  // Get signed URL for video (preferred - avoids redirect race conditions)
+  getVideoUrl: async (videoId: number, expiresIn: number = 3600): Promise<string> => {
+    const response = await api.get<{ url: string; expires_in: number }>(
+      `/videos/${videoId}/url?expires_in=${expiresIn}`
+    );
+    return response.data.url;
   },
 
   // Check video analysis status

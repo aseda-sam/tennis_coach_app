@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { videoApi } from '../services/api';
 import { OverlayData } from '../types/video';
 import './VideoOverlay.css';
@@ -8,6 +9,7 @@ interface VideoOverlayProps {
   videoElement: HTMLVideoElement | null;
   showOverlay: boolean;
   hasPoseData: boolean;
+  currentTime?: number; // Current video time to trigger updates on keyboard navigation
 }
 
 /**
@@ -115,29 +117,19 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
   videoElement,
   showOverlay,
   hasPoseData,
+  currentTime,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastRenderedFrameRef = useRef<number>(-1);
   const animationFrameRef = useRef<number | null>(null);
-  const [overlayData, setOverlayData] = useState<OverlayData | null>(null);
 
-  // Fetch overlay data when overlay is enabled
-  useEffect(() => {
-    if (!showOverlay || !hasPoseData || overlayData) {
-      return;
-    }
-
-    const fetchOverlayData = async () => {
-      try {
-        const data = await videoApi.getOverlayData(videoId);
-        setOverlayData(data);
-      } catch (err: unknown) {
-        // Silently handle overlay data fetch errors - component will handle missing data
-      }
-    };
-
-    fetchOverlayData();
-  }, [showOverlay, hasPoseData, videoId, overlayData]);
+  // Fetch overlay data using React Query
+  const { data: overlayData } = useQuery<OverlayData>({
+    queryKey: ['overlay-data', videoId],
+    queryFn: () => videoApi.getOverlayData(videoId),
+    enabled: showOverlay && hasPoseData,
+    staleTime: 5 * 60 * 1000, // 5 minutes - overlay data doesn't change often
+  });
 
   // Detect rotation once when overlay data and video element are available
   // This handles phone videos where OpenCV dimensions don't match browser dimensions
@@ -191,6 +183,9 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
     }
   }, [showOverlay]);
 
+  // Store drawFrame function in a ref so it can be called from multiple effects
+  const drawFrameRef = useRef<(() => void) | null>(null);
+
   // Draw overlay on canvas
   useEffect(() => {
     if (!showOverlay || !overlayData || !videoElement || !canvasRef.current) {
@@ -202,12 +197,16 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
           ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
       }
+      drawFrameRef.current = null;
       return;
     }
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      drawFrameRef.current = null;
+      return;
+    }
 
     const drawFrame = () => {
       if (!videoElement || !overlayData) return;
@@ -353,6 +352,9 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       ctx.setLineDash([]);
     };
 
+    // Store drawFrame in ref for use by other effects
+    drawFrameRef.current = drawFrame;
+
     // Use requestAnimationFrame for smooth rendering while playing
     const handleTimeUpdate = () => {
       if (animationFrameRef.current === null) {
@@ -388,8 +390,30 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
         animationFrameRef.current = null;
       }
       lastRenderedFrameRef.current = -1;
+      drawFrameRef.current = null;
     };
   }, [showOverlay, overlayData, videoElement, needsRotation]);
+
+  // Update overlay when currentTime changes (e.g., keyboard navigation)
+  useEffect(() => {
+    if (!showOverlay || !overlayData || !videoElement || !canvasRef.current) {
+      return;
+    }
+
+    // Force redraw when currentTime changes (keyboard navigation)
+    if (currentTime !== undefined && drawFrameRef.current) {
+      lastRenderedFrameRef.current = -1; // Force redraw by resetting frame cache
+      // Use requestAnimationFrame for smooth updates
+      if (animationFrameRef.current === null) {
+        animationFrameRef.current = requestAnimationFrame(() => {
+          if (drawFrameRef.current) {
+            drawFrameRef.current();
+          }
+          animationFrameRef.current = null;
+        });
+      }
+    }
+  }, [currentTime, showOverlay, overlayData, videoElement]);
 
   if (!showOverlay) {
     return null;
