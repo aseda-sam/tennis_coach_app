@@ -33,8 +33,8 @@ function computeVideoContentRect(
 
   let contentX = 0;
   let contentY = 0;
-  let contentWidth = elementWidth;
-  let contentHeight = elementHeight;
+  let contentWidth: number;
+  let contentHeight: number;
 
   if (objectFit === 'contain') {
     // Video scaled to fit within element, maintaining aspect ratio
