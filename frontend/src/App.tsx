@@ -85,6 +85,7 @@ function App() {
             <div className="view-toggle">
               <button
                 type="button"
+                role="tab"
                 className={`view-toggle-btn ${currentView === 'upload' ? 'active' : ''}`}
                 onClick={() => setCurrentView('upload')}
                 aria-selected={currentView === 'upload'}
@@ -93,6 +94,7 @@ function App() {
               </button>
               <button
                 type="button"
+                role="tab"
                 className={`view-toggle-btn ${currentView === 'list' ? 'active' : ''}`}
                 onClick={() => setCurrentView('list')}
                 aria-selected={currentView === 'list'}
