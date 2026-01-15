@@ -473,6 +473,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           event.preventDefault();
           navigateToNextContact();
           break;
+        case 'a':
+        case 'A':
+          event.preventDefault();
+          openAddContactForm();
+          break;
         default:
           break;
       }
@@ -491,6 +496,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     navigateToNextFrame,
     navigateToPreviousContact,
     navigateToNextContact,
+    openAddContactForm,
   ]);
 
   // Memoize formatted time strings to prevent unnecessary re-renders
@@ -549,6 +555,37 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     },
     [getTimestampFromClientX, isAddContactVisible]
   );
+
+  // Open add contact form at current time (for keyboard shortcut)
+  const openAddContactForm = useCallback(() => {
+    if (!isAddContactVisible) return;
+
+    const video = videoRef.current;
+    const timestamp = video?.currentTime ?? currentTime;
+
+    // Pause video if playing
+    if (video && isPlaying) {
+      video.pause();
+      wasPlayingRef.current = true;
+    } else {
+      wasPlayingRef.current = false;
+    }
+
+    if (controlsBelow) {
+      // For scrubber mode, use the programmatic open mechanism
+      setOpenTimestamp(timestamp);
+      setOpenRequestId((prev) => prev + 1);
+      setHighlightTimestamp(timestamp);
+    } else {
+      // For overlay mode, trigger via the button's onFormOpen callback
+      // We'll handle this by setting a state that the overlay AddContactButton can react to
+      setHighlightTimestamp(timestamp);
+      // The overlay AddContactButton will be triggered via a ref or we can add a similar mechanism
+      // For now, let's use the same mechanism for consistency
+      setOpenTimestamp(timestamp);
+      setOpenRequestId((prev) => prev + 1);
+    }
+  }, [isAddContactVisible, currentTime, isPlaying, controlsBelow]);
 
   const toggleFullscreen = () => {
     const video = videoRef.current;
@@ -661,6 +698,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   await createContact(contact);
                 }}
                 isVisible={isAddContactVisible}
+                placement="overlay"
+                openRequestId={openRequestId}
+                openTimestamp={openTimestamp ?? undefined}
                 onFormOpen={(timestamp) => {
                   // Pause video if playing
                   const video = videoRef.current;
@@ -676,6 +716,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onFormClose={() => {
                   // Clear highlight
                   setHighlightTimestamp(null);
+                  // Clear open timestamp
+                  setOpenTimestamp(null);
                   // Note: We don't auto-resume playback - user can manually play
                   wasPlayingRef.current = false;
                 }}
@@ -766,6 +808,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   <div className="keyboard-shortcuts">
                     <span className="shortcut-hint">← → frame by frame</span>
                     <span className="shortcut-hint">[ ] previous/next contact</span>
+                    <span className="shortcut-hint">A add contact</span>
                   </div>
                 </div>
 
@@ -854,7 +897,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onPointerMove={handleAddBandPointerMove}
                 onPointerLeave={handleAddBandPointerLeave}
                 onPointerDown={handleAddBandPointerDown}
-                title="Click to add contact"
+                title="Click to add contact (or press A)"
               />
               <AddContactButton
                 currentTime={currentTime}
@@ -950,6 +993,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <div className="video-controls-below__time-labels">
               <span>{formattedCurrentTime}</span>
               <span>{formattedDuration}</span>
+            </div>
+            <div className="video-controls-below__keyboard-hints">
+              <span className="video-controls-below__hint">← → frame by frame</span>
+              <span className="video-controls-below__hint">[ ] previous/next contact</span>
+              <span className="video-controls-below__hint">A add contact</span>
             </div>
           </div>
 
