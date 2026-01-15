@@ -165,7 +165,8 @@ describe('TimingPerformance', () => {
       render(<TimingPerformance timing={unknownTiming} />);
 
       expect(screen.getByText('Unknown Stage')).toBeInTheDocument();
-      expect(screen.getByText('⏱️')).toBeInTheDocument(); // default icon
+      // Default icon is AnalyticsIcon (SVG), not emoji
+      expect(screen.getByTestId('stage-icon-unknown_stage')).toBeInTheDocument();
     });
   });
 

@@ -9,6 +9,57 @@ jest.mock('./Icons', () => ({
   VolumeIcon: () => <span data-testid="volume-icon">Volume</span>,
   VolumeOffIcon: () => <span data-testid="volume-off-icon">Muted</span>,
   FullscreenIcon: () => <span data-testid="fullscreen-icon">Fullscreen</span>,
+  ArrowBackIcon: () => <span data-testid="arrow-back-icon">Back</span>,
+  WarningIcon: () => <span data-testid="warning-icon">Warning</span>,
+  AnalyticsIcon: () => <span data-testid="analytics-icon">Analytics</span>,
+}));
+
+// Mock hooks and components that VideoPlayer depends on
+jest.mock('../hooks/useBallContacts', () => ({
+  useBallContacts: () => ({
+    contacts: [],
+    loading: false,
+    error: null,
+    createContact: jest.fn(),
+    updateContact: jest.fn(),
+    deleteContact: jest.fn(),
+  }),
+}));
+
+jest.mock('./PostureAnalysisSidebar', () => {
+  return function MockPostureAnalysisSidebar() {
+    return <div data-testid="posture-sidebar">Posture Analysis</div>;
+  };
+});
+
+jest.mock('./VideoOverlay', () => {
+  return function MockVideoOverlay() {
+    return <div data-testid="video-overlay">Overlay</div>;
+  };
+});
+
+jest.mock('./AddContactButton', () => {
+  return function MockAddContactButton() {
+    return <div data-testid="add-contact-button">Add Contact</div>;
+  };
+});
+
+jest.mock('./BallContactMarker', () => {
+  return function MockBallContactMarker() {
+    return <div data-testid="ball-contact-marker">Marker</div>;
+  };
+});
+
+jest.mock('./BallContactModal', () => {
+  return function MockBallContactModal() {
+    return <div data-testid="ball-contact-modal">Modal</div>;
+  };
+});
+
+jest.mock('../services/api', () => ({
+  videoApi: {
+    getVideo: jest.fn(),
+  },
 }));
 
 describe('VideoPlayer', () => {
