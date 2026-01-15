@@ -173,6 +173,7 @@ When `PROFILE=local`, the API automatically uses a mock user and doesn't require
 ### Protected Endpoints
 
 The following endpoints require authentication:
+
 - Video upload and management
 - Player creation and management
 - Ball contact creation and management
@@ -181,6 +182,7 @@ The following endpoints require authentication:
 ### Authorization
 
 The application enforces user-based data isolation:
+
 - Users can only access their own videos and players
 - Video owners control access to their video data
 - Admin users (configured via Supabase metadata) can access all data

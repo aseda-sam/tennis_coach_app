@@ -260,6 +260,7 @@ Retrieves pose detection data formatted for client-side overlay rendering. This 
 ```
 
 **Keypoints Format:**
+
 - Each keypoint is a dictionary entry with the keypoint name as the key
 - Values are arrays `[x, y]` representing coordinates in original video dimensions
 - Coordinates are scaled client-side to match displayed video dimensions
