@@ -474,6 +474,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 videoElement={videoRef.current}
                 showOverlay={showOverlay}
                 hasPoseData={hasPoseData}
+                currentTime={currentTime}
               />
             )}
 

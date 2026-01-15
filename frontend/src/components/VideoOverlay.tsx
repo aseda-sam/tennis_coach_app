@@ -9,6 +9,7 @@ interface VideoOverlayProps {
   videoElement: HTMLVideoElement | null;
   showOverlay: boolean;
   hasPoseData: boolean;
+  currentTime?: number; // Current video time to trigger updates on keyboard navigation
 }
 
 /**
@@ -116,6 +117,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
   videoElement,
   showOverlay,
   hasPoseData,
+  currentTime,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastRenderedFrameRef = useRef<number>(-1);
@@ -181,6 +183,9 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
     }
   }, [showOverlay]);
 
+  // Store drawFrame function in a ref so it can be called from multiple effects
+  const drawFrameRef = useRef<(() => void) | null>(null);
+
   // Draw overlay on canvas
   useEffect(() => {
     if (!showOverlay || !overlayData || !videoElement || !canvasRef.current) {
@@ -192,12 +197,16 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
           ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
       }
+      drawFrameRef.current = null;
       return;
     }
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      drawFrameRef.current = null;
+      return;
+    }
 
     const drawFrame = () => {
       if (!videoElement || !overlayData) return;
@@ -343,6 +352,9 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       ctx.setLineDash([]);
     };
 
+    // Store drawFrame in ref for use by other effects
+    drawFrameRef.current = drawFrame;
+
     // Use requestAnimationFrame for smooth rendering while playing
     const handleTimeUpdate = () => {
       if (animationFrameRef.current === null) {
@@ -378,8 +390,30 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
         animationFrameRef.current = null;
       }
       lastRenderedFrameRef.current = -1;
+      drawFrameRef.current = null;
     };
   }, [showOverlay, overlayData, videoElement, needsRotation]);
+
+  // Update overlay when currentTime changes (e.g., keyboard navigation)
+  useEffect(() => {
+    if (!showOverlay || !overlayData || !videoElement || !canvasRef.current) {
+      return;
+    }
+
+    // Force redraw when currentTime changes (keyboard navigation)
+    if (currentTime !== undefined && drawFrameRef.current) {
+      lastRenderedFrameRef.current = -1; // Force redraw by resetting frame cache
+      // Use requestAnimationFrame for smooth updates
+      if (animationFrameRef.current === null) {
+        animationFrameRef.current = requestAnimationFrame(() => {
+          if (drawFrameRef.current) {
+            drawFrameRef.current();
+          }
+          animationFrameRef.current = null;
+        });
+      }
+    }
+  }, [currentTime, showOverlay, overlayData, videoElement]);
 
   if (!showOverlay) {
     return null;
