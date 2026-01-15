@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { videoApi } from '../services/api';
 import { OverlayData } from '../types/video';
 import './VideoOverlay.css';
@@ -261,10 +261,11 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Get current video time - prefer prop over element (more reliable for programmatic seeks)
-      const videoTime = currentTimeRef.current !== undefined 
-        ? currentTimeRef.current 
-        : videoElement.currentTime;
-      
+      const videoTime =
+        currentTimeRef.current !== undefined
+          ? currentTimeRef.current
+          : videoElement.currentTime;
+
       // Skip redraw if time hasn't changed significantly (performance optimization)
       // Use a small tolerance to handle floating point precision issues
       const timeTolerance = 0.01; // ~10ms tolerance
@@ -425,12 +426,12 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       // Reset both caches to force redraw
       lastRenderedFrameRef.current = -1;
       lastRenderedTimeRef.current = -1;
-      
+
       // Cancel any pending animation frame and schedule immediate update
       if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-      
+
       // Use requestAnimationFrame for smooth updates, but ensure it happens
       animationFrameRef.current = requestAnimationFrame(() => {
         if (drawFrameRef.current) {
