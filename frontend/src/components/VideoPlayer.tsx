@@ -95,6 +95,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Resolve video URL using signed URL endpoint (preferred) or legacy redirect resolution
   useEffect(() => {
     const resolveVideoUrl = async () => {
+      // Clear any previous error state when starting to load a new video
+      setError(null);
+      
       // If we have a videoId and the URL is a stream endpoint, use the new signed URL API
       if (videoId && videoUrl.includes('/stream')) {
         setIsLoadingUrl(true);
@@ -141,6 +144,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       } else {
         // Not a stream endpoint or no videoId - use URL directly
         setResolvedVideoUrl(videoUrl);
+        // Clear error state for non-stream URLs as well
+        setError(null);
       }
     };
 
