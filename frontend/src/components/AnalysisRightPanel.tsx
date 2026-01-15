@@ -106,7 +106,7 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
               <svg
                 className="analysis-right-panel__chart-svg"
                 viewBox="0 0 300 180"
-                preserveAspectRatio="none"
+                preserveAspectRatio="xMidYMid meet"
               >
                 {/* Y-axis */}
                 <line
