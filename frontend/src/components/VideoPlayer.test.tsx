@@ -121,7 +121,9 @@ describe('VideoPlayer', () => {
 
     it('renders video title when onClose is provided', () => {
       const onCloseMock = jest.fn();
-      renderWithProviders(<VideoPlayer {...defaultProps} onClose={onCloseMock} />);
+      renderWithProviders(
+        <VideoPlayer {...defaultProps} onClose={onCloseMock} />
+      );
 
       expect(screen.getByText(defaultProps.title)).toBeInTheDocument();
       expect(screen.getByTestId('close-icon')).toBeInTheDocument();
@@ -144,7 +146,9 @@ describe('VideoPlayer', () => {
 
   describe('Controls', () => {
     it('renders video controls when showControls is true', () => {
-      renderWithProviders(<VideoPlayer {...defaultProps} showControls={true} />);
+      renderWithProviders(
+        <VideoPlayer {...defaultProps} showControls={true} />
+      );
 
       const sliders = screen.getAllByRole('slider');
       expect(sliders.length).toBeGreaterThan(0);
@@ -153,7 +157,9 @@ describe('VideoPlayer', () => {
     });
 
     it('does not render controls when showControls is false', () => {
-      renderWithProviders(<VideoPlayer {...defaultProps} showControls={false} />);
+      renderWithProviders(
+        <VideoPlayer {...defaultProps} showControls={false} />
+      );
 
       expect(screen.queryByRole('slider')).not.toBeInTheDocument();
       expect(screen.queryByTestId('volume-icon')).not.toBeInTheDocument();
@@ -162,7 +168,9 @@ describe('VideoPlayer', () => {
     it('calls onClose when close button is clicked', () => {
       const onCloseMock = jest.fn();
 
-      renderWithProviders(<VideoPlayer {...defaultProps} onClose={onCloseMock} />);
+      renderWithProviders(
+        <VideoPlayer {...defaultProps} onClose={onCloseMock} />
+      );
 
       const closeButton = screen.getByRole('button', { name: /close/i });
       fireEvent.click(closeButton);
@@ -206,7 +214,9 @@ describe('VideoPlayer', () => {
 
     it('close button is accessible when provided', () => {
       const onCloseMock = jest.fn();
-      renderWithProviders(<VideoPlayer {...defaultProps} onClose={onCloseMock} />);
+      renderWithProviders(
+        <VideoPlayer {...defaultProps} onClose={onCloseMock} />
+      );
 
       const closeButton = screen.getByRole('button', { name: /close/i });
       expect(closeButton).toBeInTheDocument();
