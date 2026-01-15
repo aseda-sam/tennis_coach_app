@@ -37,6 +37,8 @@ interface VideoPlayerProps {
   showPostureAnalysis?: boolean; // Show posture analysis sidebar
   hasPoseData?: boolean; // Whether pose detection data exists
   controlsBelow?: boolean; // Render controls below video instead of overlaying
+  onContactNavigate?: (contactId: number) => void; // Callback when contact is navigated to
+  onNavigateReady?: (navigateFn: (contactId: number) => void) => void; // Callback to expose navigate function
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -49,6 +51,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   showPostureAnalysis = false,
   hasPoseData = false,
   controlsBelow = false,
+  onContactNavigate,
+  onNavigateReady,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -72,6 +76,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(null);
   const wasPlayingRef = useRef<boolean>(false);
+  const [currentContactIndex, setCurrentContactIndex] = useState<number | null>(null);
 
   // Use ball contacts hook if videoId is provided
   const {
@@ -332,7 +337,111 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     navigateFrame('backward');
   }, [navigateFrame]);
 
-  // Keyboard shortcuts for frame navigation and play/pause
+  // Navigate to a specific contact by ID (exposed via callback)
+  const navigateToContactById = useCallback(
+    (contactId: number) => {
+      const contact = ballContacts.find((c) => c.id === contactId);
+      if (!contact) return;
+
+      const video = videoRef.current;
+      if (!video) return;
+
+      // Pause if playing
+      if (isPlaying) {
+        video.pause();
+      }
+
+      // Seek to contact timestamp
+      video.currentTime = contact.video_timestamp;
+      setCurrentTime(contact.video_timestamp);
+      setSelectedContactId(contact.id);
+      onContactNavigate?.(contact.id);
+    },
+    [ballContacts, isPlaying, onContactNavigate]
+  );
+
+  // Expose navigate function to parent
+  useEffect(() => {
+    if (onNavigateReady) {
+      onNavigateReady(navigateToContactById);
+    }
+  }, [onNavigateReady, navigateToContactById]);
+
+  // Navigate to a specific contact object
+  const navigateToContact = useCallback(
+    (contact: BallContact) => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      // Pause if playing
+      if (isPlaying) {
+        video.pause();
+      }
+
+      // Seek to contact timestamp
+      video.currentTime = contact.video_timestamp;
+      setCurrentTime(contact.video_timestamp);
+      setSelectedContactId(contact.id);
+      onContactNavigate?.(contact.id);
+    },
+    [isPlaying, onContactNavigate]
+  );
+
+  // Navigate to previous/next contact
+  const navigateToPreviousContact = useCallback(() => {
+    if (ballContacts.length === 0) return;
+
+    const sortedContacts = [...ballContacts].sort(
+      (a, b) => a.video_timestamp - b.video_timestamp
+    );
+    const currentIdx =
+      currentContactIndex !== null
+        ? currentContactIndex
+        : sortedContacts.findIndex(
+            (c) => c.video_timestamp >= currentTime
+          ) || 0;
+
+    const prevIdx = Math.max(0, currentIdx - 1);
+    const prevContact = sortedContacts[prevIdx];
+    setCurrentContactIndex(prevIdx);
+    navigateToContact(prevContact);
+  }, [ballContacts, currentTime, currentContactIndex, navigateToContact]);
+
+  const navigateToNextContact = useCallback(() => {
+    if (ballContacts.length === 0) return;
+
+    const sortedContacts = [...ballContacts].sort(
+      (a, b) => a.video_timestamp - b.video_timestamp
+    );
+    const currentIdx =
+      currentContactIndex !== null
+        ? currentContactIndex
+        : sortedContacts.findIndex(
+            (c) => c.video_timestamp >= currentTime
+          ) || 0;
+
+    const nextIdx = Math.min(sortedContacts.length - 1, currentIdx + 1);
+    const nextContact = sortedContacts[nextIdx];
+    setCurrentContactIndex(nextIdx);
+    navigateToContact(nextContact);
+  }, [ballContacts, currentTime, currentContactIndex, navigateToContact]);
+
+  // Update current contact index when time changes
+  useEffect(() => {
+    if (ballContacts.length === 0) return;
+
+    const sortedContacts = [...ballContacts].sort(
+      (a, b) => a.video_timestamp - b.video_timestamp
+    );
+    const idx = sortedContacts.findIndex(
+      (c) => Math.abs(c.video_timestamp - currentTime) < 0.1
+    );
+    if (idx >= 0) {
+      setCurrentContactIndex(idx);
+    }
+  }, [currentTime, ballContacts]);
+
+  // Keyboard shortcuts for frame navigation, play/pause, and contact navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Only handle keyboard shortcuts when video player is focused or when not in input fields
@@ -357,6 +466,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           event.preventDefault();
           navigateToNextFrame();
           break;
+        case '[':
+          event.preventDefault();
+          navigateToPreviousContact();
+          break;
+        case ']':
+          event.preventDefault();
+          navigateToNextContact();
+          break;
         default:
           break;
       }
@@ -369,7 +486,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [togglePlay, navigateToPreviousFrame, navigateToNextFrame]);
+  }, [
+    togglePlay,
+    navigateToPreviousFrame,
+    navigateToNextFrame,
+    navigateToPreviousContact,
+    navigateToNextContact,
+  ]);
 
   // Memoize formatted time strings to prevent unnecessary re-renders
   const formattedCurrentTime = useMemo(
@@ -741,12 +864,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <div className="video-controls-below__controls">
             <div className="video-controls-below__center-controls">
               <button
-                className="video-controls-below__nav-btn video-controls-below__nav-btn--coming-soon"
-                disabled
-                title="Coming soon"
+                className="video-controls-below__nav-btn"
+                onClick={navigateToPreviousContact}
+                disabled={ballContacts.length === 0}
+                title="Previous Contact ([)"
               >
                 <ArrowBackIcon size={16} />
-                Previous Serve
+                Previous Contact
               </button>
               <button
                 className="video-controls-below__play-btn"
@@ -755,11 +879,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
               </button>
               <button
-                className="video-controls-below__next-btn video-controls-below__next-btn--coming-soon"
-                disabled
-                title="Coming soon"
+                className="video-controls-below__next-btn"
+                onClick={navigateToNextContact}
+                disabled={ballContacts.length === 0}
+                title="Next Contact (])"
               >
-                Next Serve
+                Next Contact
                 <span className="video-controls-below__arrow-right">
                   <ArrowBackIcon size={16} />
                 </span>
