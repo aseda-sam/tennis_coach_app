@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   STROKE_SUBTYPE_LABELS,
   STROKE_TYPE_LABELS,
@@ -16,7 +16,10 @@ interface AddContactButtonProps {
   fps?: number; // FPS for frame number calculation
   onAddContact: (contact: BallContactCreate) => Promise<void>;
   isVisible: boolean;
-  onFormOpen?: () => void; // Callback when form opens
+  placement?: 'overlay' | 'scrubber';
+  openRequestId?: number;
+  openTimestamp?: number;
+  onFormOpen?: (timestamp: number) => void; // Callback when form opens
   onFormClose?: () => void; // Callback when form closes
 }
 
@@ -27,6 +30,9 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
   fps,
   onAddContact,
   isVisible,
+  placement = 'overlay',
+  openRequestId,
+  openTimestamp,
   onFormOpen,
   onFormClose,
 }) => {
@@ -43,15 +49,21 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
     detection_source: 'manual',
   });
 
-  // Lock timestamp when form opens
-  const handleOpen = () => {
-    setLockedTimestamp(currentTime);
+  const lastOpenRequestId = useRef<number | null>(null);
+
+  const openAtTimestamp = (timestamp: number) => {
+    setLockedTimestamp(timestamp);
     setFormData((prev) => ({
       ...prev,
-      video_timestamp: currentTime,
+      video_timestamp: timestamp,
     }));
     setIsOpen(true);
-    onFormOpen?.();
+    onFormOpen?.(timestamp);
+  };
+
+  // Lock timestamp when form opens
+  const handleOpen = () => {
+    openAtTimestamp(currentTime);
   };
 
   // Unlock timestamp when form closes
@@ -72,6 +84,14 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
       setValidationError(null);
     }
   }, [currentTime, isOpen, lockedTimestamp]);
+
+  useEffect(() => {
+    if (!openRequestId || openTimestamp === undefined) return;
+    if (openRequestId === lastOpenRequestId.current) return;
+
+    lastOpenRequestId.current = openRequestId;
+    openAtTimestamp(openTimestamp);
+  }, [openRequestId, openTimestamp]);
 
   // Validate timestamp whenever form data changes
   useEffect(() => {
@@ -147,22 +167,34 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
 
   if (!isVisible) return null;
 
+  const containerClassName = `add-contact-container ${
+    placement === 'scrubber' ? 'add-contact-container--scrubber' : ''
+  } ${isOpen ? 'is-open' : ''}`.trim();
+  const buttonClassName = `add-contact-btn ${
+    placement === 'scrubber' ? 'add-contact-btn--scrubber' : ''
+  }`.trim();
+  const formClassName = `add-contact-form ${
+    placement === 'scrubber' ? 'add-contact-form--scrubber' : ''
+  }`.trim();
+
   return (
-    <div className="add-contact-container">
+    <div className={containerClassName}>
       {!isOpen ? (
-        <button
-          className="add-contact-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpen();
-          }}
-          title={`Add ball contact at ${formatTime(currentTime)}`}
-        >
-          <span className="add-icon">+</span>
-          <span className="add-text">Add Contact</span>
-        </button>
+        placement !== 'scrubber' && (
+          <button
+            className={buttonClassName}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpen();
+            }}
+            title={`Add ball contact at ${formatTime(currentTime)}`}
+          >
+            <span className="add-icon">+</span>
+            <span className="add-text">Add Contact</span>
+          </button>
+        )
       ) : (
-        <div className="add-contact-form" onClick={(e) => e.stopPropagation()}>
+        <div className={formClassName} onClick={(e) => e.stopPropagation()}>
           <div className="form-header">
             <div className="timestamp-header">
               <div className="timestamp-label">Add contact at:</div>

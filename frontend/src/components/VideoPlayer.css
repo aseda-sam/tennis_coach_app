@@ -698,7 +698,19 @@
   position: relative;
   width: 100%;
   margin-bottom: var(--spacing-sm);
+  padding-top: var(--spacing-lg);
 }
+
+.video-controls-below__add-band {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--spacing-lg);
+  cursor: pointer;
+  z-index: 2;
+}
+
 
 .video-controls-below__scrubber-input {
   width: 100%;
@@ -762,19 +774,42 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 6px;
+  height: var(--spacing-lg);
   pointer-events: none;
-  z-index: 1;
+  z-index: 3;
+}
+
+.video-controls-below__contact-markers .ball-contact-marker {
+  top: var(--spacing-xs);
+}
+
+.video-controls-below__contact-markers .ball-contact-marker,
+.video-controls-below__contact-markers .ball-contact-marker * {
+  pointer-events: auto;
+}
+
+.contact-hover-marker {
+  position: absolute;
+  top: var(--spacing-xs);
+  width: var(--spacing-sm);
+  height: var(--spacing-sm);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 2px solid var(--color-primary);
+  transform: translateX(-50%);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* Highlight marker for locked contact timestamp (controls-below) */
 .video-controls-below__scrubber-track .contact-highlight-marker {
   position: absolute;
-  top: -2px;
-  width: 4px;
-  height: 10px;
+  top: var(--spacing-xs);
+  width: var(--spacing-xs);
+  height: var(--spacing-md);
   background: var(--color-warning, #f59e0b);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   transform: translateX(-50%);
   pointer-events: none;
   z-index: 2;

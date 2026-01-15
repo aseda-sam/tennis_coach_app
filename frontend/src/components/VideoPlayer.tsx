@@ -74,8 +74,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   >();
   const [showOverlay, setShowOverlay] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrubberTrackRef = useRef<HTMLDivElement>(null);
   const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(null);
   const wasPlayingRef = useRef<boolean>(false);
+  const [hoverTimestamp, setHoverTimestamp] = useState<number | null>(null);
+  const [openTimestamp, setOpenTimestamp] = useState<number | null>(null);
+  const [openRequestId, setOpenRequestId] = useState(0);
+  const isAddContactVisible = !!videoId && !error && duration > 0;
 
   // Use ball contacts hook if videoId is provided
   const {
@@ -505,6 +510,46 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
+  const getTimestampFromClientX = useCallback(
+    (clientX: number): number | null => {
+      const track = scrubberTrackRef.current;
+      if (!track || duration <= 0) return null;
+
+      const rect = track.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      return ratio * duration;
+    },
+    [duration]
+  );
+
+  const handleAddBandPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const timestamp = getTimestampFromClientX(event.clientX);
+      if (timestamp !== null) {
+        setHoverTimestamp(timestamp);
+      }
+    },
+    [getTimestampFromClientX]
+  );
+
+  const handleAddBandPointerLeave = useCallback(() => {
+    setHoverTimestamp(null);
+  }, []);
+
+  const handleAddBandPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!isAddContactVisible) return;
+      const timestamp = getTimestampFromClientX(event.clientX);
+      if (timestamp === null) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      setOpenTimestamp(timestamp);
+      setOpenRequestId((prev) => prev + 1);
+    },
+    [getTimestampFromClientX, isAddContactVisible]
+  );
+
   const toggleFullscreen = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -605,35 +650,37 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
             )}
 
-            {/* Add Contact Button */}
-            <AddContactButton
-              currentTime={currentTime}
-              videoId={videoId || 0}
-              videoDuration={duration}
-              fps={videoMetadata?.fps}
-              onAddContact={async (contact: BallContactCreate) => {
-                await createContact(contact);
-              }}
-              isVisible={!!videoId && !error && duration > 0}
-              onFormOpen={() => {
-                // Pause video if playing
-                const video = videoRef.current;
-                if (video && isPlaying) {
-                  video.pause();
-                  wasPlayingRef.current = true;
-                } else {
+            {/* Add Contact Button (overlay placement) */}
+            {!controlsBelow && (
+              <AddContactButton
+                currentTime={currentTime}
+                videoId={videoId || 0}
+                videoDuration={duration}
+                fps={videoMetadata?.fps}
+                onAddContact={async (contact: BallContactCreate) => {
+                  await createContact(contact);
+                }}
+                isVisible={isAddContactVisible}
+                onFormOpen={(timestamp) => {
+                  // Pause video if playing
+                  const video = videoRef.current;
+                  if (video && isPlaying) {
+                    video.pause();
+                    wasPlayingRef.current = true;
+                  } else {
+                    wasPlayingRef.current = false;
+                  }
+                  // Set highlight timestamp
+                  setHighlightTimestamp(timestamp);
+                }}
+                onFormClose={() => {
+                  // Clear highlight
+                  setHighlightTimestamp(null);
+                  // Note: We don't auto-resume playback - user can manually play
                   wasPlayingRef.current = false;
-                }
-                // Set highlight timestamp
-                setHighlightTimestamp(currentTime);
-              }}
-              onFormClose={() => {
-                // Clear highlight
-                setHighlightTimestamp(null);
-                // Note: We don't auto-resume playback - user can manually play
-                wasPlayingRef.current = false;
-              }}
-            />
+                }}
+              />
+            )}
 
             {error && !isLoadingUrl && (
               <div className="error-overlay">
@@ -798,7 +845,50 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <div className="video-controls-below">
           {/* Video Scrubber */}
           <div className="video-controls-below__scrubber">
-            <div className="video-controls-below__scrubber-track">
+            <div
+              className="video-controls-below__scrubber-track"
+              ref={scrubberTrackRef}
+            >
+              <div
+                className="video-controls-below__add-band"
+                onPointerMove={handleAddBandPointerMove}
+                onPointerLeave={handleAddBandPointerLeave}
+                onPointerDown={handleAddBandPointerDown}
+                title="Click to add contact"
+              />
+              <AddContactButton
+                currentTime={currentTime}
+                videoId={videoId || 0}
+                videoDuration={duration}
+                fps={videoMetadata?.fps}
+                onAddContact={async (contact: BallContactCreate) => {
+                  await createContact(contact);
+                }}
+                isVisible={isAddContactVisible}
+                placement="scrubber"
+                openRequestId={openRequestId}
+                openTimestamp={openTimestamp ?? undefined}
+                onFormOpen={(timestamp) => {
+                  // Pause video if playing
+                  const video = videoRef.current;
+                  if (video && isPlaying) {
+                    video.pause();
+                    wasPlayingRef.current = true;
+                  } else {
+                    wasPlayingRef.current = false;
+                  }
+                  // Set highlight timestamp
+                  setHighlightTimestamp(timestamp);
+                }}
+                onFormClose={() => {
+                  // Clear highlight
+                  setHighlightTimestamp(null);
+                  // Clear open timestamp
+                  setOpenTimestamp(null);
+                  // Note: We don't auto-resume playback - user can manually play
+                  wasPlayingRef.current = false;
+                }}
+              />
               <input
                 type="range"
                 className="video-controls-below__scrubber-input"
@@ -838,6 +928,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     );
                   })}
                 </div>
+              )}
+              {hoverTimestamp !== null && duration > 0 && (
+                <div
+                  className="contact-hover-marker"
+                  style={{
+                    left: `${(hoverTimestamp / duration) * 100}%`,
+                  }}
+                />
               )}
               {/* Highlight marker for locked contact timestamp */}
               {highlightTimestamp !== null && duration > 0 && (

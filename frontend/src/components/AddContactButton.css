@@ -6,6 +6,28 @@
   z-index: 1000;
 }
 
+.add-contact-container--scrubber {
+  position: absolute;
+  top: 0;
+  right: var(--spacing-xs);
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: var(--transition-fast);
+}
+
+.add-contact-container--scrubber.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .add-contact-container--scrubber {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .add-contact-btn {
   display: flex;
   align-items: center;
@@ -40,6 +62,30 @@
   white-space: nowrap;
 }
 
+.add-contact-btn--scrubber {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  box-shadow: var(--shadow-xs);
+}
+
+.add-contact-btn--scrubber:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(0);
+}
+
+.add-contact-btn--scrubber .add-icon {
+  font-size: var(--font-size-sm);
+  line-height: 1;
+}
+
 /* Form Styles */
 .add-contact-form {
   position: absolute;
@@ -51,6 +97,12 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   border: 1px solid #e5e7eb;
   overflow: hidden;
+}
+
+.add-contact-form--scrubber {
+  top: auto;
+  bottom: calc(100% + var(--spacing-sm));
+  right: 0;
 }
 
 .form-header {
