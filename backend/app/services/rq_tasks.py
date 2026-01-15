@@ -111,6 +111,29 @@ def analyze_pose_detection_rq(
                 f"detection_id={pose_detection.id}"
             )
 
+            # Post-process: analyze contacts for this video (synchronous, fast)
+            try:
+                from app.services.posture_analysis import (
+                    analyze_all_contacts_for_video,
+                )
+
+                logger.info(
+                    f"RQ task: Calculating contact metrics for video {video_id}"
+                )
+                contact_metrics_result = analyze_all_contacts_for_video(
+                    db=db, video_id=video_id, force_reanalysis=False
+                )
+                logger.info(
+                    f"RQ task: Contact metrics calculated for video {video_id}: "
+                    f"{contact_metrics_result.get('analyzed', 0)} contacts analyzed"
+                )
+            except Exception as e:
+                # Log error but don't fail the pose detection task
+                logger.warning(
+                    f"RQ task: Failed to calculate contact metrics for video {video_id}: {e}",
+                    exc_info=True,
+                )
+
             return {
                 "status": "completed",
                 "processing_time": pose_results.get("processing_time_seconds", 0.0),
@@ -213,3 +236,88 @@ def analyze_ball_detection_rq(
     finally:
         # Clean up temp video file if created for cloud storage
         _cleanup_temp_file(temp_video_path)
+
+
+def analyze_contact_metrics_rq(
+    video_id: int, force_reanalysis: bool = False
+) -> Dict[str, Any]:
+    """
+    RQ task for contact metrics re-analysis (elbow angles, etc.).
+
+    This task analyzes contact metrics using existing pose detection data.
+    It does not re-run pose detection.
+
+    Args:
+        video_id: Video ID from database
+        force_reanalysis: Whether to reanalyze contacts that already have metrics
+
+    Returns:
+        Analysis results dictionary
+
+    Raises:
+        ValueError: If video not found or pose data missing
+        RuntimeError: If analysis fails
+    """
+    try:
+        from app.services.posture_analysis import analyze_all_contacts_for_video
+
+        logger.info(
+            f"RQ task: Starting contact metrics analysis for video {video_id} "
+            f"(force_reanalysis={force_reanalysis})"
+        )
+
+        # Create database session
+        with SessionLocal() as db:
+            # Verify video exists
+            video = video_service.get_video_by_id(db, video_id)
+            if not video:
+                raise ValueError(f"Video {video_id} not found")
+
+            # Verify pose detection exists
+            from app.models.pose_detection import PoseDetection
+
+            pose_detection = (
+                db.query(PoseDetection)
+                .filter(
+                    PoseDetection.video_id == video_id,
+                    PoseDetection.status == "completed",
+                )
+                .first()
+            )
+
+            if not pose_detection:
+                raise ValueError(
+                    f"No completed pose detection found for video {video_id}. "
+                    "Please run pose detection first."
+                )
+
+            # Analyze all contacts
+            results = analyze_all_contacts_for_video(
+                db=db, video_id=video_id, force_reanalysis=force_reanalysis
+            )
+
+            logger.info(
+                f"RQ task: Contact metrics analysis completed for video {video_id}: "
+                f"{results.get('analyzed', 0)} contacts analyzed, "
+                f"{results.get('failed', 0)} failed, "
+                f"{results.get('skipped', 0)} skipped"
+            )
+
+            return {
+                "status": "completed",
+                "analysis_summary": {
+                    "total_contacts": results.get("total_contacts", 0),
+                    "analyzed": results.get("analyzed", 0),
+                    "failed": results.get("failed", 0),
+                    "skipped": results.get("skipped", 0),
+                },
+                "contact_results": results.get("contact_results", []),
+                "analysis_type": "contact_metrics",
+            }
+
+    except Exception as e:
+        logger.error(
+            f"RQ task failed for contact metrics analysis on video {video_id}: {e}",
+            exc_info=True,
+        )
+        raise

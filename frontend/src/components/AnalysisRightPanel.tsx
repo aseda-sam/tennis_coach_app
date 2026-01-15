@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useBallContacts } from '../hooks/useBallContacts';
+import { formatTime } from '../utils/validation';
 import './AnalysisRightPanel.css';
 
 interface AnalysisRightPanelProps {
@@ -14,6 +16,42 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
   videoFilename,
   analysisStatus,
 }) => {
+  const { contacts: ballContacts } = useBallContacts({
+    videoId,
+    autoRefresh: true,
+  });
+
+  const getAngleColor = (angle?: number): string => {
+    if (angle === undefined || angle === null) return '#6b7280'; // gray-500
+    if (angle < 90) return '#ef4444'; // red-500 - very bent
+    if (angle < 120) return '#f59e0b'; // amber-500 - moderately bent
+    if (angle < 150) return '#10b981'; // emerald-500 - good range
+    return '#3b82f6'; // blue-500 - straight
+  };
+
+  const getAngleDescription = (angle?: number): string => {
+    if (angle === undefined || angle === null) return 'Not analyzed';
+    if (angle < 90) return 'Very bent';
+    if (angle < 120) return 'Bent';
+    if (angle < 150) return 'Good range';
+    return 'Straight';
+  };
+
+  const contactsWithMetrics = useMemo(() => {
+    return ballContacts
+      .filter((contact) => contact.elbow_angle !== undefined)
+      .sort((a, b) => a.video_timestamp - b.video_timestamp);
+  }, [ballContacts]);
+
+  const avgElbowAngle = useMemo(() => {
+    if (contactsWithMetrics.length === 0) return null;
+    const sum = contactsWithMetrics.reduce(
+      (acc, contact) => acc + (contact.elbow_angle || 0),
+      0
+    );
+    return Math.round(sum / contactsWithMetrics.length);
+  }, [contactsWithMetrics]);
+
   return (
     <div className="analysis-right-panel">
       {/* Serve Info Card */}
@@ -103,40 +141,86 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
         </div>
       </div>
 
-      {/* Measurements Card */}
-      <div className="analysis-right-panel__card analysis-right-panel__card--coming-soon">
-        <div className="analysis-right-panel__trajectory-header">
-          <div className="analysis-right-panel__trajectory-title-group">
-            <h3 className="analysis-right-panel__card-title">
-              Measurements
-            </h3>
-            <p className="analysis-right-panel__card-subtitle">Coming soon</p>
-          </div>
-        </div>
-        <div className="analysis-right-panel__trajectory-chart">
-          <div className="analysis-right-panel__chart-placeholder">
-            <div className="analysis-right-panel__chart-blurred">
-              <div className="analysis-right-panel__measurements-preview">
-                <div className="analysis-right-panel__measurement-preview-item">
-                  <span className="analysis-right-panel__preview-label">Toss</span>
-                  <span className="analysis-right-panel__preview-value">315 cm</span>
-                </div>
-                <div className="analysis-right-panel__measurement-preview-item">
-                  <span className="analysis-right-panel__preview-label">Contact</span>
-                  <span className="analysis-right-panel__preview-value">305 cm</span>
-                </div>
-                <div className="analysis-right-panel__measurement-preview-item">
-                  <span className="analysis-right-panel__preview-label">Elbow Angle</span>
-                  <span className="analysis-right-panel__preview-value">142°</span>
-                </div>
-              </div>
+      {/* Contact Metrics Card */}
+      {analysisStatus?.has_analysis && (
+        <div className="analysis-right-panel__card">
+          <div className="analysis-right-panel__trajectory-header">
+            <div className="analysis-right-panel__trajectory-title-group">
+              <h3 className="analysis-right-panel__card-title">
+                Contact Metrics
+              </h3>
+              {avgElbowAngle !== null && (
+                <p className="analysis-right-panel__card-subtitle">
+                  Avg: {avgElbowAngle}°
+                </p>
+              )}
             </div>
-            <p className="analysis-right-panel__chart-note">
-              Track key metrics and improve your serve technique
-            </p>
+          </div>
+          <div className="analysis-right-panel__metrics-list">
+            {contactsWithMetrics.length > 0 ? (
+              contactsWithMetrics.map((contact) => {
+                const angle = contact.elbow_angle;
+                const angleColor = getAngleColor(angle);
+                const angleDesc = getAngleDescription(angle);
+                const strokeTypeColor = (() => {
+                  switch (contact.stroke_type?.toLowerCase()) {
+                    case 'ground_stroke':
+                      return '#10b981';
+                    case 'serve':
+                      return '#3b82f6';
+                    case 'return':
+                      return '#f59e0b';
+                    case 'volley':
+                      return '#a855f7';
+                    case 'overhead':
+                      return '#ef4444';
+                    default:
+                      return '#6b7280';
+                  }
+                })();
+
+                return (
+                  <div
+                    key={contact.id}
+                    className="analysis-right-panel__metric-item"
+                  >
+                    <div className="analysis-right-panel__metric-header">
+                      <div
+                        className="analysis-right-panel__metric-dot"
+                        style={{ backgroundColor: strokeTypeColor }}
+                      />
+                      <div className="analysis-right-panel__metric-time">
+                        {formatTime(contact.video_timestamp)}
+                      </div>
+                      <div className="analysis-right-panel__metric-stroke">
+                        {contact.stroke_type || 'Unknown'}
+                      </div>
+                    </div>
+                    <div className="analysis-right-panel__metric-angle">
+                      <span
+                        className="analysis-right-panel__angle-value"
+                        style={{ color: angleColor }}
+                      >
+                        {Math.round(angle || 0)}°
+                      </span>
+                      <span className="analysis-right-panel__angle-desc">
+                        {angleDesc}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="analysis-right-panel__metrics-empty">
+                <p>No contact metrics available</p>
+                <p className="analysis-right-panel__metrics-hint">
+                  Add contacts and run pose analysis to see metrics
+                </p>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

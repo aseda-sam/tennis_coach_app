@@ -12,21 +12,28 @@ import './AddContactButton.css';
 interface AddContactButtonProps {
   currentTime: number;
   videoId: number;
-  videoDuration: number; // Add video duration prop
+  videoDuration: number;
+  fps?: number; // FPS for frame number calculation
   onAddContact: (contact: BallContactCreate) => Promise<void>;
   isVisible: boolean;
+  onFormOpen?: () => void; // Callback when form opens
+  onFormClose?: () => void; // Callback when form closes
 }
 
 const AddContactButton: React.FC<AddContactButtonProps> = ({
   currentTime,
   videoId,
   videoDuration,
+  fps,
   onAddContact,
   isVisible,
+  onFormOpen,
+  onFormClose,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [lockedTimestamp, setLockedTimestamp] = useState<number | null>(null);
   const [formData, setFormData] = useState<BallContactCreate>({
     video_id: videoId,
     video_timestamp: currentTime,
@@ -36,15 +43,35 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
     detection_source: 'manual',
   });
 
-  // Update video_timestamp when currentTime changes
-  useEffect(() => {
+  // Lock timestamp when form opens
+  const handleOpen = () => {
+    setLockedTimestamp(currentTime);
     setFormData((prev) => ({
       ...prev,
       video_timestamp: currentTime,
     }));
-    // Clear validation error when current time changes
+    setIsOpen(true);
+    onFormOpen?.();
+  };
+
+  // Unlock timestamp when form closes
+  const handleClose = () => {
+    setIsOpen(false);
+    setLockedTimestamp(null);
     setValidationError(null);
-  }, [currentTime]);
+    onFormClose?.();
+  };
+
+  // Update video_timestamp only when form is closed (not locked)
+  useEffect(() => {
+    if (!isOpen && lockedTimestamp === null) {
+      setFormData((prev) => ({
+        ...prev,
+        video_timestamp: currentTime,
+      }));
+      setValidationError(null);
+    }
+  }, [currentTime, isOpen, lockedTimestamp]);
 
   // Validate timestamp whenever form data changes
   useEffect(() => {
@@ -73,7 +100,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
     setIsLoading(true);
     try {
       await onAddContact(formData);
-      setIsOpen(false);
+      handleClose();
       setFormData({
         video_id: videoId,
         video_timestamp: currentTime,
@@ -82,7 +109,6 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
         stroke_subtype: undefined,
         detection_source: 'manual',
       });
-      setValidationError(null);
     } catch (error) {
       // Error is shown to user via alert
       alert('Failed to add contact. Please try again.');
@@ -90,6 +116,26 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
       setIsLoading(false);
     }
   };
+
+  const handleUseCurrentTime = () => {
+    const newTimestamp = currentTime;
+    setLockedTimestamp(newTimestamp);
+    setFormData((prev) => ({
+      ...prev,
+      video_timestamp: newTimestamp,
+    }));
+    setValidationError(null);
+  };
+
+  // Calculate frame number from timestamp
+  const getFrameNumber = (timestamp: number): number | null => {
+    if (fps && fps > 0) {
+      return Math.floor(timestamp * fps);
+    }
+    return null;
+  };
+
+  const lockedFrameNumber = lockedTimestamp !== null ? getFrameNumber(lockedTimestamp) : null;
 
   const handleTimestampChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTimestamp = parseFloat(e.target.value) || 0;
@@ -108,7 +154,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
           className="add-contact-btn"
           onClick={(e) => {
             e.stopPropagation();
-            setIsOpen(true);
+            handleOpen();
           }}
           title={`Add ball contact at ${formatTime(currentTime)}`}
         >
@@ -118,13 +164,20 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
       ) : (
         <div className="add-contact-form" onClick={(e) => e.stopPropagation()}>
           <div className="form-header">
-            <span className="timestamp-display">{formatTime(currentTime)}</span>
+            <div className="timestamp-header">
+              <div className="timestamp-label">Add contact at:</div>
+              <div className="timestamp-display">
+                {formatTime(lockedTimestamp ?? 0)}
+                {lockedFrameNumber !== null && (
+                  <span className="frame-number"> (frame {lockedFrameNumber})</span>
+                )}
+              </div>
+            </div>
             <button
               className="close-form-btn"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsOpen(false);
-                setValidationError(null);
+                handleClose();
               }}
             >
               ×
@@ -134,21 +187,32 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
           <div className="form-fields">
             <div className="form-group">
               <label>Timestamp (seconds):</label>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                max={videoDuration > 0 ? videoDuration : undefined}
-                value={formData.video_timestamp}
-                onChange={handleTimestampChange}
-                className={validationError ? 'error' : ''}
-              />
+              <div className="timestamp-input-group">
+                <input
+                  type="number"
+                  step={fps && fps > 0 ? 1 / fps : 0.1}
+                  min="0"
+                  max={videoDuration > 0 ? videoDuration : undefined}
+                  value={formData.video_timestamp}
+                  onChange={handleTimestampChange}
+                  className={validationError ? 'error' : ''}
+                />
+                <button
+                  type="button"
+                  className="use-current-time-btn"
+                  onClick={handleUseCurrentTime}
+                  title={`Use current time: ${formatTime(currentTime)}`}
+                >
+                  Use current time
+                </button>
+              </div>
               {validationError && (
                 <div className="validation-error">{validationError}</div>
               )}
               {videoDuration > 0 && (
                 <div className="timestamp-info">
                   Video duration: {formatTime(videoDuration)}
+                  {fps && fps > 0 && ` • ${fps.toFixed(1)} fps`}
                 </div>
               )}
             </div>
@@ -225,8 +289,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
               className="btn btn-secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsOpen(false);
-                setValidationError(null);
+                handleClose();
               }}
               disabled={isLoading}
             >

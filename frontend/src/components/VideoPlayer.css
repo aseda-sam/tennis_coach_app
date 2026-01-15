@@ -425,6 +425,32 @@
   z-index: 1;
 }
 
+/* Highlight marker for locked contact timestamp */
+.contact-highlight-marker {
+  position: absolute;
+  top: -2px;
+  width: 4px;
+  height: 10px;
+  background: var(--color-warning, #f59e0b);
+  border-radius: 2px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 0 12px rgba(245, 158, 11, 0.6);
+  animation: highlight-pulse 2s ease-in-out infinite;
+}
+
+@keyframes highlight-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 0 12px rgba(245, 158, 11, 0.6);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 1), 0 0 16px rgba(245, 158, 11, 0.8);
+  }
+}
+
 .contact-marker {
   position: absolute;
   top: 0;
@@ -739,6 +765,21 @@
   height: 6px;
   pointer-events: none;
   z-index: 1;
+}
+
+/* Highlight marker for locked contact timestamp (controls-below) */
+.video-controls-below__scrubber-track .contact-highlight-marker {
+  position: absolute;
+  top: -2px;
+  width: 4px;
+  height: 10px;
+  background: var(--color-warning, #f59e0b);
+  border-radius: 2px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 0 12px rgba(245, 158, 11, 0.6);
+  animation: highlight-pulse 2s ease-in-out infinite;
 }
 
 .video-controls-below__time-labels {

@@ -70,6 +70,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   >();
   const [showOverlay, setShowOverlay] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(null);
+  const wasPlayingRef = useRef<boolean>(false);
 
   // Use ball contacts hook if videoId is provided
   const {
@@ -491,10 +493,29 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               currentTime={currentTime}
               videoId={videoId || 0}
               videoDuration={duration}
+              fps={videoMetadata?.fps}
               onAddContact={async (contact: BallContactCreate) => {
                 await createContact(contact);
               }}
               isVisible={!!videoId && !error && duration > 0}
+              onFormOpen={() => {
+                // Pause video if playing
+                const video = videoRef.current;
+                if (video && isPlaying) {
+                  video.pause();
+                  wasPlayingRef.current = true;
+                } else {
+                  wasPlayingRef.current = false;
+                }
+                // Set highlight timestamp
+                setHighlightTimestamp(currentTime);
+              }}
+              onFormClose={() => {
+                // Clear highlight
+                setHighlightTimestamp(null);
+                // Note: We don't auto-resume playback - user can manually play
+                wasPlayingRef.current = false;
+              }}
             />
 
             {error && !isLoadingUrl && (
@@ -563,6 +584,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                           );
                         })}
                       </div>
+                    )}
+                    {/* Highlight marker for locked contact timestamp */}
+                    {highlightTimestamp !== null && duration > 0 && (
+                      <div
+                        className="contact-highlight-marker"
+                        style={{
+                          left: `${(highlightTimestamp / duration) * 100}%`,
+                        }}
+                      />
                     )}
                   </div>
                   <div className="time-display">
@@ -690,6 +720,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     );
                   })}
                 </div>
+              )}
+              {/* Highlight marker for locked contact timestamp */}
+              {highlightTimestamp !== null && duration > 0 && (
+                <div
+                  className="contact-highlight-marker"
+                  style={{
+                    left: `${(highlightTimestamp / duration) * 100}%`,
+                  }}
+                />
               )}
             </div>
             <div className="video-controls-below__time-labels">

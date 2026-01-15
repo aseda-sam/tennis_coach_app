@@ -29,8 +29,10 @@ export interface AnalysisRequest {
     | 'pose_only'
     | 'ball_only'
     | 'video_annotation_only'
-    | 'pose_with_annotation';
+    | 'pose_with_annotation'
+    | 'contact_metrics';
   confidence_threshold?: number;
+  force_reanalysis?: boolean;
 }
 
 export interface AnalysisResponse {
@@ -49,7 +51,8 @@ export interface TaskStatus {
     | 'pose_only'
     | 'ball_only'
     | 'video_annotation_only'
-    | 'pose_with_annotation';
+    | 'pose_with_annotation'
+    | 'contact_metrics';
   status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   error?: string;
@@ -178,6 +181,19 @@ class UnifiedAnalysisApi {
     return this.startAnalysis(videoId, {
       analysis_type: 'pose_with_annotation',
       confidence_threshold: confidenceThreshold,
+    });
+  }
+
+  /**
+   * Recompute contact metrics (elbow angles, etc.) using existing pose data
+   */
+  async startContactMetricsAnalysis(
+    videoId: number,
+    forceReanalysis: boolean = false
+  ): Promise<AnalysisResponse> {
+    return this.startAnalysis(videoId, {
+      analysis_type: 'contact_metrics',
+      force_reanalysis: forceReanalysis,
     });
   }
 

@@ -9,7 +9,8 @@ export interface AnalysisProgress {
     | 'pose_only'
     | 'ball_only'
     | 'video_annotation_only'
-    | 'pose_with_annotation';
+    | 'pose_with_annotation'
+    | 'contact_metrics';
   status: TaskStatus['status'];
   progress: number;
   error?: string;

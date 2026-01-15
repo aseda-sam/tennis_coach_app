@@ -1,7 +1,8 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
+import { ballContactApi } from '../services/ballContactApi';
 import './AnalysisDashboard.css';
 import AnalysisRightPanel from './AnalysisRightPanel';
 import { ArrowBackIcon } from './Icons';
@@ -45,6 +46,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     },
   });
 
+  // Simple loading state for contact metrics (synchronous call)
+  const [isRecomputingMetrics, setIsRecomputingMetrics] = useState(false);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
+
   const handleFocusAnalysis = useCallback(async () => {
     try {
       await startAnalysis({
@@ -55,6 +60,29 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       // Error handling is done by the startAnalysis hook
     }
   }, [startAnalysis]);
+
+  const handleRecomputeContactMetrics = useCallback(async () => {
+    setIsRecomputingMetrics(true);
+    setMetricsError(null);
+    try {
+      await ballContactApi.analyzeVideoPosture(videoId, {
+        force_reanalysis: false,
+      });
+      // Refresh contacts to show updated metrics
+      await queryClient.invalidateQueries({
+        queryKey: ['ball-contacts', videoId],
+      });
+    } catch (error) {
+      const axiosError = error as { response?: { data?: { detail?: string } }; message?: string };
+      const errorMessage =
+        axiosError?.response?.data?.detail ||
+        axiosError?.message ||
+        'Failed to recompute contact metrics';
+      setMetricsError(errorMessage);
+    } finally {
+      setIsRecomputingMetrics(false);
+    }
+  }, [videoId, queryClient]);
 
   return (
     <div className="analysis-dashboard">
@@ -146,6 +174,42 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     Retry Analysis
                   </button>
                 </div>
+              )}
+            </>
+          )}
+          {analysisStatus?.has_analysis && (
+            <>
+              {isRecomputingMetrics && (
+                <div className="analysis-dashboard__progress-card">
+                  <p className="analysis-dashboard__loading-message">
+                    Computing contact metrics...
+                  </p>
+                </div>
+              )}
+              {!isRecomputingMetrics && (
+                <>
+                  {metricsError ? (
+                    <div className="analysis-dashboard__error-card">
+                      <p className="analysis-dashboard__error-message">
+                        {metricsError}
+                      </p>
+                      <button
+                        className="analysis-dashboard__analyze-btn analysis-dashboard__analyze-btn--secondary"
+                        onClick={handleRecomputeContactMetrics}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="analysis-dashboard__analyze-btn analysis-dashboard__analyze-btn--secondary"
+                      onClick={handleRecomputeContactMetrics}
+                      disabled={isRecomputingMetrics}
+                    >
+                      Recompute Contact Metrics
+                    </button>
+                  )}
+                </>
               )}
             </>
           )}

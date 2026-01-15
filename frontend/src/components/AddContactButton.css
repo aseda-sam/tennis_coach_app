@@ -62,10 +62,33 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.timestamp-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timestamp-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .timestamp-display {
   font-weight: 600;
   color: #374151;
   font-size: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.frame-number {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 400;
 }
 
 .close-form-btn {
@@ -100,6 +123,16 @@
   font-size: 14px;
 }
 
+.timestamp-input-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.timestamp-input-group input {
+  flex: 1;
+}
+
 .form-group input,
 .form-group select {
   width: 100%;
@@ -109,6 +142,25 @@
   font-size: 14px;
   transition: border-color 0.2s ease;
   box-sizing: border-box;
+}
+
+.use-current-time-btn {
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.use-current-time-btn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
 }
 
 .form-group input:focus,
