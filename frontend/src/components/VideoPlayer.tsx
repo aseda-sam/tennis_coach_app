@@ -76,7 +76,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(null);
   const wasPlayingRef = useRef<boolean>(false);
-  const [currentContactIndex, setCurrentContactIndex] = useState<number | null>(null);
 
   // Use ball contacts hook if videoId is provided
   const {
@@ -367,79 +366,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [onNavigateReady, navigateToContactById]);
 
-  // Navigate to a specific contact object
-  const navigateToContact = useCallback(
-    (contact: BallContact) => {
-      const video = videoRef.current;
-      if (!video) return;
 
-      // Pause if playing
-      if (isPlaying) {
-        video.pause();
-      }
-
-      // Seek to contact timestamp
-      video.currentTime = contact.video_timestamp;
-      setCurrentTime(contact.video_timestamp);
-      setSelectedContactId(contact.id);
-      onContactNavigate?.(contact.id);
-    },
-    [isPlaying, onContactNavigate]
-  );
-
-  // Navigate to previous/next contact
-  const navigateToPreviousContact = useCallback(() => {
-    if (ballContacts.length === 0) return;
-
-    const sortedContacts = [...ballContacts].sort(
-      (a, b) => a.video_timestamp - b.video_timestamp
-    );
-    const currentIdx =
-      currentContactIndex !== null
-        ? currentContactIndex
-        : sortedContacts.findIndex(
-            (c) => c.video_timestamp >= currentTime
-          ) || 0;
-
-    const prevIdx = Math.max(0, currentIdx - 1);
-    const prevContact = sortedContacts[prevIdx];
-    setCurrentContactIndex(prevIdx);
-    navigateToContact(prevContact);
-  }, [ballContacts, currentTime, currentContactIndex, navigateToContact]);
-
-  const navigateToNextContact = useCallback(() => {
-    if (ballContacts.length === 0) return;
-
-    const sortedContacts = [...ballContacts].sort(
-      (a, b) => a.video_timestamp - b.video_timestamp
-    );
-    const currentIdx =
-      currentContactIndex !== null
-        ? currentContactIndex
-        : sortedContacts.findIndex(
-            (c) => c.video_timestamp >= currentTime
-          ) || 0;
-
-    const nextIdx = Math.min(sortedContacts.length - 1, currentIdx + 1);
-    const nextContact = sortedContacts[nextIdx];
-    setCurrentContactIndex(nextIdx);
-    navigateToContact(nextContact);
-  }, [ballContacts, currentTime, currentContactIndex, navigateToContact]);
-
-  // Update current contact index when time changes
-  useEffect(() => {
-    if (ballContacts.length === 0) return;
-
-    const sortedContacts = [...ballContacts].sort(
-      (a, b) => a.video_timestamp - b.video_timestamp
-    );
-    const idx = sortedContacts.findIndex(
-      (c) => Math.abs(c.video_timestamp - currentTime) < 0.1
-    );
-    if (idx >= 0) {
-      setCurrentContactIndex(idx);
-    }
-  }, [currentTime, ballContacts]);
 
   // Keyboard shortcuts for frame navigation, play/pause, and contact navigation
   useEffect(() => {
@@ -466,14 +393,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           event.preventDefault();
           navigateToNextFrame();
           break;
-        case '[':
-          event.preventDefault();
-          navigateToPreviousContact();
-          break;
-        case ']':
-          event.preventDefault();
-          navigateToNextContact();
-          break;
         default:
           break;
       }
@@ -490,8 +409,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     togglePlay,
     navigateToPreviousFrame,
     navigateToNextFrame,
-    navigateToPreviousContact,
-    navigateToNextContact,
   ]);
 
   // Memoize formatted time strings to prevent unnecessary re-renders
@@ -864,10 +781,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <div className="video-controls-below__controls">
             <div className="video-controls-below__center-controls">
               <button
-                className="video-controls-below__nav-btn"
-                onClick={navigateToPreviousContact}
-                disabled={ballContacts.length === 0}
-                title="Previous Contact ([)"
+                className="video-controls-below__nav-btn video-controls-below__nav-btn--coming-soon"
+                disabled={true}
+                title="Coming soon"
               >
                 <ArrowBackIcon size={16} />
                 Previous Contact
@@ -879,10 +795,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
               </button>
               <button
-                className="video-controls-below__next-btn"
-                onClick={navigateToNextContact}
-                disabled={ballContacts.length === 0}
-                title="Next Contact (])"
+                className="video-controls-below__next-btn video-controls-below__next-btn--coming-soon"
+                disabled={true}
+                title="Coming soon"
               >
                 Next Contact
                 <span className="video-controls-below__arrow-right">
