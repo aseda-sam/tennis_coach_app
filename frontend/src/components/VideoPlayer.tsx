@@ -322,8 +322,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           ? Math.min(video.currentTime + frameTime, duration)
           : Math.max(video.currentTime - frameTime, 0);
 
-      video.currentTime = newTime;
+      // Update state first to ensure overlay gets the new time immediately
       setCurrentTime(newTime);
+      // Then update video element (this will trigger seeked event)
+      video.currentTime = newTime;
     },
     [videoMetadata?.fps, duration]
   );
@@ -350,10 +352,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         video.pause();
       }
 
-      // Seek to contact timestamp
-      video.currentTime = contact.video_timestamp;
+      // Update state first to ensure overlay gets the new time immediately
       setCurrentTime(contact.video_timestamp);
       setSelectedContactId(contact.id);
+      
+      // Then seek video (this will trigger seeked event which overlay listens to)
+      video.currentTime = contact.video_timestamp;
+      
       onContactNavigate?.(contact.id);
     },
     [ballContacts, isPlaying, onContactNavigate]
@@ -368,10 +373,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const navigateToPreviousContact = useCallback(() => {
     if (sortedContacts.length === 0) return;
 
+    const video = videoRef.current;
+    const videoTime = video?.currentTime ?? currentTime;
+
     // Find the contact before current time (with small tolerance)
     const tolerance = 0.1;
     const previousContacts = sortedContacts.filter(
-      (c) => c.video_timestamp < currentTime - tolerance
+      (c) => c.video_timestamp < videoTime - tolerance
     );
 
     if (previousContacts.length > 0) {
@@ -383,10 +391,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const navigateToNextContact = useCallback(() => {
     if (sortedContacts.length === 0) return;
 
+    const video = videoRef.current;
+    const videoTime = video?.currentTime ?? currentTime;
+
     // Find the contact after current time (with small tolerance)
     const tolerance = 0.1;
     const nextContact = sortedContacts.find(
-      (c) => c.video_timestamp > currentTime + tolerance
+      (c) => c.video_timestamp > videoTime + tolerance
     );
 
     if (nextContact) {

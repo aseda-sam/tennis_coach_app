@@ -121,7 +121,9 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastRenderedFrameRef = useRef<number>(-1);
+  const lastRenderedTimeRef = useRef<number>(-1);
   const animationFrameRef = useRef<number | null>(null);
+  const currentTimeRef = useRef<number | undefined>(currentTime);
 
   // Fetch overlay data using React Query
   const { data: overlayData } = useQuery<OverlayData>({
@@ -175,6 +177,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
       lastRenderedFrameRef.current = -1;
+      lastRenderedTimeRef.current = -1;
       // Cancel any pending animation frames
       if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -257,19 +260,25 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Get current video time and find matching frame
-      const currentTime = videoElement.currentTime;
-      let frameIndex = Math.round(currentTime * overlayData.fps);
+      // Get current video time - prefer prop over element (more reliable for programmatic seeks)
+      const videoTime = currentTimeRef.current !== undefined 
+        ? currentTimeRef.current 
+        : videoElement.currentTime;
+      
+      // Skip redraw if time hasn't changed significantly (performance optimization)
+      // Use a small tolerance to handle floating point precision issues
+      const timeTolerance = 0.01; // ~10ms tolerance
+      if (Math.abs(videoTime - lastRenderedTimeRef.current) < timeTolerance) {
+        return;
+      }
+
+      let frameIndex = Math.round(videoTime * overlayData.fps);
       if (frameIndex < 0) frameIndex = 0;
       if (frameIndex >= overlayData.frames.length) {
         frameIndex = overlayData.frames.length - 1;
       }
 
-      // Skip redraw if frame hasn't changed (performance optimization)
-      if (frameIndex === lastRenderedFrameRef.current) {
-        return;
-      }
-
+      lastRenderedTimeRef.current = videoTime;
       lastRenderedFrameRef.current = frameIndex;
 
       const frame = overlayData.frames[frameIndex];
@@ -372,8 +381,13 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
     };
 
     const handleSeeked = () => {
-      lastRenderedFrameRef.current = -1; // Force redraw on seek
-      drawFrame();
+      // Reset both frame and time cache to force redraw
+      lastRenderedFrameRef.current = -1;
+      lastRenderedTimeRef.current = -1;
+      // Use a small delay to ensure video element's currentTime is updated
+      requestAnimationFrame(() => {
+        drawFrame();
+      });
     };
 
     videoElement.addEventListener('timeupdate', handleTimeUpdate);
@@ -390,28 +404,40 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
         animationFrameRef.current = null;
       }
       lastRenderedFrameRef.current = -1;
+      lastRenderedTimeRef.current = -1;
       drawFrameRef.current = null;
     };
   }, [showOverlay, overlayData, videoElement, needsRotation]);
 
-  // Update overlay when currentTime changes (e.g., keyboard navigation)
+  // Update currentTime ref when prop changes
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
+
+  // Update overlay when currentTime changes (e.g., keyboard navigation, seeking)
   useEffect(() => {
     if (!showOverlay || !overlayData || !videoElement || !canvasRef.current) {
       return;
     }
 
-    // Force redraw when currentTime changes (keyboard navigation)
+    // Force redraw when currentTime changes (keyboard navigation, seeking)
     if (currentTime !== undefined && drawFrameRef.current) {
-      lastRenderedFrameRef.current = -1; // Force redraw by resetting frame cache
-      // Use requestAnimationFrame for smooth updates
-      if (animationFrameRef.current === null) {
-        animationFrameRef.current = requestAnimationFrame(() => {
-          if (drawFrameRef.current) {
-            drawFrameRef.current();
-          }
-          animationFrameRef.current = null;
-        });
+      // Reset both caches to force redraw
+      lastRenderedFrameRef.current = -1;
+      lastRenderedTimeRef.current = -1;
+      
+      // Cancel any pending animation frame and schedule immediate update
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
+      
+      // Use requestAnimationFrame for smooth updates, but ensure it happens
+      animationFrameRef.current = requestAnimationFrame(() => {
+        if (drawFrameRef.current) {
+          drawFrameRef.current();
+        }
+        animationFrameRef.current = null;
+      });
     }
   }, [currentTime, showOverlay, overlayData, videoElement]);
 
