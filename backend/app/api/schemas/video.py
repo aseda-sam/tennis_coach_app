@@ -1,7 +1,7 @@
 """Video-related API schemas."""
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
