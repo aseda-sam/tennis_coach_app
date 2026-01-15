@@ -140,16 +140,6 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
     }
   };
 
-  const handleUseCurrentTime = () => {
-    const newTimestamp = currentTime;
-    setLockedTimestamp(newTimestamp);
-    setFormData((prev) => ({
-      ...prev,
-      video_timestamp: newTimestamp,
-    }));
-    setValidationError(null);
-  };
-
   // Calculate frame number from timestamp
   const getFrameNumber = (timestamp: number): number | null => {
     if (fps && fps > 0) {
@@ -167,14 +157,6 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
           left: `${(lockedTimestamp / videoDuration) * 100}%`,
         }
       : undefined;
-
-  const handleTimestampChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTimestamp = parseFloat(e.target.value) || 0;
-    setFormData({
-      ...formData,
-      video_timestamp: newTimestamp,
-    });
-  };
 
   if (!isVisible) return null;
 
