@@ -7,7 +7,7 @@ export interface BallContact {
   video_timestamp: number;
   player?: number;
   contact_hand: 'left' | 'right';
-  stroke_type?: 'ground_stroke' | 'serve' | 'volley' | 'overhead';
+  stroke_type?: 'ground_stroke' | 'serve' | 'return' | 'volley' | 'overhead';
   stroke_subtype?: string;
   elbow_angle?: number; // Posture analysis: elbow angle in degrees (0-180°)
   detection_source: 'automated' | 'manual';
@@ -21,7 +21,7 @@ export interface BallContactCreate {
   video_id: number;
   video_timestamp: number;
   contact_hand: 'left' | 'right';
-  stroke_type?: 'ground_stroke' | 'serve' | 'volley' | 'overhead';
+  stroke_type?: 'ground_stroke' | 'serve' | 'return' | 'volley' | 'overhead';
   stroke_subtype?: string;
   detection_source: 'automated' | 'manual';
 }
@@ -29,7 +29,7 @@ export interface BallContactCreate {
 export interface BallContactUpdate {
   video_timestamp?: number;
   contact_hand?: 'left' | 'right';
-  stroke_type?: 'ground_stroke' | 'serve' | 'volley' | 'overhead';
+  stroke_type?: 'ground_stroke' | 'serve' | 'return' | 'volley' | 'overhead';
   stroke_subtype?: string;
 }
 

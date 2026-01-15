@@ -94,8 +94,8 @@ Stores ball contact detection data for tennis videos, including both automated a
 - `frame_number` - Frame index in the video
 - `video_timestamp` - Timestamp in seconds when contact occurred
 - `contact_hand` - Hand used for contact ('left' or 'right')
-- `stroke_type` - Type of stroke (ground_stroke, serve, volley, overhead)
-- `stroke_subtype` - Subtype of stroke (topspin, backspin, forehand, backhand, etc.)
+- `stroke_type` - Type of stroke (ground_stroke, serve, return, volley, overhead)
+- `stroke_subtype` - Subtype of stroke (must be valid for the selected stroke_type)
 - `detection_source` - Source of detection ('automated' or 'manual')
 - `elbow_angle` - Elbow angle measurement for posture analysis
 - `video_id` - Reference to videos table (Foreign Key)
@@ -224,8 +224,30 @@ Stores video annotation processing results and metadata.
 
 - `ground_stroke` - Ground stroke (forehand/backhand)
 - `serve` - Serve
+- `return` - Return of serve
 - `volley` - Volley
 - `overhead` - Overhead/smash
+
+### Stroke Subtype Values
+
+Subtypes are validated against their stroke type. Valid combinations include:
+
+**Ground Strokes:**
+- `forehand_flat`, `forehand_topspin`, `forehand_slice`
+- `backhand_flat`, `backhand_topspin`, `backhand_slice`
+- `drop_shot`, `lob`
+
+**Serves:**
+- `flat`, `topspin_kick`, `slice`, `underarm`
+
+**Returns:**
+- `forehand`, `backhand`
+
+**Volleys:**
+- `forehand`, `backhand`, `drop`, `half`
+
+**Overhead:**
+- `smash`
 
 ### Detection Source Values
 

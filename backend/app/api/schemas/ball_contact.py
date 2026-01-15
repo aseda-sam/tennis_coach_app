@@ -1,11 +1,19 @@
 """Ball contact-related API schemas."""
 
+import logging
 from datetime import datetime
 from typing import Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from app.api.schemas.player import PlayerInfo
+from app.core.shot_types import (
+    StrokeType,
+    is_valid_subtype_for_type,
+    map_legacy_subtype_to_canonical,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class BallContactInfo(BaseModel):
@@ -23,8 +31,8 @@ class BallContactInfo(BaseModel):
     contact_hand: Literal["left", "right"] = Field(
         description="Hand used for the contact"
     )
-    stroke_type: Optional[Literal["ground_stroke", "serve", "volley", "overhead"]] = (
-        Field(description="Type of stroke", default=None)
+    stroke_type: Optional[StrokeType] = Field(
+        description="Type of stroke", default=None
     )
     stroke_subtype: Optional[str] = Field(
         description="Subtype of the stroke", default=None
@@ -40,6 +48,41 @@ class BallContactInfo(BaseModel):
     created_at: datetime = Field(description="Creation timestamp")
     updated_at: Optional[datetime] = Field(description="Last update timestamp")
 
+    @field_validator("stroke_subtype")
+    @classmethod
+    def validate_subtype(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
+        """Validate that subtype is valid for the given stroke type.
+
+        For reading existing data, invalid subtypes are first attempted to be
+        mapped to canonical subtypes. If mapping fails, they are normalized to None
+        to prevent validation errors on legacy data. New data should be
+        validated strictly in the service layer.
+        """
+        if v is None or v == "":
+            return None
+        stroke_type = info.data.get("stroke_type")
+
+        # Check if already valid
+        if is_valid_subtype_for_type(stroke_type, v):
+            return v
+
+        # Try to map legacy subtype to canonical
+        canonical_subtype = map_legacy_subtype_to_canonical(stroke_type, v)
+        if canonical_subtype:
+            logger.info(
+                f"Mapped legacy subtype '{v}' → '{canonical_subtype}' "
+                f"for stroke_type '{stroke_type}' during validation"
+            )
+            return canonical_subtype
+
+        # No mapping possible, normalize to None
+        logger.warning(
+            f"Invalid subtype '{v}' for stroke_type '{stroke_type}' "
+            f"in ball contact. Could not map to canonical subtype. "
+            f"Normalizing to None. This may indicate legacy data that needs migration."
+        )
+        return None
+
     class Config:
         from_attributes = True
 
@@ -54,8 +97,8 @@ class BallContactCreate(BaseModel):
     contact_hand: Literal["left", "right"] = Field(
         description="Hand used for the contact"
     )
-    stroke_type: Optional[Literal["ground_stroke", "serve", "volley", "overhead"]] = (
-        Field(default=None, description="Type of stroke")
+    stroke_type: Optional[StrokeType] = Field(
+        default=None, description="Type of stroke"
     )
     stroke_subtype: Optional[str] = Field(
         default=None, description="Subtype of the stroke"
@@ -64,6 +107,26 @@ class BallContactCreate(BaseModel):
         default="manual", description="Source of contact detection"
     )
     player_id: Optional[int] = Field(default=None, description="Player ID")
+
+    @field_validator("stroke_subtype")
+    @classmethod
+    def validate_subtype(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
+        """Validate that subtype is valid for the given stroke type.
+
+        Strict validation for create operations - raises ValueError for invalid subtypes.
+        """
+        if v is None or v == "":
+            return None
+        stroke_type = info.data.get("stroke_type")
+        if not is_valid_subtype_for_type(stroke_type, v):
+            from app.core.shot_types import get_subtypes_for_type
+
+            allowed = ", ".join(get_subtypes_for_type(stroke_type))
+            raise ValueError(
+                f"Invalid subtype '{v}' for stroke type '{stroke_type}'. "
+                f"Allowed subtypes: {allowed}"
+            )
+        return v
 
 
 class BallContactUpdate(BaseModel):
@@ -75,8 +138,8 @@ class BallContactUpdate(BaseModel):
     contact_hand: Optional[Literal["left", "right"]] = Field(
         description="Hand used for the contact", default=None
     )
-    stroke_type: Optional[Literal["ground_stroke", "serve", "volley", "overhead"]] = (
-        Field(description="Type of stroke", default=None)
+    stroke_type: Optional[StrokeType] = Field(
+        description="Type of stroke", default=None
     )
     stroke_subtype: Optional[str] = Field(
         description="Subtype of the stroke", default=None
@@ -92,6 +155,34 @@ class BallContactUpdate(BaseModel):
     )
     player_id: Optional[int] = Field(default=None, description="Player ID")
 
+    @field_validator("stroke_subtype")
+    @classmethod
+    def validate_subtype(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
+        """Validate that subtype is valid for the given stroke type.
+
+        Strict validation for update operations - raises ValueError for invalid subtypes.
+        If stroke_type is not provided in the update, skip validation here and let the
+        service layer handle it by falling back to the existing stroke_type from the database.
+        """
+        if v is None or v == "":
+            return None
+        stroke_type = info.data.get("stroke_type")
+
+        # If stroke_type is not provided in the update, skip validation here.
+        # The service layer will use the existing stroke_type from the database.
+        if stroke_type is None:
+            return v
+
+        if not is_valid_subtype_for_type(stroke_type, v):
+            from app.core.shot_types import get_subtypes_for_type
+
+            allowed = ", ".join(get_subtypes_for_type(stroke_type))
+            raise ValueError(
+                f"Invalid subtype '{v}' for stroke type '{stroke_type}'. "
+                f"Allowed subtypes: {allowed}"
+            )
+        return v
+
 
 class BallContactListItem(BaseModel):
     """Model for listing ball contact information."""
@@ -105,8 +196,8 @@ class BallContactListItem(BaseModel):
     contact_hand: Literal["left", "right"] = Field(
         description="Hand used for the contact"
     )
-    stroke_type: Optional[Literal["ground_stroke", "serve", "volley", "overhead"]] = (
-        Field(description="Type of stroke", default=None)
+    stroke_type: Optional[StrokeType] = Field(
+        description="Type of stroke", default=None
     )
     stroke_subtype: Optional[str] = Field(
         description="Subtype of the stroke", default=None
