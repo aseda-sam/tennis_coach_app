@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { BallContactCreate } from '../services/ballContactApi';
 import {
-  STROKE_TYPE_LABELS,
   STROKE_SUBTYPE_LABELS,
+  STROKE_TYPE_LABELS,
   getSubtypesForType,
   type StrokeType,
 } from '../constants/shotTypes';
+import { BallContactCreate } from '../services/ballContactApi';
 import { formatTime, validateManualTimestamp } from '../utils/validation';
 import './AddContactButton.css';
 
@@ -174,15 +174,18 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
               <select
                 value={formData.stroke_type || ''}
                 onChange={(e) => {
-                  const newStrokeType = e.target.value as StrokeType | undefined;
+                  const newStrokeType = e.target.value as
+                    | StrokeType
+                    | undefined;
                   const allowedSubtypes = getSubtypesForType(newStrokeType);
                   setFormData({
                     ...formData,
                     stroke_type: newStrokeType || undefined,
-                    stroke_subtype:
-                      allowedSubtypes.includes(formData.stroke_subtype || '')
-                        ? formData.stroke_subtype
-                        : undefined,
+                    stroke_subtype: allowedSubtypes.includes(
+                      formData.stroke_subtype || ''
+                    )
+                      ? formData.stroke_subtype
+                      : undefined,
                   });
                 }}
               >

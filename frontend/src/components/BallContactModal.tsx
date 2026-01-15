@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { BallContact, BallContactUpdate } from '../services/ballContactApi';
 import {
-  STROKE_TYPE_LABELS,
   STROKE_SUBTYPE_LABELS,
+  STROKE_TYPE_LABELS,
   getSubtypesForType,
   type StrokeType,
 } from '../constants/shotTypes';
+import { BallContact, BallContactUpdate } from '../services/ballContactApi';
 import { formatTime, validateTimestamp } from '../utils/validation';
 import './BallContactModal.css';
 
@@ -188,15 +188,18 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
                 <select
                   value={formData.stroke_type || ''}
                   onChange={(e) => {
-                    const newStrokeType = e.target.value as StrokeType | undefined;
+                    const newStrokeType = e.target.value as
+                      | StrokeType
+                      | undefined;
                     const allowedSubtypes = getSubtypesForType(newStrokeType);
                     setFormData({
                       ...formData,
                       stroke_type: newStrokeType || undefined,
-                      stroke_subtype:
-                        allowedSubtypes.includes(formData.stroke_subtype || '')
-                          ? formData.stroke_subtype
-                          : undefined,
+                      stroke_subtype: allowedSubtypes.includes(
+                        formData.stroke_subtype || ''
+                      )
+                        ? formData.stroke_subtype
+                        : undefined,
                     });
                   }}
                 >
@@ -251,7 +254,8 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
                 <span className="detail-label">Stroke Type:</span>
                 <span className="detail-value">
                   {contact.stroke_type
-                    ? STROKE_TYPE_LABELS[contact.stroke_type] || contact.stroke_type
+                    ? STROKE_TYPE_LABELS[contact.stroke_type] ||
+                      contact.stroke_type
                     : 'Unknown'}
                 </span>
               </div>
