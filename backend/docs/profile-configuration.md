@@ -6,10 +6,10 @@ The application uses a **profile-based configuration system**. Set a single `PRO
 
 ## Profiles
 
-| Profile      | Database        | Storage  | Auth          | Use Case                                    |
-| ------------ | --------------- | -------- | ------------- | ------------------------------------------- |
-| `local`      | SQLite/Postgres | Local    | Disabled      | Day-to-day development                      |
-| `production` | Supabase        | Supabase | Supabase Auth | Testing with prod services OR deployed prod |
+| Profile      | Database        | Storage | Auth     | Use Case                                    |
+| ------------ | --------------- | ------- | -------- | ------------------------------------------- |
+| `local`      | SQLite/Postgres | Local   | Disabled | Day-to-day development                      |
+| `production` | PostgreSQL      | Cloud   | JWT Auth | Testing with prod services OR deployed prod |
 
 **How it works:**
 

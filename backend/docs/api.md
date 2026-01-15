@@ -66,7 +66,7 @@ All endpoints are prefixed with the version number (e.g., `/v0/videos/upload`).
 
 ## Authentication
 
-The API uses **Supabase Auth** for authentication. Rate limiting is applied to authentication endpoints to prevent brute force attacks:
+The API uses **JWT-based authentication** (configurable provider). Rate limiting is applied to authentication endpoints to prevent brute force attacks:
 
 - Production: 5 authentication attempts per minute per IP
 - Other profiles: 10 authentication attempts per minute per IP
@@ -103,7 +103,7 @@ Video uploads are rate-limited per user:
 - **Maximum duration**: 5 minutes (300 seconds)
 - **Frame skip ratio**: 1 (process all frames)
 
-#### Production Environment (Render)
+#### Production Environment
 
 - **Maximum resolution**: 1080p (1920x1080)
 - **Maximum frame rate**: 30fps
@@ -260,6 +260,7 @@ Retrieves pose detection data formatted for client-side overlay rendering. This 
 ```
 
 **Keypoints Format:**
+
 - Each keypoint is a dictionary entry with the keypoint name as the key
 - Values are arrays `[x, y]` representing coordinates in original video dimensions
 - Coordinates are scaled client-side to match displayed video dimensions

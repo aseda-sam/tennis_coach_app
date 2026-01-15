@@ -6,8 +6,9 @@ on:
 
 jobs:
   claude-manual-review:
-    # Only run when someone comments "@claude review" on a PR
+    # PAUSED: API tokens exhausted - re-enable by removing 'false &&' below
     if: |
+      false &&
       github.event.issue.pull_request &&
       contains(github.event.comment.body, '@claude') &&
       contains(github.event.comment.body, 'review')
