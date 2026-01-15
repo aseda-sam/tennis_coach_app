@@ -27,6 +27,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const { data: analysisStatus, refetch: refetchAnalysisStatus } =
     useVideoAnalysisStatus(videoId);
 
+  // Memoize the completion callback to prevent infinite re-renders
+  const handleAnalysisComplete = useCallback(
+    async () => {
+      // Refresh analysis status after completion without reloading page
+      await refetchAnalysisStatus();
+      // Also invalidate the query to ensure fresh data
+      queryClient.invalidateQueries({
+        queryKey: ['video-analysis-status', videoId],
+      });
+    },
+    [refetchAnalysisStatus, queryClient, videoId]
+  );
+
   // Analysis manager for pose analysis
   const {
     analysisState,
@@ -35,14 +48,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   } = useAnalysisManager({
     videoId,
     autoRefresh: true,
-    onAnalysisComplete: async () => {
-      // Refresh analysis status after completion without reloading page
-      await refetchAnalysisStatus();
-      // Also invalidate the query to ensure fresh data
-      queryClient.invalidateQueries({
-        queryKey: ['video-analysis-status', videoId],
-      });
-    },
+    onAnalysisComplete: handleAnalysisComplete,
   });
 
   const handleFocusAnalysis = useCallback(async () => {
@@ -101,7 +107,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             showPostureAnalysis={false}
             hasPoseData={analysisStatus?.has_analysis || false}
             controlsBelow={true}
-            onContactNavigate={handleContactClick}
             onNavigateReady={handleNavigateReady}
           />
 

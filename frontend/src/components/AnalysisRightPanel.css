@@ -373,6 +373,7 @@
   height: 10px;
   border-radius: var(--radius-full);
   flex-shrink: 0;
+  background-color: #6b7280; /* neutral grey */
 }
 
 .analysis-right-panel__metric-time {

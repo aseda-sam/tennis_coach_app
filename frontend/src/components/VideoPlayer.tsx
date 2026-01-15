@@ -359,12 +359,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     [ballContacts, isPlaying, onContactNavigate]
   );
 
+  const navigateRef = useRef(navigateToContactById);
+
+  useEffect(() => {
+    navigateRef.current = navigateToContactById;
+  }, [navigateToContactById]);
+
+  const stableNavigateToContactById = useCallback((contactId: number) => {
+    navigateRef.current(contactId);
+  }, []);
+
   // Expose navigate function to parent
   useEffect(() => {
     if (onNavigateReady) {
-      onNavigateReady(navigateToContactById);
+      onNavigateReady(stableNavigateToContactById);
     }
-  }, [onNavigateReady, navigateToContactById]);
+  }, [onNavigateReady, stableNavigateToContactById]);
 
 
 
