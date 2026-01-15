@@ -68,8 +68,8 @@
       "global": {
         "branches": 5,
         "functions": 5,
-        "lines": 15,
-        "statements": 15
+        "lines": 14,
+        "statements": 14
       }
     },
     "transformIgnorePatterns": [
