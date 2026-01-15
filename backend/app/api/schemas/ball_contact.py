@@ -1,12 +1,19 @@
 """Ball contact-related API schemas."""
 
+import logging
 from datetime import datetime
 from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from app.api.schemas.player import PlayerInfo
-from app.core.shot_types import StrokeType, is_valid_subtype_for_type
+from app.core.shot_types import (
+    StrokeType,
+    is_valid_subtype_for_type,
+    map_legacy_subtype_to_canonical,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class BallContactInfo(BaseModel):
@@ -44,19 +51,37 @@ class BallContactInfo(BaseModel):
     @field_validator("stroke_subtype")
     @classmethod
     def validate_subtype(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
-        """Validate that subtype is valid for the given stroke type."""
+        """Validate that subtype is valid for the given stroke type.
+
+        For reading existing data, invalid subtypes are first attempted to be
+        mapped to canonical subtypes. If mapping fails, they are normalized to None
+        to prevent validation errors on legacy data. New data should be
+        validated strictly in the service layer.
+        """
         if v is None or v == "":
             return None
         stroke_type = info.data.get("stroke_type")
-        if not is_valid_subtype_for_type(stroke_type, v):
-            from app.core.shot_types import get_subtypes_for_type
 
-            allowed = ", ".join(get_subtypes_for_type(stroke_type))
-            raise ValueError(
-                f"Invalid subtype '{v}' for stroke type '{stroke_type}'. "
-                f"Allowed subtypes: {allowed}"
+        # Check if already valid
+        if is_valid_subtype_for_type(stroke_type, v):
+            return v
+
+        # Try to map legacy subtype to canonical
+        canonical_subtype = map_legacy_subtype_to_canonical(stroke_type, v)
+        if canonical_subtype:
+            logger.info(
+                f"Mapped legacy subtype '{v}' → '{canonical_subtype}' "
+                f"for stroke_type '{stroke_type}' during validation"
             )
-        return v
+            return canonical_subtype
+
+        # No mapping possible, normalize to None
+        logger.warning(
+            f"Invalid subtype '{v}' for stroke_type '{stroke_type}' "
+            f"in ball contact. Could not map to canonical subtype. "
+            f"Normalizing to None. This may indicate legacy data that needs migration."
+        )
+        return None
 
     class Config:
         from_attributes = True
@@ -86,7 +111,10 @@ class BallContactCreate(BaseModel):
     @field_validator("stroke_subtype")
     @classmethod
     def validate_subtype(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
-        """Validate that subtype is valid for the given stroke type."""
+        """Validate that subtype is valid for the given stroke type.
+
+        Strict validation for create operations - raises ValueError for invalid subtypes.
+        """
         if v is None or v == "":
             return None
         stroke_type = info.data.get("stroke_type")
@@ -130,7 +158,10 @@ class BallContactUpdate(BaseModel):
     @field_validator("stroke_subtype")
     @classmethod
     def validate_subtype(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
-        """Validate that subtype is valid for the given stroke type."""
+        """Validate that subtype is valid for the given stroke type.
+
+        Strict validation for update operations - raises ValueError for invalid subtypes.
+        """
         if v is None or v == "":
             return None
         stroke_type = info.data.get("stroke_type")
