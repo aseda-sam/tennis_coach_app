@@ -149,6 +149,30 @@ class VideoDeleteResponse(BaseModel):
     filename: str = Field(description="Deleted filename")
 
 
+class VideoMetrics(BaseModel):
+    """Video performance metrics aggregated from ball contacts."""
+
+    video_id: int = Field(description="Video ID")
+    serve_count: int = Field(ge=0, description="Number of serves detected")
+    avg_elbow_angle: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=180,
+        description="Average elbow angle in degrees (0-180°)",
+    )
+    total_contacts: int = Field(ge=0, description="Total number of ball contacts")
+    toss_height: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description="Average toss height in cm (placeholder for future)",
+    )
+    contact_height: Optional[float] = Field(
+        default=None,
+        ge=0,
+        description="Average contact height in cm (placeholder for future)",
+    )
+
+
 # Validation functions
 def validate_video_filename(filename: str) -> str:
     """Validate video filename format."""

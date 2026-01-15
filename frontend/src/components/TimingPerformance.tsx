@@ -1,4 +1,12 @@
 import React from 'react';
+import {
+  AnalyticsIcon,
+  BallDetectionIcon,
+  FrameExtractionIcon,
+  PoseDetectionIcon,
+  VideoAnnotationIcon,
+  VideoIcon,
+} from './Icons';
 import './TimingPerformance.css';
 
 interface TimingData {
@@ -26,16 +34,23 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
     return `${seconds.toFixed(2)}s`;
   };
 
-  const getStageIcon = (stageName: string): string => {
-    const icons: Record<string, string> = {
-      frame_extraction: '🎬',
-      ball_detection: '⚽',
-      pose_detection: '👤',
-      frame_annotation: '✏️',
-      video_creation: '🎥',
-      total_analysis: '⚡',
-    };
-    return icons[stageName] || '⏱️';
+  const getStageIcon = (stageName: string): React.ReactNode => {
+    switch (stageName) {
+      case 'frame_extraction':
+        return <FrameExtractionIcon size={16} />;
+      case 'ball_detection':
+        return <BallDetectionIcon size={16} />;
+      case 'pose_detection':
+        return <PoseDetectionIcon size={16} />;
+      case 'frame_annotation':
+        return <VideoAnnotationIcon size={16} />;
+      case 'video_creation':
+        return <VideoIcon size={16} />;
+      case 'total_analysis':
+        return <AnalyticsIcon size={16} />;
+      default:
+        return <AnalyticsIcon size={16} />;
+    }
   };
 
   const getStageDisplayName = (stageName: string): string => {
@@ -72,7 +87,9 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
         <div className="simple-timing">
           <div className="timing-stage">
             <div className="stage-info">
-              <span className="stage-icon">⚡</span>
+              <span className="stage-icon" data-testid="stage-icon-total_analysis">
+                {getStageIcon('total_analysis')}
+              </span>
               <span className="stage-name">Total Processing</span>
             </div>
             <div className="stage-timing">
@@ -106,7 +123,12 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
               </div>
 
               <div className="stage-info">
-                <span className="stage-icon">{getStageIcon(stageKey)}</span>
+                <span
+                  className="stage-icon"
+                  data-testid={`stage-icon-${stageKey}`}
+                >
+                  {getStageIcon(stageKey)}
+                </span>
                 <span className="stage-name">
                   {getStageDisplayName(stageKey)}
                 </span>
@@ -123,7 +145,9 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
 
       <div className="timing-insights" data-testid="timing-insights">
         <div className="insight-item">
-          <span className="insight-icon">💡</span>
+          <span className="insight-icon" aria-hidden="true">
+            <AnalyticsIcon size={16} />
+          </span>
           <span className="insight-text">
             {totalTime > 10
               ? 'Analysis completed in a reasonable time'
@@ -133,7 +157,9 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
 
         {timing.ball_detection && timing.pose_detection && (
           <div className="insight-item">
-            <span className="insight-icon">🎯</span>
+            <span className="insight-icon" aria-hidden="true">
+              <BallDetectionIcon size={16} />
+            </span>
             <span className="insight-text">
               Ball detection took{' '}
               {((timing.ball_detection / totalTime) * 100).toFixed(1)}% of total
@@ -144,7 +170,9 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
 
         {timing.pose_detection && timing.ball_detection && (
           <div className="insight-item">
-            <span className="insight-icon">👤</span>
+            <span className="insight-icon" aria-hidden="true">
+              <PoseDetectionIcon size={16} />
+            </span>
             <span className="insight-text">
               Pose detection took{' '}
               {((timing.pose_detection / totalTime) * 100).toFixed(1)}% of total

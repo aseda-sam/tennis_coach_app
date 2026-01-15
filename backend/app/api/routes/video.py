@@ -4,17 +4,17 @@ import logging
 import tempfile
 import time
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 import cv2
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
 from fastapi.responses import (
     FileResponse,
     RedirectResponse,
     Response,
     StreamingResponse,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.schemas.common import PaginationParams
@@ -23,6 +23,7 @@ from app.api.schemas.video import (
     VideoInfo,
     VideoListItem,
     VideoMetadata,
+    VideoMetrics,
     VideoQualityAssessmentResponse,
     VideoQualityMetrics,
     VideoUploadResponse,
@@ -53,6 +54,24 @@ class VideoAnalysisStatus(BaseModel):
     video_id: int
     has_analysis: bool
     analysis_types: List[str] = []
+
+
+class BulkAnalysisStatusRequest(BaseModel):
+    """Request model for bulk analysis status check."""
+
+    video_ids: List[int] = Field(
+        description="List of video IDs to check analysis status for",
+        min_length=1,
+        max_length=100,  # Limit to prevent abuse
+    )
+
+
+class BulkAnalysisStatusResponse(BaseModel):
+    """Response model for bulk analysis status check."""
+
+    statuses: List[VideoAnalysisStatus] = Field(
+        description="Analysis status for each requested video"
+    )
 
 
 router = APIRouter()
@@ -288,6 +307,158 @@ async def get_video_analysis_status(
 
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "get_video_analysis_status", {"video_id": video_id})
+
+
+@router.post("/analysis-status/bulk", response_model=BulkAnalysisStatusResponse)
+async def get_bulk_analysis_status(
+    request: BulkAnalysisStatusRequest = Body(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BulkAnalysisStatusResponse:
+    """
+    Get analysis status for multiple videos in a single request.
+
+    This endpoint optimizes the N+1 query problem by fetching all analysis
+    statuses in bulk using efficient database queries.
+
+    Args:
+        request: Bulk request containing list of video IDs
+
+    Returns:
+        Analysis status for each requested video
+    """
+    try:
+        from app.models.ball_detection import BallDetection
+        from app.models.pose_detection import PoseDetection
+        from app.models.video import Video
+        from app.utils.authorization import is_admin
+
+        video_ids = request.video_ids
+
+        # Verify all videos exist and user has access
+        query = db.query(Video).filter(Video.id.in_(video_ids))
+        if not is_admin(current_user):
+            query = query.filter(Video.user_id == current_user["id"])
+
+        accessible_videos = {video.id for video in query.all()}
+
+        # Check for unauthorized access
+        unauthorized_ids = set(video_ids) - accessible_videos
+        if unauthorized_ids:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Videos not found or access denied: {list(unauthorized_ids)}",
+            )
+
+        # Fetch all pose detections in one query
+        pose_detections = (
+            db.query(PoseDetection)
+            .filter(
+                PoseDetection.video_id.in_(video_ids),
+                PoseDetection.status == "completed",
+            )
+            .all()
+        )
+
+        # Fetch all ball detections in one query
+        ball_detections = (
+            db.query(BallDetection)
+            .filter(
+                BallDetection.video_id.in_(video_ids),
+                BallDetection.status == "completed",
+            )
+            .all()
+        )
+
+        # Build lookup maps for O(1) access
+        pose_map: Dict[int, PoseDetection] = {pd.video_id: pd for pd in pose_detections}
+        ball_map: Dict[int, BallDetection] = {bd.video_id: bd for bd in ball_detections}
+
+        # Build response for each video
+        statuses = []
+        for video_id in video_ids:
+            analysis_types = []
+            has_analysis = False
+
+            if video_id in pose_map:
+                has_analysis = True
+                analysis_types.append("pose_detection")
+
+            if video_id in ball_map:
+                has_analysis = True
+                if "ball_detection" not in analysis_types:
+                    analysis_types.append("ball_detection")
+
+            statuses.append(
+                VideoAnalysisStatus(
+                    video_id=video_id,
+                    has_analysis=has_analysis,
+                    analysis_types=analysis_types,
+                )
+            )
+
+        return BulkAnalysisStatusResponse(statuses=statuses)
+
+    except HTTPException:
+        raise
+    except (OSError, ValueError) as e:
+        log_and_raise_error(
+            e, "get_bulk_analysis_status", {"video_ids": request.video_ids}
+        )
+
+
+@router.get("/{video_id}/metrics", response_model=VideoMetrics)
+async def get_video_metrics(
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VideoMetrics:
+    """
+    Get aggregated performance metrics for a video.
+
+    Calculates metrics from ball contacts including serve count,
+    average elbow angle, and other performance indicators.
+
+    Args:
+        video_id: Unique video identifier
+
+    Returns:
+        VideoMetrics with aggregated performance data
+    """
+    try:
+        from app.services.ball_contact_service import get_ball_contacts_by_video_id
+
+        # Verify video exists and check authorization
+        db_video = video_service.get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        require_video_access(db_video, current_user)
+
+        # Get all ball contacts for the video
+        contacts = get_ball_contacts_by_video_id(db, video_id)
+
+        # Filter serves
+        serves = [c for c in contacts if c.stroke_type == "serve"]
+        serve_count = len(serves)
+
+        # Calculate average elbow angle from serves
+        elbow_angles = [s.elbow_angle for s in serves if s.elbow_angle is not None]
+        avg_elbow = (
+            round(sum(elbow_angles) / len(elbow_angles)) if elbow_angles else None
+        )
+
+        return VideoMetrics(
+            video_id=video_id,
+            serve_count=serve_count,
+            avg_elbow_angle=avg_elbow,
+            total_contacts=len(contacts),
+            toss_height=None,  # Placeholder for future implementation
+            contact_height=None,  # Placeholder for future implementation
+        )
+
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_video_metrics", {"video_id": video_id})
 
 
 @router.delete("/{video_id}", response_model=VideoDeleteResponse)

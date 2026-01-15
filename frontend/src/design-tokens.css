@@ -1,0 +1,263 @@
+/**
+ * Design Tokens
+ * 
+ * Centralized design system variables for consistent styling across the application.
+ * Import this file in your main CSS entry point (index.css).
+ */
+
+:root {
+  /* ============================================
+     COLOR SYSTEM
+     ============================================ */
+  
+  /* Primary Colors (Green Theme) */
+  --color-primary: #00bc7d;
+  --color-primary-dark: #009966;
+  --color-primary-darker: #007a55;
+  --color-primary-light: #33c99a;
+  --color-primary-lighter: #66d6b7;
+  --color-primary-soft: #ecfdf5;
+  --color-primary-softest: #f0fdf7;
+  
+  /* Semantic Colors */
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+  --color-success-dark: #059669;
+  
+  --color-error: #dc2626;
+  --color-error-light: #fee2e2;
+  --color-error-dark: #b91c1c;
+  --color-error-soft: #fef2f2;
+  
+  --color-warning: #f59e0b;
+  --color-warning-light: #fef3c7;
+  --color-warning-dark: #d97706;
+  
+  --color-info: #3b82f6;
+  --color-info-light: #dbeafe;
+  --color-info-dark: #1e40af;
+  
+  /* Neutral Colors */
+  --color-text: #101828;
+  --color-text-secondary: #374151;
+  --color-text-muted: #4a5565;
+  --color-text-disabled: #9ca3af;
+  
+  --color-border: #e5e7eb;
+  --color-border-light: #f3f4f6;
+  --color-border-dark: #d1d5db;
+  
+  --color-surface: #ffffff;
+  --color-surface-secondary: #f8fafc;
+  --color-surface-tertiary: #f1f5f9;
+  --color-surface-hover: #f9fafb;
+  
+  --color-background: #fafbfc;
+  --color-background-alt: #f8fafc;
+  
+  /* Overlay Colors */
+  --color-overlay: rgba(15, 23, 42, 0.08);
+  --color-overlay-dark: rgba(15, 23, 42, 0.12);
+  --color-overlay-light: rgba(0, 0, 0, 0.05);
+  --color-overlay-glass: rgba(255, 255, 255, 0.8);
+  
+  /* ============================================
+     SPACING SCALE
+     ============================================ */
+  
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+  --spacing-3xl: 28px;
+  --spacing-4xl: 32px;
+  --spacing-5xl: 40px;
+  --spacing-6xl: 48px;
+  --spacing-7xl: 52px;
+  --spacing-8xl: 60px;
+  --spacing-9xl: 80px;
+  
+  /* ============================================
+     TYPOGRAPHY SCALE
+     ============================================ */
+  
+  /* Font Families */
+  --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --font-family-mono: 'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+  
+  /* Font Sizes */
+  --font-size-xs: 0.75rem;      /* 12px */
+  --font-size-sm: 0.8rem;       /* 12.8px */
+  --font-size-base: 0.875rem;   /* 14px */
+  --font-size-md: 0.9rem;       /* 14.4px */
+  --font-size-lg: 0.95rem;      /* 15.2px */
+  --font-size-xl: 1rem;         /* 16px */
+  --font-size-2xl: 1.05rem;     /* 16.8px */
+  --font-size-3xl: 1.1rem;      /* 17.6px */
+  --font-size-4xl: 1.25rem;     /* 20px */
+  --font-size-5xl: 1.6rem;      /* 25.6px */
+  --font-size-6xl: 2rem;        /* 32px */
+  
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  
+  /* Line Heights */
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.4;
+  --line-height-relaxed: 1.6;
+  --line-height-loose: 1.7;
+  --line-height-extra-loose: 1.8;
+  
+  /* Letter Spacing */
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: -0.02em;
+  --letter-spacing-relaxed: -0.01em;
+  --letter-spacing-wide: 0.01em;
+  
+  /* ============================================
+     BORDER RADIUS SCALE
+     ============================================ */
+  
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 14px;
+  --radius-3xl: 16px;
+  --radius-full: 9999px;
+  --radius-pill: 20px;
+  
+  /* ============================================
+     SHADOW SYSTEM
+     ============================================ */
+  
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 12px 24px rgba(15, 23, 42, 0.08);
+  --shadow-2xl: 0 16px 28px rgba(15, 23, 42, 0.12);
+  --shadow-3xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  
+  /* Colored Shadows (for primary actions) */
+  --shadow-primary-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-primary-md: 0 6px 14px rgba(0, 188, 125, 0.28);
+  --shadow-primary-lg: 0 8px 16px rgba(0, 188, 125, 0.25);
+  --shadow-primary-xl: 0 10px 18px rgba(0, 188, 125, 0.38);
+  --shadow-primary-2xl: 0 12px 20px rgba(0, 188, 125, 0.3);
+  
+  /* ============================================
+     TRANSITIONS & EASING
+     ============================================ */
+  
+  /* Timing Functions */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-linear: linear;
+  
+  /* Durations */
+  --duration-fast: 0.15s;
+  --duration-normal: 0.2s;
+  --duration-slow: 0.25s;
+  --duration-slower: 0.3s;
+  
+  /* Standard Transitions */
+  --transition-fast: all var(--duration-fast) var(--ease-in-out);
+  --transition-normal: all var(--duration-normal) var(--ease-in-out);
+  --transition-slow: all var(--duration-slow) var(--ease-in-out);
+  --transition-slower: all var(--duration-slower) var(--ease-in-out);
+  
+  /* ============================================
+     Z-INDEX SCALE
+     ============================================ */
+  
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1000;
+  --z-fixed: 1000;
+  --z-modal-backdrop: 2000;
+  --z-modal: 2100;
+  --z-popover: 2200;
+  --z-tooltip: 2300;
+  
+  /* ============================================
+     BREAKPOINTS (for reference in JS)
+     ============================================ */
+  
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+  
+  /* ============================================
+     LAYOUT
+     ============================================ */
+  
+  --container-max-width: 1200px;
+  --container-padding: var(--spacing-xl);
+  
+  /* ============================================
+     COMPONENT-SPECIFIC TOKENS
+     ============================================ */
+  
+  /* Buttons */
+  --button-padding-sm: var(--spacing-sm) var(--spacing-lg);
+  --button-padding-md: var(--spacing-md) var(--spacing-2xl);
+  --button-padding-lg: 14px 28px;
+  --button-border-radius: var(--radius-xl);
+  --button-font-weight: var(--font-weight-semibold);
+  
+  /* Cards */
+  --card-padding: var(--spacing-2xl);
+  --card-border-radius: var(--radius-2xl);
+  --card-shadow: var(--shadow-xl);
+  --card-shadow-hover: var(--shadow-2xl);
+  
+  /* Inputs */
+  --input-padding: var(--spacing-md) var(--spacing-lg);
+  --input-border-radius: var(--radius-md);
+  --input-border-width: 1px;
+  
+  /* Focus States */
+  --focus-outline-width: 2px;
+  --focus-outline-offset: 2px;
+  --focus-outline-color: var(--color-primary);
+  
+  /* Scrollbar */
+  --scrollbar-width: 8px;
+  --scrollbar-track-color: var(--color-surface-tertiary);
+  --scrollbar-thumb-color: var(--color-border-dark);
+  --scrollbar-thumb-hover: #94a3b8;
+}
+
+/* ============================================
+   DARK MODE (Future Enhancement)
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  /* Dark mode tokens can be added here when needed */
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0.01ms;
+    --duration-normal: 0.01ms;
+    --duration-slow: 0.01ms;
+    --duration-slower: 0.01ms;
+  }
+}

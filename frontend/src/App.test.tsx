@@ -1,5 +1,21 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
+import React from 'react';
 import App from './App';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
+const renderWithProviders = (ui: React.ReactElement) => {
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+  );
+};
 
 // Mock the API service to avoid axios import issues
 jest.mock('./services/api', () => ({
@@ -38,28 +54,28 @@ jest.mock('./components/AnalysisDashboard', () => {
   };
 });
 
-test('renders tennis analysis app title', () => {
-  render(<App />);
-  const titleElement = screen.getByText(/Tennis Video Analyzer/i);
+test('renders tennis coach app title', () => {
+  renderWithProviders(<App />);
+  const titleElement = screen.getByText(/Tennis Coach/i);
   expect(titleElement).toBeInTheDocument();
 });
 
 test('renders upload section', () => {
-  render(<App />);
+  renderWithProviders(<App />);
   const uploadElement = screen.getByTestId('video-upload');
   expect(uploadElement).toBeInTheDocument();
 });
 
-test('renders view videos button', () => {
-  render(<App />);
-  const viewVideosButton = screen.getByText(/View My Videos/i);
-  expect(viewVideosButton).toBeInTheDocument();
+test('renders library button', () => {
+  renderWithProviders(<App />);
+  const libraryButton = screen.getByText(/Library/i);
+  expect(libraryButton).toBeInTheDocument();
 });
 
 test('renders app subtitle', () => {
-  render(<App />);
-  const subtitleElement = screen.getByText(/Upload your tennis videos for advanced performance analysis/i);
+  renderWithProviders(<App />);
+  const subtitleElement = screen.getByText(
+    /Upload your tennis video and get personalized feedback/i
+  );
   expect(subtitleElement).toBeInTheDocument();
 });
-
-

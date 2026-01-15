@@ -1,0 +1,347 @@
+/* Analysis Right Panel */
+.analysis-right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Card Base */
+.analysis-right-panel__card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Serve Info Card */
+.analysis-right-panel__serve-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.analysis-right-panel__serve-badge {
+  background: var(--color-surface-tertiary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.analysis-right-panel__serve-side {
+  background: var(--color-surface-tertiary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.analysis-right-panel__serve-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-primary-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-primary-darker);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.analysis-right-panel__status-indicator {
+  width: 8px;
+  height: 8px;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+}
+
+/* Ball Toss Trajectory Card */
+.analysis-right-panel__card--coming-soon {
+  padding-bottom: var(--spacing-lg);
+}
+
+.analysis-right-panel__trajectory-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.analysis-right-panel__trajectory-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.analysis-right-panel__card-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text);
+  margin: 0;
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.analysis-right-panel__card-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: var(--line-height-normal);
+}
+
+.analysis-right-panel__trajectory-chart {
+  min-height: 160px;
+  margin-bottom: 0;
+}
+
+.analysis-right-panel__chart-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--spacing-lg);
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  position: relative;
+}
+
+.analysis-right-panel__chart-blurred {
+  width: 100%;
+  height: 140px;
+  position: relative;
+  filter: blur(1px);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.analysis-right-panel__chart-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.analysis-right-panel__chart-note {
+  margin-top: var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.analysis-right-panel__measurements-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+}
+
+.analysis-right-panel__measurement-preview-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.analysis-right-panel__preview-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-normal);
+}
+
+.analysis-right-panel__preview-value {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  font-weight: var(--font-weight-normal);
+}
+
+/* Measurements Card */
+.analysis-right-panel__measurements-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-lg) var(--spacing-sm);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.analysis-right-panel__measurements-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.analysis-right-panel__measurement-group {
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+}
+
+.analysis-right-panel__measurement-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.analysis-right-panel__measurement-icon {
+  font-size: var(--font-size-lg);
+}
+
+.analysis-right-panel__measurement-label {
+  flex: 1;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+}
+
+.analysis-right-panel__measurement-check {
+  background: var(--color-primary-light);
+  color: var(--color-primary-darker);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.1172px;
+}
+
+.analysis-right-panel__measurement-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.analysis-right-panel__measurement-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.analysis-right-panel__measurement-name {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.analysis-right-panel__measurement-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.analysis-right-panel__measurement-dot--toss {
+  background: #2b7fff;
+}
+
+.analysis-right-panel__measurement-dot--contact {
+  background: #ff6900;
+}
+
+.analysis-right-panel__measurement-value {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.analysis-right-panel__measurement-value span:first-child {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.analysis-right-panel__measurement-unit {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.analysis-right-panel__measurement-value-large {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
+.analysis-right-panel__measurement-value-large span:first-child {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.analysis-right-panel__measurement-timing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border-light);
+  margin-top: var(--spacing-sm);
+}
+
+.analysis-right-panel__timing-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3672px;
+}
+
+.analysis-right-panel__timing-value {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.analysis-right-panel__measurement-target {
+  margin-top: var(--spacing-lg);
+}
+
+.analysis-right-panel__target-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--spacing-sm) 0;
+  letter-spacing: 0.1172px;
+}
+
+.analysis-right-panel__target-bar {
+  position: relative;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.analysis-right-panel__target-progress {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 13.9%;
+  background: var(--color-primary-light);
+}
+
+.analysis-right-panel__target-marker {
+  position: absolute;
+  left: 15.1%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--color-primary);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .analysis-right-panel__card {
+    padding: var(--spacing-lg);
+  }
+}

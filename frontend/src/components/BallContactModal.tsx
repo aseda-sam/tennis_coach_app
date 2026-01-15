@@ -90,7 +90,7 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
       setIsEditing(false);
       setValidationError(null);
     } catch (error) {
-      console.error('Failed to update contact:', error);
+      // Error is shown to user via alert
       alert('Failed to update contact. Please try again.');
     } finally {
       setIsLoading(false);
@@ -107,7 +107,7 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
       await onDelete(contact.id);
       onClose();
     } catch (error) {
-      console.error('Failed to delete contact:', error);
+      // Error is shown to user via alert
       alert('Failed to delete contact. Please try again.');
     } finally {
       setIsLoading(false);

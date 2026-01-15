@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { AnalysisData } from '../services/api';
 import { VideoMetadata } from '../types/video';
+import {
+  AnalyticsIcon,
+  BallDetectionIcon,
+  PoseDetectionIcon,
+  VideoIcon,
+  WarningIcon,
+} from './Icons';
 import './AnalysisResults.css';
 import TimingPerformance from './TimingPerformance';
 
@@ -70,7 +77,10 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     return (
       <div className="analysis-results">
         <div className="analysis-error">
-          <h3>❌ Analysis Error</h3>
+          <h3 className="analysis-error-title">
+            <WarningIcon size={18} />
+            Analysis Error
+          </h3>
           <p>{error}</p>
         </div>
       </div>
@@ -81,7 +91,10 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     return (
       <div className="analysis-results">
         <div className="analysis-empty">
-          <h3>📊 Analysis Results</h3>
+          <h3 className="analysis-empty-title">
+            <AnalyticsIcon size={18} />
+            Analysis Results
+          </h3>
           <p>No analysis data available. Start an analysis to see results.</p>
         </div>
       </div>
@@ -92,7 +105,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     <div className="analysis-results">
       <div className="analysis-header">
         <div className="header-content">
-          <h3>🎾 Tennis Coach Analysis Results</h3>
+          <h3>Tennis Coach Analysis Results</h3>
         </div>
       </div>
 
@@ -103,7 +116,9 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
             className="section-header clickable"
             onClick={() => toggleSection('quality')}
           >
-            <span className="section-icon">📊</span>
+            <span className="section-icon" aria-hidden="true">
+              <AnalyticsIcon size={18} />
+            </span>
             <h4>Video Quality Assessment</h4>
             <div
               className={`status-badge ${getQualityBadgeClass(video.quality_level)}`}
@@ -161,7 +176,9 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
             className="section-header clickable"
             onClick={() => toggleSection('timing')}
           >
-            <span className="section-icon">⚡</span>
+            <span className="section-icon" aria-hidden="true">
+              <VideoIcon size={18} />
+            </span>
             <h4>Performance Metrics</h4>
             <div className="status-badge info">
               {analysis.timing ? 'Detailed' : 'Basic'} timing
@@ -187,7 +204,9 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
             className="section-header clickable"
             onClick={() => toggleSection('pose')}
           >
-            <span className="section-icon">👤</span>
+            <span className="section-icon" aria-hidden="true">
+              <PoseDetectionIcon size={18} />
+            </span>
             <h4>Pose Detection</h4>
             <div className="status-badge success">
               {formatPercentage(analysis.pose_detection_rate || 0)} detected
@@ -224,7 +243,9 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
           className="section-header clickable"
           onClick={() => toggleSection('ball')}
         >
-          <span className="section-icon">🎾</span>
+          <span className="section-icon" aria-hidden="true">
+            <BallDetectionIcon size={18} />
+          </span>
           <h4>Ball Detection</h4>
           <div className="status-badge success">
             {formatPercentage(analysis.detection_rate)} detected

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { createAuthInterceptor } from '../utils/authInterceptor';
+import { AnalysisData } from './api';
 
 // API configuration
 const API_BASE_URL =
@@ -17,7 +18,7 @@ createAuthInterceptor(analysisApi, 'Analysis API');
 analysisApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('Analysis API Error:', error.response?.data || error.message);
+    // Errors are handled by calling code through error callbacks
     return Promise.reject(error);
   }
 );
@@ -52,7 +53,7 @@ export interface TaskStatus {
   status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   error?: string;
-  result?: any;
+  result?: AnalysisData | null;
   started_at?: string;
   completed_at?: string;
   estimated_duration?: number;

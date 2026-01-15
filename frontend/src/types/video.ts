@@ -59,7 +59,7 @@ export interface ApiError {
     // CHANGED: new error structure
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
 }
 
@@ -77,4 +77,13 @@ export interface OverlayData {
   width: number;
   height: number;
   frames: PoseFrame[];
+}
+
+export interface VideoMetrics {
+  video_id: number;
+  serve_count: number;
+  avg_elbow_angle: number | null;
+  total_contacts: number;
+  toss_height: number | null;
+  contact_height: number | null;
 }

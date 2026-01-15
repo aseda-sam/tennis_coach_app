@@ -1,19 +1,28 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import './App.css';
 import AnalysisDashboard from './components/AnalysisDashboard';
+import { AuthForm } from './components/AuthForm';
+import { VideoIcon } from './components/Icons';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
-import { AuthForm } from './components/AuthForm';
 import { useAuth } from './hooks/useAuth';
 import { VideoMetadata } from './types/video';
 
 function App() {
   const profile = process.env.REACT_APP_PROFILE || 'local';
   const { user, loading, signOut } = useAuth();
-  const [currentView, setCurrentView] = useState<'upload' | 'list' | 'dashboard'>('upload');
-  const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(null);
+  const queryClient = useQueryClient();
+  const [currentView, setCurrentView] = useState<
+    'upload' | 'list' | 'dashboard'
+  >('upload');
+  const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(
+    null
+  );
 
   const handleVideoUploaded = () => {
+    // Invalidate videos cache to refetch the list with the new video
+    queryClient.invalidateQueries({ queryKey: ['videos'] });
     setCurrentView('list');
   };
 
@@ -53,42 +62,76 @@ function App() {
     );
   }
 
+  const renderHeader = () => {
+    if (currentView === 'dashboard') return null;
+
+    return (
+      <div className="app-header">
+        <div className="app-header-wrapper">
+          <div className="app-header-left">
+            <div className="app-brand">
+              <div className="app-logo">
+                <VideoIcon size={20} color="white" />
+              </div>
+              <h1 className="app-title">Tennis Coach</h1>
+            </div>
+          </div>
+
+          <div
+            className="app-header-center"
+            role="tablist"
+            aria-label="Primary navigation"
+          >
+            <div className="view-toggle">
+              <button
+                type="button"
+                role="tab"
+                className={`view-toggle-btn ${currentView === 'upload' ? 'active' : ''}`}
+                onClick={() => setCurrentView('upload')}
+                aria-selected={currentView === 'upload'}
+              >
+                Home
+              </button>
+              <button
+                type="button"
+                role="tab"
+                className={`view-toggle-btn ${currentView === 'list' ? 'active' : ''}`}
+                onClick={() => setCurrentView('list')}
+                aria-selected={currentView === 'list'}
+              >
+                Library
+              </button>
+            </div>
+          </div>
+
+          <div className="app-header-right">
+            <button className="logout-btn" onClick={signOut}>
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderCurrentView = () => {
     switch (currentView) {
       case 'upload':
         return (
           <div className="app-container">
             <div className="upload-section">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                  <h1 className="app-title">Tennis Video Analyzer</h1>
-                  <p className="app-subtitle">
-                    Upload your tennis videos for advanced performance analysis and technique insights
-                  </p>
-                </div>
-                <button 
-                  onClick={signOut}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#ef4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Logout
-                </button>
+              <div className="header-content">
+                <p className="app-subtitle">
+                  Upload your tennis video and get personalized feedback
+                </p>
+                <p className="app-description">
+                  Share a video of your serve or groundstrokes, and we'll help
+                  you understand what's working well and where you can improve.
+                  More shot types coming soon!
+                </p>
               </div>
+
               <VideoUpload onUploadSuccess={handleVideoUploaded} />
-              <div className="view-videos-section">
-                <button 
-                  className="view-videos-btn"
-                  onClick={() => setCurrentView('list')}
-                >
-                  View My Videos
-                </button>
-              </div>
             </div>
           </div>
         );
@@ -96,40 +139,10 @@ function App() {
       case 'list':
         return (
           <div className="app-container">
-            <div className="list-section">
-              <div className="list-header">
-                <button 
-                  className="back-to-upload-btn"
-                  onClick={() => setCurrentView('upload')}
-                >
-                  ← Back to Upload
-                </button>
-                <button 
-                  className="upload-new-btn"
-                  onClick={() => setCurrentView('upload')}
-                >
-                  Upload New Video
-                </button>
-                <button 
-                  onClick={signOut}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#ef4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    marginLeft: '10px',
-                  }}
-                >
-                  Logout
-                </button>
-              </div>
-              <VideoList 
-                onVideoDeleted={handleVideoDeleted}
-                onViewAnalysis={handleViewAnalysis}
-              />
-            </div>
+            <VideoList
+              onVideoDeleted={handleVideoDeleted}
+              onViewAnalysis={handleViewAnalysis}
+            />
           </div>
         );
 
@@ -161,6 +174,7 @@ function App() {
 
   return (
     <div className="App">
+      {renderHeader()}
       {renderCurrentView()}
     </div>
   );

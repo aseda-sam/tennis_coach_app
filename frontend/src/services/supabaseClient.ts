@@ -8,7 +8,7 @@ const supabasePublishableKey =
 let supabase: SupabaseClient | null = null;
 
 if (profile === 'local') {
-  console.log("Profile 'local': Auth disabled");
+  // Auth disabled in local profile mode
 } else {
   if (!supabaseUrl || !supabasePublishableKey) {
     throw new Error(

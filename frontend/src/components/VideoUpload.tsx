@@ -1,6 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
+import { UploadIcon } from './Icons';
 import './VideoUpload.css';
 
 interface VideoUploadProps {
@@ -8,64 +9,81 @@ interface VideoUploadProps {
 }
 
 const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const handleFileSelect = useCallback(async (file: File) => {
-    // Validate file type
-    const allowedTypes = ['video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/flv'];
-    if (!allowedTypes.includes(file.type)) {
-      setError('Please select a valid video file (MP4, AVI, MOV, WMV, FLV)');
-      return;
-    }
+  const handleFileSelect = useCallback(
+    async (file: File) => {
+      // Validate file type
+      const allowedTypes = [
+        'video/mp4',
+        'video/avi',
+        'video/mov',
+        'video/wmv',
+        'video/flv',
+      ];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Please select a valid video file (MP4, AVI, MOV, WMV, FLV)');
+        return;
+      }
 
-    // Validate file size (100MB limit)
-    const maxSize = 100 * 1024 * 1024; // 100MB
-    if (file.size > maxSize) {
-      setError('File size must be less than 100MB');
-      return;
-    }
+      // Validate file size (100MB limit)
+      const maxSize = 100 * 1024 * 1024; // 100MB
+      if (file.size > maxSize) {
+        setError('File size must be less than 100MB');
+        return;
+      }
 
-    setIsUploading(true);
-    setError(null);
-    setUploadProgress(0);
+      setIsUploading(true);
+      setError(null);
+      setUploadProgress(0);
 
-    try {
-      const response = await videoApi.uploadVideo(file);
-      
-      // Create a video object from the response data
-      const video: VideoMetadata = {
-        id: response.video_id,
-        filename: response.filename,
-        file_path: '', // This will be filled by the backend
-        file_size: response.file_size,
-        status: response.status,
-        created_at: new Date().toISOString(),
-        // Add metadata if available
-        ...(response.metadata && {
-          duration: response.metadata.duration,
-          fps: response.metadata.fps,
-          width: response.metadata.width,
-          height: response.metadata.height,
-          frame_count: response.metadata.frame_count,
-        })
-      };
-      
-      onUploadSuccess(video);
-      setUploadProgress(100);
-    } catch (err: any) {
-      // Handle error responses
-      const detail = err.response?.data?.detail || err.response?.data?.error?.message;
-      
-      // Handle errors
-      const errorMessage = detail || 'Upload failed. Please try again.';
-      setError(errorMessage);
-    } finally {
-      setIsUploading(false);
-    }
-  }, [onUploadSuccess]);
+      try {
+        const response = await videoApi.uploadVideo(file);
+
+        // Create a video object from the response data
+        const video: VideoMetadata = {
+          id: response.video_id,
+          filename: response.filename,
+          file_path: '', // This will be filled by the backend
+          file_size: response.file_size,
+          status: response.status,
+          created_at: new Date().toISOString(),
+          // Add metadata if available
+          ...(response.metadata && {
+            duration: response.metadata.duration,
+            fps: response.metadata.fps,
+            width: response.metadata.width,
+            height: response.metadata.height,
+            frame_count: response.metadata.frame_count,
+          }),
+        };
+
+        onUploadSuccess(video);
+        setUploadProgress(100);
+      } catch (err: unknown) {
+        const axiosError = err as {
+          response?: {
+            data?: { detail?: string; error?: { message?: string } };
+          };
+        };
+        // Handle error responses
+        const detail =
+          axiosError.response?.data?.detail ||
+          axiosError.response?.data?.error?.message;
+
+        // Handle errors
+        const errorMessage = detail || 'Upload failed. Please try again.';
+        setError(errorMessage);
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [onUploadSuccess]
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -77,38 +95,49 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      handleFileSelect(files[0]);
-    }
-  }, [handleFileSelect]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFileSelect(file);
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0) {
+        handleFileSelect(files[0]);
+      }
+    },
+    [handleFileSelect]
+  );
+
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        handleFileSelect(file);
+      }
+    },
+    [handleFileSelect]
+  );
+
+  const handleAreaClick = useCallback(() => {
+    if (!isUploading && fileInputRef.current) {
+      fileInputRef.current.click();
     }
-  }, [handleFileSelect]);
+  }, [isUploading]);
 
   return (
     <div className="video-upload">
-      <h2>Upload Tennis Video</h2>
-      
       <div
         className={`upload-area ${isDragOver ? 'drag-over' : ''} ${isUploading ? 'uploading' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onClick={handleAreaClick}
       >
         {isUploading ? (
           <div className="upload-progress">
             <div className="progress-bar">
-              <div 
-                className="progress-fill" 
+              <div
+                className="progress-fill"
                 style={{ width: `${uploadProgress}%` }}
               ></div>
             </div>
@@ -116,12 +145,20 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
           </div>
         ) : (
           <>
-            <div className="upload-icon">📁</div>
-            <p>Drag and drop your tennis video here</p>
-            <p>or</p>
-            <label className="file-input-label">
+            <div className="upload-icon" aria-hidden="true">
+              <UploadIcon size={48} color="#64748b" />
+            </div>
+            <p className="upload-main-text">
+              Drag and drop your tennis video here
+            </p>
+            <p className="upload-or-text">or</p>
+            <label
+              className="file-input-label"
+              onClick={(e) => e.stopPropagation()}
+            >
               Choose File
               <input
+                ref={fileInputRef}
                 type="file"
                 accept="video/*"
                 onChange={handleFileInput}
@@ -129,19 +166,24 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
                 style={{ display: 'none' }}
               />
             </label>
-            <p className="file-info">
-              Supported formats: MP4, AVI, MOV, WMV, FLV<br />
-              Maximum size: 100MB
-            </p>
           </>
         )}
       </div>
 
-      {error && (
-        <div className="error-message">
-          {error}
-        </div>
-      )}
+      <div className="upload-guidance">
+        <h3 className="guidance-title">What videos work best?</h3>
+        <ul className="guidance-list">
+          <li>Record from the side or slightly behind for serves</li>
+          <li>Capture your full body and the ball in frame</li>
+          <li>Good lighting helps us see your form clearly</li>
+          <li>Videos should be at least a few seconds long</li>
+        </ul>
+        <p className="file-info">
+          Supported formats: MP4, AVI, MOV, WMV, FLV • Maximum size: 100MB
+        </p>
+      </div>
+
+      {error && <div className="error-message">{error}</div>}
     </div>
   );
 };

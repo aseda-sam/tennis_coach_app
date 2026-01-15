@@ -1,6 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { videoApi } from '../services/api';
+import React, { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAnalysisManager } from '../hooks/useAnalysisManager';
+import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import './AnalysisDashboard.css';
+import AnalysisRightPanel from './AnalysisRightPanel';
+import { ArrowBackIcon } from './Icons';
+import ProgressBar from './ProgressBar';
 import VideoPlayer from './VideoPlayer';
 
 interface AnalysisDashboardProps {
@@ -16,74 +21,138 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   videoUrl,
   onClose,
 }) => {
-  const [aspectRatioMode, setAspectRatioMode] = useState<
-    'cover' | 'contain' | 'auto'
-  >('contain');
-  const [analysisStatus, setAnalysisStatus] = useState<{
-    has_analysis: boolean;
-    analysis_types: string[];
-  } | null>(null);
+  const queryClient = useQueryClient();
 
-  // Fetch analysis status
-  useEffect(() => {
-    const fetchAnalysisStatus = async () => {
-      try {
-        const status = await videoApi.getVideoAnalysisStatus(videoId);
-        setAnalysisStatus(status);
-      } catch (error) {
-        console.debug('No analysis status available for video:', videoId);
-        setAnalysisStatus({
-          has_analysis: false,
-          analysis_types: [],
-        });
-      }
-    };
+  // Use React Query hook for analysis status (with caching)
+  const { data: analysisStatus, refetch: refetchAnalysisStatus } =
+    useVideoAnalysisStatus(videoId);
 
-    fetchAnalysisStatus();
-  }, [videoId]);
+  // Analysis manager for pose analysis
+  const {
+    analysisState,
+    startAnalysis,
+    isLoading: isAnalysisLoading,
+  } = useAnalysisManager({
+    videoId,
+    autoRefresh: true,
+    onAnalysisComplete: async () => {
+      // Refresh analysis status after completion without reloading page
+      await refetchAnalysisStatus();
+      // Also invalidate the query to ensure fresh data
+      queryClient.invalidateQueries({
+        queryKey: ['video-analysis-status', videoId],
+      });
+    },
+  });
 
-  // Analysis state for the new unified system
+  const handleFocusAnalysis = useCallback(async () => {
+    try {
+      await startAnalysis({
+        analysis_type: 'pose_only',
+        confidence_threshold: 0.5,
+      });
+    } catch (error) {
+      // Error handling is done by the startAnalysis hook
+    }
+  }, [startAnalysis]);
 
   return (
     <div className="analysis-dashboard">
-      <div className="dashboard-header">
-        <button className="back-btn" onClick={onClose}>
-          <span className="back-icon">←</span>
-          Back to Videos
+      {/* Header */}
+      <div className="analysis-dashboard__header">
+        <button className="analysis-dashboard__back-btn" onClick={onClose}>
+          <ArrowBackIcon size={16} />
+          Back
         </button>
-        <h1 className="dashboard-title">{videoFilename}</h1>
-        <div className="upload-info">Uploaded recently</div>
+        <div className="analysis-dashboard__header-content">
+          <h1 className="analysis-dashboard__title">Serve Analysis</h1>
+          <p className="analysis-dashboard__subtitle">{videoFilename}</p>
+        </div>
       </div>
 
-      <div className="dashboard-content">
-        <div className="video-section">
-          {/* Aspect Ratio Mode Selector */}
-          <div className="aspect-ratio-controls">
-            <label htmlFor="aspect-ratio-mode">Video Display Mode:</label>
-            <select
-              id="aspect-ratio-mode"
-              value={aspectRatioMode}
-              onChange={(e) =>
-                setAspectRatioMode(
-                  e.target.value as 'cover' | 'contain' | 'auto'
-                )
-              }
-              className="aspect-ratio-select"
-            >
-              <option value="contain">Fit with Black Bars (Default)</option>
-              <option value="cover">Crop to Fit</option>
-              <option value="auto">Auto Adjust</option>
-            </select>
-          </div>
-
+      {/* Main Content */}
+      <div className="analysis-dashboard__content">
+        {/* Left Column - Video Player */}
+        <div className="analysis-dashboard__video-column">
           <VideoPlayer
             videoUrl={videoUrl}
             title={videoFilename}
             showControls={true}
-            aspectRatioMode={aspectRatioMode}
+            aspectRatioMode="contain"
             videoId={videoId}
-            showPostureAnalysis={true}
+            showPostureAnalysis={false}
             hasPoseData={analysisStatus?.has_analysis || false}
+            controlsBelow={true}
+          />
+
+          {/* Keyboard Shortcuts Banner */}
+          <div className="analysis-dashboard__keyboard-shortcuts">
+            <div className="analysis-dashboard__shortcuts-icon">⌨️</div>
+            <div className="analysis-dashboard__shortcuts-content">
+              <h4 className="analysis-dashboard__shortcuts-title">
+                Keyboard Shortcuts
+              </h4>
+              <div className="analysis-dashboard__shortcuts-list">
+                <div className="analysis-dashboard__shortcut-item">
+                  <kbd className="analysis-dashboard__kbd">Space</kbd>
+                  <span>Play/Pause</span>
+                </div>
+                <div className="analysis-dashboard__shortcut-item">
+                  <kbd className="analysis-dashboard__kbd">← →</kbd>
+                  <span>Frame by frame</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Analysis Panel */}
+        <div className="analysis-dashboard__analysis-column">
+          {!analysisStatus?.has_analysis && (
+            <>
+              {(analysisState.status === 'starting' ||
+                analysisState.status === 'processing') && (
+                <div className="analysis-dashboard__progress-card">
+                  <ProgressBar
+                    progress={analysisState.progress}
+                    status={analysisState.status}
+                    showPercentage={true}
+                    showStatus={true}
+                    size="medium"
+                    animated={true}
+                  />
+                </div>
+              )}
+              {analysisState.status === 'idle' && (
+                <button
+                  className="analysis-dashboard__analyze-btn"
+                  onClick={handleFocusAnalysis}
+                  disabled={isAnalysisLoading}
+                >
+                  Analyze
+                </button>
+              )}
+              {analysisState.status === 'failed' && (
+                <div className="analysis-dashboard__error-card">
+                  <p className="analysis-dashboard__error-message">
+                    {analysisState.error ||
+                      'Analysis failed. Please try again.'}
+                  </p>
+                  <button
+                    className="analysis-dashboard__analyze-btn"
+                    onClick={handleFocusAnalysis}
+                    disabled={isAnalysisLoading}
+                  >
+                    Retry Analysis
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+          <AnalysisRightPanel
+            videoId={videoId}
+            videoFilename={videoFilename}
+            analysisStatus={analysisStatus}
           />
         </div>
       </div>

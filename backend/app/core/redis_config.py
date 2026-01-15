@@ -45,7 +45,14 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 # Create Redis connection (lazy - only connects when used)
 # This allows the module to load even if Redis isn't available (e.g., in CI tests)
-redis_conn = Redis.from_url(REDIS_URL, socket_connect_timeout=1, socket_timeout=1)
+# Increased timeouts for production stability (was 1s, now 5s connect, 10s socket)
+redis_conn = Redis.from_url(
+    REDIS_URL,
+    socket_connect_timeout=5,  # 5 seconds to establish connection
+    socket_timeout=10,  # 10 seconds for socket operations
+    retry_on_timeout=True,  # Retry on timeout errors
+    health_check_interval=30,  # Check connection health every 30s
+)
 
 # Test connection lazily - only log, don't raise
 # This allows tests to run without Redis

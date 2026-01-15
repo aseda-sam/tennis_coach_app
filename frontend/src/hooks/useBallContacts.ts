@@ -53,13 +53,14 @@ export const useBallContacts = ({
       if (onContactsLoaded) {
         onContactsLoaded(contactsData);
       }
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to load ball contacts';
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
+      const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to load ball contacts';
       setError(errorMessage);
       if (onError) {
         onError(errorMessage);
       }
-      console.error('Error loading ball contacts:', err);
+      // Error is handled by setError and onError callback
     } finally {
       setLoading(false);
     }
@@ -75,8 +76,9 @@ export const useBallContacts = ({
       setContacts(prev => [...prev, newContact]);
       setTimestamps(prev => [...prev, newContact.video_timestamp].sort((a, b) => a - b));
       return newContact;
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to create ball contact';
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
+      const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to create ball contact';
       throw new Error(errorMessage);
     }
   }, []);
@@ -104,8 +106,9 @@ export const useBallContacts = ({
       }
       
       return updatedContact;
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to update ball contact';
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
+      const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to update ball contact';
       throw new Error(errorMessage);
     }
   }, []); // No dependencies needed since we use ref
@@ -122,8 +125,9 @@ export const useBallContacts = ({
       if (deletedContact) {
         setTimestamps(prev => prev.filter(t => t !== deletedContact.video_timestamp));
       }
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.detail || err?.message || 'Failed to delete ball contact';
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
+      const errorMessage = axiosError?.response?.data?.detail || axiosError?.message || 'Failed to delete ball contact';
       throw new Error(errorMessage);
     }
   }, []); // No dependencies needed since we use ref

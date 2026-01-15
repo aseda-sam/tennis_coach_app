@@ -1,51 +1,51 @@
 .timing-performance {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  margin: 16px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+  margin: var(--spacing-lg) 0;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border-light);
 }
 
 .timing-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #f1f5f9;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 2px solid var(--color-surface-tertiary);
 }
 
 .timing-header h4 {
   margin: 0;
-  color: #1e293b;
-  font-size: 1.1rem;
-  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-semibold);
 }
 
 .total-time {
-  background: #3b82f6;
+  background: var(--color-info);
   color: white;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
 }
 
 .timing-breakdown {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md);
 }
 
 .timing-stage {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: #f8fafc;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
   position: relative;
   overflow: hidden;
 }
@@ -64,9 +64,9 @@
 }
 
 .stage-name {
-  font-weight: 500;
-  color: #374151;
-  font-size: 0.9rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
 }
 
 .stage-timing {
@@ -74,19 +74,19 @@
   flex-direction: column;
   align-items: flex-end;
   margin-left: auto;
-  margin-right: 12px;
+  margin-right: var(--spacing-md);
 }
 
 .stage-duration {
-  font-weight: 600;
-  color: #1e293b;
-  font-size: 0.9rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
 }
 
 .stage-percentage {
-  font-size: 0.75rem;
-  color: #6b7280;
-  font-weight: 500;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-disabled);
+  font-weight: var(--font-weight-medium);
 }
 
 .stage-progress {
@@ -101,7 +101,11 @@
 
 .stage-progress .progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(59, 130, 246, 0.1) 0%,
+    rgba(59, 130, 246, 0.05) 100%
+  );
   border-radius: 8px;
   transition: width 0.3s ease;
 }
@@ -183,9 +187,15 @@
 
 /* Animation for progress bars */
 @keyframes progressPulse {
-  0% { opacity: 0.7; }
-  50% { opacity: 1; }
-  100% { opacity: 0.7; }
+  0% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
 }
 
 .stage-progress .progress-bar {
@@ -194,14 +204,13 @@
 
 /* Hover effects */
 .timing-stage:hover {
-  background: #f1f5f9;
+  background: var(--color-surface-tertiary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition-normal);
 }
 
 .insight-item:hover {
-  background: #e0f2fe;
-  transition: background-color 0.2s ease;
+  background: var(--color-info-light);
+  transition: background-color var(--transition-normal);
 }
-

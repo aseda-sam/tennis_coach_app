@@ -1,9 +1,9 @@
 """Ball contact API routes."""
 
 import logging
-from typing import List
+from typing import Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas.ball_contact import (
@@ -12,6 +12,8 @@ from app.api.schemas.ball_contact import (
     BallContactInfo,
     BallContactListItem,
     BallContactUpdate,
+    BulkBallContactRequest,
+    BulkBallContactResponse,
     PostureAnalysisRequest,
     PostureAnalysisResponse,
 )
@@ -162,6 +164,74 @@ def get_ball_contact_timestamps(
 
         ball_contacts = get_ball_contacts_by_video_id(db, video_id)
         return [contact.video_timestamp for contact in ball_contacts]
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+
+
+@router.post("/video/bulk", response_model=BulkBallContactResponse)
+def get_ball_contacts_bulk(
+    request: BulkBallContactRequest = Body(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BulkBallContactResponse:
+    """Get ball contacts for multiple videos in one request."""
+    try:
+        from app.models.ball_contact import BallContact
+        from app.models.player import Player
+        from app.models.video import Video
+        from app.utils.authorization import is_admin
+
+        video_ids = request.video_ids
+
+        query = db.query(Video).filter(Video.id.in_(video_ids))
+        if not is_admin(current_user):
+            query = query.filter(Video.user_id == current_user["id"])
+
+        accessible_videos = {video.id for video in query.all()}
+        missing_ids = set(video_ids) - accessible_videos
+        if missing_ids:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Videos not found or access denied: {sorted(missing_ids)}",
+            )
+
+        ball_contacts = (
+            db.query(BallContact).filter(BallContact.video_id.in_(video_ids)).all()
+        )
+
+        player_ids = {
+            contact.player_id for contact in ball_contacts if contact.player_id
+        }
+        players = db.query(Player).filter(Player.id.in_(player_ids)).all()
+        player_name_map = {player.id: player.name for player in players}
+
+        contacts_by_video: Dict[int, List[BallContactListItem]] = {
+            video_id: [] for video_id in video_ids
+        }
+        for contact in ball_contacts:
+            contacts_by_video[contact.video_id].append(
+                BallContactListItem(
+                    id=contact.id,
+                    video_id=contact.video_id,
+                    frame_number=contact.frame_number,
+                    video_timestamp=contact.video_timestamp,
+                    contact_hand=contact.contact_hand,
+                    stroke_type=contact.stroke_type,
+                    stroke_subtype=contact.stroke_subtype,
+                    elbow_angle=contact.elbow_angle,
+                    detection_source=contact.detection_source,
+                    player_id=contact.player_id,
+                    player_name=player_name_map.get(contact.player_id),
+                    created_at=contact.created_at,
+                )
+            )
+
+        return BulkBallContactResponse(contacts=contacts_by_video)
     except HTTPException:
         raise
     except ValueError as e:

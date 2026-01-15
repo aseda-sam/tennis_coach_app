@@ -73,15 +73,16 @@ export const useTaskStatus = ({
           onError(status.error || `Task ${status.status}`);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
       const errorMessage =
-        err?.response?.data?.detail ||
-        err?.message ||
+        axiosError?.response?.data?.detail ||
+        axiosError?.message ||
         'Failed to fetch task status';
 
       // If job not found (404), treat it as completed/cancelled
-      if (err?.response?.status === 404) {
-        console.log(`Job ${jobId} not found, treating as completed`);
+      if (axiosError?.response?.status === 404) {
+        // Job not found, treating as completed
         const fallbackStatus: TaskStatus = {
           job_id: jobId,
           video_id: 0,
