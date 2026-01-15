@@ -308,8 +308,9 @@ async def get_video_url(
         else:
             # For local storage, construct full URL to the stream endpoint
             # Use the request's base URL to ensure it works with any deployment
+            # Note: Router is mounted at /v0/videos, so include /v0 prefix
             base_url = str(request.base_url).rstrip("/")
-            stream_url = f"{base_url}/videos/{video_id}/stream"
+            stream_url = f"{base_url}/v0/videos/{video_id}/stream"
             logger.debug(
                 f"Returning stream URL for local video {video_id}: {stream_url}"
             )
