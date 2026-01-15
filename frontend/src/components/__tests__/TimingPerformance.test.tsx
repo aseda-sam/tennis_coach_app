@@ -63,11 +63,21 @@ describe('TimingPerformance', () => {
     it('renders stage icons correctly', () => {
       render(<TimingPerformance timing={mockTimingData} />);
 
-      expect(screen.getByTestId('stage-icon-frame_extraction')).toBeInTheDocument();
-      expect(screen.getByTestId('stage-icon-ball_detection')).toBeInTheDocument();
-      expect(screen.getByTestId('stage-icon-pose_detection')).toBeInTheDocument();
-      expect(screen.getByTestId('stage-icon-frame_annotation')).toBeInTheDocument();
-      expect(screen.getByTestId('stage-icon-video_creation')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('stage-icon-frame_extraction')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('stage-icon-ball_detection')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('stage-icon-pose_detection')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('stage-icon-frame_annotation')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('stage-icon-video_creation')
+      ).toBeInTheDocument();
     });
   });
 
@@ -166,7 +176,9 @@ describe('TimingPerformance', () => {
 
       expect(screen.getByText('Unknown Stage')).toBeInTheDocument();
       // Default icon is AnalyticsIcon (SVG), not emoji
-      expect(screen.getByTestId('stage-icon-unknown_stage')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('stage-icon-unknown_stage')
+      ).toBeInTheDocument();
     });
   });
 
