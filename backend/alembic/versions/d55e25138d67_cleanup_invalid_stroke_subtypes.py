@@ -5,6 +5,7 @@ Revises: d30414b42ecb
 Create Date: 2026-01-15 16:55:13.364337
 
 """
+
 import logging
 from typing import Sequence, Union
 
@@ -19,8 +20,8 @@ from app.core.shot_types import (
 logger = logging.getLogger(__name__)
 
 # revision identifiers, used by Alembic.
-revision: str = 'd55e25138d67'
-down_revision: Union[str, Sequence[str], None] = 'd30414b42ecb'
+revision: str = "d55e25138d67"
+down_revision: Union[str, Sequence[str], None] = "d30414b42ecb"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -59,9 +60,7 @@ def upgrade() -> None:
             continue
 
         # Try to map legacy subtype to canonical
-        canonical_subtype = map_legacy_subtype_to_canonical(
-            stroke_type, stroke_subtype
-        )
+        canonical_subtype = map_legacy_subtype_to_canonical(stroke_type, stroke_subtype)
 
         if canonical_subtype:
             # Update to mapped canonical subtype

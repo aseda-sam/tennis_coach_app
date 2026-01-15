@@ -573,3 +573,97 @@ class TestBallContactPlayerIntegration:
         data = response.json()
         assert data["stroke_type"] == "return"
         assert data["stroke_subtype"] == "forehand"
+
+    def test_update_ball_contact_subtype_only(
+        self, client: TestClient, db_session: Session, test_user_id: str
+    ) -> None:
+        """Test updating only stroke_subtype without providing stroke_type."""
+        # Create video directly in the database for testing
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
+            user_id=test_user_id,
+        )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Create ball contact with ground_stroke and no subtype
+        ball_contact_data = {
+            "video_id": video_id,
+            "video_timestamp": 1.0,
+            "contact_hand": "right",
+            "stroke_type": "ground_stroke",
+            "stroke_subtype": None,
+        }
+
+        create_response = client.post("/v0/ball-contacts/", json=ball_contact_data)
+        assert create_response.status_code == 201
+        ball_contact_id = create_response.json()["id"]
+
+        # Update only stroke_subtype without providing stroke_type
+        # The validator should skip validation and let service layer use existing stroke_type
+        update_data = {
+            "stroke_subtype": "forehand_topspin",
+            # Note: stroke_type is NOT provided
+        }
+
+        update_response = client.put(
+            f"/v0/ball-contacts/{ball_contact_id}", json=update_data
+        )
+
+        assert update_response.status_code == 200
+        data = update_response.json()
+        assert data["stroke_type"] == "ground_stroke"  # Should remain unchanged
+        assert data["stroke_subtype"] == "forehand_topspin"  # Should be updated
+
+    def test_update_ball_contact_subtype_only_invalid(
+        self, client: TestClient, db_session: Session, test_user_id: str
+    ) -> None:
+        """Test that invalid subtype still fails validation when stroke_type is provided."""
+        # Create video directly in the database for testing
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
+            user_id=test_user_id,
+        )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Create ball contact with ground_stroke
+        ball_contact_data = {
+            "video_id": video_id,
+            "video_timestamp": 1.0,
+            "contact_hand": "right",
+            "stroke_type": "ground_stroke",
+            "stroke_subtype": "forehand_topspin",
+        }
+
+        create_response = client.post("/v0/ball-contacts/", json=ball_contact_data)
+        assert create_response.status_code == 201
+        ball_contact_id = create_response.json()["id"]
+
+        # Try to update with invalid subtype (smash is for overhead, not ground_stroke)
+        # This should fail validation since stroke_type is explicitly provided
+        update_data = {
+            "stroke_type": "ground_stroke",  # Explicitly provided
+            "stroke_subtype": "smash",  # Invalid for ground_stroke
+        }
+
+        update_response = client.put(
+            f"/v0/ball-contacts/{ball_contact_id}", json=update_data
+        )
+
+        assert update_response.status_code == 422  # Validation error
+        assert "Invalid subtype" in str(update_response.json())

@@ -161,10 +161,18 @@ class BallContactUpdate(BaseModel):
         """Validate that subtype is valid for the given stroke type.
 
         Strict validation for update operations - raises ValueError for invalid subtypes.
+        If stroke_type is not provided in the update, skip validation here and let the
+        service layer handle it by falling back to the existing stroke_type from the database.
         """
         if v is None or v == "":
             return None
         stroke_type = info.data.get("stroke_type")
+
+        # If stroke_type is not provided in the update, skip validation here.
+        # The service layer will use the existing stroke_type from the database.
+        if stroke_type is None:
+            return v
+
         if not is_valid_subtype_for_type(stroke_type, v):
             from app.core.shot_types import get_subtypes_for_type
 
