@@ -4,6 +4,7 @@ from typing import List, Literal, Optional
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.shot_types import StrokeType, is_valid_subtype_for_type
 from app.models.ball_contact import BallContact
 from app.models.video import Video
 
@@ -26,7 +27,7 @@ def create_ball_contact(
     video_id: int,
     video_timestamp: float,
     contact_hand: Literal["left", "right"],
-    stroke_type: Optional[Literal["ground_stroke", "serve", "volley", "overhead"]],
+    stroke_type: Optional[StrokeType],
     stroke_subtype: Optional[str],
     detection_source: Optional[Literal["automated", "manual"]],
     player_id: Optional[int] = None,
@@ -38,8 +39,7 @@ def create_ball_contact(
         video_id (int): ID of the associated video.
         video_timestamp (float): Timestamp in the video for the ball contact.
         contact_hand (Literal["left", "right"]): Hand used for the contact.
-        stroke_type (Optional[Literal["ground_stroke", "serve", "volley", "overhead"]]):
-            Type of stroke.
+        stroke_type (Optional[StrokeType]): Type of stroke.
         stroke_subtype (Optional[str]): Subtype of the stroke.
         detection_source (Optional[Literal["automated", "manual"]]):
             Source of the detection.
@@ -60,6 +60,16 @@ def create_ball_contact(
     # Validate timestamp is positive
     if video_timestamp < 0:
         raise ValueError("Timestamp must be greater than 0")
+
+    # Validate stroke subtype is valid for stroke type
+    if stroke_subtype and not is_valid_subtype_for_type(stroke_type, stroke_subtype):
+        from app.core.shot_types import get_subtypes_for_type
+
+        allowed = ", ".join(get_subtypes_for_type(stroke_type))
+        raise ValueError(
+            f"Invalid subtype '{stroke_subtype}' for stroke type '{stroke_type}'. "
+            f"Allowed subtypes: {allowed}"
+        )
 
     # Validate Player exists if player_id is provided
     if player_id is not None:
@@ -186,6 +196,27 @@ def update_ball_contact(
         player = db.query(Player).filter(Player.id == updates["player_id"]).first()
         if not player:
             raise ValueError(f"Player with ID {updates['player_id']} not found")
+
+    # Validate stroke subtype if being updated
+    if "stroke_subtype" in updates:
+        stroke_type = updates.get("stroke_type", contact.stroke_type)
+        stroke_subtype = updates["stroke_subtype"]
+        if stroke_subtype and not is_valid_subtype_for_type(stroke_type, stroke_subtype):
+            from app.core.shot_types import get_subtypes_for_type
+
+            allowed = ", ".join(get_subtypes_for_type(stroke_type))
+            raise ValueError(
+                f"Invalid subtype '{stroke_subtype}' for stroke type '{stroke_type}'. "
+                f"Allowed subtypes: {allowed}"
+            )
+
+    # If stroke_type changes, validate that existing subtype is still valid
+    if "stroke_type" in updates:
+        new_stroke_type = updates["stroke_type"]
+        current_subtype = updates.get("stroke_subtype", contact.stroke_subtype)
+        if current_subtype and not is_valid_subtype_for_type(new_stroke_type, current_subtype):
+            # Clear invalid subtype when stroke type changes
+            updates["stroke_subtype"] = None
 
     # Safely update only validated fields
     for key, value in updates.items():

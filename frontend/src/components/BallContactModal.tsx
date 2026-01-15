@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { BallContact, BallContactUpdate } from '../services/ballContactApi';
+import {
+  STROKE_TYPE_LABELS,
+  STROKE_SUBTYPE_LABELS,
+  getSubtypesForType,
+  type StrokeType,
+} from '../constants/shotTypes';
 import { formatTime, validateTimestamp } from '../utils/validation';
 import './BallContactModal.css';
 
@@ -26,8 +32,8 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
   const [formData, setFormData] = useState<BallContactUpdate>({
     video_timestamp: contact?.video_timestamp || 0,
     contact_hand: contact?.contact_hand || 'right',
-    stroke_type: contact?.stroke_type || 'ground_stroke',
-    stroke_subtype: contact?.stroke_subtype || '',
+    stroke_type: contact?.stroke_type || undefined,
+    stroke_subtype: contact?.stroke_subtype || undefined,
   });
 
   // Update form data when contact changes
@@ -36,8 +42,8 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
       setFormData({
         video_timestamp: contact.video_timestamp,
         contact_hand: contact.contact_hand,
-        stroke_type: contact.stroke_type || 'ground_stroke',
-        stroke_subtype: contact.stroke_subtype || '',
+        stroke_type: contact.stroke_type || undefined,
+        stroke_subtype: contact.stroke_subtype || undefined,
       });
     }
     setValidationError(null);
@@ -65,8 +71,8 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
     setFormData({
       video_timestamp: contact.video_timestamp,
       contact_hand: contact.contact_hand,
-      stroke_type: contact.stroke_type || 'ground_stroke',
-      stroke_subtype: contact.stroke_subtype || '',
+      stroke_type: contact.stroke_type || undefined,
+      stroke_subtype: contact.stroke_subtype || undefined,
     });
     setValidationError(null);
   };
@@ -180,43 +186,48 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
               <div className="form-group">
                 <label>Stroke Type:</label>
                 <select
-                  value={formData.stroke_type}
+                  value={formData.stroke_type || ''}
                   onChange={(e) => {
-                    const value = e.target.value;
-                    // Type-safe validation for stroke_type
-                    if (
-                      value === 'ground_stroke' ||
-                      value === 'serve' ||
-                      value === 'volley' ||
-                      value === 'overhead'
-                    ) {
-                      setFormData({
-                        ...formData,
-                        stroke_type: value,
-                      });
-                    }
+                    const newStrokeType = e.target.value as StrokeType | undefined;
+                    const allowedSubtypes = getSubtypesForType(newStrokeType);
+                    setFormData({
+                      ...formData,
+                      stroke_type: newStrokeType || undefined,
+                      stroke_subtype:
+                        allowedSubtypes.includes(formData.stroke_subtype || '')
+                          ? formData.stroke_subtype
+                          : undefined,
+                    });
                   }}
                 >
-                  <option value="ground_stroke">Ground Stroke</option>
-                  <option value="serve">Serve</option>
-                  <option value="volley">Volley</option>
-                  <option value="overhead">Overhead</option>
+                  <option value="">Select stroke type</option>
+                  {Object.entries(STROKE_TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div className="form-group">
                 <label>Stroke Subtype:</label>
-                <input
-                  type="text"
+                <select
                   value={formData.stroke_subtype || ''}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      stroke_subtype: e.target.value,
+                      stroke_subtype: e.target.value || undefined,
                     })
                   }
-                  placeholder="e.g., forehand, backhand"
-                />
+                  disabled={!formData.stroke_type}
+                >
+                  <option value="">Select subtype (optional)</option>
+                  {getSubtypesForType(formData.stroke_type).map((subtype) => (
+                    <option key={subtype} value={subtype}>
+                      {STROKE_SUBTYPE_LABELS[subtype] || subtype}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           ) : (
@@ -238,15 +249,20 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
 
               <div className="detail-row">
                 <span className="detail-label">Stroke Type:</span>
-                <span className="detail-value capitalize">
-                  {contact.stroke_type?.replace('_', ' ') || 'Unknown'}
+                <span className="detail-value">
+                  {contact.stroke_type
+                    ? STROKE_TYPE_LABELS[contact.stroke_type] || contact.stroke_type
+                    : 'Unknown'}
                 </span>
               </div>
 
               {contact.stroke_subtype && (
                 <div className="detail-row">
                   <span className="detail-label">Stroke Subtype:</span>
-                  <span className="detail-value">{contact.stroke_subtype}</span>
+                  <span className="detail-value">
+                    {STROKE_SUBTYPE_LABELS[contact.stroke_subtype] ||
+                      contact.stroke_subtype}
+                  </span>
                 </div>
               )}
 

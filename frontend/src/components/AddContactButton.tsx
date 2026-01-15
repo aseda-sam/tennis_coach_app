@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { BallContactCreate } from '../services/ballContactApi';
+import {
+  STROKE_TYPE_LABELS,
+  STROKE_SUBTYPE_LABELS,
+  getSubtypesForType,
+  type StrokeType,
+} from '../constants/shotTypes';
 import { formatTime, validateManualTimestamp } from '../utils/validation';
 import './AddContactButton.css';
 
@@ -73,7 +79,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
         video_timestamp: currentTime,
         contact_hand: 'right',
         stroke_type: 'ground_stroke',
-        stroke_subtype: '',
+        stroke_subtype: undefined,
         detection_source: 'manual',
       });
       setValidationError(null);
@@ -166,34 +172,48 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
             <div className="form-group">
               <label>Stroke Type:</label>
               <select
-                value={formData.stroke_type}
-                onChange={(e) =>
+                value={formData.stroke_type || ''}
+                onChange={(e) => {
+                  const newStrokeType = e.target.value as StrokeType | undefined;
+                  const allowedSubtypes = getSubtypesForType(newStrokeType);
                   setFormData({
                     ...formData,
-                    stroke_type: e.target.value as any,
-                  })
-                }
+                    stroke_type: newStrokeType || undefined,
+                    stroke_subtype:
+                      allowedSubtypes.includes(formData.stroke_subtype || '')
+                        ? formData.stroke_subtype
+                        : undefined,
+                  });
+                }}
               >
-                <option value="ground_stroke">Ground Stroke</option>
-                <option value="serve">Serve</option>
-                <option value="volley">Volley</option>
-                <option value="overhead">Overhead</option>
+                <option value="">Select stroke type</option>
+                {Object.entries(STROKE_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="form-group">
               <label>Stroke Subtype:</label>
-              <input
-                type="text"
-                value={formData.stroke_subtype}
+              <select
+                value={formData.stroke_subtype || ''}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    stroke_subtype: e.target.value,
+                    stroke_subtype: e.target.value || undefined,
                   })
                 }
-                placeholder="e.g., forehand, backhand"
-              />
+                disabled={!formData.stroke_type}
+              >
+                <option value="">Select subtype (optional)</option>
+                {getSubtypesForType(formData.stroke_type).map((subtype) => (
+                  <option key={subtype} value={subtype}>
+                    {STROKE_SUBTYPE_LABELS[subtype] || subtype}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

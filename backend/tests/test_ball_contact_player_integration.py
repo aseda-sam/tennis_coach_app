@@ -470,3 +470,106 @@ class TestBallContactPlayerIntegration:
         get_response = client.get(f"/v0/ball-contacts/{ball_contact_id}")
         assert get_response.json()["player_id"] is None
         assert get_response.json()["player"] is None
+
+    def test_create_ball_contact_with_valid_subtype(
+        self, client: TestClient, db_session: Session, test_user_id: str
+    ) -> None:
+        """Test creating a ball contact with valid subtype."""
+        # Create video directly in the database for testing
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
+            user_id=test_user_id,
+        )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Create ball contact with valid subtype
+        ball_contact_data = {
+            "video_id": video_id,
+            "video_timestamp": 1.0,
+            "contact_hand": "right",
+            "stroke_type": "ground_stroke",
+            "stroke_subtype": "forehand_topspin",
+        }
+
+        response = client.post("/v0/ball-contacts/", json=ball_contact_data)
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["stroke_type"] == "ground_stroke"
+        assert data["stroke_subtype"] == "forehand_topspin"
+
+    def test_create_ball_contact_with_invalid_subtype(
+        self, client: TestClient, db_session: Session, test_user_id: str
+    ) -> None:
+        """Test creating a ball contact with invalid subtype fails."""
+        # Create video directly in the database for testing
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
+            user_id=test_user_id,
+        )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Create ball contact with invalid subtype (smash is for overhead, not ground_stroke)
+        ball_contact_data = {
+            "video_id": video_id,
+            "video_timestamp": 1.0,
+            "contact_hand": "right",
+            "stroke_type": "ground_stroke",
+            "stroke_subtype": "smash",  # Invalid for ground_stroke
+        }
+
+        response = client.post("/v0/ball-contacts/", json=ball_contact_data)
+
+        assert response.status_code == 422  # Validation error
+        assert "Invalid subtype" in response.json()["detail"][0]["msg"]
+
+    def test_create_ball_contact_with_return_type(
+        self, client: TestClient, db_session: Session, test_user_id: str
+    ) -> None:
+        """Test creating a ball contact with return stroke type."""
+        # Create video directly in the database for testing
+        test_video = Video(
+            filename="test_video.mp4",
+            file_path="/path/to/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            status="uploaded",
+            user_id=test_user_id,
+        )
+        db_session.add(test_video)
+        db_session.commit()
+        video_id = test_video.id
+
+        # Create ball contact with return type
+        ball_contact_data = {
+            "video_id": video_id,
+            "video_timestamp": 1.0,
+            "contact_hand": "right",
+            "stroke_type": "return",
+            "stroke_subtype": "forehand",
+        }
+
+        response = client.post("/v0/ball-contacts/", json=ball_contact_data)
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["stroke_type"] == "return"
+        assert data["stroke_subtype"] == "forehand"
