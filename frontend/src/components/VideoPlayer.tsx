@@ -97,7 +97,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const resolveVideoUrl = async () => {
       // Clear any previous error state when starting to load a new video
       setError(null);
-      
+
       // If we have a videoId and the URL is a stream endpoint, use the new signed URL API
       if (videoId && videoUrl.includes('/stream')) {
         setIsLoadingUrl(true);
@@ -109,7 +109,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           setResolvedVideoUrl(signedUrl);
         } catch (error) {
           // Fallback to legacy redirect resolution if signed URL fails
-          console.warn('Failed to get signed URL, falling back to redirect resolution', error);
+          console.warn(
+            'Failed to get signed URL, falling back to redirect resolution',
+            error
+          );
           try {
             const profile = process.env.REACT_APP_PROFILE || 'local';
             let authHeaders: HeadersInit = {};
@@ -119,7 +122,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 data: { session },
               } = await supabase.auth.getSession();
               if (session?.access_token) {
-                authHeaders = { Authorization: `Bearer ${session.access_token}` };
+                authHeaders = {
+                  Authorization: `Bearer ${session.access_token}`,
+                };
               }
             }
 
@@ -738,8 +743,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               {ballContacts.length > 0 && duration > 0 && (
                 <div className="video-controls-below__contact-markers">
                   {ballContacts.map((contact) => {
-                    const position =
-                      (contact.video_timestamp / duration) * 100;
+                    const position = (contact.video_timestamp / duration) * 100;
                     const isSelected = selectedContactId === contact.id;
 
                     return (
