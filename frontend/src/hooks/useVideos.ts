@@ -77,6 +77,20 @@ export const useVideoAnalysisStatuses = (videoIds: number[]) => {
   });
 };
 
+export const useVideoMetadata = (videoId: number | undefined) => {
+  return useQuery<VideoMetadata, Error>({
+    queryKey: ['video', videoId],
+    queryFn: async () => {
+      if (!videoId) {
+        throw new Error('Video ID is required');
+      }
+      return await videoApi.getVideo(videoId);
+    },
+    enabled: !!videoId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - video metadata doesn't change often
+  });
+};
+
 export const useDeleteVideo = () => {
   const queryClient = useQueryClient();
 

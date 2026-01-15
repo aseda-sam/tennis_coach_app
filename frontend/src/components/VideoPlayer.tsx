@@ -6,10 +6,9 @@ import React, {
   useState,
 } from 'react';
 import { useBallContacts } from '../hooks/useBallContacts';
-import { videoApi } from '../services/api';
+import { useVideoMetadata } from '../hooks/useVideos';
+import { useVideoUrl } from '../hooks/useVideoUrl';
 import { BallContact, BallContactCreate } from '../services/ballContactApi';
-import { supabase } from '../services/supabaseClient';
-import { VideoMetadata } from '../types/video';
 import AddContactButton from './AddContactButton';
 import BallContactMarker from './BallContactMarker';
 import BallContactModal from './BallContactModal';
@@ -69,12 +68,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [selectedContactId, setSelectedContactId] = useState<
     number | undefined
   >();
-  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(
-    null
-  );
   const [showOverlay, setShowOverlay] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
 
   // Use ball contacts hook if videoId is provided
   const {
@@ -87,96 +82,25 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     autoRefresh: !!videoId,
   });
 
-  // Don't set initial URL if it's a stream endpoint - wait for signed URL to prevent error flash
-  const [resolvedVideoUrl, setResolvedVideoUrl] = useState<string>(
-    videoId && videoUrl.includes('/stream') ? '' : videoUrl
-  );
+  // Use React Query hook for video URL resolution
+  const { resolvedUrl: resolvedVideoUrl, isLoading: isLoadingUrl } = useVideoUrl({
+    videoId,
+    videoUrl,
+    expiresIn: 3600,
+  });
 
-  // Resolve video URL using signed URL endpoint (preferred) or legacy redirect resolution
-  useEffect(() => {
-    const resolveVideoUrl = async () => {
-      // Clear any previous error state when starting to load a new video
-      setError(null);
-
-      // If we have a videoId and the URL is a stream endpoint, use the new signed URL API
-      if (videoId && videoUrl.includes('/stream')) {
-        setIsLoadingUrl(true);
-        // Clear URL immediately to prevent video element from trying to load
-        setResolvedVideoUrl('');
-        try {
-          // Use the new signed URL endpoint to avoid redirect race conditions
-          const signedUrl = await videoApi.getVideoUrl(videoId, 3600); // 1 hour expiry
-          setResolvedVideoUrl(signedUrl);
-        } catch (error) {
-          // Fallback to legacy redirect resolution if signed URL fails
-          console.warn(
-            'Failed to get signed URL, falling back to redirect resolution',
-            error
-          );
-          try {
-            const profile = process.env.REACT_APP_PROFILE || 'local';
-            let authHeaders: HeadersInit = {};
-
-            if (profile !== 'local' && supabase) {
-              const {
-                data: { session },
-              } = await supabase.auth.getSession();
-              if (session?.access_token) {
-                authHeaders = {
-                  Authorization: `Bearer ${session.access_token}`,
-                };
-              }
-            }
-
-            const response = await fetch(videoUrl, {
-              method: 'GET',
-              redirect: 'follow',
-              headers: authHeaders,
-            });
-
-            if (response.ok && response.url !== videoUrl) {
-              setResolvedVideoUrl(response.url);
-            } else {
-              setResolvedVideoUrl(videoUrl);
-            }
-          } catch (fallbackError) {
-            // Final fallback: use original URL
-            setResolvedVideoUrl(videoUrl);
-          }
-        } finally {
-          setIsLoadingUrl(false);
-        }
-      } else {
-        // Not a stream endpoint or no videoId - use URL directly
-        setResolvedVideoUrl(videoUrl);
-        // Clear error state for non-stream URLs as well
-        setError(null);
-      }
-    };
-
-    resolveVideoUrl();
-  }, [videoUrl, videoId]);
+  // Use React Query hook for video metadata
+  const { data: videoMetadata } = useVideoMetadata(videoId);
 
   // Reset aspect ratio when video URL changes
   useEffect(() => {
     setVideoAspectRatio(null);
   }, [resolvedVideoUrl]);
 
-  // Fetch video metadata when videoId is available
+  // Clear error state when URL changes
   useEffect(() => {
-    const fetchVideoMetadata = async () => {
-      if (videoId) {
-        try {
-          const metadata = await videoApi.getVideo(videoId);
-          setVideoMetadata(metadata);
-        } catch (error) {
-          // Silently handle metadata fetch errors - video can still play without metadata
-        }
-      }
-    };
-
-    fetchVideoMetadata();
-  }, [videoId]);
+    setError(null);
+  }, [resolvedVideoUrl]);
 
   useEffect(() => {
     const video = videoRef.current;

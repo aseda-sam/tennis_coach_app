@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { videoApi } from '../services/api';
 import { OverlayData } from '../types/video';
 import './VideoOverlay.css';
@@ -119,25 +120,14 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastRenderedFrameRef = useRef<number>(-1);
   const animationFrameRef = useRef<number | null>(null);
-  const [overlayData, setOverlayData] = useState<OverlayData | null>(null);
 
-  // Fetch overlay data when overlay is enabled
-  useEffect(() => {
-    if (!showOverlay || !hasPoseData || overlayData) {
-      return;
-    }
-
-    const fetchOverlayData = async () => {
-      try {
-        const data = await videoApi.getOverlayData(videoId);
-        setOverlayData(data);
-      } catch (err: unknown) {
-        // Silently handle overlay data fetch errors - component will handle missing data
-      }
-    };
-
-    fetchOverlayData();
-  }, [showOverlay, hasPoseData, videoId, overlayData]);
+  // Fetch overlay data using React Query
+  const { data: overlayData } = useQuery<OverlayData>({
+    queryKey: ['overlay-data', videoId],
+    queryFn: () => videoApi.getOverlayData(videoId),
+    enabled: showOverlay && hasPoseData,
+    staleTime: 5 * 60 * 1000, // 5 minutes - overlay data doesn't change often
+  });
 
   // Detect rotation once when overlay data and video element are available
   // This handles phone videos where OpenCV dimensions don't match browser dimensions
