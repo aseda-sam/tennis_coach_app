@@ -803,10 +803,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     <span>{formattedCurrentTime}</span>
                     <span>{formattedDuration}</span>
                   </div>
-                  <div className="keyboard-shortcuts">
-                    <span className="shortcut-hint">← → frame by frame</span>
-                    <span className="shortcut-hint">[ ] previous/next contact</span>
-                  </div>
                 </div>
 
                 <div className="controls-row">
@@ -990,10 +986,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <div className="video-controls-below__time-labels">
               <span>{formattedCurrentTime}</span>
               <span>{formattedDuration}</span>
-            </div>
-            <div className="video-controls-below__keyboard-hints">
-              <span className="video-controls-below__hint">← → frame by frame</span>
-              <span className="video-controls-below__hint">[ ] previous/next contact</span>
             </div>
           </div>
 
