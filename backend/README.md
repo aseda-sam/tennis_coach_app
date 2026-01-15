@@ -140,7 +140,7 @@ PROFILE=local  # Disables auth automatically
 
 ## Authentication
 
-The application uses **Supabase Auth** for user authentication. Most API endpoints require authentication to ensure users can only access their own data.
+The application uses **JWT-based authentication** (configurable provider). Most API endpoints require authentication to ensure users can only access their own data.
 
 ### Architecture
 
