@@ -201,7 +201,9 @@ def update_ball_contact(
     if "stroke_subtype" in updates:
         stroke_type = updates.get("stroke_type", contact.stroke_type)
         stroke_subtype = updates["stroke_subtype"]
-        if stroke_subtype and not is_valid_subtype_for_type(stroke_type, stroke_subtype):
+        if stroke_subtype and not is_valid_subtype_for_type(
+            stroke_type, stroke_subtype
+        ):
             from app.core.shot_types import get_subtypes_for_type
 
             allowed = ", ".join(get_subtypes_for_type(stroke_type))
@@ -214,7 +216,9 @@ def update_ball_contact(
     if "stroke_type" in updates:
         new_stroke_type = updates["stroke_type"]
         current_subtype = updates.get("stroke_subtype", contact.stroke_subtype)
-        if current_subtype and not is_valid_subtype_for_type(new_stroke_type, current_subtype):
+        if current_subtype and not is_valid_subtype_for_type(
+            new_stroke_type, current_subtype
+        ):
             # Clear invalid subtype when stroke type changes
             updates["stroke_subtype"] = None
 

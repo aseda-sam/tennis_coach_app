@@ -74,9 +74,9 @@ describe('shotTypes', () => {
 
   describe('isValidSubtypeForType', () => {
     it('should return true for valid subtype', () => {
-      expect(
-        isValidSubtypeForType('ground_stroke', 'forehand_topspin')
-      ).toBe(true);
+      expect(isValidSubtypeForType('ground_stroke', 'forehand_topspin')).toBe(
+        true
+      );
       expect(isValidSubtypeForType('serve', 'flat')).toBe(true);
     });
 
