@@ -43,6 +43,7 @@ from app.utils.authorization import (
     require_ball_contact_permission,
     require_player_access,
     require_video_access,
+    require_video_not_demo,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,9 @@ def create_ball_contact(
 
         # Check authorization (only video owner can create ball contacts)
         require_ball_contact_permission(video, current_user)
+
+        # Prevent modification of demo videos
+        require_video_not_demo(video)
 
         db_ball_contact = create_ball_contact_service(
             db=db,
@@ -369,6 +373,9 @@ def update_ball_contact(
         # Check authorization (only video owner can update ball contacts)
         require_ball_contact_permission(video, current_user)
 
+        # Prevent modification of demo videos
+        require_video_not_demo(video)
+
         # Filter out None values for update, but allow None for player_id to remove assignment
         update_data = {
             k: v
@@ -414,6 +421,9 @@ def delete_ball_contact(
 
         # Check authorization (only video owner can delete ball contacts)
         require_ball_contact_permission(video, current_user)
+
+        # Prevent modification of demo videos
+        require_video_not_demo(video)
 
         delete_ball_contact_service(db, ball_contact_id)
         return BallContactDeleteResponse(

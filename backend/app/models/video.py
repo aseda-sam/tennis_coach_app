@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -46,6 +46,11 @@ class Video(Base):
 
     # Authentication - user who owns this video
     user_id = Column(String(36), nullable=False, index=True)  # UUID as string
+
+    # Demo video flag
+    is_demo = Column(Boolean, nullable=False, server_default="false", index=True)
+    # Original user_id before promotion to demo (for unpromote/restore)
+    original_user_id = Column(String(36), nullable=True)
 
     # New granular analysis relationships
     ball_detections = relationship(

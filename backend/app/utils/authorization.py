@@ -36,6 +36,10 @@ def can_access_video(video: "Video", user: dict) -> bool:
     Returns:
         True if user can access video, False otherwise
     """
+    # Demo videos readable by all authenticated users
+    if video.is_demo:
+        return True
+
     # Admins can access everything
     if is_admin(user):
         return True
@@ -216,4 +220,48 @@ def require_upload_limit(db: Session, user: dict, max_uploads: int) -> None:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"You've reached your daily upload limit of {max_uploads} videos ({current_count} uploaded today). Please try again tomorrow.",
+        )
+
+
+def is_demo_video(video: "Video") -> bool:
+    """Check if video is a demo video.
+
+    Args:
+        video: Video model instance
+
+    Returns:
+        True if video is a demo video, False otherwise
+    """
+    return video.is_demo
+
+
+def require_video_not_demo(video: "Video") -> None:
+    """Raise exception if video is a demo (prevents modifications).
+
+    Args:
+        video: Video model instance
+
+    Raises:
+        HTTPException: 403 if video is a demo
+    """
+    if video.is_demo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot modify demo video. Changes are not saved.",
+        )
+
+
+def require_video_deletable(video: "Video") -> None:
+    """Raise exception if video is a demo (prevents deletion).
+
+    Args:
+        video: Video model instance
+
+    Raises:
+        HTTPException: 403 if video is a demo
+    """
+    if video.is_demo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot delete demo video. Use promotion script with --unpromote flag first.",
         )

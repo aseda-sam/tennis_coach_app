@@ -98,6 +98,9 @@ class VideoInfo(BaseModel):
     quality_assessed_at: Optional[datetime] = Field(
         default=None, description="Quality assessment timestamp"
     )
+    is_demo: bool = Field(
+        default=False, description="Whether this is a demo video (readable by all authenticated users)"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -121,6 +121,18 @@ class Settings(BaseSettings):
     # Per-user upload limits (database-based)
     MAX_VIDEO_UPLOADS_PER_DAY: int = 3  # Maximum videos per user per day (production)
 
+    # Demo video constants
+    DEMO_USER_ID: str = "00000000-0000-0000-0000-000000000001"
+    DEMO_VIDEO_FILENAME: str = "demo_tennis_serve.mp4"
+
+    # Privacy Protection: Only these user IDs can have their videos promoted to demo
+    # CRITICAL: Never add real user IDs here - only admin/test/developer accounts
+    ALLOWED_DEMO_SOURCE_USERS: list[str] = [
+        "00000000-0000-0000-0000-000000000001",  # DEMO_USER_ID - Can re-promote existing demo
+        # Add your admin/test user IDs here, e.g.:
+        # "your-admin-user-id-here",
+    ]
+
     @property
     def database_url(self) -> str:
         """Get database URL based on profile."""

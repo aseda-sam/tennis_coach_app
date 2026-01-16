@@ -7,7 +7,15 @@ from pathlib import Path
 from typing import Dict, List
 
 import cv2
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, UploadFile
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import (
     FileResponse,
     RedirectResponse,
@@ -35,7 +43,12 @@ from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.storage_service import storage_service
 from app.services.video_quality import VideoQualityService
-from app.utils.authorization import is_admin, require_upload_limit, require_video_access
+from app.utils.authorization import (
+    is_admin,
+    require_upload_limit,
+    require_video_access,
+    require_video_deletable,
+)
 from app.utils.error_handling import (
     handle_file_error,
     handle_not_found_error,
@@ -144,7 +157,8 @@ async def list_videos(
         from app.utils.authorization import is_admin
 
         # Filter by user_id unless admin
-        query = db.query(Video)
+        # Exclude demo videos from user's library
+        query = db.query(Video).filter(~Video.is_demo)
         if not is_admin(current_user):
             query = query.filter(Video.user_id == current_user["id"])
 
@@ -553,6 +567,9 @@ async def delete_video(
 
         # Check authorization (only owner can delete)
         require_video_access(db_video, current_user)
+
+        # Prevent deletion of demo videos
+        require_video_deletable(db_video)
 
         # Use service function to handle all deletion logic
         success, filename, deleted_video_id = video_service.delete_video_with_analyses(
