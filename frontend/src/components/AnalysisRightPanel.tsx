@@ -29,7 +29,7 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
 
   const contactsWithMetrics = useMemo(() => {
     return ballContacts
-      .filter((contact) => contact.elbow_angle !== undefined)
+      .filter((contact) => contact.elbow_angle != null)
       .sort((a, b) => a.video_timestamp - b.video_timestamp);
   }, [ballContacts]);
 
@@ -75,7 +75,7 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
                     </div>
                     <div className="analysis-right-panel__metric-angle">
                       <span className="analysis-right-panel__angle-value">
-                        {Math.round(angle || 0)}°
+                        {Math.round(angle as number)}°
                       </span>
                       <span className="analysis-right-panel__angle-label">
                         Elbow Angle
