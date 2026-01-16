@@ -29,7 +29,10 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
 
   const contactsWithMetrics = useMemo(() => {
     return ballContacts
-      .filter((contact) => contact.elbow_angle !== undefined)
+      .filter(
+        (contact) =>
+          contact.elbow_angle !== null && contact.elbow_angle !== undefined
+      )
       .sort((a, b) => a.video_timestamp - b.video_timestamp);
   }, [ballContacts]);
 
