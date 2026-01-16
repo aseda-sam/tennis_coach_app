@@ -10,6 +10,7 @@ import logging
 from typing import Dict, List, Optional
 
 import numpy as np
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.ball_contact import BallContact
@@ -35,9 +36,11 @@ def calculate_elbow_angle(
         Elbow angle in degrees, or None if keypoints missing or invalid stroke type
     """
     try:
-        # For now, focus on forehands only (single-handed strokes)
+        # Supported stroke types for elbow angle calculation
+        # Serves and forehands/ground_strokes are single-handed strokes that work well
         # Backhands with both hands on racket are more complex and will be handled later
-        if stroke_type and stroke_type.lower() not in ["forehand", "ground_stroke"]:
+        supported_strokes = ["forehand", "ground_stroke", "serve"]
+        if stroke_type and stroke_type.lower() not in supported_strokes:
             logger.info(
                 f"Skipping elbow angle calculation for stroke type: {stroke_type}"
             )
@@ -255,6 +258,81 @@ def analyze_contact_posture(db: Session, ball_contact_id: int) -> Optional[float
         return None
 
 
+def analyze_all_contacts_for_video(
+    db: Session, video_id: int, force_reanalysis: bool = False
+) -> dict:
+    """
+    Analyze posture for all contacts in a video.
+
+    Args:
+        db: Database session
+        video_id: ID of the video
+        force_reanalysis: Whether to reanalyze even if already analyzed
+
+    Returns:
+        Dictionary with summary of analysis results
+    """
+    try:
+        from app.models.ball_contact import BallContact
+
+        # Fetch all contacts for the video
+        contacts = db.query(BallContact).filter(BallContact.video_id == video_id).all()
+
+        if not contacts:
+            logger.info(f"No contacts found for video {video_id}")
+            return {
+                "video_id": video_id,
+                "total_contacts": 0,
+                "analyzed": 0,
+                "failed": 0,
+                "skipped": 0,
+            }
+
+        results = {
+            "video_id": video_id,
+            "total_contacts": len(contacts),
+            "analyzed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "contact_results": [],
+        }
+
+        for contact in contacts:
+            # Skip if already analyzed (unless forcing reanalysis)
+            if not force_reanalysis and contact.elbow_angle is not None:
+                results["skipped"] += 1
+                continue
+
+            # Analyze this contact
+            contact_result = analyze_and_store_contact_posture(
+                db, contact.id, force_reanalysis=force_reanalysis
+            )
+            results["contact_results"].append(contact_result)
+
+            if contact_result["analysis_status"] == "success":
+                results["analyzed"] += 1
+            else:
+                results["failed"] += 1
+
+        logger.info(
+            f"Analyzed {results['analyzed']} contacts for video {video_id} "
+            f"(skipped: {results['skipped']}, failed: {results['failed']})"
+        )
+
+        return results
+
+    except (ValueError, KeyError, AttributeError, RuntimeError, SQLAlchemyError) as e:
+        logger.error(f"Error analyzing all contacts for video {video_id}: {e}")
+        return {
+            "video_id": video_id,
+            "total_contacts": 0,
+            "analyzed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "error": str(e),
+        }
+
+
 def analyze_and_store_contact_posture(
     db: Session, ball_contact_id: int, force_reanalysis: bool = False
 ) -> dict:
@@ -326,6 +404,7 @@ def analyze_and_store_contact_posture(
             elif ball_contact.stroke_type and ball_contact.stroke_type.lower() not in [
                 "forehand",
                 "ground_stroke",
+                "serve",
             ]:
                 status = "invalid_stroke"
                 message = f"Stroke type '{ball_contact.stroke_type}' not supported for posture analysis"

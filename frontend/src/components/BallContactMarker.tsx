@@ -24,14 +24,22 @@ const BallContactMarker: React.FC<BallContactMarkerProps> = ({
     return `${Math.round(angle)}°`;
   };
 
-  const getAngleColor = (angle?: number): string => {
-    if (angle === undefined || angle === null) return '#6b7280'; // gray-500
-
-    // Color coding based on angle ranges
-    if (angle < 90) return '#ef4444'; // red-500 - very bent
-    if (angle < 120) return '#f59e0b'; // amber-500 - moderately bent
-    if (angle < 150) return '#10b981'; // emerald-500 - good range
-    return '#3b82f6'; // blue-500 - straight
+  const getStrokeTypeColor = (strokeType?: string): string => {
+    // Color coding based on stroke type
+    switch (strokeType?.toLowerCase()) {
+      case 'ground_stroke':
+        return '#10b981'; // emerald-500 - green
+      case 'serve':
+        return '#3b82f6'; // blue-500 - blue
+      case 'return':
+        return '#f59e0b'; // amber-500 - orange
+      case 'volley':
+        return '#a855f7'; // purple-500 - purple
+      case 'overhead':
+        return '#ef4444'; // red-500 - red
+      default:
+        return '#6b7280'; // gray-500 - gray for unknown/no type
+    }
   };
 
   const getAngleDescription = (angle?: number): string => {
@@ -52,7 +60,7 @@ const BallContactMarker: React.FC<BallContactMarkerProps> = ({
       <div className="marker-content">
         <div
           className="marker-dot"
-          style={{ backgroundColor: getAngleColor(contact.elbow_angle) }}
+          style={{ backgroundColor: getStrokeTypeColor(contact.stroke_type) }}
         >
           <span className="marker-time">
             {contact.frame_number
@@ -60,20 +68,6 @@ const BallContactMarker: React.FC<BallContactMarkerProps> = ({
               : `${contact.video_timestamp.toFixed(3)}s`}
           </span>
         </div>
-
-        {contact.elbow_angle !== undefined && (
-          <div className="angle-info">
-            <div
-              className="angle-value"
-              style={{ color: getAngleColor(contact.elbow_angle) }}
-            >
-              {formatElbowAngle(contact.elbow_angle)}
-            </div>
-            <div className="angle-description">
-              {getAngleDescription(contact.elbow_angle)}
-            </div>
-          </div>
-        )}
 
         {showAnalysisButton && contact.elbow_angle === undefined && (
           <button

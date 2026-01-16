@@ -37,6 +37,8 @@ interface VideoPlayerProps {
   showPostureAnalysis?: boolean; // Show posture analysis sidebar
   hasPoseData?: boolean; // Whether pose detection data exists
   controlsBelow?: boolean; // Render controls below video instead of overlaying
+  onContactNavigate?: (contactId: number) => void; // Callback when contact is navigated to
+  onNavigateReady?: (navigateFn: (contactId: number) => void) => void; // Callback to expose navigate function
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -49,6 +51,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   showPostureAnalysis = false,
   hasPoseData = false,
   controlsBelow = false,
+  onContactNavigate,
+  onNavigateReady,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -70,6 +74,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   >();
   const [showOverlay, setShowOverlay] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrubberTrackRef = useRef<HTMLDivElement>(null);
+  const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(null);
+  const wasPlayingRef = useRef<boolean>(false);
+  const [hoverTimestamp, setHoverTimestamp] = useState<number | null>(null);
+  const [openTimestamp, setOpenTimestamp] = useState<number | null>(null);
+  const [openRequestId, setOpenRequestId] = useState(0);
+  const isAddContactVisible = !!videoId && !error && duration > 0;
 
   // Use ball contacts hook if videoId is provided
   const {
@@ -316,8 +327,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           ? Math.min(video.currentTime + frameTime, duration)
           : Math.max(video.currentTime - frameTime, 0);
 
-      video.currentTime = newTime;
+      // Update state first to ensure overlay gets the new time immediately
       setCurrentTime(newTime);
+      // Then update video element (this will trigger seeked event)
+      video.currentTime = newTime;
     },
     [videoMetadata?.fps, duration]
   );
@@ -330,7 +343,133 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     navigateFrame('backward');
   }, [navigateFrame]);
 
-  // Keyboard shortcuts for frame navigation and play/pause
+  // Navigate to a specific contact by ID (exposed via callback)
+  const navigateToContactById = useCallback(
+    (contactId: number) => {
+      const contact = ballContacts.find((c) => c.id === contactId);
+      if (!contact) return;
+
+      const video = videoRef.current;
+      if (!video) return;
+
+      // Pause if playing
+      if (isPlaying) {
+        video.pause();
+      }
+
+      // Update state first to ensure overlay gets the new time immediately
+      setCurrentTime(contact.video_timestamp);
+      setSelectedContactId(contact.id);
+      
+      // Then seek video (this will trigger seeked event which overlay listens to)
+      video.currentTime = contact.video_timestamp;
+      
+      onContactNavigate?.(contact.id);
+    },
+    [ballContacts, isPlaying, onContactNavigate]
+  );
+
+  // Get sorted contacts for navigation
+  const sortedContacts = useMemo(() => {
+    return [...ballContacts].sort((a, b) => a.video_timestamp - b.video_timestamp);
+  }, [ballContacts]);
+
+  // Navigate to previous/next contact
+  const navigateToPreviousContact = useCallback(() => {
+    if (sortedContacts.length === 0) return;
+
+    const video = videoRef.current;
+    const videoTime = video?.currentTime ?? currentTime;
+
+    // Find the contact before current time (with small tolerance)
+    const tolerance = 0.1;
+    const previousContacts = sortedContacts.filter(
+      (c) => c.video_timestamp < videoTime - tolerance
+    );
+
+    if (previousContacts.length > 0) {
+      const previousContact = previousContacts[previousContacts.length - 1];
+      navigateToContactById(previousContact.id);
+    }
+  }, [sortedContacts, currentTime, navigateToContactById]);
+
+  const navigateToNextContact = useCallback(() => {
+    if (sortedContacts.length === 0) return;
+
+    const video = videoRef.current;
+    const videoTime = video?.currentTime ?? currentTime;
+
+    // Find the contact after current time (with small tolerance)
+    const tolerance = 0.1;
+    const nextContact = sortedContacts.find(
+      (c) => c.video_timestamp > videoTime + tolerance
+    );
+
+    if (nextContact) {
+      navigateToContactById(nextContact.id);
+    }
+  }, [sortedContacts, currentTime, navigateToContactById]);
+
+  // Check if previous/next navigation is available
+  const hasPreviousContact = useMemo(() => {
+    const tolerance = 0.1;
+    return sortedContacts.some((c) => c.video_timestamp < currentTime - tolerance);
+  }, [sortedContacts, currentTime]);
+
+  const hasNextContact = useMemo(() => {
+    const tolerance = 0.1;
+    return sortedContacts.some((c) => c.video_timestamp > currentTime + tolerance);
+  }, [sortedContacts, currentTime]);
+
+  const navigateRef = useRef(navigateToContactById);
+
+  useEffect(() => {
+    navigateRef.current = navigateToContactById;
+  }, [navigateToContactById]);
+
+  const stableNavigateToContactById = useCallback((contactId: number) => {
+    navigateRef.current(contactId);
+  }, []);
+
+  // Expose navigate function to parent
+  useEffect(() => {
+    if (onNavigateReady) {
+      onNavigateReady(stableNavigateToContactById);
+    }
+  }, [onNavigateReady, stableNavigateToContactById]);
+
+  // Open add contact form at current time (for keyboard shortcut)
+  const openAddContactForm = useCallback(() => {
+    if (!isAddContactVisible) return;
+
+    const video = videoRef.current;
+    const timestamp = video?.currentTime ?? currentTime;
+
+    // Pause video if playing
+    if (video && isPlaying) {
+      video.pause();
+      wasPlayingRef.current = true;
+    } else {
+      wasPlayingRef.current = false;
+    }
+
+    if (controlsBelow) {
+      // For scrubber mode, use the programmatic open mechanism
+      setOpenTimestamp(timestamp);
+      setOpenRequestId((prev) => prev + 1);
+      setHighlightTimestamp(timestamp);
+    } else {
+      // For overlay mode, trigger via the button's onFormOpen callback
+      // We'll handle this by setting a state that the overlay AddContactButton can react to
+      setHighlightTimestamp(timestamp);
+      // The overlay AddContactButton will be triggered via a ref or we can add a similar mechanism
+      // For now, let's use the same mechanism for consistency
+      setOpenTimestamp(timestamp);
+      setOpenRequestId((prev) => prev + 1);
+    }
+  }, [isAddContactVisible, currentTime, isPlaying, controlsBelow]);
+
+  // Keyboard shortcuts for frame navigation, play/pause, and contact navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Only handle keyboard shortcuts when video player is focused or when not in input fields
@@ -355,6 +494,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           event.preventDefault();
           navigateToNextFrame();
           break;
+        case '[':
+          event.preventDefault();
+          navigateToPreviousContact();
+          break;
+        case ']':
+          event.preventDefault();
+          navigateToNextContact();
+          break;
+        case 'a':
+        case 'A':
+          event.preventDefault();
+          openAddContactForm();
+          break;
         default:
           break;
       }
@@ -367,7 +519,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [togglePlay, navigateToPreviousFrame, navigateToNextFrame]);
+  }, [
+    togglePlay,
+    navigateToPreviousFrame,
+    navigateToNextFrame,
+    navigateToPreviousContact,
+    navigateToNextContact,
+    openAddContactForm,
+  ]);
 
   // Memoize formatted time strings to prevent unnecessary re-renders
   const formattedCurrentTime = useMemo(
@@ -385,6 +544,46 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       togglePlay();
     }
   };
+
+  const getTimestampFromClientX = useCallback(
+    (clientX: number): number | null => {
+      const track = scrubberTrackRef.current;
+      if (!track || duration <= 0) return null;
+
+      const rect = track.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      return ratio * duration;
+    },
+    [duration]
+  );
+
+  const handleAddBandPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const timestamp = getTimestampFromClientX(event.clientX);
+      if (timestamp !== null) {
+        setHoverTimestamp(timestamp);
+      }
+    },
+    [getTimestampFromClientX]
+  );
+
+  const handleAddBandPointerLeave = useCallback(() => {
+    setHoverTimestamp(null);
+  }, []);
+
+  const handleAddBandPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!isAddContactVisible) return;
+      const timestamp = getTimestampFromClientX(event.clientX);
+      if (timestamp === null) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      setOpenTimestamp(timestamp);
+      setOpenRequestId((prev) => prev + 1);
+    },
+    [getTimestampFromClientX, isAddContactVisible]
+  );
 
   const toggleFullscreen = () => {
     const video = videoRef.current;
@@ -486,16 +685,42 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
             )}
 
-            {/* Add Contact Button */}
-            <AddContactButton
-              currentTime={currentTime}
-              videoId={videoId || 0}
-              videoDuration={duration}
-              onAddContact={async (contact: BallContactCreate) => {
-                await createContact(contact);
-              }}
-              isVisible={!!videoId && !error && duration > 0}
-            />
+            {/* Add Contact Button (overlay placement) */}
+            {!controlsBelow && (
+              <AddContactButton
+                currentTime={currentTime}
+                videoId={videoId || 0}
+                videoDuration={duration}
+                fps={videoMetadata?.fps}
+                onAddContact={async (contact: BallContactCreate) => {
+                  await createContact(contact);
+                }}
+                isVisible={isAddContactVisible}
+                placement="overlay"
+                openRequestId={openRequestId}
+                openTimestamp={openTimestamp ?? undefined}
+                onFormOpen={(timestamp) => {
+                  // Pause video if playing
+                  const video = videoRef.current;
+                  if (video && isPlaying) {
+                    video.pause();
+                    wasPlayingRef.current = true;
+                  } else {
+                    wasPlayingRef.current = false;
+                  }
+                  // Set highlight timestamp
+                  setHighlightTimestamp(timestamp);
+                }}
+                onFormClose={() => {
+                  // Clear highlight
+                  setHighlightTimestamp(null);
+                  // Clear open timestamp
+                  setOpenTimestamp(null);
+                  // Note: We don't auto-resume playback - user can manually play
+                  wasPlayingRef.current = false;
+                }}
+              />
+            )}
 
             {error && !isLoadingUrl && (
               <div className="error-overlay">
@@ -564,13 +789,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         })}
                       </div>
                     )}
+                    {/* Highlight marker for locked contact timestamp */}
+                    {highlightTimestamp !== null && duration > 0 && (
+                      <div
+                        className="contact-highlight-marker"
+                        style={{
+                          left: `${(highlightTimestamp / duration) * 100}%`,
+                        }}
+                      />
+                    )}
                   </div>
                   <div className="time-display">
                     <span>{formattedCurrentTime}</span>
                     <span>{formattedDuration}</span>
-                  </div>
-                  <div className="keyboard-shortcuts">
-                    <span className="shortcut-hint">← → frame by frame</span>
                   </div>
                 </div>
 
@@ -650,7 +881,50 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <div className="video-controls-below">
           {/* Video Scrubber */}
           <div className="video-controls-below__scrubber">
-            <div className="video-controls-below__scrubber-track">
+            <div
+              className="video-controls-below__scrubber-track"
+              ref={scrubberTrackRef}
+            >
+              <div
+                className="video-controls-below__add-band"
+                onPointerMove={handleAddBandPointerMove}
+                onPointerLeave={handleAddBandPointerLeave}
+                onPointerDown={handleAddBandPointerDown}
+                title="Click to add contact (or press A)"
+              />
+              <AddContactButton
+                currentTime={currentTime}
+                videoId={videoId || 0}
+                videoDuration={duration}
+                fps={videoMetadata?.fps}
+                onAddContact={async (contact: BallContactCreate) => {
+                  await createContact(contact);
+                }}
+                isVisible={isAddContactVisible}
+                placement="scrubber"
+                openRequestId={openRequestId}
+                openTimestamp={openTimestamp ?? undefined}
+                onFormOpen={(timestamp) => {
+                  // Pause video if playing
+                  const video = videoRef.current;
+                  if (video && isPlaying) {
+                    video.pause();
+                    wasPlayingRef.current = true;
+                  } else {
+                    wasPlayingRef.current = false;
+                  }
+                  // Set highlight timestamp
+                  setHighlightTimestamp(timestamp);
+                }}
+                onFormClose={() => {
+                  // Clear highlight
+                  setHighlightTimestamp(null);
+                  // Clear open timestamp
+                  setOpenTimestamp(null);
+                  // Note: We don't auto-resume playback - user can manually play
+                  wasPlayingRef.current = false;
+                }}
+              />
               <input
                 type="range"
                 className="video-controls-below__scrubber-input"
@@ -691,6 +965,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   })}
                 </div>
               )}
+              {hoverTimestamp !== null && duration > 0 && (
+                <div
+                  className="contact-hover-marker"
+                  style={{
+                    left: `${(hoverTimestamp / duration) * 100}%`,
+                  }}
+                />
+              )}
+              {/* Highlight marker for locked contact timestamp */}
+              {highlightTimestamp !== null && duration > 0 && (
+                <div
+                  className="contact-highlight-marker"
+                  style={{
+                    left: `${(highlightTimestamp / duration) * 100}%`,
+                  }}
+                />
+              )}
             </div>
             <div className="video-controls-below__time-labels">
               <span>{formattedCurrentTime}</span>
@@ -702,12 +993,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <div className="video-controls-below__controls">
             <div className="video-controls-below__center-controls">
               <button
-                className="video-controls-below__nav-btn video-controls-below__nav-btn--coming-soon"
-                disabled
-                title="Coming soon"
+                className="video-controls-below__nav-btn"
+                disabled={!hasPreviousContact}
+                onClick={navigateToPreviousContact}
+                title={hasPreviousContact ? 'Go to previous contact' : 'No previous contact'}
               >
                 <ArrowBackIcon size={16} />
-                Previous Serve
+                Previous Contact
               </button>
               <button
                 className="video-controls-below__play-btn"
@@ -716,11 +1008,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
               </button>
               <button
-                className="video-controls-below__next-btn video-controls-below__next-btn--coming-soon"
-                disabled
-                title="Coming soon"
+                className="video-controls-below__next-btn"
+                disabled={!hasNextContact}
+                onClick={navigateToNextContact}
+                title={hasNextContact ? 'Go to next contact' : 'No next contact'}
               >
-                Next Serve
+                Next Contact
                 <span className="video-controls-below__arrow-right">
                   <ArrowBackIcon size={16} />
                 </span>

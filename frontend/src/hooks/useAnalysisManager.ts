@@ -2,7 +2,10 @@ import { useCallback, useState } from 'react';
 import unifiedAnalysisApi, {
   AnalysisRequest,
 } from '../services/unifiedAnalysisApi';
-import { useAnalysisProgress } from './useAnalysisProgress';
+import {
+  useAnalysisProgress,
+  AnalysisProgress,
+} from './useAnalysisProgress';
 import { AnalysisData } from '../services/api';
 
 interface AnalysisState {
@@ -49,9 +52,9 @@ export const useAnalysisManager = ({
   });
   const [isLoading] = useState(false);
 
-  // Use the new unified analysis progress hook
-  const { startPolling, stopPolling, isPolling } = useAnalysisProgress({
-    onComplete: (progress) => {
+  // Memoize callbacks to prevent infinite re-renders
+  const handleComplete = useCallback(
+    (progress: AnalysisProgress) => {
       setAnalysisState((prev) => ({
         ...prev,
         status: 'completed',
@@ -61,7 +64,11 @@ export const useAnalysisManager = ({
       }));
       onAnalysisComplete?.(progress.result ?? null);
     },
-    onError: (error) => {
+    [onAnalysisComplete]
+  );
+
+  const handleError = useCallback(
+    (error: string) => {
       setAnalysisState((prev) => ({
         ...prev,
         status: 'failed',
@@ -71,7 +78,11 @@ export const useAnalysisManager = ({
       }));
       onAnalysisError?.(error);
     },
-    onProgress: (progress) => {
+    [onAnalysisError]
+  );
+
+  const handleProgress = useCallback(
+    (progress: AnalysisProgress) => {
       setAnalysisState((prev) => ({
         ...prev,
         status: progress.status as AnalysisState['status'],
@@ -79,6 +90,14 @@ export const useAnalysisManager = ({
         error: null,
       }));
     },
+    []
+  );
+
+  // Use the new unified analysis progress hook
+  const { startPolling, stopPolling, isPolling } = useAnalysisProgress({
+    onComplete: handleComplete,
+    onError: handleError,
+    onProgress: handleProgress,
   });
 
   // Function to start analysis using the new unified API

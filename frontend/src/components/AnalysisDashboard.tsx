@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
@@ -27,6 +27,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const { data: analysisStatus, refetch: refetchAnalysisStatus } =
     useVideoAnalysisStatus(videoId);
 
+  // Memoize the completion callback to prevent infinite re-renders
+  const handleAnalysisComplete = useCallback(
+    async () => {
+      // Refresh analysis status after completion without reloading page
+      await refetchAnalysisStatus();
+      // Also invalidate the query to ensure fresh data
+      queryClient.invalidateQueries({
+        queryKey: ['video-analysis-status', videoId],
+      });
+    },
+    [refetchAnalysisStatus, queryClient, videoId]
+  );
+
   // Analysis manager for pose analysis
   const {
     analysisState,
@@ -35,14 +48,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   } = useAnalysisManager({
     videoId,
     autoRefresh: true,
-    onAnalysisComplete: async () => {
-      // Refresh analysis status after completion without reloading page
-      await refetchAnalysisStatus();
-      // Also invalidate the query to ensure fresh data
-      queryClient.invalidateQueries({
-        queryKey: ['video-analysis-status', videoId],
-      });
-    },
+    onAnalysisComplete: handleAnalysisComplete,
   });
 
   const handleFocusAnalysis = useCallback(async () => {
@@ -55,6 +61,24 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       // Error handling is done by the startAnalysis hook
     }
   }, [startAnalysis]);
+
+  const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
+    ((contactId: number) => void) | null
+  >(null);
+
+  const handleContactClick = useCallback(
+    (contactId: number) => {
+      videoPlayerNavigate?.(contactId);
+    },
+    [videoPlayerNavigate]
+  );
+
+  const handleNavigateReady = useCallback(
+    (navigateFn: (contactId: number) => void) => {
+      setVideoPlayerNavigate(() => navigateFn);
+    },
+    []
+  );
 
   return (
     <div className="analysis-dashboard">
@@ -83,6 +107,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             showPostureAnalysis={false}
             hasPoseData={analysisStatus?.has_analysis || false}
             controlsBelow={true}
+            onNavigateReady={handleNavigateReady}
           />
 
           {/* Keyboard Shortcuts Banner */}
@@ -100,6 +125,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 <div className="analysis-dashboard__shortcut-item">
                   <kbd className="analysis-dashboard__kbd">← →</kbd>
                   <span>Frame by frame</span>
+                </div>
+                <div className="analysis-dashboard__shortcut-item">
+                  <kbd className="analysis-dashboard__kbd">[ ]</kbd>
+                  <span>Previous/Next contact</span>
+                </div>
+                <div className="analysis-dashboard__shortcut-item">
+                  <kbd className="analysis-dashboard__kbd">A</kbd>
+                  <span>Add contact</span>
                 </div>
               </div>
             </div>
@@ -153,6 +186,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             videoId={videoId}
             videoFilename={videoFilename}
             analysisStatus={analysisStatus}
+            onContactClick={handleContactClick}
           />
         </div>
       </div>

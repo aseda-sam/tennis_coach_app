@@ -99,6 +99,7 @@
 .analysis-right-panel__trajectory-chart {
   min-height: 160px;
   margin-bottom: 0;
+  width: 100%;
 }
 
 .analysis-right-panel__chart-placeholder {
@@ -116,7 +117,9 @@
 
 .analysis-right-panel__chart-blurred {
   width: 100%;
-  height: 140px;
+  height: auto;
+  aspect-ratio: 5 / 3;
+  min-height: 120px;
   position: relative;
   filter: blur(1px);
   opacity: 0.8;
@@ -126,6 +129,7 @@
 .analysis-right-panel__chart-svg {
   width: 100%;
   height: 100%;
+  display: block;
 }
 
 .analysis-right-panel__chart-note {
@@ -339,9 +343,132 @@
   background: var(--color-primary);
 }
 
+/* Contact Metrics Card */
+.analysis-right-panel__metrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.analysis-right-panel__metric-item {
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  transition: var(--transition-normal);
+}
+
+.analysis-right-panel__metric-item:hover {
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.analysis-right-panel__metric-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.analysis-right-panel__metric-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  background-color: #6b7280; /* neutral grey */
+}
+
+.analysis-right-panel__metric-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  min-width: 40px;
+}
+
+.analysis-right-panel__metric-stroke {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+  flex: 1;
+}
+
+.analysis-right-panel__metric-angle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-xs);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.analysis-right-panel__angle-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+}
+
+.analysis-right-panel__angle-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.analysis-right-panel__angle-desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+}
+
+.analysis-right-panel__metrics-empty {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-muted);
+}
+
+.analysis-right-panel__metrics-empty p {
+  margin: 0;
+}
+
+.analysis-right-panel__metrics-hint {
+  font-size: var(--font-size-xs);
+  margin-top: var(--spacing-sm);
+  color: var(--color-text-disabled);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .analysis-right-panel__card {
     padding: var(--spacing-lg);
+  }
+}
+
+@media (max-width: 768px) {
+  .analysis-right-panel__card {
+    padding: var(--spacing-md);
+  }
+
+  .analysis-right-panel__chart-placeholder {
+    padding: var(--spacing-md);
+  }
+
+  .analysis-right-panel__chart-blurred {
+    min-height: 100px;
+  }
+
+  .analysis-right-panel__chart-note {
+    margin-top: var(--spacing-sm);
+  }
+
+  .analysis-right-panel__metric-header {
+    flex-wrap: wrap;
+    row-gap: var(--spacing-xs);
+  }
+
+  .analysis-right-panel__metric-time {
+    min-width: 0;
+  }
+
+  .analysis-right-panel__card--coming-soon {
+    display: none;
   }
 }

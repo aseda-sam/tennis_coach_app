@@ -4,6 +4,7 @@ import logging
 from typing import Dict, List
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.schemas.ball_contact import (
@@ -78,6 +79,26 @@ def create_ball_contact(
             detection_source=ball_contact.detection_source,
             player_id=ball_contact.player_id,
         )
+
+        # Auto-calculate elbow angle if pose data exists
+        try:
+            analyze_and_store_contact_posture(
+                db=db,
+                ball_contact_id=db_ball_contact.id,
+                force_reanalysis=False,
+            )
+        except (
+            ValueError,
+            KeyError,
+            AttributeError,
+            RuntimeError,
+            SQLAlchemyError,
+        ) as e:
+            # Log but don't fail contact creation if analysis fails
+            logger.warning(
+                f"Failed to auto-calculate elbow angle for contact {db_ball_contact.id}: {e}"
+            )
+
         return BallContactInfo.model_validate(db_ball_contact)
     except HTTPException:
         raise

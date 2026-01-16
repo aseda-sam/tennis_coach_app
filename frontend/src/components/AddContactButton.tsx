@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   STROKE_SUBTYPE_LABELS,
   STROKE_TYPE_LABELS,
@@ -12,21 +12,34 @@ import './AddContactButton.css';
 interface AddContactButtonProps {
   currentTime: number;
   videoId: number;
-  videoDuration: number; // Add video duration prop
+  videoDuration: number;
+  fps?: number; // FPS for frame number calculation
   onAddContact: (contact: BallContactCreate) => Promise<void>;
   isVisible: boolean;
+  placement?: 'overlay' | 'scrubber';
+  openRequestId?: number;
+  openTimestamp?: number;
+  onFormOpen?: (timestamp: number) => void; // Callback when form opens
+  onFormClose?: () => void; // Callback when form closes
 }
 
 const AddContactButton: React.FC<AddContactButtonProps> = ({
   currentTime,
   videoId,
   videoDuration,
+  fps,
   onAddContact,
   isVisible,
+  placement = 'overlay',
+  openRequestId,
+  openTimestamp,
+  onFormOpen,
+  onFormClose,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [lockedTimestamp, setLockedTimestamp] = useState<number | null>(null);
   const [formData, setFormData] = useState<BallContactCreate>({
     video_id: videoId,
     video_timestamp: currentTime,
@@ -36,15 +49,52 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
     detection_source: 'manual',
   });
 
-  // Update video_timestamp when currentTime changes
-  useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      video_timestamp: currentTime,
-    }));
-    // Clear validation error when current time changes
+  const lastOpenRequestId = useRef<number | null>(null);
+
+  const openAtTimestamp = useCallback(
+    (timestamp: number) => {
+      setLockedTimestamp(timestamp);
+      setFormData((prev) => ({
+        ...prev,
+        video_timestamp: timestamp,
+      }));
+      setIsOpen(true);
+      onFormOpen?.(timestamp);
+    },
+    [onFormOpen]
+  );
+
+  // Lock timestamp when form opens
+  const handleOpen = () => {
+    openAtTimestamp(currentTime);
+  };
+
+  // Unlock timestamp when form closes
+  const handleClose = () => {
+    setIsOpen(false);
+    setLockedTimestamp(null);
     setValidationError(null);
-  }, [currentTime]);
+    onFormClose?.();
+  };
+
+  // Update video_timestamp only when form is closed (not locked)
+  useEffect(() => {
+    if (!isOpen && lockedTimestamp === null) {
+      setFormData((prev) => ({
+        ...prev,
+        video_timestamp: currentTime,
+      }));
+      setValidationError(null);
+    }
+  }, [currentTime, isOpen, lockedTimestamp]);
+
+  useEffect(() => {
+    if (!openRequestId || openTimestamp === undefined) return;
+    if (openRequestId === lastOpenRequestId.current) return;
+
+    lastOpenRequestId.current = openRequestId;
+    openAtTimestamp(openTimestamp);
+  }, [openRequestId, openTimestamp, openAtTimestamp]);
 
   // Validate timestamp whenever form data changes
   useEffect(() => {
@@ -73,7 +123,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
     setIsLoading(true);
     try {
       await onAddContact(formData);
-      setIsOpen(false);
+      handleClose();
       setFormData({
         video_id: videoId,
         video_timestamp: currentTime,
@@ -82,7 +132,6 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
         stroke_subtype: undefined,
         detection_source: 'manual',
       });
-      setValidationError(null);
     } catch (error) {
       // Error is shown to user via alert
       alert('Failed to add contact. Please try again.');
@@ -91,40 +140,73 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
     }
   };
 
-  const handleTimestampChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTimestamp = parseFloat(e.target.value) || 0;
-    setFormData({
-      ...formData,
-      video_timestamp: newTimestamp,
-    });
+  // Calculate frame number from timestamp
+  const getFrameNumber = (timestamp: number): number | null => {
+    if (fps && fps > 0) {
+      return Math.floor(timestamp * fps);
+    }
+    return null;
   };
+
+  const lockedFrameNumber = lockedTimestamp !== null ? getFrameNumber(lockedTimestamp) : null;
+
+  // Calculate position for scrubber placement
+  const formPosition =
+    placement === 'scrubber' && lockedTimestamp !== null && videoDuration > 0
+      ? {
+          left: `${(lockedTimestamp / videoDuration) * 100}%`,
+        }
+      : undefined;
 
   if (!isVisible) return null;
 
+  const containerClassName = `add-contact-container ${
+    placement === 'scrubber' ? 'add-contact-container--scrubber' : ''
+  } ${isOpen ? 'is-open' : ''}`.trim();
+  const buttonClassName = `add-contact-btn ${
+    placement === 'scrubber' ? 'add-contact-btn--scrubber' : ''
+  }`.trim();
+  const formClassName = `add-contact-form ${
+    placement === 'scrubber' ? 'add-contact-form--scrubber' : ''
+  }`.trim();
+
   return (
-    <div className="add-contact-container">
+    <div className={containerClassName}>
       {!isOpen ? (
-        <button
-          className="add-contact-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsOpen(true);
-          }}
-          title={`Add ball contact at ${formatTime(currentTime)}`}
-        >
-          <span className="add-icon">+</span>
-          <span className="add-text">Add Contact</span>
-        </button>
+        placement !== 'scrubber' && (
+          <button
+            className={buttonClassName}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpen();
+            }}
+            title={`Add ball contact at ${formatTime(currentTime)}`}
+          >
+            <span className="add-icon">+</span>
+            <span className="add-text">Add Contact</span>
+          </button>
+        )
       ) : (
-        <div className="add-contact-form" onClick={(e) => e.stopPropagation()}>
+        <div
+          className={formClassName}
+          onClick={(e) => e.stopPropagation()}
+          style={formPosition}
+        >
           <div className="form-header">
-            <span className="timestamp-display">{formatTime(currentTime)}</span>
+            <div className="timestamp-header">
+              <div className="timestamp-label">Add contact at:</div>
+              <div className="timestamp-display">
+                {formatTime(lockedTimestamp ?? 0)}
+                {lockedFrameNumber !== null && (
+                  <span className="frame-number"> (frame {lockedFrameNumber})</span>
+                )}
+              </div>
+            </div>
             <button
               className="close-form-btn"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsOpen(false);
-                setValidationError(null);
+                handleClose();
               }}
             >
               ×
@@ -132,91 +214,73 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
           </div>
 
           <div className="form-fields">
-            <div className="form-group">
-              <label>Timestamp (seconds):</label>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                max={videoDuration > 0 ? videoDuration : undefined}
-                value={formData.video_timestamp}
-                onChange={handleTimestampChange}
-                className={validationError ? 'error' : ''}
-              />
-              {validationError && (
-                <div className="validation-error">{validationError}</div>
-              )}
-              {videoDuration > 0 && (
-                <div className="timestamp-info">
-                  Video duration: {formatTime(videoDuration)}
+            <div className="form-row">
+              <div className="form-group form-group--compact">
+                <label>Hand</label>
+                <select
+                  value={formData.contact_hand}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      contact_hand: e.target.value as 'left' | 'right',
+                    })
+                  }
+                >
+                  <option value="right">Right</option>
+                  <option value="left">Left</option>
+                </select>
+              </div>
+
+              <div className="form-group form-group--compact">
+                <label>Stroke</label>
+                <select
+                  value={formData.stroke_type || ''}
+                  onChange={(e) => {
+                    const newStrokeType = e.target.value as
+                      | StrokeType
+                      | undefined;
+                    const allowedSubtypes = getSubtypesForType(newStrokeType);
+                    setFormData({
+                      ...formData,
+                      stroke_type: newStrokeType || undefined,
+                      stroke_subtype: allowedSubtypes.includes(
+                        formData.stroke_subtype || ''
+                      )
+                        ? formData.stroke_subtype
+                        : undefined,
+                    });
+                  }}
+                >
+                  <option value="">Type</option>
+                  {Object.entries(STROKE_TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {formData.stroke_type && (
+                <div className="form-group form-group--compact">
+                  <label>Subtype</label>
+                  <select
+                    value={formData.stroke_subtype || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        stroke_subtype: e.target.value || undefined,
+                      })
+                    }
+                  >
+                    <option value="">Optional</option>
+                    {getSubtypesForType(formData.stroke_type).map((subtype) => (
+                      <option key={subtype} value={subtype}>
+                        {STROKE_SUBTYPE_LABELS[subtype] || subtype}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
-            </div>
-
-            <div className="form-group">
-              <label>Contact Hand:</label>
-              <select
-                value={formData.contact_hand}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    contact_hand: e.target.value as 'left' | 'right',
-                  })
-                }
-              >
-                <option value="right">Right</option>
-                <option value="left">Left</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Stroke Type:</label>
-              <select
-                value={formData.stroke_type || ''}
-                onChange={(e) => {
-                  const newStrokeType = e.target.value as
-                    | StrokeType
-                    | undefined;
-                  const allowedSubtypes = getSubtypesForType(newStrokeType);
-                  setFormData({
-                    ...formData,
-                    stroke_type: newStrokeType || undefined,
-                    stroke_subtype: allowedSubtypes.includes(
-                      formData.stroke_subtype || ''
-                    )
-                      ? formData.stroke_subtype
-                      : undefined,
-                  });
-                }}
-              >
-                <option value="">Select stroke type</option>
-                {Object.entries(STROKE_TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Stroke Subtype:</label>
-              <select
-                value={formData.stroke_subtype || ''}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    stroke_subtype: e.target.value || undefined,
-                  })
-                }
-                disabled={!formData.stroke_type}
-              >
-                <option value="">Select subtype (optional)</option>
-                {getSubtypesForType(formData.stroke_type).map((subtype) => (
-                  <option key={subtype} value={subtype}>
-                    {STROKE_SUBTYPE_LABELS[subtype] || subtype}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
 
@@ -225,8 +289,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
               className="btn btn-secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsOpen(false);
-                setValidationError(null);
+                handleClose();
               }}
               disabled={isLoading}
             >
@@ -240,7 +303,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
               }}
               disabled={isLoading || !!validationError}
             >
-              {isLoading ? 'Adding...' : 'Add Contact'}
+              {isLoading ? 'Adding...' : 'Add'}
             </button>
           </div>
         </div>
