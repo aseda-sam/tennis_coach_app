@@ -12,6 +12,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.core.database import SessionLocal
 from app.services import video_service
 from app.services.storage_service import storage_service
@@ -127,7 +129,13 @@ def analyze_pose_detection_rq(
                     f"RQ task: Contact metrics calculated for video {video_id}: "
                     f"{contact_metrics_result.get('analyzed', 0)} contacts analyzed"
                 )
-            except Exception as e:
+            except (
+                ValueError,
+                KeyError,
+                AttributeError,
+                RuntimeError,
+                SQLAlchemyError,
+            ) as e:
                 # Log error but don't fail the pose detection task
                 logger.warning(
                     f"RQ task: Failed to calculate contact metrics for video {video_id}: {e}",

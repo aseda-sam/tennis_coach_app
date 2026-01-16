@@ -10,6 +10,7 @@ import logging
 from typing import Dict, List, Optional
 
 import numpy as np
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.ball_contact import BallContact
@@ -275,9 +276,7 @@ def analyze_all_contacts_for_video(
         from app.models.ball_contact import BallContact
 
         # Fetch all contacts for the video
-        contacts = (
-            db.query(BallContact).filter(BallContact.video_id == video_id).all()
-        )
+        contacts = db.query(BallContact).filter(BallContact.video_id == video_id).all()
 
         if not contacts:
             logger.info(f"No contacts found for video {video_id}")
@@ -322,7 +321,7 @@ def analyze_all_contacts_for_video(
 
         return results
 
-    except Exception as e:
+    except (ValueError, KeyError, AttributeError, RuntimeError, SQLAlchemyError) as e:
         logger.error(f"Error analyzing all contacts for video {video_id}: {e}")
         return {
             "video_id": video_id,

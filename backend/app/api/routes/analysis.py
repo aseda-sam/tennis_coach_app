@@ -96,7 +96,9 @@ async def start_analysis(
         }
 
         # Extract force_reanalysis for contact_metrics
-        force_reanalysis = request.force_reanalysis if hasattr(request, "force_reanalysis") else False
+        force_reanalysis = (
+            request.force_reanalysis if hasattr(request, "force_reanalysis") else False
+        )
 
         try:
             logger.info(
