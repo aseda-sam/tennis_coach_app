@@ -83,18 +83,6 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
 
   return (
     <div className="demo-dashboard">
-      {/* Demo Banner */}
-      <div className="demo-dashboard__banner">
-        <div className="demo-dashboard__banner-content">
-          <span className="demo-dashboard__banner-icon" aria-hidden="true">
-            <EyeIcon size={18} color="white" />
-          </span>
-          <span className="demo-dashboard__banner-text">
-            Demo Mode - Explore features without saving changes
-          </span>
-        </div>
-      </div>
-
       {/* Header - Only show if accessed from demo-landing, otherwise use app header */}
       <div className="demo-dashboard__header">
         <button 
@@ -105,8 +93,16 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
           <ArrowBackIcon size={16} />
           Back
         </button>
+        <div className="demo-dashboard__banner-content">
+          <span className="demo-dashboard__banner-icon" aria-hidden="true">
+            <EyeIcon size={18} color="white" />
+          </span>
+          <span className="demo-dashboard__banner-text">
+            Demo mode · Changes won't be saved
+          </span>
+        </div>
         <div className="demo-dashboard__header-content">
-          <h1 className="demo-dashboard__title">Demo: Serve Analysis</h1>
+          <h1 className="demo-dashboard__title">Demo: Biomechanics Review</h1>
         </div>
         <button
           className="demo-dashboard__exit-btn"
