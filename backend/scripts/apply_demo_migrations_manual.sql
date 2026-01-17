@@ -15,8 +15,8 @@ BEGIN
     SELECT version_num INTO current_version FROM alembic_version;
     RAISE NOTICE 'Current alembic version: %', current_version;
     
-    IF current_version != 'd30414b42ecb' THEN
-        RAISE EXCEPTION 'Expected current version d30414b42ecb, but found: %', current_version;
+    IF current_version != 'd55e25138d67' THEN
+        RAISE EXCEPTION 'Expected current version d55e25138d67, but found: %', current_version;
     END IF;
 END $$;
 
@@ -49,7 +49,7 @@ BEGIN
 END $$;
 
 -- Update version to 4212cb7567aa
-UPDATE alembic_version SET version_num = '4212cb7567aa' WHERE version_num = 'd30414b42ecb';
+UPDATE alembic_version SET version_num = '4212cb7567aa' WHERE version_num = 'd55e25138d67';
 
 -- Migration d1f0ec4cf292: Add is_active_demo column
 DO $$

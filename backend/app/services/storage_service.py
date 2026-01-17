@@ -105,7 +105,8 @@ class StorageService:
         """Resolve local file path (handles absolute or relative paths).
 
         For absolute paths or paths starting with '..', use them directly.
-        For relative paths, resolve against UPLOAD_DIR.
+        For relative paths with prefixes (raw/ or demo/), resolve against UPLOAD_DIR parent.
+        For other relative paths, resolve against UPLOAD_DIR.
         """
         path_obj = Path(file_path)
         if path_obj.is_absolute():
@@ -114,6 +115,11 @@ class StorageService:
         # Use it as-is (it will be resolved relative to current working directory)
         if file_path.startswith(".."):
             return path_obj.resolve()
+        # If path starts with 'raw/' or 'demo/', it's a prefixed path
+        # Resolve against UPLOAD_DIR's parent (../data/videos) to avoid double-nesting
+        if file_path.startswith("raw/") or file_path.startswith("demo/"):
+            return Path(settings.UPLOAD_DIR).parent / file_path
+        # For other relative paths, resolve against UPLOAD_DIR
         return Path(settings.UPLOAD_DIR) / file_path
 
     def upload_file(

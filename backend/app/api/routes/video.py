@@ -730,8 +730,11 @@ async def upload_video(
             )  # ../data/videos/demo or ../data/videos/raw
             upload_dir.mkdir(parents=True, exist_ok=True)
             unique_filename = ensure_unique_filename(safe_filename, upload_dir)
-            # For local storage, use relative path from base (demo/filename.mp4 or raw/filename.mp4)
-            storage_file_path = f"{path_prefix}{unique_filename}"
+            # For local storage, store the full path relative to base directory
+            # This avoids double-nesting when _resolve_local_path is called later
+            storage_file_path = str(
+                Path(path_prefix.rstrip("/")) / unique_filename
+            )  # raw/video.mp4 or demo/video.mp4
         else:
             unique_filename = safe_filename
             # For Supabase, add prefix to match directory structure
