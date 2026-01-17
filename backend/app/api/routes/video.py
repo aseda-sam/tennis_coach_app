@@ -686,16 +686,16 @@ async def upload_video(
     """
     try:
         # Check demo upload authorization
-        DEMO_UPLOAD_USER_ID = "ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f"
-        if is_demo:
-            if (
-                settings.PROFILE != "local"
-                and current_user["id"] != DEMO_UPLOAD_USER_ID
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Only authorized users can upload demo videos",
-                )
+        demo_upload_user_id = "ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f"
+        if (
+            is_demo
+            and settings.PROFILE != "local"
+            and current_user["id"] != demo_upload_user_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only authorized users can upload demo videos",
+            )
 
         # Check daily upload limit (skip for admins and local profile)
         if settings.PROFILE != "local" and not is_admin(current_user):
