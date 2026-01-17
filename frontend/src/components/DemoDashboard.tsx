@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { videoApi } from '../services/api';
@@ -8,6 +8,7 @@ import AnalysisRightPanel from './AnalysisRightPanel';
 import './DemoDashboard.css';
 import { UploadIcon } from './Icons';
 import KeyboardShortcutsBanner from './KeyboardShortcutsBanner';
+import Tour, { TourStep } from './Tour';
 import VideoPlayer from './VideoPlayer';
 
 interface DemoDashboardProps {
@@ -53,6 +54,56 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
     ((contactId: number) => void) | null
   >(null);
+  const [isTourOpen, setIsTourOpen] = useState(false);
+
+  const tourSteps: TourStep[] = useMemo(
+    () => [
+      {
+        target: 'video-player',
+        title: 'Video Player',
+        content:
+          'Play the demo clip and scrub through frames using the timeline below.',
+        placement: 'bottom',
+      },
+      {
+        target: 'contact-markers',
+        title: 'Contact Markers',
+        content:
+          'Jump to key moments using the contact markers on the timeline.',
+        placement: 'top',
+      },
+      {
+        target: 'analysis-panel',
+        title: 'Metrics & Analysis',
+        content:
+          'Review metrics derived from existing contacts, including elbow angles and shot types.',
+        placement: 'left',
+      },
+      {
+        target: 'upload-cta',
+        title: 'Ready to Upload?',
+        content:
+          'Ready to analyze your own video? Upload to see personalized feedback on your technique.',
+        placement: 'left',
+      },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    const tourCompleted = localStorage.getItem('demoTourCompleted');
+    if (!tourCompleted && demoVideo) {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        setIsTourOpen(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [demoVideo]);
+
+  const handleTourComplete = useCallback(() => {
+    localStorage.setItem('demoTourCompleted', 'true');
+  }, []);
 
   const handleContactClick = useCallback(
     (contactId: number) => {
@@ -96,25 +147,30 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
       <div className="demo-dashboard__content">
         {/* Left Column - Video Player */}
         <div className="demo-dashboard__video-column">
-          <VideoPlayer
-            videoUrl={videoUrl}
-            title={demoVideo.filename}
-            showControls={true}
-            aspectRatioMode="contain"
-            videoId={demoVideo.id}
-            showPostureAnalysis={false}
-            hasPoseData={analysisStatus?.has_analysis || false}
-            controlsBelow={true}
-            onNavigateReady={handleNavigateReady}
-            isDemo={isDemoReadOnly}
-          />
+          <div data-tour="video-player">
+            <VideoPlayer
+              videoUrl={videoUrl}
+              title={demoVideo.filename}
+              showControls={true}
+              aspectRatioMode="contain"
+              videoId={demoVideo.id}
+              showPostureAnalysis={false}
+              hasPoseData={analysisStatus?.has_analysis || false}
+              controlsBelow={true}
+              onNavigateReady={handleNavigateReady}
+              isDemo={isDemoReadOnly}
+            />
+          </div>
           <KeyboardShortcutsBanner isDemo={isDemoReadOnly} />
         </div>
 
         {/* Right Column - Upload CTA & Analysis Panel */}
         <div className="demo-dashboard__analysis-column">
           {/* Friendly Upload CTA */}
-          <div className="demo-dashboard__upload-cta">
+          <div
+            className="demo-dashboard__upload-cta"
+            data-tour="upload-cta"
+          >
             <div className="demo-dashboard__upload-cta-content">
               <h3 className="demo-dashboard__upload-cta-title">
                 Ready to analyze your own video?
@@ -133,15 +189,25 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
             </div>
           </div>
 
-          <AnalysisRightPanel
-            videoId={demoVideo.id}
-            videoFilename={demoVideo.filename}
-            analysisStatus={analysisStatus}
-            onContactClick={handleContactClick}
-            isDemo={isDemoReadOnly}
-          />
+          <div data-tour="analysis-panel">
+            <AnalysisRightPanel
+              videoId={demoVideo.id}
+              videoFilename={demoVideo.filename}
+              analysisStatus={analysisStatus}
+              onContactClick={handleContactClick}
+              isDemo={isDemoReadOnly}
+            />
+          </div>
         </div>
       </div>
+
+      <Tour
+        steps={tourSteps}
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+        onComplete={handleTourComplete}
+        showSkip={true}
+      />
     </div>
   );
 };

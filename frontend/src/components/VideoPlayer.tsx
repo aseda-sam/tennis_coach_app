@@ -768,10 +768,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       }}
                       step={frameStep}
                     />
-                    {/* Contact markers */}
-                    {ballContacts.length > 0 && duration > 0 && (
-                      <div className="contact-markers">
-                        {ballContacts.map((contact) => {
+              {/* Contact markers */}
+              {ballContacts.length > 0 && duration > 0 && (
+                <div className="contact-markers" data-tour="contact-markers">
+                  {ballContacts.map((contact) => {
                           const position =
                             (contact.video_timestamp / duration) * 100;
                           const isSelected = selectedContactId === contact.id;
@@ -953,7 +953,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               />
               {/* Contact markers */}
               {ballContacts.length > 0 && duration > 0 && (
-                <div className="video-controls-below__contact-markers">
+                <div
+                  className="video-controls-below__contact-markers"
+                  data-tour="contact-markers"
+                >
                   {ballContacts.map((contact) => {
                     const position = (contact.video_timestamp / duration) * 100;
                     const isSelected = selectedContactId === contact.id;

@@ -173,6 +173,13 @@ frontend/
 - Processing time and model information
 - Collapsible sections for organization
 
+### Tour
+- Custom guided tour component for onboarding
+- React 19 compatible (built due to react-joyride incompatibility)
+- Supports multi-step tours with tooltips and highlights
+- localStorage persistence for completion state
+- **Future Migration**: Monitor react-joyride for React 19 support - consider migrating once available for better features and maintenance
+
 ## Navigation & Routing
 
 The app uses view-based routing managed in `App.tsx`:
