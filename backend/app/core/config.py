@@ -124,7 +124,11 @@ class Settings(BaseSettings):
 
     # Demo video constants
     DEMO_USER_ID: str = "00000000-0000-0000-0000-000000000001"
-    DEMO_VIDEO_FILENAME: str = "demo_tennis_serve.mp4"
+    # Demo editors can manage demo content (contacts, analysis, uploads)
+    DEMO_EDITOR_USER_IDS: list[str] = [
+        "ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f",
+        "00000000-0000-0000-0000-000000000000",  # Local dev mock user ID
+    ]
 
     # Privacy Protection: Only these user IDs can have their videos promoted to demo
     # CRITICAL: Never add real user IDs here - only admin/test/developer accounts

@@ -68,7 +68,7 @@ async def start_analysis(
         require_video_access(video, current_user)
 
         # Prevent re-running analysis on demo videos
-        require_video_not_demo(video)
+        require_video_not_demo(video, current_user)
 
         # Select RQ task function based on analysis type
         task_function_map = {

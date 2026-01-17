@@ -1,10 +1,12 @@
 """Authorization utilities for checking user permissions."""
 
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+
+from app.core.config import settings
 
 if TYPE_CHECKING:
     from app.models.player import Player
@@ -24,6 +26,20 @@ def is_admin(user: dict) -> bool:
     # For now, no specific admin emails - can be added later
     # Example: return user.get("email") == "admin@example.com"
     return user.get("user_metadata", {}).get("is_admin", False)
+
+
+def is_demo_editor(user: dict) -> bool:
+    """Check if user can manage demo content.
+
+    Args:
+        user: User dict with id, email, user_metadata, etc.
+
+    Returns:
+        True if user can manage demo content, False otherwise
+    """
+    if is_admin(user):
+        return True
+    return user.get("id") in settings.DEMO_EDITOR_USER_IDS
 
 
 def can_access_video(video: "Video", user: dict) -> bool:
@@ -112,6 +128,10 @@ def can_create_ball_contact_for_video(video: "Video", user: dict) -> bool:
     Returns:
         True if user can create ball contacts, False otherwise
     """
+    # Demo editors can manage demo video contacts
+    if video.is_demo and is_demo_editor(user):
+        return True
+
     # Admins can create ball contacts for any video
     if is_admin(user):
         return True
@@ -235,16 +255,17 @@ def is_demo_video(video: "Video") -> bool:
     return video.is_demo
 
 
-def require_video_not_demo(video: "Video") -> None:
+def require_video_not_demo(video: "Video", user: Optional[dict] = None) -> None:
     """Raise exception if video is a demo (prevents modifications).
 
     Args:
         video: Video model instance
+        user: User dict to allow demo editor bypass
 
     Raises:
         HTTPException: 403 if video is a demo
     """
-    if video.is_demo:
+    if video.is_demo and (user is None or not is_demo_editor(user)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot modify demo video. Changes are not saved.",

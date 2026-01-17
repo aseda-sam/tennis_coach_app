@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
+import { useAuth } from '../hooks/useAuth';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import AnalysisRightPanel from './AnalysisRightPanel';
@@ -18,6 +19,18 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   onClose,
   onExitToUpload,
 }) => {
+  const { user } = useAuth();
+
+  const canEditDemo = useMemo(() => {
+    if (!user) {
+      return false;
+    }
+    if (user.user_metadata?.is_admin) {
+      return true;
+    }
+    return user.id === 'ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f';
+  }, [user]);
+  const isDemoReadOnly = !canEditDemo;
 
   // Fetch demo video
   const {
@@ -55,8 +68,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
     []
   );
 
-  // Note: Demo mode is fully read-only. Contact creation is blocked at the API level.
-  // These handlers are available for navigation between contacts but cannot create new ones.
+  // Demo mode is read-only for non-admin/demo editor users.
 
   if (isLoadingDemo) {
     return (
@@ -94,9 +106,9 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
             hasPoseData={analysisStatus?.has_analysis || false}
             controlsBelow={true}
             onNavigateReady={handleNavigateReady}
-            isDemo={true}
+            isDemo={isDemoReadOnly}
           />
-          <KeyboardShortcutsBanner isDemo={true} />
+          <KeyboardShortcutsBanner isDemo={isDemoReadOnly} />
         </div>
 
         {/* Right Column - Upload CTA & Analysis Panel */}
@@ -126,7 +138,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
             videoFilename={demoVideo.filename}
             analysisStatus={analysisStatus}
             onContactClick={handleContactClick}
-            isDemo={true}
+            isDemo={isDemoReadOnly}
           />
         </div>
       </div>

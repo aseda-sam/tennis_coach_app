@@ -47,6 +47,7 @@ from app.services.storage_service import storage_service
 from app.services.video_quality import VideoQualityService
 from app.utils.authorization import (
     is_admin,
+    is_demo_editor,
     require_upload_limit,
     require_video_access,
     require_video_deletable,
@@ -686,11 +687,10 @@ async def upload_video(
     """
     try:
         # Check demo upload authorization
-        demo_upload_user_id = "ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f"
         if (
             is_demo
             and settings.PROFILE != "local"
-            and current_user["id"] != demo_upload_user_id
+            and not is_demo_editor(current_user)
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

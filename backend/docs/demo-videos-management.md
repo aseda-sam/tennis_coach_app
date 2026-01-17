@@ -126,7 +126,7 @@ The app supports uploading demo videos directly with accurate metadata:
 
 1. **In the app**: When uploading a video, check the **"Upload as demo video"** checkbox
    - **Local dev**: Checkbox is always visible
-   - **Production**: Only visible to authorized users (your user ID: `ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f`)
+   - **Production**: Only visible to admin users or demo editors listed in `settings.DEMO_EDITOR_USER_IDS`
 
 2. The video will automatically:
    - Upload to `demo/` folder in public demo bucket (or local `demo/` directory)
@@ -165,6 +165,15 @@ WHERE id = <source_video_id>;
 **Note**: The file must exist in storage at `demo/demo_serve.mp4` or the `set_active_demo.py` copy step will fail.
 
 ---
+
+## Demo Editing Permissions
+
+Demo videos are readable by all authenticated users, but editing is limited:
+
+- **Allowed**: Admin users and demo editors in `settings.DEMO_EDITOR_USER_IDS`
+- **Blocked**: Everyone else (demo dashboard is read-only)
+
+This applies to manual ball contacts and analysis triggers on demo videos.
 
 ## Managing Active Demo
 
