@@ -7,7 +7,17 @@ from pathlib import Path
 from typing import Dict, List
 
 import cv2
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, UploadFile
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
 from fastapi.responses import (
     FileResponse,
     RedirectResponse,
@@ -35,7 +45,13 @@ from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.storage_service import storage_service
 from app.services.video_quality import VideoQualityService
-from app.utils.authorization import is_admin, require_upload_limit, require_video_access
+from app.utils.authorization import (
+    is_admin,
+    is_demo_editor,
+    require_upload_limit,
+    require_video_access,
+    require_video_deletable,
+)
 from app.utils.error_handling import (
     handle_file_error,
     handle_not_found_error,
@@ -144,7 +160,8 @@ async def list_videos(
         from app.utils.authorization import is_admin
 
         # Filter by user_id unless admin
-        query = db.query(Video)
+        # Exclude demo videos from user's library
+        query = db.query(Video).filter(~Video.is_demo)
         if not is_admin(current_user):
             query = query.filter(Video.user_id == current_user["id"])
 
@@ -159,6 +176,44 @@ async def list_videos(
         return [VideoListItem.model_validate(video) for video in paginated_videos]
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "list_videos")
+
+
+@router.get("/demo", response_model=VideoInfo)
+async def get_demo_video(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VideoInfo:
+    """
+    Get the active demo video for showcase purposes.
+
+    Returns the single video with is_active_demo=True.
+    Only one demo video should be active at a time.
+
+    IMPORTANT: This route must come BEFORE /{video_id} to avoid route conflicts.
+
+    Returns:
+        Demo video information
+
+    Raises:
+        HTTPException: 404 if no active demo video exists
+    """
+    try:
+        from app.models.video import Video
+
+        # Query for active demo video
+        demo = db.query(Video).filter(Video.is_active_demo).first()
+
+        if not demo:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active demo video available. Please contact support.",
+            )
+
+        return VideoInfo.model_validate(demo)
+    except HTTPException:
+        raise
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_demo_video")
 
 
 @router.get("/{video_id}", response_model=VideoInfo)
@@ -215,6 +270,25 @@ async def stream_video(
 
         # Use storage service to get file
         if settings.STORAGE_TYPE == "supabase":
+            # For active demo videos, use public demo bucket URL
+            if db_video.is_active_demo and settings.SUPABASE_DEMO_BUCKET:
+                try:
+                    # Demo videos should be stored with 'demo/' prefix in demo bucket
+                    demo_path = db_video.file_path
+                    if not demo_path.startswith("demo/"):
+                        demo_path = f"demo/{db_video.id}_{db_video.filename}"
+                    demo_url = storage_service.get_demo_public_url(demo_path)
+                    logger.info(
+                        f"Redirecting to demo bucket URL for active demo video {video_id}: {demo_url}"
+                    )
+                    return RedirectResponse(url=demo_url)
+                except (ValueError, RuntimeError) as e:
+                    logger.error(
+                        f"Failed to get demo bucket URL for video {video_id}: {e}"
+                    )
+                    # Fallback to regular flow
+
+            # For regular videos, use private bucket with signed URL or public URL
             # For Supabase, use file_path which contains 'raw/filename.mp4'
             # For local, file_path is the full path, but for Supabase it's the storage path
             storage_path = db_video.file_path
@@ -288,6 +362,26 @@ async def get_video_url(
 
         # Use storage service to get signed URL or file path
         if settings.STORAGE_TYPE == "supabase":
+            # For active demo videos, use public demo bucket URL (no expiration)
+            if db_video.is_active_demo and settings.SUPABASE_DEMO_BUCKET:
+                try:
+                    # Demo videos should be stored with 'demo/' prefix in demo bucket
+                    demo_path = db_video.file_path
+                    if not demo_path.startswith("demo/"):
+                        demo_path = f"demo/{db_video.id}_{db_video.filename}"
+                    demo_url = storage_service.get_demo_public_url(demo_path)
+                    logger.info(
+                        f"Generated demo bucket public URL for active demo video {video_id}"
+                    )
+                    # Return with max expiration since it's a public URL
+                    return VideoSignedUrlResponse(url=demo_url, expires_in=86400 * 365)
+                except (ValueError, RuntimeError) as e:
+                    logger.error(
+                        f"Failed to get demo bucket URL for video {video_id}: {e}"
+                    )
+                    # Fallback to regular flow
+
+            # For regular videos, use private bucket with signed URL
             storage_path = db_video.file_path
             try:
                 signed_url = storage_service.create_signed_url(
@@ -554,6 +648,9 @@ async def delete_video(
         # Check authorization (only owner can delete)
         require_video_access(db_video, current_user)
 
+        # Prevent deletion of demo videos
+        require_video_deletable(db_video)
+
         # Use service function to handle all deletion logic
         success, filename, deleted_video_id = video_service.delete_video_with_analyses(
             db, video_id
@@ -574,6 +671,7 @@ async def delete_video(
 @router.post("/upload", response_model=VideoUploadResponse)
 async def upload_video(
     file: UploadFile = File(...),
+    is_demo: bool = Query(False, description="Upload as demo video"),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VideoUploadResponse:
@@ -582,11 +680,19 @@ async def upload_video(
 
     Args:
         file: Video file to upload
+        is_demo: If True, upload as demo video (requires authorization)
 
     Returns:
         Upload confirmation with video information
     """
     try:
+        # Check demo upload authorization
+        if is_demo and settings.PROFILE != "local" and not is_demo_editor(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only authorized users can upload demo videos",
+            )
+
         # Check daily upload limit (skip for admins and local profile)
         if settings.PROFILE != "local" and not is_admin(current_user):
             require_upload_limit(db, current_user, settings.MAX_VIDEO_UPLOADS_PER_DAY)
@@ -606,30 +712,54 @@ async def upload_video(
         # Ensure safe and unique filename
         safe_filename = get_safe_filename(file.filename)
 
+        # Determine storage path prefix (demo/ or raw/)
+        path_prefix = "demo/" if is_demo else "raw/"
+
         # For local storage, check uniqueness in local directory before upload
         # For Supabase, storage service will handle uniqueness automatically (appends counter)
         if settings.STORAGE_TYPE == "local":
-            upload_dir = Path(settings.UPLOAD_DIR)
+            # For local storage, UPLOAD_DIR is the base (e.g., ../data/videos/raw)
+            # For demo videos, we need to create a demo subdirectory
+            base_upload_dir = Path(settings.UPLOAD_DIR).parent  # ../data/videos
+            upload_dir = base_upload_dir / path_prefix.rstrip(
+                "/"
+            )  # ../data/videos/demo or ../data/videos/raw
             upload_dir.mkdir(parents=True, exist_ok=True)
             unique_filename = ensure_unique_filename(safe_filename, upload_dir)
-            # For local storage, use filename directly (UPLOAD_DIR already contains 'raw')
-            storage_file_path = unique_filename
+            # For local storage, store the full path relative to base directory
+            # This avoids double-nesting when _resolve_local_path is called later
+            storage_file_path = str(
+                Path(path_prefix.rstrip("/")) / unique_filename
+            )  # raw/video.mp4 or demo/video.mp4
         else:
             unique_filename = safe_filename
-            # For Supabase, add 'raw/' prefix to match local directory structure
-            # Storage service will automatically append counter if file exists (e.g., raw/test_1.mp4)
-            storage_file_path = f"raw/{unique_filename}"
+            # For Supabase, add prefix to match directory structure
+            # Storage service will automatically append counter if file exists
+            storage_file_path = f"{path_prefix}{unique_filename}"
 
         # Read file content
         file_content = file.file.read()
 
         # Upload to storage (local or Supabase)
         try:
-            storage_path = storage_service.upload_file(
-                file_content=file_content,
-                file_path=storage_file_path,
-                content_type=file.content_type,
-            )
+            if (
+                is_demo
+                and settings.STORAGE_TYPE == "supabase"
+                and settings.SUPABASE_DEMO_BUCKET
+            ):
+                # Upload to demo bucket for demo videos
+                storage_path = storage_service.upload_demo_object(
+                    file_path=storage_file_path,
+                    file_content=file_content,
+                    content_type=file.content_type,
+                )
+            else:
+                # Upload to regular storage (private bucket or local)
+                storage_path = storage_service.upload_file(
+                    file_content=file_content,
+                    file_path=storage_file_path,
+                    content_type=file.content_type,
+                )
             # Extract actual filename from storage path (may have counter appended)
             # Storage service returns the actual path used, which may include counter
             actual_filename = Path(storage_path).name
@@ -661,11 +791,11 @@ async def upload_video(
 
         # Save to database
         # For storage path, use the storage path returned by storage service
-        # For Supabase, this is 'raw/filename.mp4'. For local, it's the full path.
+        # For Supabase, this is 'raw/filename.mp4' or 'demo/filename.mp4'. For local, it's the full path.
         db_video = video_service.create_video_record(
             db=db,
             filename=unique_filename,
-            file_path=storage_path,  # Use storage path ('raw/filename.mp4' for Supabase, full path for local)
+            file_path=storage_path,  # Use storage path ('raw/filename.mp4' or 'demo/filename.mp4' for Supabase, full path for local)
             file_size=file_size,
             user_id=current_user["id"],  # Associate video with authenticated user
             content_type=file.content_type,
@@ -674,6 +804,7 @@ async def upload_video(
             width=metadata.width,
             height=metadata.height,
             frame_count=metadata.frame_count,
+            is_demo=is_demo,
         )
 
         # Perform quick quality assessment

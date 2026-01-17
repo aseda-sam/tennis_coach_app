@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import React, { useCallback, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import './AnalysisDashboard.css';
 import AnalysisRightPanel from './AnalysisRightPanel';
 import { ArrowBackIcon } from './Icons';
+import KeyboardShortcutsBanner from './KeyboardShortcutsBanner';
 import ProgressBar from './ProgressBar';
 import VideoPlayer from './VideoPlayer';
 
@@ -108,35 +109,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             hasPoseData={analysisStatus?.has_analysis || false}
             controlsBelow={true}
             onNavigateReady={handleNavigateReady}
+            isDemo={false}
           />
 
-          {/* Keyboard Shortcuts Banner */}
-          <div className="analysis-dashboard__keyboard-shortcuts">
-            <div className="analysis-dashboard__shortcuts-icon">⌨️</div>
-            <div className="analysis-dashboard__shortcuts-content">
-              <h4 className="analysis-dashboard__shortcuts-title">
-                Keyboard Shortcuts
-              </h4>
-              <div className="analysis-dashboard__shortcuts-list">
-                <div className="analysis-dashboard__shortcut-item">
-                  <kbd className="analysis-dashboard__kbd">Space</kbd>
-                  <span>Play/Pause</span>
-                </div>
-                <div className="analysis-dashboard__shortcut-item">
-                  <kbd className="analysis-dashboard__kbd">← →</kbd>
-                  <span>Frame by frame</span>
-                </div>
-                <div className="analysis-dashboard__shortcut-item">
-                  <kbd className="analysis-dashboard__kbd">[ ]</kbd>
-                  <span>Previous/Next contact</span>
-                </div>
-                <div className="analysis-dashboard__shortcut-item">
-                  <kbd className="analysis-dashboard__kbd">A</kbd>
-                  <span>Add contact</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <KeyboardShortcutsBanner />
         </div>
 
         {/* Right Column - Analysis Panel */}
@@ -187,6 +163,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             videoFilename={videoFilename}
             analysisStatus={analysisStatus}
             onContactClick={handleContactClick}
+            isDemo={false}
           />
         </div>
       </div>

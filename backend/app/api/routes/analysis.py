@@ -27,7 +27,7 @@ from app.services.rq_tasks import (
     analyze_contact_metrics_rq,
     analyze_pose_detection_rq,
 )
-from app.utils.authorization import require_video_access
+from app.utils.authorization import require_video_access, require_video_not_demo
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +66,9 @@ async def start_analysis(
 
         # Check authorization (only video owner can start analysis)
         require_video_access(video, current_user)
+
+        # Prevent re-running analysis on demo videos
+        require_video_not_demo(video, current_user)
 
         # Select RQ task function based on analysis type
         task_function_map = {

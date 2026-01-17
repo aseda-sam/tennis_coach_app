@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
-  STROKE_SUBTYPE_LABELS,
-  STROKE_TYPE_LABELS,
+    STROKE_SUBTYPE_LABELS,
+    STROKE_TYPE_LABELS,
 } from '../constants/shotTypes';
 import { useBallContacts } from '../hooks/useBallContacts';
 import { formatTime } from '../utils/validation';
@@ -14,6 +14,7 @@ interface AnalysisRightPanelProps {
     has_analysis?: boolean;
   };
   onContactClick?: (contactId: number) => void; // Callback when contact is clicked
+  isDemo?: boolean; // If true, indicates demo mode (for future use)
 }
 
 const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
@@ -21,6 +22,7 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
   videoFilename,
   analysisStatus,
   onContactClick,
+  isDemo = false,
 }) => {
   const { contacts: ballContacts } = useBallContacts({
     videoId,
@@ -88,7 +90,7 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
               <div className="analysis-right-panel__metrics-empty">
                 <p>No contact metrics available</p>
                 <p className="analysis-right-panel__metrics-hint">
-                  Add contacts and run pose analysis to see metrics
+                  Manually add contacts and run pose analysis to see metrics
                 </p>
               </div>
             )}

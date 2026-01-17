@@ -39,6 +39,7 @@ interface VideoPlayerProps {
   controlsBelow?: boolean; // Render controls below video instead of overlaying
   onContactNavigate?: (contactId: number) => void; // Callback when contact is navigated to
   onNavigateReady?: (navigateFn: (contactId: number) => void) => void; // Callback to expose navigate function
+  isDemo?: boolean; // If true, disable contact creation and modification
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -53,6 +54,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   controlsBelow = false,
   onContactNavigate,
   onNavigateReady,
+  isDemo = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -505,6 +507,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         case 'a':
         case 'A':
           event.preventDefault();
+          if (isDemo) {
+            alert('Manual Contact Creation is disabled in Demo Mode!');
+            break;
+          }
           openAddContactForm();
           break;
         default:
@@ -526,6 +532,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     navigateToPreviousContact,
     navigateToNextContact,
     openAddContactForm,
+    isDemo,
   ]);
 
   // Memoize formatted time strings to prevent unnecessary re-renders
@@ -696,6 +703,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   await createContact(contact);
                 }}
                 isVisible={isAddContactVisible}
+                isReadOnly={isDemo}
                 placement="overlay"
                 openRequestId={openRequestId}
                 openTimestamp={openTimestamp ?? undefined}
@@ -760,10 +768,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       }}
                       step={frameStep}
                     />
-                    {/* Contact markers */}
-                    {ballContacts.length > 0 && duration > 0 && (
-                      <div className="contact-markers">
-                        {ballContacts.map((contact) => {
+              {/* Contact markers */}
+              {ballContacts.length > 0 && duration > 0 && (
+                <div className="contact-markers" data-tour="contact-markers">
+                  {ballContacts.map((contact) => {
                           const position =
                             (contact.video_timestamp / duration) * 100;
                           const isSelected = selectedContactId === contact.id;
@@ -890,7 +898,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onPointerMove={handleAddBandPointerMove}
                 onPointerLeave={handleAddBandPointerLeave}
                 onPointerDown={handleAddBandPointerDown}
-                title="Click to add contact (or press A)"
+                title={
+                  isDemo
+                    ? 'Demo mode: manual contact creation is disabled'
+                    : 'Click to manually add contact (or press A)'
+                }
               />
               <AddContactButton
                 currentTime={currentTime}
@@ -901,6 +913,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   await createContact(contact);
                 }}
                 isVisible={isAddContactVisible}
+                isReadOnly={isDemo}
                 placement="scrubber"
                 openRequestId={openRequestId}
                 openTimestamp={openTimestamp ?? undefined}
@@ -940,7 +953,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               />
               {/* Contact markers */}
               {ballContacts.length > 0 && duration > 0 && (
-                <div className="video-controls-below__contact-markers">
+                <div
+                  className="video-controls-below__contact-markers"
+                  data-tour="contact-markers"
+                >
                   {ballContacts.map((contact) => {
                     const position = (contact.video_timestamp / duration) * 100;
                     const isSelected = selectedContactId === contact.id;
@@ -1042,6 +1058,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         contact={selectedContact}
         isOpen={isModalOpen}
         videoDuration={duration}
+        isDemo={isDemo}
         onClose={() => {
           setIsModalOpen(false);
           setSelectedContact(null);

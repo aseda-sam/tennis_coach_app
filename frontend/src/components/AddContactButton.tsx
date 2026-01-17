@@ -16,6 +16,7 @@ interface AddContactButtonProps {
   fps?: number; // FPS for frame number calculation
   onAddContact: (contact: BallContactCreate) => Promise<void>;
   isVisible: boolean;
+  isReadOnly?: boolean; // If true, disable creation in demo mode
   placement?: 'overlay' | 'scrubber';
   openRequestId?: number;
   openTimestamp?: number;
@@ -30,6 +31,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
   fps,
   onAddContact,
   isVisible,
+  isReadOnly = false,
   placement = 'overlay',
   openRequestId,
   openTimestamp,
@@ -53,6 +55,10 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
 
   const openAtTimestamp = useCallback(
     (timestamp: number) => {
+      if (isReadOnly) {
+        alert('Manual Contact Creation is disabled in Demo Mode!');
+        return;
+      }
       setLockedTimestamp(timestamp);
       setFormData((prev) => ({
         ...prev,
@@ -61,7 +67,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
       setIsOpen(true);
       onFormOpen?.(timestamp);
     },
-    [onFormOpen]
+    [isReadOnly, onFormOpen]
   );
 
   // Lock timestamp when form opens
@@ -134,7 +140,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
       });
     } catch (error) {
       // Error is shown to user via alert
-      alert('Failed to add contact. Please try again.');
+      alert('Failed to manually add contact. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +171,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
   } ${isOpen ? 'is-open' : ''}`.trim();
   const buttonClassName = `add-contact-btn ${
     placement === 'scrubber' ? 'add-contact-btn--scrubber' : ''
-  }`.trim();
+  } ${isReadOnly ? 'add-contact-btn--readonly' : ''}`.trim();
   const formClassName = `add-contact-form ${
     placement === 'scrubber' ? 'add-contact-form--scrubber' : ''
   }`.trim();
@@ -180,10 +186,15 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
               e.stopPropagation();
               handleOpen();
             }}
-            title={`Add ball contact at ${formatTime(currentTime)}`}
+            title={
+              isReadOnly
+                ? 'Demo mode: manual contact creation is disabled'
+                : `Manually add contact at ${formatTime(currentTime)}`
+            }
+            aria-disabled={isReadOnly}
           >
             <span className="add-icon">+</span>
-            <span className="add-text">Add Contact</span>
+            <span className="add-text">Manually Add Contact</span>
           </button>
         )
       ) : (
@@ -194,7 +205,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
         >
           <div className="form-header">
             <div className="timestamp-header">
-              <div className="timestamp-label">Add contact at:</div>
+              <div className="timestamp-label">Manually add contact at:</div>
               <div className="timestamp-display">
                 {formatTime(lockedTimestamp ?? 0)}
                 {lockedFrameNumber !== null && (
@@ -303,7 +314,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
               }}
               disabled={isLoading || !!validationError}
             >
-              {isLoading ? 'Adding...' : 'Add'}
+              {isLoading ? 'Adding...' : 'Add Manual'}
             </button>
           </div>
         </div>

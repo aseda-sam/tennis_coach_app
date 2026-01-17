@@ -239,6 +239,22 @@
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
+/* Demo Read-only Notice */
+.demo-readonly-notice {
+  padding: 12px 16px;
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.demo-readonly-notice p {
+  margin: 0;
+  color: #92400e;
+  font-size: 14px;
+  font-weight: 500;
+}
+
 /* Responsive Design */
 @media (max-width: 640px) {
   .ball-contact-modal-overlay {

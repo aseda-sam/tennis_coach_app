@@ -60,6 +60,14 @@ class StorageService:
         if not settings.SUPABASE_STORAGE_BUCKET:
             raise ValueError("SUPABASE_STORAGE_BUCKET must be set")
 
+    def _validate_demo_bucket_config(self) -> None:
+        """Validate demo bucket configuration."""
+        self._validate_supabase_config()
+        if not settings.SUPABASE_DEMO_BUCKET:
+            raise ValueError(
+                "SUPABASE_DEMO_BUCKET must be set for demo bucket operations"
+            )
+
     def _validate_file_path(self, file_path: str) -> None:
         """Validate file path to prevent directory traversal attacks.
 
@@ -97,7 +105,8 @@ class StorageService:
         """Resolve local file path (handles absolute or relative paths).
 
         For absolute paths or paths starting with '..', use them directly.
-        For relative paths, resolve against UPLOAD_DIR.
+        For relative paths with prefixes (raw/ or demo/), resolve against UPLOAD_DIR parent.
+        For other relative paths, resolve against UPLOAD_DIR.
         """
         path_obj = Path(file_path)
         if path_obj.is_absolute():
@@ -106,6 +115,11 @@ class StorageService:
         # Use it as-is (it will be resolved relative to current working directory)
         if file_path.startswith(".."):
             return path_obj.resolve()
+        # If path starts with 'raw/' or 'demo/', it's a prefixed path
+        # Resolve against UPLOAD_DIR's parent (../data/videos) to avoid double-nesting
+        if file_path.startswith("raw/") or file_path.startswith("demo/"):
+            return Path(settings.UPLOAD_DIR).parent / file_path
+        # For other relative paths, resolve against UPLOAD_DIR
         return Path(settings.UPLOAD_DIR) / file_path
 
     def upload_file(
@@ -139,6 +153,9 @@ class StorageService:
         """
         self._validate_file_path(file_path)
         if self.storage_type == "supabase":
+            # Check if this is a demo bucket path
+            if file_path.startswith("demo/") and settings.SUPABASE_DEMO_BUCKET:
+                return self._download_from_demo_bucket(file_path)
             return self._download_from_supabase(file_path)
         return self._download_from_local(file_path)
 
@@ -347,6 +364,19 @@ class StorageService:
             settings.SUPABASE_STORAGE_BUCKET
         ).download(file_path)
 
+    def _download_from_demo_bucket(self, file_path: str) -> bytes:
+        """Download file from demo bucket."""
+        self._validate_demo_bucket_config()
+        self._validate_file_path(file_path)
+
+        try:
+            return self._supabase_client.storage.from_(
+                settings.SUPABASE_DEMO_BUCKET
+            ).download(file_path)
+        except Exception as e:
+            logger.error(f"Failed to download from demo bucket {file_path}: {e}")
+            raise RuntimeError(f"Failed to download from demo bucket: {e}") from e
+
     def _delete_from_supabase(self, file_path: str) -> None:
         """Delete file from cloud storage."""
         self._validate_supabase_config()
@@ -387,6 +417,104 @@ class StorageService:
         except Exception as e:
             logger.error(f"Failed to create signed URL for {file_path}: {e}")
             raise RuntimeError(f"Failed to create signed URL: {e}") from e
+
+    # Demo bucket methods
+
+    def get_demo_public_url(self, file_path: str) -> str:
+        """Get public URL for a file in the demo bucket.
+
+        Args:
+            file_path: Path to the file in the demo bucket (e.g., 'demo/video.mp4')
+
+        Returns:
+            Public URL string for the demo bucket file
+
+        Raises:
+            ValueError: If demo bucket configuration is invalid
+            RuntimeError: If URL generation fails
+        """
+        self._validate_demo_bucket_config()
+        self._validate_file_path(file_path)
+
+        try:
+            return self._supabase_client.storage.from_(
+                settings.SUPABASE_DEMO_BUCKET
+            ).get_public_url(file_path)
+        except (ValueError, RuntimeError, AttributeError) as e:
+            logger.error(f"Failed to get demo public URL for {file_path}: {e}")
+            raise RuntimeError(f"Failed to get demo public URL: {e}") from e
+
+    def demo_object_exists(self, file_path: str) -> bool:
+        """Check if an object exists in the demo bucket.
+
+        Args:
+            file_path: Path to check in the demo bucket
+
+        Returns:
+            True if object exists, False otherwise
+
+        Raises:
+            ValueError: If demo bucket configuration is invalid
+        """
+        self._validate_demo_bucket_config()
+        self._validate_file_path(file_path)
+
+        try:
+            # List files in the directory containing the file
+            directory = file_path.rsplit("/", 1)[0] if "/" in file_path else ""
+            filename = file_path.split("/")[-1]
+
+            result = self._supabase_client.storage.from_(
+                settings.SUPABASE_DEMO_BUCKET
+            ).list(directory)
+
+            # Check if our file is in the list
+            if isinstance(result, list):
+                return any(
+                    item.get("name") == filename
+                    for item in result
+                    if isinstance(item, dict)
+                )
+            return False
+        except (ValueError, RuntimeError, AttributeError) as e:
+            logger.warning(
+                f"Failed to check demo object existence for {file_path}: {e}"
+            )
+            return False
+
+    def upload_demo_object(
+        self, file_path: str, file_content: bytes, content_type: Optional[str] = None
+    ) -> str:
+        """Upload a file to the demo bucket.
+
+        Args:
+            file_path: Path where file should be stored in demo bucket
+            file_content: File content as bytes
+            content_type: MIME type of the file
+
+        Returns:
+            Storage path of the uploaded file
+
+        Raises:
+            ValueError: If demo bucket configuration is invalid
+            RuntimeError: If upload fails
+        """
+        self._validate_demo_bucket_config()
+        self._validate_file_path(file_path)
+
+        file_options: dict[str, str] = {}
+        if content_type:
+            file_options["content-type"] = content_type
+
+        try:
+            self._supabase_client.storage.from_(settings.SUPABASE_DEMO_BUCKET).upload(
+                file_path, file_content, file_options=file_options
+            )
+            logger.info(f"File uploaded to demo bucket: {file_path}")
+            return file_path
+        except (ValueError, RuntimeError, AttributeError) as e:
+            logger.error(f"Failed to upload to demo bucket {file_path}: {e}")
+            raise RuntimeError(f"Failed to upload to demo bucket: {e}") from e
 
     # Local storage methods
 

@@ -81,12 +81,12 @@ const normalizeAnalysis = (data: unknown): AnalysisData => {
 
 export const videoApi = {
   // Upload a video file
-  uploadVideo: async (file: File): Promise<VideoUploadResponse> => {
+  uploadVideo: async (file: File, isDemo: boolean = false): Promise<VideoUploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
 
     const response = await api.post<VideoUploadResponse>(
-      '/videos/upload',
+      `/videos/upload?is_demo=${isDemo}`,
       formData,
       {
         headers: {
@@ -109,6 +109,12 @@ export const videoApi = {
   // Get video details by ID
   getVideo: async (videoId: number): Promise<VideoMetadata> => {
     const response = await api.get<VideoMetadata>(`/videos/${videoId}`);
+    return response.data;
+  },
+
+  // Get demo video
+  getDemoVideo: async (): Promise<VideoMetadata> => {
+    const response = await api.get<VideoMetadata>('/videos/demo');
     return response.data;
   },
 

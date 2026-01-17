@@ -14,23 +14,41 @@ The frontend is built with React and TypeScript, using functional components wit
 
 **Key Features**:
 
-- Application routing and navigation
+- Application routing and navigation with view-based routing
 - Global state management
-- Error boundary implementation
-- Theme and styling setup
+- Authentication state management
+- Shared upload modal across all views
+- Navigation tabs (Home, Library, Demo) visible on all pages
+- Auth-aware header actions (Get Started/Logout)
+- Demo video prefetching: Automatically prefetches demo video metadata and URL when landing page loads to optimize demo dashboard load time
 
 **Props**: None (root component)
 
 **State**:
 
-- `videos`: Array of video objects
+- `currentView`: Current view state ('demo-landing' | 'list' | 'dashboard' | 'demo-dashboard')
 - `selectedVideo`: Currently selected video for analysis
+- `isUploadModalOpen`: Boolean for upload modal visibility
+- `user`: Current authenticated user (from useAuth hook)
 - `loading`: Global loading state
-- `error`: Global error state
+
+**Views**:
+
+- `demo-landing`: Homepage with CTAs for Demo and Upload
+- `list`: Video Library with grid of uploaded videos
+- `dashboard`: Analysis dashboard for selected video
+- `demo-dashboard`: Demo mode analysis dashboard
+
+**Upload Flow**:
+
+- Upload is gated behind login (except local profile)
+- All upload triggers open a shared floating modal
+- After successful upload, modal closes and redirects to Library
+- If not logged in, upload triggers redirect to Library (which shows auth form)
 
 ### VideoUpload.tsx
 
-**Purpose**: Handles video file uploads with drag-and-drop functionality.
+**Purpose**: Handles video file uploads with drag-and-drop functionality. Used within the upload modal.
 
 **Key Features**:
 
@@ -38,35 +56,36 @@ The frontend is built with React and TypeScript, using functional components wit
 - File validation (size, format, type)
 - Upload progress tracking
 - Error handling and user feedback
-- Support for multiple video formats (MP4, MOV, AVI)
+- Support for multiple video formats (MP4, MOV, AVI, WMV, FLV)
+- Guidance text for optimal video recording
 
 **Props**:
 
 ```typescript
 interface VideoUploadProps {
-  onUploadSuccess: (video: Video) => void;
-  onUploadError: (error: string) => void;
-  maxFileSize?: number;
-  acceptedFormats?: string[];
+  onUploadSuccess: (video: VideoMetadata) => void;
 }
 ```
 
 **State**:
 
 - `isDragOver`: Boolean for drag state
-- `uploading`: Boolean for upload progress
+- `isUploading`: Boolean for upload progress
 - `uploadProgress`: Number for progress percentage
+- `error`: String for error messages
 
 **Usage**:
 
 ```typescript
 <VideoUpload
-  onUploadSuccess={(video) => setVideos([...videos, video])}
-  onUploadError={(error) => setError(error)}
-  maxFileSize={104857600} // 100MB
-  acceptedFormats={['.mp4', '.mov', '.avi']}
+  onUploadSuccess={(video) => {
+    // Modal closes and redirects to Library
+    handleVideoUploaded(video);
+  }}
 />
 ```
+
+**Note**: This component is used within the shared upload modal (`App.tsx`), not as a standalone page.
 
 ### VideoList.tsx
 
@@ -627,6 +646,55 @@ if (error) {
   );
 }
 ```
+
+## Additional Components
+
+### DemoLanding.tsx
+
+**Purpose**: Homepage landing component with CTAs for Demo and Upload.
+
+**Key Features**:
+
+- Hero section with feature overview
+- "Try Demo" CTA (no login required)
+- "Upload Your Video" CTA (auth-aware, opens modal)
+- Features section explaining analysis capabilities
+- Responsive card-based layout
+
+**Props**:
+
+```typescript
+interface DemoLandingProps {
+  onTryDemo: () => void;
+  onUploadVideo: () => void;
+  user: User | null;
+}
+```
+
+### DemoDashboard.tsx
+
+**Purpose**: Demo mode analysis dashboard for exploring features without authentication.
+
+**Key Features**:
+
+- Read-only demo video playback
+- Analysis panel with existing contacts and metrics
+- Friendly upload CTA encouraging users to try with their own video
+- Keyboard shortcuts banner
+- No header (uses app-level navigation tabs)
+
+**Props**:
+
+```typescript
+interface DemoDashboardProps {
+  onClose: () => void;
+  onExitToUpload: () => void;
+}
+```
+
+**Note**: Demo mode is fully read-only. Contact creation/modification is blocked at the API level.
+
+**Performance**: Demo video metadata and URL are prefetched when the landing page loads, so the demo dashboard opens with data already cached, reducing API round-trips and improving time-to-first-frame.
 
 ## Future Enhancements
 

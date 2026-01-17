@@ -97,6 +97,12 @@ Create a `.env` file in the `backend/` directory:
 # Database
 DATABASE_URL=sqlite:///./data/database/tennis_coach.db
 
+# Supabase Storage (Production)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SECRET_KEY=your-secret-key
+SUPABASE_STORAGE_BUCKET=your-private-bucket-name
+SUPABASE_DEMO_BUCKET=your-public-demo-bucket-name  # Optional: public bucket for demo videos
+
 # File Storage
 UPLOAD_DIR=./data/videos/raw
 PROCESSED_DIR=./data/videos/processed
@@ -261,6 +267,47 @@ alembic downgrade -1
 # View migration history
 alembic history
 ```
+
+### Demo Videos
+
+Demo videos are served from a public Supabase bucket (when configured) and are accessible to all authenticated users. Only one demo video can be active at a time.
+
+**📖 For complete setup and management guide, see [`docs/demo-videos-management.md`](docs/demo-videos-management.md)**
+
+#### Setting Up Demo Bucket
+
+1. **Create a public bucket in Supabase**:
+   - Go to Storage → Create bucket
+   - Name it (e.g., `demo-videos`)
+   - Set it to **public** (important: demo videos need public access)
+
+2. **Configure environment variable**:
+   ```bash
+   SUPABASE_DEMO_BUCKET=demo-videos
+   ```
+
+3. **Upload demo videos**:
+   - **Recommended**: Upload via app with "Upload as demo video" checkbox (see [guide](docs/demo-videos-management.md))
+   - **Alternative**: Upload videos to the demo bucket with paths starting with `demo/` and create video records manually
+
+#### Managing Active Demo
+
+Use the admin script to rotate between demo videos:
+
+```bash
+# List all demo videos
+python backend/scripts/set_active_demo.py --list
+
+# Set a video as the active demo
+python backend/scripts/set_active_demo.py --video-id <id>
+```
+
+The script will:
+- Verify the video is eligible (marked as demo, file_path starts with `demo/`)
+- Copy the video to demo bucket if it doesn't exist (from private bucket)
+- Set the video as active (automatically unsetting any previous active demo)
+
+**Note**: Only videos with `file_path` starting with `demo/` can be set as active demos. This ensures demo videos are stored in the public bucket.
 
 ## Project Structure
 

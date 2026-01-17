@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     SUPABASE_URL: Optional[str] = (
         None  # Supabase project URL (used for storage, auth, etc.)
     )
-    SUPABASE_STORAGE_BUCKET: Optional[str] = None  # Storage bucket name
+    SUPABASE_STORAGE_BUCKET: Optional[str] = None  # Storage bucket name (private)
+    SUPABASE_DEMO_BUCKET: Optional[str] = None  # Public demo bucket name
 
     # File storage - Environment-based configuration
     # Note: STORAGE_TYPE is auto-detected based on SUPABASE_DB_URL
@@ -120,6 +121,25 @@ class Settings(BaseSettings):
     # RATE_LIMIT_ANALYSIS: str = "20/hour"  # Analysis requests (CPU-intensive)
     # Per-user upload limits (database-based)
     MAX_VIDEO_UPLOADS_PER_DAY: int = 3  # Maximum videos per user per day (production)
+
+    # Demo video constants
+    DEMO_USER_ID: str = "00000000-0000-0000-0000-000000000001"
+    # Demo editors can manage demo content (contacts, analysis, uploads)
+    DEMO_EDITOR_USER_IDS: list[str] = [
+        "ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f",
+        "00000000-0000-0000-0000-000000000000",  # Local dev mock user ID
+    ]
+
+    # Privacy Protection: Only these user IDs can have their videos promoted to demo
+    # CRITICAL: Never add real user IDs here - only admin/test/developer accounts
+    # Note: In local dev mode (PROFILE=local), the promotion script allows any video
+    # since there's no real user privacy concern in local development
+    ALLOWED_DEMO_SOURCE_USERS: list[str] = [
+        "00000000-0000-0000-0000-000000000001",  # DEMO_USER_ID - Can re-promote existing demo
+        "00000000-0000-0000-0000-000000000000",  # Local dev mock user ID (for convenience)
+        # Add your admin/test user IDs here, e.g.:
+        # "your-admin-user-id-here",
+    ]
 
     @property
     def database_url(self) -> str:
@@ -237,6 +257,12 @@ def initialize_profile_config() -> None:
         for var_name, var_value in required_vars.items():
             if not var_value:
                 raise ValueError(f"{var_name} required when STORAGE_TYPE=supabase")
+
+        # Demo bucket is optional but recommended for production
+        if not settings.SUPABASE_DEMO_BUCKET:
+            logger.warning(
+                "SUPABASE_DEMO_BUCKET not set. Demo videos will use private bucket with signed URLs."
+            )
 
     # Log auth requirement
     auth_required = profile != "local"

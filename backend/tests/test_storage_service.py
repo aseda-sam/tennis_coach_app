@@ -631,3 +631,124 @@ class TestStorageServiceTypeSwitching:
             # Should return URL for Supabase storage
             result = service.get_file_url("test.mp4")
             assert result == "https://example.com/test.mp4"
+
+
+class TestStorageServiceDemoBucket:
+    """Test demo bucket operations."""
+
+    def test_get_demo_public_url(self, mock_supabase_client: Mock) -> None:
+        """Test getting public URL from demo bucket."""
+        mock_bucket = mock_supabase_client.storage.from_.return_value
+        mock_bucket.get_public_url.return_value = "https://example.com/demo/video.mp4"
+
+        mock_supabase_module = Mock()
+        mock_supabase_module.create_client = Mock(return_value=mock_supabase_client)
+        mock_supabase_module.Client = Mock()
+
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
+            settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
+        ), patch.object(settings, "SUPABASE_DEMO_BUCKET", "demo-bucket"), patch.dict(
+            "sys.modules", {"supabase": mock_supabase_module}
+        ):
+            service = StorageService()
+            service._supabase_client = mock_supabase_client
+
+            result = service.get_demo_public_url("demo/video.mp4")
+
+            mock_supabase_client.storage.from_.assert_called_with("demo-bucket")
+            mock_bucket.get_public_url.assert_called_once_with("demo/video.mp4")
+            assert result == "https://example.com/demo/video.mp4"
+
+    def test_demo_object_exists(self, mock_supabase_client: Mock) -> None:
+        """Test checking if demo object exists."""
+        mock_bucket = mock_supabase_client.storage.from_.return_value
+        mock_bucket.list.return_value = [
+            {"name": "video1.mp4"},
+            {"name": "video2.mp4"},
+        ]
+
+        mock_supabase_module = Mock()
+        mock_supabase_module.create_client = Mock(return_value=mock_supabase_client)
+        mock_supabase_module.Client = Mock()
+
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
+            settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
+        ), patch.object(settings, "SUPABASE_DEMO_BUCKET", "demo-bucket"), patch.dict(
+            "sys.modules", {"supabase": mock_supabase_module}
+        ):
+            service = StorageService()
+            service._supabase_client = mock_supabase_client
+
+            result = service.demo_object_exists("demo/video1.mp4")
+
+            mock_supabase_client.storage.from_.assert_called_with("demo-bucket")
+            assert result is True
+
+    def test_demo_object_not_exists(self, mock_supabase_client: Mock) -> None:
+        """Test checking if demo object doesn't exist."""
+        mock_bucket = mock_supabase_client.storage.from_.return_value
+        mock_bucket.list.return_value = [{"name": "video1.mp4"}]
+
+        mock_supabase_module = Mock()
+        mock_supabase_module.create_client = Mock(return_value=mock_supabase_client)
+        mock_supabase_module.Client = Mock()
+
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
+            settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
+        ), patch.object(settings, "SUPABASE_DEMO_BUCKET", "demo-bucket"), patch.dict(
+            "sys.modules", {"supabase": mock_supabase_module}
+        ):
+            service = StorageService()
+            service._supabase_client = mock_supabase_client
+
+            result = service.demo_object_exists("demo/nonexistent.mp4")
+
+            assert result is False
+
+    def test_upload_demo_object(
+        self, mock_supabase_client: Mock, sample_video_content: bytes
+    ) -> None:
+        """Test uploading to demo bucket."""
+        mock_supabase_module = Mock()
+        mock_supabase_module.create_client = Mock(return_value=mock_supabase_client)
+        mock_supabase_module.Client = Mock()
+
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
+            settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
+        ), patch.object(settings, "SUPABASE_DEMO_BUCKET", "demo-bucket"), patch.dict(
+            "sys.modules", {"supabase": mock_supabase_module}
+        ):
+            service = StorageService()
+            service._supabase_client = mock_supabase_client
+
+            result = service.upload_demo_object(
+                "demo/video.mp4", sample_video_content, "video/mp4"
+            )
+
+            mock_supabase_client.storage.from_.assert_called_with("demo-bucket")
+            mock_bucket = mock_supabase_client.storage.from_.return_value
+            mock_bucket.upload.assert_called_once_with(
+                "demo/video.mp4",
+                sample_video_content,
+                file_options={"content-type": "video/mp4"},
+            )
+            assert result == "demo/video.mp4"
+
+    def test_demo_bucket_missing_config(self) -> None:
+        """Test that missing demo bucket config raises ValueError."""
+        mock_supabase_module = Mock()
+        mock_supabase_module.create_client = Mock()
+        mock_supabase_module.Client = Mock()
+
+        with patch.object(settings, "_STORAGE_TYPE", "supabase"), patch.object(
+            settings, "SUPABASE_STORAGE_BUCKET", "test-bucket"
+        ), patch.object(settings, "SUPABASE_DEMO_BUCKET", None), patch.dict(
+            "sys.modules", {"supabase": mock_supabase_module}
+        ):
+            service = StorageService()
+            service._supabase_client = Mock()
+
+            with pytest.raises(ValueError) as exc_info:
+                service.get_demo_public_url("demo/video.mp4")
+
+            assert "SUPABASE_DEMO_BUCKET must be set" in str(exc_info.value)

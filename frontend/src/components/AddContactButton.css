@@ -51,6 +51,18 @@
   box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
 }
 
+.add-contact-btn--readonly {
+  background: #e2e8f0;
+  color: #475569;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.add-contact-btn--readonly:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 .add-contact-btn:active {
   transform: translateY(0);
 }
