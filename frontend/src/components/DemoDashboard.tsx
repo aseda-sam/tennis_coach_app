@@ -1,11 +1,11 @@
-import React, { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { videoApi } from '../services/api';
+import React, { useCallback, useState } from 'react';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
+import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
-import './DemoDashboard.css';
 import AnalysisRightPanel from './AnalysisRightPanel';
-import { ArrowBackIcon, EyeIcon } from './Icons';
+import './DemoDashboard.css';
+import { UploadIcon } from './Icons';
 import KeyboardShortcutsBanner from './KeyboardShortcutsBanner';
 import VideoPlayer from './VideoPlayer';
 
@@ -71,9 +71,6 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
       <div className="demo-dashboard">
         <div className="demo-dashboard__error">
           <p>Demo video unavailable. Please try again later.</p>
-          <button onClick={onClose} className="demo-dashboard__back-btn">
-            Back to Home
-          </button>
         </div>
       </div>
     );
@@ -83,36 +80,6 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
 
   return (
     <div className="demo-dashboard">
-      {/* Header - Only show if accessed from demo-landing, otherwise use app header */}
-      <div className="demo-dashboard__header">
-        <button 
-          className="demo-dashboard__back-btn" 
-          onClick={onClose}
-          title="Back to Home"
-        >
-          <ArrowBackIcon size={16} />
-          Back to Home
-        </button>
-        <div className="demo-dashboard__banner-content">
-          <span className="demo-dashboard__banner-icon" aria-hidden="true">
-            <EyeIcon size={18} color="white" />
-          </span>
-          <span className="demo-dashboard__banner-text">
-            Demo mode · Changes won't be saved
-          </span>
-        </div>
-        <div className="demo-dashboard__header-content">
-          <h1 className="demo-dashboard__title">Demo: Biomechanics Review</h1>
-        </div>
-        <button
-          className="demo-dashboard__exit-btn"
-          onClick={onExitToUpload}
-          type="button"
-        >
-          Upload Your Video
-        </button>
-      </div>
-
       {/* Main Content */}
       <div className="demo-dashboard__content">
         {/* Left Column - Video Player */}
@@ -132,8 +99,28 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
           <KeyboardShortcutsBanner isDemo={true} />
         </div>
 
-        {/* Right Column - Analysis Panel */}
+        {/* Right Column - Upload CTA & Analysis Panel */}
         <div className="demo-dashboard__analysis-column">
+          {/* Friendly Upload CTA */}
+          <div className="demo-dashboard__upload-cta">
+            <div className="demo-dashboard__upload-cta-content">
+              <h3 className="demo-dashboard__upload-cta-title">
+                Ready to analyze your own video?
+              </h3>
+              <p className="demo-dashboard__upload-cta-description">
+                Now that you've seen how it works, upload your tennis video and get personalized feedback on your technique.
+              </p>
+              <button
+                className="demo-dashboard__upload-cta-button"
+                onClick={onExitToUpload}
+                type="button"
+              >
+                <UploadIcon size={20} />
+                Upload Your Video
+              </button>
+            </div>
+          </div>
+
           <AnalysisRightPanel
             videoId={demoVideo.id}
             videoFilename={demoVideo.filename}
