@@ -286,7 +286,6 @@ async def stream_video(
                         f"Failed to get demo bucket URL for video {video_id}: {e}"
                     )
                     # Fallback to regular flow
-                    pass
 
             # For regular videos, use private bucket with signed URL or public URL
             # For Supabase, use file_path which contains 'raw/filename.mp4'
@@ -380,7 +379,6 @@ async def get_video_url(
                         f"Failed to get demo bucket URL for video {video_id}: {e}"
                     )
                     # Fallback to regular flow
-                    pass
 
             # For regular videos, use private bucket with signed URL
             storage_path = db_video.file_path
