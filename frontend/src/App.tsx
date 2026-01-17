@@ -5,7 +5,7 @@ import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
 import DemoDashboard from './components/DemoDashboard';
 import DemoLanding from './components/DemoLanding';
-import { VideoIcon } from './components/Icons';
+import { CloseIcon, VideoIcon } from './components/Icons';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
 import { useAuth } from './hooks/useAuth';
@@ -16,15 +16,18 @@ function App() {
   const { user, loading, signOut } = useAuth();
   const queryClient = useQueryClient();
   const [currentView, setCurrentView] = useState<
-    'upload' | 'list' | 'dashboard' | 'demo-landing' | 'demo-dashboard'
+    'list' | 'dashboard' | 'demo-landing' | 'demo-dashboard'
   >('demo-landing');
   const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(
     null
   );
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  const handleVideoUploaded = () => {
+  const handleVideoUploaded = (video: VideoMetadata) => {
     // Invalidate videos cache to refetch the list with the new video
     queryClient.invalidateQueries({ queryKey: ['videos'] });
+    setIsUploadModalOpen(false);
+    // Redirect to Library to see the uploaded video
     setCurrentView('list');
   };
 
@@ -47,30 +50,32 @@ function App() {
     setCurrentView('demo-dashboard');
   };
 
-  const handleExitDemoToUpload = () => {
-    // If user is logged in, go to upload; otherwise show auth
-    if (user) {
-      setCurrentView('upload');
+  const handleOpenUploadModal = () => {
+    // Gate upload behind login (unless local profile)
+    if (profile === 'local' || user) {
+      setIsUploadModalOpen(true);
     } else {
-      // Show auth form by setting a special state or redirecting
-      // For now, we'll handle this in the upload view rendering
-      setCurrentView('upload');
+      // If not logged in, navigate to Library which will show auth form
+      setCurrentView('list');
     }
+  };
+
+  const handleExitDemoToUpload = () => {
+    handleOpenUploadModal();
   };
 
   const handleUploadFromHome = () => {
-    // Gate upload behind login
-    if (user) {
-      setCurrentView('upload');
-    } else {
-      // Show auth form by navigating to upload (which will show auth form)
-      setCurrentView('upload');
-    }
+    handleOpenUploadModal();
   };
 
   const handleGetStarted = () => {
-    // Show auth form by navigating to upload (which will check auth and show auth form)
-    setCurrentView('upload');
+    // If logged out, navigate to list which will show auth form
+    // If logged in, open upload modal
+    if (user) {
+      handleOpenUploadModal();
+    } else {
+      setCurrentView('list');
+    }
   };
 
   if (loading) {
@@ -83,9 +88,9 @@ function App() {
     );
   }
 
-  // Show auth form only for protected views (upload, list, dashboard) when not logged in
+  // Show auth form only for protected views (list, dashboard) when not logged in
   // Home (demo-landing) and demo-dashboard are accessible without login
-  const requiresAuth = ['upload', 'list', 'dashboard'].includes(currentView);
+  const requiresAuth = ['list', 'dashboard'].includes(currentView);
   if (profile !== 'local' && !user && requiresAuth) {
     return (
       <div className="App">
@@ -200,36 +205,6 @@ function App() {
           />
         );
 
-      case 'upload':
-        // Gate upload behind login (unless local profile)
-        if (profile !== 'local' && !user) {
-          return (
-            <div className="App">
-              <div className="app-container">
-                <AuthForm />
-              </div>
-            </div>
-          );
-        }
-        return (
-          <div className="app-container">
-            <div className="upload-section">
-              <div className="header-content">
-                <p className="app-subtitle">
-                  Upload your tennis video and get personalized feedback
-                </p>
-                <p className="app-description">
-                  Share a video of your serve or groundstrokes, and we'll help
-                  you understand what's working well and where you can improve.
-                  More shot types coming soon!
-                </p>
-              </div>
-
-              <VideoUpload onUploadSuccess={handleVideoUploaded} />
-            </div>
-          </div>
-        );
-
       case 'list':
         return (
           <div className="app-container">
@@ -270,6 +245,27 @@ function App() {
     <div className="App">
       {renderHeader()}
       {renderCurrentView()}
+      
+      {/* Upload Modal - Shared across all views */}
+      {isUploadModalOpen && (
+        <div className="upload-modal-overlay" onClick={() => setIsUploadModalOpen(false)}>
+          <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Upload Video</h2>
+              <button 
+                className="close-btn" 
+                onClick={() => setIsUploadModalOpen(false)} 
+                aria-label="Close"
+              >
+                <CloseIcon size={18} />
+              </button>
+            </div>
+            <div className="modal-content">
+              <VideoUpload onUploadSuccess={handleVideoUploaded} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
