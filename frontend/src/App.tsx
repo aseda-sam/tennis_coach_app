@@ -97,51 +97,7 @@ function App() {
   }
 
   const renderHeader = () => {
-    // Special header for demo-landing (Home page)
-    if (currentView === 'demo-landing') {
-      return (
-        <div className="app-header">
-          <div className="app-header-wrapper">
-            <div className="app-header-left">
-              <div className="app-brand">
-                <div className="app-logo">
-                  <VideoIcon size={20} color="white" />
-                </div>
-                <h1 className="app-title">Tennis Coach</h1>
-              </div>
-            </div>
-
-            <div className="app-header-right">
-              {user ? (
-                <button 
-                  className="logout-btn" 
-                  onClick={async () => {
-                    try {
-                      await signOut();
-                      // After logout, stay on home page
-                      setCurrentView('demo-landing');
-                    } catch (error) {
-                      console.error('Logout failed:', error);
-                    }
-                  }}
-                >
-                  Logout
-                </button>
-              ) : (
-                <button 
-                  className="get-started-btn" 
-                  onClick={handleGetStarted}
-                >
-                  Get Started
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Standard header for other views
+    // Header with tabs for all views (including homepage for returning users)
     return (
       <div className="app-header">
         <div className="app-header-wrapper">
@@ -163,9 +119,9 @@ function App() {
               <button
                 type="button"
                 role="tab"
-                className="view-toggle-btn"
+                className={`view-toggle-btn ${currentView === 'demo-landing' ? 'active' : ''}`}
                 onClick={() => setCurrentView('demo-landing')}
-                aria-selected={false}
+                aria-selected={currentView === 'demo-landing'}
               >
                 Home
               </button>
@@ -191,20 +147,29 @@ function App() {
           </div>
 
           <div className="app-header-right">
-            <button 
-              className="logout-btn" 
-              onClick={async () => {
-                try {
-                  await signOut();
-                  // After logout, go back to home
-                  setCurrentView('demo-landing');
-                } catch (error) {
-                  console.error('Logout failed:', error);
-                }
-              }}
-            >
-              Logout
-            </button>
+            {user ? (
+              <button 
+                className="logout-btn" 
+                onClick={async () => {
+                  try {
+                    await signOut();
+                    // After logout, stay on home page
+                    setCurrentView('demo-landing');
+                  } catch (error) {
+                    console.error('Logout failed:', error);
+                  }
+                }}
+              >
+                Logout
+              </button>
+            ) : (
+              <button 
+                className="get-started-btn" 
+                onClick={handleGetStarted}
+              >
+                Get Started
+              </button>
+            )}
           </div>
         </div>
       </div>
