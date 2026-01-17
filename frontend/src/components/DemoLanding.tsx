@@ -1,15 +1,15 @@
 import React from 'react';
+import './DemoLanding.css';
 import {
   AnalyticsIcon,
   BallDetectionIcon,
+  CheckIcon,
   PlayIcon,
   PoseDetectionIcon,
+  ShareIcon,
   UploadIcon,
   VideoIcon,
-  ShareIcon,
-  CheckIcon,
 } from './Icons';
-import './DemoLanding.css';
 
 interface DemoLandingProps {
   onTryDemo: () => void;
@@ -27,11 +27,11 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
         <div className="demo-landing__hero-section">
           <div className="demo-landing__hero-content">
             <h1 className="demo-landing__title">
-              Tennis feedback you can see in every frame
+              Tennis Feedback You Can See in Every Frame
             </h1>
             <p className="demo-landing__subtitle">
-              Review timing, contact, and body positions for serves and
-              groundstrokes.
+              We break down body and ball positions for serves and
+              groundstrokes to help you understand your technique better.
             </p>
           </div>
 
@@ -46,16 +46,16 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
                   </div>
                   <div className="demo-landing__card-title-wrap">
                     <div className="demo-landing__card-eyebrow">
-                      Interactive demo
+                    Interactive Demo
                     </div>
                     <h2 className="demo-landing__card-title">
-                      Explore a sample analysis
+                    Explore a Sample Analysis
                     </h2>
                   </div>
                 </div>
                 <p className="demo-landing__card-body">
-                  Scrub through a real clip, jump between contacts, and review
-                  technique and timing.
+                Start with a real clip and follow each moment. Jump between
+                contacts, review timing, and see what stands out.
                 </p>
                 <div className="demo-landing__card-actions">
                   <button
@@ -63,36 +63,39 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
                     onClick={onTryDemo}
                     type="button"
                   >
-                    View demo analysis
+                    Try a Demo Without Uploading a Video Yet
                   </button>
                 </div>
-                <p className="demo-landing__demo-note">
-                  Demo changes are not saved. Upload your own video to keep edits.
-                </p>
               </div>
             </div>
 
             {/* Upload Card - Less Prominent */}
             <div className="demo-landing__card demo-landing__card--upload">
-              <div className="demo-landing__card-header">
-                <div className="demo-landing__card-icon demo-landing__card-icon--outline">
-                  <UploadIcon size={16} color="var(--color-primary)" />
+              <div className="demo-landing__card-inner">
+                <div className="demo-landing__card-header">
+                  <div className="demo-landing__card-icon demo-landing__card-icon--outline">
+                    <UploadIcon size={20} color="var(--color-primary)" />
+                  </div>
+                  <div className="demo-landing__card-title-wrap">
+                    <div className="demo-landing__card-eyebrow">
+                      Ready to upload?
+                    </div>
+                    <h2 className="demo-landing__card-title">Upload and Analyze</h2>
+                  </div>
                 </div>
-                <div className="demo-landing__card-title-wrap">
-                  <h2 className="demo-landing__card-title">Upload and analyze</h2>
+                <p className="demo-landing__card-body">
+                  Ready to see your own swing. Upload a rally or serve and we will
+                  map timing, contact, and posture.
+                </p>
+                <div className="demo-landing__card-actions">
+                  <button
+                    className="demo-landing__cta-secondary"
+                    onClick={onUploadVideo}
+                    type="button"
+                  >
+                    Upload Your Video
+                  </button>
                 </div>
-              </div>
-              <p className="demo-landing__card-body">
-                Upload a rally or serve to get posture metrics and timing insights.
-              </p>
-              <div className="demo-landing__card-actions">
-                <button
-                  className="demo-landing__cta-secondary"
-                  onClick={onUploadVideo}
-                  type="button"
-                >
-                  Upload your video
-                </button>
               </div>
             </div>
           </div>
@@ -101,10 +104,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
         {/* Features Section */}
         <div className="demo-landing__features-section">
           <div className="demo-landing__features-header">
-            <h3 className="demo-landing__features-title">What you'll get</h3>
-            <p className="demo-landing__features-subtitle">
-              A realistic preview of the workflow and insights.
-            </p>
+            <h3 className="demo-landing__features-title">What You'll Get</h3>
           </div>
 
           <div className="demo-landing__feature-grid">
@@ -112,7 +112,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__feature-icon demo-landing__feature-icon--pose">
                 <PoseDetectionIcon size={20} color="white" />
               </div>
-              <h4 className="demo-landing__feature-title">Pose analysis</h4>
+              <h4 className="demo-landing__feature-title">Pose Analysis</h4>
               <p className="demo-landing__feature-description">
                 Track key positions and movements throughout the stroke.
               </p>
@@ -122,7 +122,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__feature-icon demo-landing__feature-icon--contact">
                 <BallDetectionIcon size={20} color="white" />
               </div>
-              <h4 className="demo-landing__feature-title">Contact markers</h4>
+              <h4 className="demo-landing__feature-title">Contact Markers</h4>
               <p className="demo-landing__feature-description">
                 Jump to key moments and review timing with timestamps.
               </p>
@@ -132,7 +132,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__feature-icon demo-landing__feature-icon--metrics">
                 <AnalyticsIcon size={20} color="white" />
               </div>
-              <h4 className="demo-landing__feature-title">Performance metrics</h4>
+              <h4 className="demo-landing__feature-title">Performance Metrics</h4>
               <p className="demo-landing__feature-description">
                 See angles and metrics computed from existing contacts.
               </p>
@@ -142,7 +142,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__feature-icon demo-landing__feature-icon--video">
                 <VideoIcon size={20} color="white" />
               </div>
-              <h4 className="demo-landing__feature-title">Interactive video</h4>
+              <h4 className="demo-landing__feature-title">Interactive Video</h4>
               <p className="demo-landing__feature-description">
                 Frame-by-frame controls and fast navigation between contacts.
               </p>
@@ -153,7 +153,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
         {/* Coming Soon Section */}
         <div className="demo-landing__coming-soon">
           <div className="demo-landing__coming-soon-header">
-            <h3 className="demo-landing__coming-soon-title">Coming soon</h3>
+            <h3 className="demo-landing__coming-soon-title">Coming Soon</h3>
             <p className="demo-landing__coming-soon-subtitle">
               More ways to improve your game.
             </p>
@@ -165,7 +165,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               </div>
               <div className="demo-landing__coming-soon-item-content">
                 <h4 className="demo-landing__coming-soon-item-title">
-                  Progress tracking
+                  Progress Tracking
                 </h4>
                 <p className="demo-landing__coming-soon-item-description">
                   See how your technique improves over time with session comparisons.
@@ -178,7 +178,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               </div>
               <div className="demo-landing__coming-soon-item-content">
                 <h4 className="demo-landing__coming-soon-item-title">
-                  More shot types
+                  More Shot Types
                 </h4>
                 <p className="demo-landing__coming-soon-item-description">
                   Volleys, overheads, and other strokes coming soon.
@@ -191,7 +191,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               </div>
               <div className="demo-landing__coming-soon-item-content">
                 <h4 className="demo-landing__coming-soon-item-title">
-                  Share with coaches
+                  Share With Coaches
                 </h4>
                 <p className="demo-landing__coming-soon-item-description">
                   Collaborate with coaches and get feedback on your sessions.
