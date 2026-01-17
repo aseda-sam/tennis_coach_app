@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import './App.css';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
@@ -17,19 +17,10 @@ function App() {
   const queryClient = useQueryClient();
   const [currentView, setCurrentView] = useState<
     'upload' | 'list' | 'dashboard' | 'demo-landing' | 'demo-dashboard'
-  >('upload');
+  >('demo-landing');
   const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(
     null
   );
-
-  // First-visit detection
-  useEffect(() => {
-    const hasVisited = localStorage.getItem('hasVisitedApp');
-    if (!hasVisited && user) {
-      setCurrentView('demo-landing');
-      localStorage.setItem('hasVisitedApp', 'true');
-    }
-  }, [user]);
 
   const handleVideoUploaded = () => {
     // Invalidate videos cache to refetch the list with the new video
@@ -57,6 +48,28 @@ function App() {
   };
 
   const handleExitDemoToUpload = () => {
+    // If user is logged in, go to upload; otherwise show auth
+    if (user) {
+      setCurrentView('upload');
+    } else {
+      // Show auth form by setting a special state or redirecting
+      // For now, we'll handle this in the upload view rendering
+      setCurrentView('upload');
+    }
+  };
+
+  const handleUploadFromHome = () => {
+    // Gate upload behind login
+    if (user) {
+      setCurrentView('upload');
+    } else {
+      // Show auth form by navigating to upload (which will show auth form)
+      setCurrentView('upload');
+    }
+  };
+
+  const handleGetStarted = () => {
+    // Show auth form by navigating to upload (which will check auth and show auth form)
     setCurrentView('upload');
   };
 
@@ -70,8 +83,10 @@ function App() {
     );
   }
 
-  // Show auth form only if profile is not local and user is not authenticated
-  if (profile !== 'local' && !user) {
+  // Show auth form only for protected views (upload, list, dashboard) when not logged in
+  // Home (demo-landing) and demo-dashboard are accessible without login
+  const requiresAuth = ['upload', 'list', 'dashboard'].includes(currentView);
+  if (profile !== 'local' && !user && requiresAuth) {
     return (
       <div className="App">
         <div className="app-container">
@@ -82,8 +97,51 @@ function App() {
   }
 
   const renderHeader = () => {
-    if (currentView === 'demo-landing') return null;
+    // Special header for demo-landing (Home page)
+    if (currentView === 'demo-landing') {
+      return (
+        <div className="app-header">
+          <div className="app-header-wrapper">
+            <div className="app-header-left">
+              <div className="app-brand">
+                <div className="app-logo">
+                  <VideoIcon size={20} color="white" />
+                </div>
+                <h1 className="app-title">Tennis Coach</h1>
+              </div>
+            </div>
 
+            <div className="app-header-right">
+              {user ? (
+                <button 
+                  className="logout-btn" 
+                  onClick={async () => {
+                    try {
+                      await signOut();
+                      // After logout, stay on home page
+                      setCurrentView('demo-landing');
+                    } catch (error) {
+                      console.error('Logout failed:', error);
+                    }
+                  }}
+                >
+                  Logout
+                </button>
+              ) : (
+                <button 
+                  className="get-started-btn" 
+                  onClick={handleGetStarted}
+                >
+                  Get Started
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Standard header for other views
     return (
       <div className="app-header">
         <div className="app-header-wrapper">
@@ -105,9 +163,9 @@ function App() {
               <button
                 type="button"
                 role="tab"
-                className={`view-toggle-btn ${currentView === 'upload' ? 'active' : ''}`}
-                onClick={() => setCurrentView('upload')}
-                aria-selected={currentView === 'upload'}
+                className="view-toggle-btn"
+                onClick={() => setCurrentView('demo-landing')}
+                aria-selected={false}
               >
                 Home
               </button>
@@ -138,6 +196,8 @@ function App() {
               onClick={async () => {
                 try {
                   await signOut();
+                  // After logout, go back to home
+                  setCurrentView('demo-landing');
                 } catch (error) {
                   console.error('Logout failed:', error);
                 }
@@ -158,7 +218,8 @@ function App() {
           <div className="app-container">
             <DemoLanding
               onTryDemo={handleTryDemo}
-              onUploadVideo={() => setCurrentView('upload')}
+              onUploadVideo={handleUploadFromHome}
+              user={user}
             />
           </div>
         );
@@ -167,15 +228,24 @@ function App() {
         return (
           <DemoDashboard
             onClose={() => {
-              // If user came from tab, go to Home; otherwise go to demo-landing
-              const hasVisited = localStorage.getItem('hasVisitedApp');
-              setCurrentView(hasVisited ? 'upload' : 'demo-landing');
+              // Always go back to demo landing page
+              setCurrentView('demo-landing');
             }}
             onExitToUpload={handleExitDemoToUpload}
           />
         );
 
       case 'upload':
+        // Gate upload behind login (unless local profile)
+        if (profile !== 'local' && !user) {
+          return (
+            <div className="App">
+              <div className="app-container">
+                <AuthForm />
+              </div>
+            </div>
+          );
+        }
         return (
           <div className="app-container">
             <div className="upload-section">

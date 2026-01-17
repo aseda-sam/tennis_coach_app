@@ -72,7 +72,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
         <div className="demo-dashboard__error">
           <p>Demo video unavailable. Please try again later.</p>
           <button onClick={onClose} className="demo-dashboard__back-btn">
-            Go Back
+            Back to Home
           </button>
         </div>
       </div>
@@ -88,10 +88,10 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
         <button 
           className="demo-dashboard__back-btn" 
           onClick={onClose}
-          title="Back to previous view"
+          title="Back to Home"
         >
           <ArrowBackIcon size={16} />
-          Back
+          Back to Home
         </button>
         <div className="demo-dashboard__banner-content">
           <span className="demo-dashboard__banner-icon" aria-hidden="true">

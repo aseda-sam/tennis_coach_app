@@ -9,14 +9,18 @@ import {
   VideoIcon,
 } from './Icons';
 
+import { User } from '@supabase/supabase-js';
+
 interface DemoLandingProps {
   onTryDemo: () => void;
   onUploadVideo: () => void;
+  user: User | null;
 }
 
 const DemoLanding: React.FC<DemoLandingProps> = ({
   onTryDemo,
   onUploadVideo,
+  user,
 }) => {
   return (
     <div className="demo-landing">
@@ -61,7 +65,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
                     onClick={onTryDemo}
                     type="button"
                   >
-                    Try a Demo Without Uploading a Video Yet
+                    Try Demo
                   </button>
                 </div>
               </div>
