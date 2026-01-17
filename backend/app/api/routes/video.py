@@ -15,6 +15,7 @@ from fastapi import (
     HTTPException,
     Request,
     UploadFile,
+    status,
 )
 from fastapi.responses import (
     FileResponse,
@@ -173,6 +174,49 @@ async def list_videos(
         return [VideoListItem.model_validate(video) for video in paginated_videos]
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "list_videos")
+
+
+@router.get("/demo", response_model=VideoInfo)
+async def get_demo_video(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VideoInfo:
+    """
+    Get the demo video for showcase purposes.
+
+    Returns the most recently promoted demo video (ordered by updated_at desc).
+    If multiple demos exist (edge case), returns the newest one.
+
+    IMPORTANT: This route must come BEFORE /{video_id} to avoid route conflicts.
+
+    Returns:
+        Demo video information
+
+    Raises:
+        HTTPException: 404 if no demo video exists
+    """
+    try:
+        from app.models.video import Video
+
+        # Query for most recently promoted demo (order by updated_at desc)
+        demo = (
+            db.query(Video)
+            .filter(Video.is_demo)
+            .order_by(Video.updated_at.desc())
+            .first()
+        )
+
+        if not demo:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No demo video available. Please contact support.",
+            )
+
+        return VideoInfo.model_validate(demo)
+    except HTTPException:
+        raise
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "get_demo_video")
 
 
 @router.get("/{video_id}", response_model=VideoInfo)

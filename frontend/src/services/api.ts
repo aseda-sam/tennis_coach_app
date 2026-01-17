@@ -112,6 +112,12 @@ export const videoApi = {
     return response.data;
   },
 
+  // Get demo video
+  getDemoVideo: async (): Promise<VideoMetadata> => {
+    const response = await api.get<VideoMetadata>('/videos/demo');
+    return response.data;
+  },
+
   // Delete a video
   deleteVideo: async (videoId: number): Promise<void> => {
     await api.delete(`/videos/${videoId}`);

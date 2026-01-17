@@ -1,6 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+
+// Mock localStorage BEFORE importing App to prevent demo landing
+const localStorageMock = {
+  getItem: jest.fn(() => 'true'), // hasVisitedApp = true
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+});
+
 import App from './App';
 
 const queryClient = new QueryClient({

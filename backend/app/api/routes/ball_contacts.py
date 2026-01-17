@@ -464,6 +464,8 @@ def analyze_ball_contact_posture(
 
         # Check authorization via video access
         require_video_access(video, current_user)
+        # Prevent modification of demo videos
+        require_video_not_demo(video)
 
         result = analyze_and_store_contact_posture(
             db=db,

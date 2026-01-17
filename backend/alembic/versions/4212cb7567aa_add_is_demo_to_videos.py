@@ -25,22 +25,31 @@ def upgrade() -> None:
 
     if is_sqlite:
         # SQLite: Use batch_alter_table
+        # SQLite stores Boolean as INTEGER (0/1), so use 0 for false
         with op.batch_alter_table("videos", schema=None) as batch_op:
             batch_op.add_column(
-                sa.Column("is_demo", sa.Boolean(), nullable=False, server_default="false")
+                sa.Column(
+                    "is_demo", sa.Boolean(), nullable=False, server_default=sa.text("0")
+                )
             )
             batch_op.add_column(
                 sa.Column("original_user_id", sa.String(36), nullable=True)
             )
             batch_op.create_index("ix_videos_is_demo", ["is_demo"], unique=False)
+        # Set all existing videos to is_demo=0 (false) in SQLite
+        op.execute("UPDATE videos SET is_demo = 0")
     else:
         # PostgreSQL: Use direct operations
-        op.add_column("videos", sa.Column("is_demo", sa.Boolean(), nullable=False, server_default="false"))
+        op.add_column(
+            "videos",
+            sa.Column(
+                "is_demo", sa.Boolean(), nullable=False, server_default=sa.text("false")
+            ),
+        )
         op.add_column("videos", sa.Column("original_user_id", sa.String(36), nullable=True))
         op.create_index("ix_videos_is_demo", "videos", ["is_demo"], unique=False)
-
-    # Set all existing videos to is_demo=False (explicit, even though default is false)
-    op.execute("UPDATE videos SET is_demo = false WHERE is_demo IS NULL")
+        # Set all existing videos to is_demo=false in PostgreSQL
+        op.execute("UPDATE videos SET is_demo = false")
 
 
 def downgrade() -> None:

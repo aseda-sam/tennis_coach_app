@@ -23,6 +23,9 @@ from app.core.config import settings  # noqa: E402
 from app.core.database import SessionLocal  # noqa: E402
 from app.models.video import Video  # noqa: E402
 
+# Local dev mock user ID (matches auth.py)
+LOCAL_DEV_USER_ID = "00000000-0000-0000-0000-000000000000"
+
 
 def promote_video(video_id: int, unpromote: bool = False) -> None:
     """Promote or unpromote a video to/from demo status.
@@ -55,7 +58,9 @@ def promote_video(video_id: int, unpromote: bool = False) -> None:
                 video.original_user_id = None
                 print(f"   Restored user_id to: {video.user_id}")
             else:
-                print(f"   ⚠️  No original_user_id found, keeping current user_id: {video.user_id}")
+                print(
+                    f"   ⚠️  No original_user_id found, keeping current user_id: {video.user_id}"
+                )
 
             video.is_demo = False
             db.commit()
@@ -64,17 +69,24 @@ def promote_video(video_id: int, unpromote: bool = False) -> None:
 
         # 2. Privacy Protection: Only allow promoting videos from admin/test accounts
         # CRITICAL: This prevents accidentally using real user content as marketing material
-        if video.user_id not in settings.ALLOWED_DEMO_SOURCE_USERS:
+        # Exception: In local dev mode, allow any video (no real user privacy concern)
+        is_local_dev = (
+            settings.PROFILE == "local"
+            or video.user_id == LOCAL_DEV_USER_ID
+        )
+
+        if not is_local_dev and video.user_id not in settings.ALLOWED_DEMO_SOURCE_USERS:
             raise ValueError(
                 f"PRIVACY VIOLATION: Cannot promote user content as demo.\n"
                 f"Video owner '{video.user_id}' is not in ALLOWED_DEMO_SOURCE_USERS.\n"
                 f"Only admin/test account videos can be promoted.\n"
                 f"Allowed users: {settings.ALLOWED_DEMO_SOURCE_USERS}\n"
-                f"To add your admin user ID, update ALLOWED_DEMO_SOURCE_USERS in config.py"
+                f"To add your admin user ID, update ALLOWED_DEMO_SOURCE_USERS in config.py\n"
+                f"Note: In local dev mode (PROFILE=local), any video can be promoted."
             )
 
         # 3. Find existing demo (if any) for auto-replace
-        old_demo = db.query(Video).filter(Video.is_demo == True).first()
+        old_demo = db.query(Video).filter(Video.is_demo).first()
 
         # 4. Unpromote old demo (restore original user_id)
         if old_demo and old_demo.id != video_id:
@@ -88,7 +100,7 @@ def promote_video(video_id: int, unpromote: bool = False) -> None:
 
         # 5. Promote new video
         if video.is_demo:
-            print(f"ℹ️  Video {video_id} is already a demo video. Confirming status...")
+            print(f"Info: Video {video_id} is already a demo video. Confirming status...")
         else:
             print(f"🎯 Promoting video {video_id} to demo status...")
             # Backup original user_id before promotion
@@ -103,7 +115,7 @@ def promote_video(video_id: int, unpromote: bool = False) -> None:
         print(f"   Demo user_id: {video.user_id}")
         print(f"   Original user_id (backed up): {video.original_user_id}")
 
-    except Exception as e:
+    except Exception:
         db.rollback()
         raise
     finally:
@@ -132,10 +144,10 @@ def main() -> None:
     try:
         promote_video(args.video_id, unpromote=args.unpromote)
     except ValueError as e:
-        print(f"❌ Error: {e}", file=sys.stderr)
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}", file=sys.stderr)
+    except (RuntimeError, OSError) as e:
+        print(f"Unexpected error: {e}", file=sys.stderr)
         import traceback
 
         traceback.print_exc()

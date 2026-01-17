@@ -1,7 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import AnalysisDashboard from './components/AnalysisDashboard';
+import DemoDashboard from './components/DemoDashboard';
+import DemoLanding from './components/DemoLanding';
 import { AuthForm } from './components/AuthForm';
 import { VideoIcon } from './components/Icons';
 import VideoList from './components/VideoList';
@@ -14,11 +16,20 @@ function App() {
   const { user, loading, signOut } = useAuth();
   const queryClient = useQueryClient();
   const [currentView, setCurrentView] = useState<
-    'upload' | 'list' | 'dashboard'
+    'upload' | 'list' | 'dashboard' | 'demo-landing' | 'demo-dashboard'
   >('upload');
   const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(
     null
   );
+
+  // First-visit detection
+  useEffect(() => {
+    const hasVisited = localStorage.getItem('hasVisitedApp');
+    if (!hasVisited && user) {
+      setCurrentView('demo-landing');
+      localStorage.setItem('hasVisitedApp', 'true');
+    }
+  }, [user]);
 
   const handleVideoUploaded = () => {
     // Invalidate videos cache to refetch the list with the new video
@@ -39,6 +50,14 @@ function App() {
   const handleBackToList = () => {
     setCurrentView('list');
     setSelectedVideo(null);
+  };
+
+  const handleTryDemo = () => {
+    setCurrentView('demo-dashboard');
+  };
+
+  const handleExitDemoToUpload = () => {
+    setCurrentView('upload');
   };
 
   if (loading) {
@@ -63,7 +82,8 @@ function App() {
   }
 
   const renderHeader = () => {
-    if (currentView === 'dashboard') return null;
+    if (currentView === 'dashboard' || currentView === 'demo-dashboard') return null;
+    if (currentView === 'demo-landing') return null;
 
     return (
       <div className="app-header">
@@ -125,6 +145,24 @@ function App() {
 
   const renderCurrentView = () => {
     switch (currentView) {
+      case 'demo-landing':
+        return (
+          <div className="app-container">
+            <DemoLanding
+              onTryDemo={handleTryDemo}
+              onUploadVideo={() => setCurrentView('upload')}
+            />
+          </div>
+        );
+
+      case 'demo-dashboard':
+        return (
+          <DemoDashboard
+            onClose={() => setCurrentView('demo-landing')}
+            onExitToUpload={handleExitDemoToUpload}
+          />
+        );
+
       case 'upload':
         return (
           <div className="app-container">

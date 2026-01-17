@@ -127,8 +127,11 @@ class Settings(BaseSettings):
 
     # Privacy Protection: Only these user IDs can have their videos promoted to demo
     # CRITICAL: Never add real user IDs here - only admin/test/developer accounts
+    # Note: In local dev mode (PROFILE=local), the promotion script allows any video
+    # since there's no real user privacy concern in local development
     ALLOWED_DEMO_SOURCE_USERS: list[str] = [
         "00000000-0000-0000-0000-000000000001",  # DEMO_USER_ID - Can re-promote existing demo
+        "00000000-0000-0000-0000-000000000000",  # Local dev mock user ID (for convenience)
         # Add your admin/test user IDs here, e.g.:
         # "your-admin-user-id-here",
     ]
