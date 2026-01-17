@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
@@ -9,6 +9,7 @@ import { CloseIcon, VideoIcon } from './components/Icons';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
 import { useAuth } from './hooks/useAuth';
+import { videoApi } from './services/api';
 import { VideoMetadata } from './types/video';
 
 function App() {
@@ -77,6 +78,74 @@ function App() {
       setCurrentView('list');
     }
   };
+
+  // Prefetch demo video metadata and URL when landing page is shown
+  useEffect(() => {
+    if (currentView === 'demo-landing') {
+      // Fetch demo metadata (using fetchQuery to get the data)
+      queryClient
+        .fetchQuery<VideoMetadata, Error>({
+          queryKey: ['demo-video'],
+          queryFn: async () => {
+            return await videoApi.getDemoVideo();
+          },
+          staleTime: 5 * 60 * 1000, // 5 minutes
+        })
+        .then((demoVideo) => {
+          if (demoVideo?.id) {
+            // Prefetch video URL after metadata is available
+            const expiresIn = 3600;
+            queryClient
+              .prefetchQuery<string>({
+                queryKey: ['video-url', demoVideo.id, expiresIn],
+                queryFn: async () => {
+                  return await videoApi.getVideoUrl(demoVideo.id, expiresIn);
+                },
+                staleTime: expiresIn * 1000 * 0.9, // Cache for 90% of expiry time
+                gcTime: expiresIn * 1000, // Keep in cache for full expiry time
+              })
+              .then(() => {
+                // Get the URL from cache to add preconnect link
+                const url = queryClient.getQueryData<string>([
+                  'video-url',
+                  demoVideo.id,
+                  expiresIn,
+                ]);
+                if (url) {
+                  try {
+                    const urlObj = new URL(url);
+                    const origin = urlObj.origin;
+
+                    // Check if preconnect link already exists
+                    const existingLink = document.querySelector(
+                      `link[rel="preconnect"][href="${origin}"]`
+                    );
+
+                    if (!existingLink) {
+                      const link = document.createElement('link');
+                      link.rel = 'preconnect';
+                      link.href = origin;
+                      link.crossOrigin = 'anonymous';
+                      document.head.appendChild(link);
+                    }
+                  } catch (e) {
+                    // Silently fail if URL parsing fails (e.g., relative URL)
+                    console.debug('Failed to parse demo video URL for preconnect:', e);
+                  }
+                }
+              })
+              .catch((error) => {
+                // Silently handle prefetch errors - demo will still work
+                console.debug('Failed to prefetch demo video URL:', error);
+              });
+          }
+        })
+        .catch((error) => {
+          // Silently handle prefetch errors - demo will still work
+          console.debug('Failed to fetch demo video metadata:', error);
+        });
+    }
+  }, [currentView, queryClient]);
 
   if (loading) {
     return (
