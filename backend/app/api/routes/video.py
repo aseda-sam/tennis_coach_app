@@ -687,11 +687,7 @@ async def upload_video(
     """
     try:
         # Check demo upload authorization
-        if (
-            is_demo
-            and settings.PROFILE != "local"
-            and not is_demo_editor(current_user)
-        ):
+        if is_demo and settings.PROFILE != "local" and not is_demo_editor(current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only authorized users can upload demo videos",
