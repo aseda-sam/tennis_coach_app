@@ -3,10 +3,8 @@ import './DemoLanding.css';
 import {
   AnalyticsIcon,
   BallDetectionIcon,
-  CheckIcon,
   PlayIcon,
   PoseDetectionIcon,
-  ShareIcon,
   UploadIcon,
   VideoIcon,
 } from './Icons';
@@ -150,56 +148,6 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
           </div>
         </div>
 
-        {/* Coming Soon Section */}
-        <div className="demo-landing__coming-soon">
-          <div className="demo-landing__coming-soon-header">
-            <h3 className="demo-landing__coming-soon-title">Coming Soon</h3>
-            <p className="demo-landing__coming-soon-subtitle">
-              More ways to improve your game.
-            </p>
-          </div>
-          <div className="demo-landing__coming-soon-grid">
-            <div className="demo-landing__coming-soon-item">
-              <div className="demo-landing__coming-soon-icon-wrapper">
-                <AnalyticsIcon size={20} color="var(--color-primary)" />
-              </div>
-              <div className="demo-landing__coming-soon-item-content">
-                <h4 className="demo-landing__coming-soon-item-title">
-                  Progress Tracking
-                </h4>
-                <p className="demo-landing__coming-soon-item-description">
-                  See how your technique improves over time with session comparisons.
-                </p>
-              </div>
-            </div>
-            <div className="demo-landing__coming-soon-item">
-              <div className="demo-landing__coming-soon-icon-wrapper">
-                <CheckIcon size={20} color="var(--color-primary)" />
-              </div>
-              <div className="demo-landing__coming-soon-item-content">
-                <h4 className="demo-landing__coming-soon-item-title">
-                  More Shot Types
-                </h4>
-                <p className="demo-landing__coming-soon-item-description">
-                  Volleys, overheads, and other strokes coming soon.
-                </p>
-              </div>
-            </div>
-            <div className="demo-landing__coming-soon-item">
-              <div className="demo-landing__coming-soon-icon-wrapper">
-                <ShareIcon size={20} color="var(--color-primary)" />
-              </div>
-              <div className="demo-landing__coming-soon-item-content">
-                <h4 className="demo-landing__coming-soon-item-title">
-                  Share With Coaches
-                </h4>
-                <p className="demo-landing__coming-soon-item-description">
-                  Collaborate with coaches and get feedback on your sessions.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
 
       </div>
     </div>
