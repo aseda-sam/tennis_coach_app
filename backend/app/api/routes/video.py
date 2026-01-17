@@ -688,7 +688,10 @@ async def upload_video(
         # Check demo upload authorization
         DEMO_UPLOAD_USER_ID = "ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f"
         if is_demo:
-            if settings.PROFILE != "local" and current_user["id"] != DEMO_UPLOAD_USER_ID:
+            if (
+                settings.PROFILE != "local"
+                and current_user["id"] != DEMO_UPLOAD_USER_ID
+            ):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Only authorized users can upload demo videos",
@@ -722,7 +725,9 @@ async def upload_video(
             # For local storage, UPLOAD_DIR is the base (e.g., ../data/videos/raw)
             # For demo videos, we need to create a demo subdirectory
             base_upload_dir = Path(settings.UPLOAD_DIR).parent  # ../data/videos
-            upload_dir = base_upload_dir / path_prefix.rstrip("/")  # ../data/videos/demo or ../data/videos/raw
+            upload_dir = base_upload_dir / path_prefix.rstrip(
+                "/"
+            )  # ../data/videos/demo or ../data/videos/raw
             upload_dir.mkdir(parents=True, exist_ok=True)
             unique_filename = ensure_unique_filename(safe_filename, upload_dir)
             # For local storage, use relative path from base (demo/filename.mp4 or raw/filename.mp4)
@@ -738,7 +743,11 @@ async def upload_video(
 
         # Upload to storage (local or Supabase)
         try:
-            if is_demo and settings.STORAGE_TYPE == "supabase" and settings.SUPABASE_DEMO_BUCKET:
+            if (
+                is_demo
+                and settings.STORAGE_TYPE == "supabase"
+                and settings.SUPABASE_DEMO_BUCKET
+            ):
                 # Upload to demo bucket for demo videos
                 storage_path = storage_service.upload_demo_object(
                     file_path=storage_file_path,
