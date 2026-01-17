@@ -23,19 +23,25 @@ def list_videos() -> None:
             return
 
         print(f"\nFound {len(videos)} video(s):\n")
-        print(f"{'ID':<6} {'Filename':<40} {'Status':<12} {'Is Demo':<10} {'User ID':<40}")
+        print(
+            f"{'ID':<6} {'Filename':<40} {'Status':<12} {'Is Demo':<10} {'User ID':<40}"
+        )
         print("-" * 120)
 
         for video in videos:
             demo_status = "Yes" if video.is_demo else "No"
-            user_id_short = video.user_id[:8] + "..." if len(video.user_id) > 8 else video.user_id
+            user_id_short = (
+                video.user_id[:8] + "..." if len(video.user_id) > 8 else video.user_id
+            )
             print(
                 f"{video.id:<6} {video.filename[:38]:<40} {video.status:<12} {demo_status:<10} {user_id_short:<40}"
             )
 
         print("\nTo promote a video to demo, use:")
         print("  python scripts/promote_video_to_demo.py --video-id <ID>")
-        print("\nTo check if migration was run, look for 'is_demo' column in the output above.")
+        print(
+            "\nTo check if migration was run, look for 'is_demo' column in the output above."
+        )
 
     finally:
         db.close()

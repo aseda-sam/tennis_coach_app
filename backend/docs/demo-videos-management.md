@@ -9,9 +9,10 @@ Complete guide for managing demo videos: setup, uploading, and rotating active d
 3. [Setup](#setup)
 4. [Uploading Demo Videos](#uploading-demo-videos)
 5. [Managing Active Demo](#managing-active-demo)
-6. [Testing](#testing)
-7. [Troubleshooting](#troubleshooting)
-8. [Reference](#reference)
+6. [Running Pose Analysis](#running-pose-analysis)
+7. [Testing](#testing)
+8. [Troubleshooting](#troubleshooting)
+9. [Reference](#reference)
 
 ---
 
@@ -191,6 +192,105 @@ The script will:
 
 ---
 
+## Running Pose Analysis
+
+Demo videos need pose analysis to display posture analysis features in the frontend. The analysis script bypasses API restrictions and runs the same analysis that regular users get.
+
+### Prerequisites
+
+- Demo video must be uploaded and set as active (see [Managing Active Demo](#managing-active-demo))
+- Redis must be running and accessible (for background job queue)
+- RQ worker must be running to process the analysis job
+
+### Running Analysis
+
+**For the active demo video:**
+```bash
+cd backend
+python scripts/analyze_demo_pose.py
+```
+
+**For a specific demo video:**
+```bash
+python scripts/analyze_demo_pose.py --video-id <video_id>
+```
+
+**With custom confidence threshold:**
+```bash
+python scripts/analyze_demo_pose.py --video-id <video_id> --confidence 0.8
+```
+
+**List all demo videos and their analysis status:**
+```bash
+python scripts/analyze_demo_pose.py --list
+```
+
+### How It Works
+
+1. **Validates** the video is a demo video
+2. **Checks** if analysis already exists (skips if completed)
+3. **Downloads** video from demo bucket (if using Supabase) or uses local path
+4. **Enqueues** pose analysis job to Redis queue (same as regular user analysis)
+5. **RQ worker** processes the job and saves results to database
+
+### Monitoring Progress
+
+**Check job status:**
+```bash
+python -m rq info
+```
+
+**Or use the API endpoint** (if you have access):
+```bash
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:8000/v0/analysis/status/<job_id>
+```
+
+### Production Setup
+
+When running from your local machine against production:
+
+1. **Set production environment variables** in your `.env` file:
+   ```bash
+   PROFILE=production
+   DATABASE_URL=<production_db_url>
+   REDIS_URL=<production_redis_url>
+   SUPABASE_URL=<production_supabase_url>
+   SUPABASE_KEY=<production_supabase_key>
+   SUPABASE_DEMO_BUCKET=demo-videos
+   ```
+
+2. **Run the script** (it will connect to production):
+   ```bash
+   python backend/scripts/analyze_demo_pose.py --video-id <id>
+   ```
+
+3. **Ensure RQ worker is running** in production to process the job:
+   - The job will be enqueued to production Redis
+   - Production RQ worker will pick it up and process it
+
+### Troubleshooting
+
+**Problem**: Script says "Video not found"
+- **Solution**: Verify video ID exists and is marked as demo
+- Check: `SELECT id, filename, is_demo FROM videos WHERE id = <id>;`
+
+**Problem**: "Failed to enqueue job to Redis"
+- **Solution**: Check Redis connection and ensure Redis is running
+- Verify `REDIS_URL` environment variable is set correctly
+
+**Problem**: Job enqueued but not processing
+- **Solution**: Ensure RQ worker is running in production
+- Check worker logs for errors
+
+**Problem**: "Failed to download from demo bucket"
+- **Solution**: 
+  1. Verify `SUPABASE_DEMO_BUCKET` is set
+  2. Check video file exists in demo bucket
+  3. Verify Supabase credentials are correct
+
+---
+
 ## Testing
 
 ### Backend Testing
@@ -365,6 +465,15 @@ python scripts/set_active_demo.py --list
 # Set active demo
 python scripts/set_active_demo.py --video-id <id>
 
+# Run pose analysis for active demo
+python scripts/analyze_demo_pose.py
+
+# Run pose analysis for specific demo video
+python scripts/analyze_demo_pose.py --video-id <id>
+
+# List demo videos with analysis status
+python scripts/analyze_demo_pose.py --list
+
 # Test demo endpoint
 curl -H "Authorization: Bearer <token>" http://localhost:8000/v0/videos/demo
 ```
@@ -396,7 +505,8 @@ You're done when:
 - ✅ `SUPABASE_DEMO_BUCKET` environment variable set (production)
 - ✅ Demo video uploaded (via app or manually)
 - ✅ Demo video set as active (`is_active_demo = true`)
+- ✅ Pose analysis completed for demo video
 - ✅ Demo endpoint returns active demo video
 - ✅ Demo video URL is public (not signed)
-- ✅ Frontend demo experience works
+- ✅ Frontend demo experience works (video plays, analysis displays)
 - ✅ Can rotate between demo videos

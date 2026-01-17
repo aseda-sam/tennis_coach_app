@@ -50,7 +50,9 @@ class Video(Base):
     # Demo video flag
     is_demo = Column(Boolean, nullable=False, server_default=text("false"), index=True)
     # Active demo flag (only one video should have this set to True at a time)
-    is_active_demo = Column(Boolean, nullable=False, server_default=text("false"), index=True)
+    is_active_demo = Column(
+        Boolean, nullable=False, server_default=text("false"), index=True
+    )
     # Original user_id before promotion to demo (for unpromote/restore)
     original_user_id = Column(String(36), nullable=True)
 

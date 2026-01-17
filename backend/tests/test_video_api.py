@@ -270,9 +270,7 @@ class TestVideoAPI:
             with open(tmp_file_path, "rb") as f:
                 files = {"file": ("test.mp4", f, "video/mp4")}
                 # Try to upload as demo with unauthorized user (different from DEMO_UPLOAD_USER_ID)
-                response = client.post(
-                    "/v0/videos/upload?is_demo=true", files=files
-                )
+                response = client.post("/v0/videos/upload?is_demo=true", files=files)
 
             # Should fail with 403 in production, but might pass in local
             # Check that it's either 403 or 200 (local profile allows it)

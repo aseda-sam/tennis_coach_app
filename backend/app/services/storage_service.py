@@ -147,6 +147,9 @@ class StorageService:
         """
         self._validate_file_path(file_path)
         if self.storage_type == "supabase":
+            # Check if this is a demo bucket path
+            if file_path.startswith("demo/") and settings.SUPABASE_DEMO_BUCKET:
+                return self._download_from_demo_bucket(file_path)
             return self._download_from_supabase(file_path)
         return self._download_from_local(file_path)
 
@@ -354,6 +357,19 @@ class StorageService:
         return self._supabase_client.storage.from_(
             settings.SUPABASE_STORAGE_BUCKET
         ).download(file_path)
+
+    def _download_from_demo_bucket(self, file_path: str) -> bytes:
+        """Download file from demo bucket."""
+        self._validate_demo_bucket_config()
+        self._validate_file_path(file_path)
+
+        try:
+            return self._supabase_client.storage.from_(
+                settings.SUPABASE_DEMO_BUCKET
+            ).download(file_path)
+        except Exception as e:
+            logger.error(f"Failed to download from demo bucket {file_path}: {e}")
+            raise RuntimeError(f"Failed to download from demo bucket: {e}") from e
 
     def _delete_from_supabase(self, file_path: str) -> None:
         """Delete file from cloud storage."""

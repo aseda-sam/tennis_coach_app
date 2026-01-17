@@ -41,7 +41,9 @@ def fix_demo_flags(demo_video_id: int | None = None) -> None:
                     video.is_demo = True
                     print(f"✓ Video {video.id} ({video.filename}) - Set to DEMO")
                 else:
-                    print(f"  Video {video.id} ({video.filename}) - Already DEMO (keeping)")
+                    print(
+                        f"  Video {video.id} ({video.filename}) - Already DEMO (keeping)"
+                    )
             else:
                 # Set to non-demo
                 if video.is_demo:

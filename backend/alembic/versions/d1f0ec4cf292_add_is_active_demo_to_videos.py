@@ -5,6 +5,7 @@ Revises: 4212cb7567aa
 Create Date: 2026-01-17 11:44:51.106260
 
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -12,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'd1f0ec4cf292'
-down_revision: Union[str, Sequence[str], None] = '4212cb7567aa'
+revision: str = "d1f0ec4cf292"
+down_revision: Union[str, Sequence[str], None] = "4212cb7567aa"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -29,10 +30,15 @@ def upgrade() -> None:
         with op.batch_alter_table("videos", schema=None) as batch_op:
             batch_op.add_column(
                 sa.Column(
-                    "is_active_demo", sa.Boolean(), nullable=False, server_default=sa.text("0")
+                    "is_active_demo",
+                    sa.Boolean(),
+                    nullable=False,
+                    server_default=sa.text("0"),
                 )
             )
-            batch_op.create_index("ix_videos_is_active_demo", ["is_active_demo"], unique=False)
+            batch_op.create_index(
+                "ix_videos_is_active_demo", ["is_active_demo"], unique=False
+            )
         # Set all existing videos to is_active_demo=0 (false) in SQLite
         op.execute("UPDATE videos SET is_active_demo = 0")
     else:
@@ -40,10 +46,15 @@ def upgrade() -> None:
         op.add_column(
             "videos",
             sa.Column(
-                "is_active_demo", sa.Boolean(), nullable=False, server_default=sa.text("false")
+                "is_active_demo",
+                sa.Boolean(),
+                nullable=False,
+                server_default=sa.text("false"),
             ),
         )
-        op.create_index("ix_videos_is_active_demo", "videos", ["is_active_demo"], unique=False)
+        op.create_index(
+            "ix_videos_is_active_demo", "videos", ["is_active_demo"], unique=False
+        )
         # Set all existing videos to is_active_demo=false in PostgreSQL
         op.execute("UPDATE videos SET is_active_demo = false")
 
