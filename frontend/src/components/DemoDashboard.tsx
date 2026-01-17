@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { useAuth } from '../hooks/useAuth';
+import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import AnalysisRightPanel from './AnalysisRightPanel';
