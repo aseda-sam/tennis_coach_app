@@ -60,6 +60,14 @@ class StorageService:
         if not settings.SUPABASE_STORAGE_BUCKET:
             raise ValueError("SUPABASE_STORAGE_BUCKET must be set")
 
+    def _validate_demo_bucket_config(self) -> None:
+        """Validate demo bucket configuration."""
+        self._validate_supabase_config()
+        if not settings.SUPABASE_DEMO_BUCKET:
+            raise ValueError(
+                "SUPABASE_DEMO_BUCKET must be set for demo bucket operations"
+            )
+
     def _validate_file_path(self, file_path: str) -> None:
         """Validate file path to prevent directory traversal attacks.
 
@@ -387,6 +395,104 @@ class StorageService:
         except Exception as e:
             logger.error(f"Failed to create signed URL for {file_path}: {e}")
             raise RuntimeError(f"Failed to create signed URL: {e}") from e
+
+    # Demo bucket methods
+
+    def get_demo_public_url(self, file_path: str) -> str:
+        """Get public URL for a file in the demo bucket.
+
+        Args:
+            file_path: Path to the file in the demo bucket (e.g., 'demo/video.mp4')
+
+        Returns:
+            Public URL string for the demo bucket file
+
+        Raises:
+            ValueError: If demo bucket configuration is invalid
+            RuntimeError: If URL generation fails
+        """
+        self._validate_demo_bucket_config()
+        self._validate_file_path(file_path)
+
+        try:
+            return self._supabase_client.storage.from_(
+                settings.SUPABASE_DEMO_BUCKET
+            ).get_public_url(file_path)
+        except (ValueError, RuntimeError, AttributeError) as e:
+            logger.error(f"Failed to get demo public URL for {file_path}: {e}")
+            raise RuntimeError(f"Failed to get demo public URL: {e}") from e
+
+    def demo_object_exists(self, file_path: str) -> bool:
+        """Check if an object exists in the demo bucket.
+
+        Args:
+            file_path: Path to check in the demo bucket
+
+        Returns:
+            True if object exists, False otherwise
+
+        Raises:
+            ValueError: If demo bucket configuration is invalid
+        """
+        self._validate_demo_bucket_config()
+        self._validate_file_path(file_path)
+
+        try:
+            # List files in the directory containing the file
+            directory = file_path.rsplit("/", 1)[0] if "/" in file_path else ""
+            filename = file_path.split("/")[-1]
+
+            result = self._supabase_client.storage.from_(
+                settings.SUPABASE_DEMO_BUCKET
+            ).list(directory)
+
+            # Check if our file is in the list
+            if isinstance(result, list):
+                return any(
+                    item.get("name") == filename
+                    for item in result
+                    if isinstance(item, dict)
+                )
+            return False
+        except (ValueError, RuntimeError, AttributeError) as e:
+            logger.warning(
+                f"Failed to check demo object existence for {file_path}: {e}"
+            )
+            return False
+
+    def upload_demo_object(
+        self, file_path: str, file_content: bytes, content_type: Optional[str] = None
+    ) -> str:
+        """Upload a file to the demo bucket.
+
+        Args:
+            file_path: Path where file should be stored in demo bucket
+            file_content: File content as bytes
+            content_type: MIME type of the file
+
+        Returns:
+            Storage path of the uploaded file
+
+        Raises:
+            ValueError: If demo bucket configuration is invalid
+            RuntimeError: If upload fails
+        """
+        self._validate_demo_bucket_config()
+        self._validate_file_path(file_path)
+
+        file_options: dict[str, str] = {}
+        if content_type:
+            file_options["content-type"] = content_type
+
+        try:
+            self._supabase_client.storage.from_(settings.SUPABASE_DEMO_BUCKET).upload(
+                file_path, file_content, file_options=file_options
+            )
+            logger.info(f"File uploaded to demo bucket: {file_path}")
+            return file_path
+        except (ValueError, RuntimeError, AttributeError) as e:
+            logger.error(f"Failed to upload to demo bucket {file_path}: {e}")
+            raise RuntimeError(f"Failed to upload to demo bucket: {e}") from e
 
     # Local storage methods
 

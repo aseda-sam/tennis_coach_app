@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import { UploadIcon } from './Icons';
+import { useAuth } from '../hooks/useAuth';
 import './VideoUpload.css';
 
 interface VideoUploadProps {
@@ -14,6 +15,13 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
+  const { user } = useAuth();
+
+  // Check if user can upload demo videos
+  const profile = process.env.REACT_APP_PROFILE || 'local';
+  const DEMO_UPLOAD_USER_ID = 'ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f';
+  const canUploadDemo = profile === 'local' || user?.id === DEMO_UPLOAD_USER_ID;
 
   const handleFileSelect = useCallback(
     async (file: File) => {
@@ -42,7 +50,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
       setUploadProgress(0);
 
       try {
-        const response = await videoApi.uploadVideo(file);
+        const response = await videoApi.uploadVideo(file, isDemo);
 
         // Create a video object from the response data
         const video: VideoMetadata = {
@@ -82,7 +90,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
         setIsUploading(false);
       }
     },
-    [onUploadSuccess]
+    [onUploadSuccess, isDemo]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -169,6 +177,22 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
           </>
         )}
       </div>
+
+      {canUploadDemo && (
+        <div className="demo-upload-option" style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', backgroundColor: '#f8fafc' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={isDemo}
+              onChange={(e) => setIsDemo(e.target.checked)}
+              disabled={isUploading}
+            />
+            <span style={{ fontSize: '0.875rem', color: '#475569' }}>
+              Upload as demo video (public, accessible to all users)
+            </span>
+          </label>
+        </div>
+      )}
 
       <div className="upload-guidance">
         <h3 className="guidance-title">What videos work best?</h3>

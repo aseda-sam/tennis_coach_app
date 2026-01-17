@@ -81,12 +81,12 @@ const normalizeAnalysis = (data: unknown): AnalysisData => {
 
 export const videoApi = {
   // Upload a video file
-  uploadVideo: async (file: File): Promise<VideoUploadResponse> => {
+  uploadVideo: async (file: File, isDemo: boolean = false): Promise<VideoUploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
 
     const response = await api.post<VideoUploadResponse>(
-      '/videos/upload',
+      `/videos/upload?is_demo=${isDemo}`,
       formData,
       {
         headers: {

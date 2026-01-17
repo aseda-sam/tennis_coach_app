@@ -41,11 +41,17 @@ All endpoints are prefixed with the version number (e.g., `/v0/videos/upload`).
 
 - `POST /v0/videos/upload` - Upload a tennis video for analysis
 - `GET /v0/videos/` - List all uploaded videos
+- `GET /v0/videos/demo` - Get the active demo video (requires authentication)
 - `GET /v0/videos/{video_id}` - Get video details by ID
-- `GET /v0/videos/{video_id}/stream` - Stream original video
+- `GET /v0/videos/{video_id}/stream` - Stream original video (uses public demo bucket URL for active demo videos)
+- `GET /v0/videos/{video_id}/url` - Get signed URL for video access (returns public demo bucket URL for active demo videos)
 - `GET /v0/videos/{video_id}/overlay-data` - Get pose overlay data for client-side rendering
 - `GET /v0/videos/{video_id}/analysis-status` - Get analysis status for a video
 - `DELETE /v0/videos/{video_id}` - Delete video and associated data
+
+#### Demo Videos
+
+Demo videos are served from a public Supabase bucket (when configured) and do not require signed URLs. Only one demo video can be active at a time, controlled by the `is_active_demo` flag. Active demo videos are accessible to all authenticated users and use public bucket URLs for efficient streaming.
 
 ### Analysis
 

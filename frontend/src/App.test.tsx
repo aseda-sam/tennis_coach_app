@@ -79,16 +79,29 @@ jest.mock('./components/AnalysisDashboard', () => {
   };
 });
 
+jest.mock('./components/DemoLanding', () => {
+  return function MockDemoLanding() {
+    return <div data-testid="demo-landing">Demo Landing</div>;
+  };
+});
+
+jest.mock('./components/DemoDashboard', () => {
+  return function MockDemoDashboard() {
+    return <div data-testid="demo-dashboard">Demo Dashboard</div>;
+  };
+});
+
 test('renders tennis coach app title', () => {
   renderWithProviders(<App />);
   const titleElement = screen.getByText(/Tennis Coach/i);
   expect(titleElement).toBeInTheDocument();
 });
 
-test('renders upload section', () => {
+test('renders demo landing by default', () => {
   renderWithProviders(<App />);
-  const uploadElement = screen.getByTestId('video-upload');
-  expect(uploadElement).toBeInTheDocument();
+  // App shows demo landing by default
+  const demoLanding = screen.getByTestId('demo-landing');
+  expect(demoLanding).toBeInTheDocument();
 });
 
 test('renders library button', () => {
@@ -97,10 +110,9 @@ test('renders library button', () => {
   expect(libraryButton).toBeInTheDocument();
 });
 
-test('renders app subtitle', () => {
+test('renders app content', () => {
   renderWithProviders(<App />);
-  const subtitleElement = screen.getByText(
-    /Upload your tennis video and get personalized feedback/i
-  );
-  expect(subtitleElement).toBeInTheDocument();
+  // App shows demo landing by default
+  const demoLanding = screen.getByTestId('demo-landing');
+  expect(demoLanding).toBeInTheDocument();
 });

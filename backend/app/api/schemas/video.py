@@ -101,6 +101,9 @@ class VideoInfo(BaseModel):
     is_demo: bool = Field(
         default=False, description="Whether this is a demo video (readable by all authenticated users)"
     )
+    is_active_demo: bool = Field(
+        default=False, description="Whether this is the currently active demo video (only one should be active)"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

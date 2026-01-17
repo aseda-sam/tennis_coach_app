@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     SUPABASE_URL: Optional[str] = (
         None  # Supabase project URL (used for storage, auth, etc.)
     )
-    SUPABASE_STORAGE_BUCKET: Optional[str] = None  # Storage bucket name
+    SUPABASE_STORAGE_BUCKET: Optional[str] = None  # Storage bucket name (private)
+    SUPABASE_DEMO_BUCKET: Optional[str] = None  # Public demo bucket name
 
     # File storage - Environment-based configuration
     # Note: STORAGE_TYPE is auto-detected based on SUPABASE_DB_URL
@@ -252,6 +253,12 @@ def initialize_profile_config() -> None:
         for var_name, var_value in required_vars.items():
             if not var_value:
                 raise ValueError(f"{var_name} required when STORAGE_TYPE=supabase")
+
+        # Demo bucket is optional but recommended for production
+        if not settings.SUPABASE_DEMO_BUCKET:
+            logger.warning(
+                "SUPABASE_DEMO_BUCKET not set. Demo videos will use private bucket with signed URLs."
+            )
 
     # Log auth requirement
     auth_required = profile != "local"

@@ -52,6 +52,10 @@ Stores metadata for uploaded tennis videos including file information, processin
 - `status` - Processing status (uploaded, processing, completed, failed)
 - `quality_score` - Overall video quality assessment
 - `quality_level` - Quality rating (excellent, good, fair, poor)
+- `user_id` - UUID of the user who owns this video (required)
+- `is_demo` - Boolean flag indicating if this is a demo video (readable by all authenticated users)
+- `is_active_demo` - Boolean flag indicating if this is the currently active demo video (only one should be active at a time)
+- `original_user_id` - Original user_id before promotion to demo (for restore purposes)
 
 ### 2. Players Table
 

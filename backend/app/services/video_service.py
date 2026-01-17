@@ -25,6 +25,7 @@ def create_video_record(
     width: Optional[int] = None,
     height: Optional[int] = None,
     frame_count: Optional[int] = None,
+    is_demo: bool = False,
 ) -> Video:
     """Create a new video record in the database.
 
@@ -40,6 +41,7 @@ def create_video_record(
         width: Video width in pixels
         height: Video height in pixels
         frame_count: Total number of frames
+        is_demo: Whether this is a demo video
     """
     db_video = Video(
         filename=filename,
@@ -53,6 +55,7 @@ def create_video_record(
         frame_count=frame_count,
         status="uploaded",
         user_id=user_id,
+        is_demo=is_demo,
     )
     db.add(db_video)
     db.commit()
