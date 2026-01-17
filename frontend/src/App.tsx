@@ -82,7 +82,7 @@ function App() {
   }
 
   const renderHeader = () => {
-    if (currentView === 'dashboard' || currentView === 'demo-dashboard') return null;
+    if (currentView === 'dashboard') return null;
     if (currentView === 'demo-landing') return null;
 
     return (
@@ -121,6 +121,15 @@ function App() {
               >
                 Library
               </button>
+              <button
+                type="button"
+                role="tab"
+                className={`view-toggle-btn ${currentView === 'demo-dashboard' ? 'active' : ''}`}
+                onClick={() => setCurrentView('demo-dashboard')}
+                aria-selected={currentView === 'demo-dashboard'}
+              >
+                Demo
+              </button>
             </div>
           </div>
 
@@ -158,7 +167,11 @@ function App() {
       case 'demo-dashboard':
         return (
           <DemoDashboard
-            onClose={() => setCurrentView('demo-landing')}
+            onClose={() => {
+              // If user came from tab, go to Home; otherwise go to demo-landing
+              const hasVisited = localStorage.getItem('hasVisitedApp');
+              setCurrentView(hasVisited ? 'upload' : 'demo-landing');
+            }}
             onExitToUpload={handleExitDemoToUpload}
           />
         );

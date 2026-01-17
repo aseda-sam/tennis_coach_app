@@ -93,9 +93,13 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
         </div>
       </div>
 
-      {/* Header */}
+      {/* Header - Only show if accessed from demo-landing, otherwise use app header */}
       <div className="demo-dashboard__header">
-        <button className="demo-dashboard__back-btn" onClick={onClose}>
+        <button 
+          className="demo-dashboard__back-btn" 
+          onClick={onClose}
+          title="Back to previous view"
+        >
           <ArrowBackIcon size={16} />
           Back
         </button>
