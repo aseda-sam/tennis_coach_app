@@ -186,6 +186,7 @@ The app uses view-based routing managed in `App.tsx`:
 - Navigation tabs (Home, Library, Demo) visible on all pages
 - Auth-aware header actions: "Get Started" when logged out, "Logout" when logged in
 - Upload is gated behind login - opens modal when logged in, redirects to Library/auth when not
+- **Performance**: Demo video metadata and URL are prefetched when landing page loads to optimize demo dashboard load time
 
 ## API Integration
 
@@ -397,6 +398,7 @@ REACT_APP_DEBUG=true npm start
 - Use appropriate video quality settings
 - Consider video compression for storage
 - Implement video caching strategies
+- **Demo video prefetching**: Demo video metadata and URL are prefetched when the landing page loads, reducing API round-trips and improving time-to-first-frame when users open the demo dashboard
 
 ## Documentation
 

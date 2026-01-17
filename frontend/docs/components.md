@@ -20,6 +20,7 @@ The frontend is built with React and TypeScript, using functional components wit
 - Shared upload modal across all views
 - Navigation tabs (Home, Library, Demo) visible on all pages
 - Auth-aware header actions (Get Started/Logout)
+- Demo video prefetching: Automatically prefetches demo video metadata and URL when landing page loads to optimize demo dashboard load time
 
 **Props**: None (root component)
 
@@ -692,6 +693,8 @@ interface DemoDashboardProps {
 ```
 
 **Note**: Demo mode is fully read-only. Contact creation/modification is blocked at the API level.
+
+**Performance**: Demo video metadata and URL are prefetched when the landing page loads, so the demo dashboard opens with data already cached, reducing API round-trips and improving time-to-first-frame.
 
 ## Future Enhancements
 
