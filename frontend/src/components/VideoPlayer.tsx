@@ -508,7 +508,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         case 'A':
           event.preventDefault();
           if (isDemo) {
-            alert('Manual Contact Creation is disabled Demo Mode!');
+            alert('Manual Contact Creation is disabled in Demo Mode!');
             break;
           }
           openAddContactForm();

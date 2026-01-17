@@ -56,7 +56,7 @@ const AddContactButton: React.FC<AddContactButtonProps> = ({
   const openAtTimestamp = useCallback(
     (timestamp: number) => {
       if (isReadOnly) {
-        alert('Manual Contact Creation is disabled Demo Mode!');
+        alert('Manual Contact Creation is disabled in Demo Mode!');
         return;
       }
       setLockedTimestamp(timestamp);

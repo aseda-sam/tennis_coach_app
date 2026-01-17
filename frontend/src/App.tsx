@@ -1,10 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
 import AnalysisDashboard from './components/AnalysisDashboard';
+import { AuthForm } from './components/AuthForm';
 import DemoDashboard from './components/DemoDashboard';
 import DemoLanding from './components/DemoLanding';
-import { AuthForm } from './components/AuthForm';
 import { VideoIcon } from './components/Icons';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';

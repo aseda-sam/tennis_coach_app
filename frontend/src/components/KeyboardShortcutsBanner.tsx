@@ -10,7 +10,7 @@ const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
 }) => {
   const manualLabel = 'Manually Add Contact';
   const manualTitle = isDemo
-    ? 'Manual Contact Creation is disabled Demo Mode!'
+    ? 'Manual Contact Creation is disabled in Demo Mode!'
     : 'Manually add contact';
 
   return (
