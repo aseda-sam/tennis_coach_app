@@ -108,6 +108,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             hasPoseData={analysisStatus?.has_analysis || false}
             controlsBelow={true}
             onNavigateReady={handleNavigateReady}
+            isDemo={false}
           />
 
           {/* Keyboard Shortcuts Banner */}
@@ -187,6 +188,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             videoFilename={videoFilename}
             analysisStatus={analysisStatus}
             onContactClick={handleContactClick}
+            isDemo={false}
           />
         </div>
       </div>

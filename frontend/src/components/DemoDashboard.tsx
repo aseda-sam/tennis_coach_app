@@ -54,9 +54,8 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
     []
   );
 
-  // TODO: Ephemeral contacts will be implemented in a future iteration
-  // These handlers will be used when VideoPlayer and AnalysisRightPanel
-  // support demo mode with ephemeral state
+  // Note: Demo mode is fully read-only. Contact creation is blocked at the API level.
+  // These handlers are available for navigation between contacts but cannot create new ones.
 
   if (isLoadingDemo) {
     return (
@@ -126,6 +125,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
             hasPoseData={analysisStatus?.has_analysis || false}
             controlsBelow={true}
             onNavigateReady={handleNavigateReady}
+            isDemo={true}
           />
         </div>
 
@@ -136,6 +136,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
             videoFilename={demoVideo.filename}
             analysisStatus={analysisStatus}
             onContactClick={handleContactClick}
+            isDemo={true}
           />
         </div>
       </div>

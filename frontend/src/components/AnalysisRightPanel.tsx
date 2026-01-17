@@ -14,6 +14,7 @@ interface AnalysisRightPanelProps {
     has_analysis?: boolean;
   };
   onContactClick?: (contactId: number) => void; // Callback when contact is clicked
+  isDemo?: boolean; // If true, indicates demo mode (for future use)
 }
 
 const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
@@ -21,6 +22,7 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
   videoFilename,
   analysisStatus,
   onContactClick,
+  isDemo = false,
 }) => {
   const { contacts: ballContacts } = useBallContacts({
     videoId,

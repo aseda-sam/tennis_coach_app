@@ -16,6 +16,7 @@ interface BallContactModalProps {
   onClose: () => void;
   onUpdate: (contactId: number, updates: BallContactUpdate) => Promise<void>;
   onDelete: (contactId: number) => Promise<void>;
+  isDemo?: boolean; // If true, hide edit/delete buttons
 }
 
 const BallContactModal: React.FC<BallContactModalProps> = ({
@@ -25,6 +26,7 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
   onClose,
   onUpdate,
   onDelete,
+  isDemo = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -289,46 +291,55 @@ const BallContactModal: React.FC<BallContactModalProps> = ({
           )}
         </div>
 
-        <div className="modal-actions">
-          {isEditing ? (
-            <>
-              <button
-                className="btn btn-secondary"
-                onClick={() => {
-                  setIsEditing(false);
-                  setValidationError(null);
-                }}
-                disabled={isLoading}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleSave}
-                disabled={isLoading || !!validationError}
-              >
-                {isLoading ? 'Saving...' : 'Save Changes'}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                className="btn btn-danger"
-                onClick={handleDelete}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Deleting...' : 'Delete Contact'}
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleEdit}
-                disabled={isLoading}
-              >
-                Edit Contact
-              </button>
-            </>
-          )}
-        </div>
+        {!isDemo && (
+          <div className="modal-actions">
+            {isEditing ? (
+              <>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setValidationError(null);
+                  }}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSave}
+                  disabled={isLoading || !!validationError}
+                >
+                  {isLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="btn btn-danger"
+                  onClick={handleDelete}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Deleting...' : 'Delete Contact'}
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleEdit}
+                  disabled={isLoading}
+                >
+                  Edit Contact
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {isDemo && (
+          <div className="modal-actions">
+            <div className="demo-readonly-notice">
+              <p>Demo mode: Contact editing is disabled</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
