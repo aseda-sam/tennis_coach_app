@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import App from './App';
 
 // Mock localStorage BEFORE importing App to prevent demo landing
 const localStorageMock = {
@@ -12,8 +13,6 @@ const localStorageMock = {
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
-
-import App from './App';
 
 const queryClient = new QueryClient({
   defaultOptions: {
