@@ -82,7 +82,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [hoverTimestamp, setHoverTimestamp] = useState<number | null>(null);
   const [openTimestamp, setOpenTimestamp] = useState<number | null>(null);
   const [openRequestId, setOpenRequestId] = useState(0);
-  const isAddContactVisible = !!videoId && !error && duration > 0 && !isDemo;
+  const isAddContactVisible = !!videoId && !error && duration > 0;
 
   // Use ball contacts hook if videoId is provided
   const {
@@ -506,10 +506,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           break;
         case 'a':
         case 'A':
-          if (!isDemo) {
-            event.preventDefault();
-            openAddContactForm();
+          event.preventDefault();
+          if (isDemo) {
+            alert('Manual Contact Creation is disabled Demo Mode!');
+            break;
           }
+          openAddContactForm();
           break;
         default:
           break;
@@ -701,6 +703,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   await createContact(contact);
                 }}
                 isVisible={isAddContactVisible}
+                isReadOnly={isDemo}
                 placement="overlay"
                 openRequestId={openRequestId}
                 openTimestamp={openTimestamp ?? undefined}
@@ -895,7 +898,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onPointerMove={handleAddBandPointerMove}
                 onPointerLeave={handleAddBandPointerLeave}
                 onPointerDown={handleAddBandPointerDown}
-                title="Click to add contact (or press A)"
+                title={
+                  isDemo
+                    ? 'Demo mode: manual contact creation is disabled'
+                    : 'Click to manually add contact (or press A)'
+                }
               />
               <AddContactButton
                 currentTime={currentTime}
@@ -906,6 +913,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   await createContact(contact);
                 }}
                 isVisible={isAddContactVisible}
+                isReadOnly={isDemo}
                 placement="scrubber"
                 openRequestId={openRequestId}
                 openTimestamp={openTimestamp ?? undefined}

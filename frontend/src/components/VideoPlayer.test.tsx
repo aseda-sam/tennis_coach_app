@@ -70,7 +70,7 @@ jest.mock('./VideoOverlay', () => {
 
 jest.mock('./AddContactButton', () => {
   return function MockAddContactButton() {
-    return <div data-testid="add-contact-button">Add Contact</div>;
+    return <div data-testid="add-contact-button">Manually Add Contact</div>;
   };
 });
 

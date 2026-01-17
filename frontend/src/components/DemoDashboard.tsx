@@ -6,6 +6,7 @@ import { VideoMetadata } from '../types/video';
 import './DemoDashboard.css';
 import AnalysisRightPanel from './AnalysisRightPanel';
 import { ArrowBackIcon } from './Icons';
+import KeyboardShortcutsBanner from './KeyboardShortcutsBanner';
 import VideoPlayer from './VideoPlayer';
 
 interface DemoDashboardProps {
@@ -127,6 +128,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
             onNavigateReady={handleNavigateReady}
             isDemo={true}
           />
+          <KeyboardShortcutsBanner isDemo={true} />
         </div>
 
         {/* Right Column - Analysis Panel */}

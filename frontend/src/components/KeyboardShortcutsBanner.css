@@ -1,0 +1,90 @@
+.keyboard-shortcuts {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background: linear-gradient(
+    174.77deg,
+    rgba(238, 242, 255, 1) 0%,
+    rgba(245, 243, 255, 1) 100%
+  );
+  border: 1px solid rgba(198, 210, 255, 0.6);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.keyboard-shortcuts__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(97, 95, 255, 0.1);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-lg);
+  flex-shrink: 0;
+}
+
+.keyboard-shortcuts__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.keyboard-shortcuts__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-normal);
+  color: #312c85;
+  margin: 0;
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.keyboard-shortcuts__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+.keyboard-shortcuts__item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.keyboard-shortcuts__item--disabled {
+  opacity: 0.55;
+}
+
+.keyboard-shortcuts__kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: fit-content;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-surface);
+  border: 1px solid #c6d2ff;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+  color: #432dd7;
+  font-family: var(--font-family-sans);
+  line-height: var(--line-height-normal);
+}
+
+.keyboard-shortcuts__item span {
+  font-size: var(--font-size-xs);
+  color: rgba(67, 45, 215, 0.8);
+  line-height: var(--line-height-normal);
+}
+
+@media (max-width: 640px) {
+  .keyboard-shortcuts {
+    padding: var(--spacing-md);
+  }
+
+  .keyboard-shortcuts__list {
+    gap: var(--spacing-md);
+  }
+}

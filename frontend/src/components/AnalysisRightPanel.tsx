@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
-  STROKE_SUBTYPE_LABELS,
-  STROKE_TYPE_LABELS,
+    STROKE_SUBTYPE_LABELS,
+    STROKE_TYPE_LABELS,
 } from '../constants/shotTypes';
 import { useBallContacts } from '../hooks/useBallContacts';
 import { formatTime } from '../utils/validation';
@@ -90,7 +90,7 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
               <div className="analysis-right-panel__metrics-empty">
                 <p>No contact metrics available</p>
                 <p className="analysis-right-panel__metrics-hint">
-                  Add contacts and run pose analysis to see metrics
+                  Manually add contacts and run pose analysis to see metrics
                 </p>
               </div>
             )}
