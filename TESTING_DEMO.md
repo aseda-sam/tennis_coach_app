@@ -60,29 +60,26 @@ Expected output:
 
 ## Step 4: Test Frontend
 
-### Test First-Visit Detection
+### Test Homepage (Demo Landing)
 
-1. **Clear localStorage** (to simulate first visit):
-   ```javascript
-   // In browser console:
-   localStorage.removeItem('hasVisitedApp')
-   ```
+1. **Refresh the page** - You should see the Demo Landing page (Home is always the default)
 
-2. **Refresh the page** - You should see the Demo Landing page
+2. **Verify navigation tabs** - Home, Library, and Demo tabs should be visible in header
 
-3. **Click "Try Interactive Demo"** - Should navigate to Demo Dashboard
+3. **Click "Try Demo"** - Should navigate to Demo Dashboard
 
-4. **Verify demo banner** appears at top: "🎾 Demo Mode - Explore features without saving changes"
+4. **Click "Upload Your Video"** (when logged out) - Should redirect to Library (which shows auth form)
 
-5. **Verify demo video loads** - Should show the promoted video
+5. **Click "Upload Your Video"** (when logged in) - Should open upload modal
 
 ### Test Demo Dashboard
 
 1. **Video player** - Should play the demo video
 2. **Ball contacts** - Should display existing contacts from the demo video
 3. **Metrics** - Should show metrics calculated from persisted contacts
-4. **Back button** - Should return to demo landing
-5. **"Upload Your Video" button** - Should navigate to upload page
+4. **Navigation** - Use "Home" tab to return to homepage (no back button)
+5. **Upload CTA** - Friendly "Ready to analyze your own video?" card in right column
+6. **"Upload Your Video" button** - Opens upload modal (if logged in) or redirects to Library/auth (if not)
 
 ### Test Demo Protection
 
@@ -118,9 +115,9 @@ This should:
 - Add it to the config file and restart backend
 
 ### Demo landing doesn't show
-- Check localStorage: `localStorage.getItem('hasVisitedApp')`
-- Clear it: `localStorage.removeItem('hasVisitedApp')`
-- Refresh page
+- Homepage (demo-landing) is always the default entry point
+- No localStorage dependency - refresh should show homepage
+- Check that currentView state defaults to 'demo-landing'
 
 ### Demo video not loading
 - Check backend logs for errors

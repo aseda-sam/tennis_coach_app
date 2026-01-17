@@ -153,6 +153,7 @@ frontend/
 - Shows video metadata (size, duration, resolution)
 - Delete functionality with confirmation
 - Analysis status indicators
+- Upload button opens floating modal (not full page navigation)
 
 ### VideoPlayer
 - HTML5 video player with custom controls
@@ -172,6 +173,20 @@ frontend/
 - Processing time and model information
 - Collapsible sections for organization
 
+## Navigation & Routing
+
+The app uses view-based routing managed in `App.tsx`:
+
+- **Home** (`demo-landing`): Default entry point with CTAs for Demo and Upload
+- **Library** (`list`): Video library with grid of uploaded videos (requires auth)
+- **Dashboard** (`dashboard`): Analysis dashboard for selected video (requires auth)
+- **Demo** (`demo-dashboard`): Demo mode analysis dashboard (no auth required)
+
+**Navigation Features**:
+- Navigation tabs (Home, Library, Demo) visible on all pages
+- Auth-aware header actions: "Get Started" when logged out, "Logout" when logged in
+- Upload is gated behind login - opens modal when logged in, redirects to Library/auth when not
+
 ## API Integration
 
 ### Base Configuration
@@ -179,16 +194,17 @@ The frontend communicates with the backend API through the `api.ts` service laye
 
 ```typescript
 // Default API configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
 ```
 
 ### Key Endpoints
-- `POST /api/videos/upload` - Upload video files
-- `GET /api/videos/` - List all videos
-- `GET /api/videos/{filename}/stream` - Stream original video
-- `GET /api/videos/{filename}/annotated` - Stream annotated video
-- `POST /api/analysis/{filename}` - Start analysis
-- `GET /api/analysis/{filename}` - Get analysis results
+- `POST /v0/videos/upload` - Upload video files
+- `GET /v0/videos/` - List all videos
+- `GET /v0/videos/{video_id}/stream` - Stream original video
+- `GET /v0/videos/demo` - Get demo video (no auth required)
+- `GET /v0/videos/{video_id}/analysis-status` - Get analysis status
+- `POST /v0/analysis/videos/{video_id}` - Start analysis
+- `GET /v0/analysis/{analysis_id}` - Get analysis results
 
 ### Error Handling
 - Network errors with retry logic
