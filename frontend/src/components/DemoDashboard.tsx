@@ -5,7 +5,7 @@ import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { VideoMetadata } from '../types/video';
 import './DemoDashboard.css';
 import AnalysisRightPanel from './AnalysisRightPanel';
-import { ArrowBackIcon } from './Icons';
+import { ArrowBackIcon, EyeIcon } from './Icons';
 import KeyboardShortcutsBanner from './KeyboardShortcutsBanner';
 import VideoPlayer from './VideoPlayer';
 
@@ -86,7 +86,9 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
       {/* Demo Banner */}
       <div className="demo-dashboard__banner">
         <div className="demo-dashboard__banner-content">
-          <span className="demo-dashboard__banner-icon">🎾</span>
+          <span className="demo-dashboard__banner-icon" aria-hidden="true">
+            <EyeIcon size={18} color="white" />
+          </span>
           <span className="demo-dashboard__banner-text">
             Demo Mode - Explore features without saving changes
           </span>
@@ -105,7 +107,6 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
         </button>
         <div className="demo-dashboard__header-content">
           <h1 className="demo-dashboard__title">Demo: Serve Analysis</h1>
-          <p className="demo-dashboard__subtitle">{demoVideo.filename}</p>
         </div>
         <button
           className="demo-dashboard__exit-btn"

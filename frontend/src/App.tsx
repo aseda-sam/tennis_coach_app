@@ -82,7 +82,6 @@ function App() {
   }
 
   const renderHeader = () => {
-    if (currentView === 'dashboard') return null;
     if (currentView === 'demo-landing') return null;
 
     return (
