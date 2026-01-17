@@ -19,13 +19,14 @@ from pathlib import Path
 backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
+from rq import Retry  # noqa: E402
+
 from app.core.config import settings  # noqa: E402
 from app.core.database import SessionLocal  # noqa: E402
 from app.core.redis_config import analysis_queue  # noqa: E402
 from app.models.video import Video  # noqa: E402
 from app.services.pose_detection import PoseDetectionService  # noqa: E402
 from app.services.rq_tasks import analyze_pose_detection_rq  # noqa: E402
-from rq import Retry  # noqa: E402
 
 
 def get_demo_video_path(video: Video) -> str:
@@ -136,12 +137,12 @@ def run_pose_analysis(video_id: int, confidence_threshold: float = 0.7) -> None:
                 job_timeout=300,  # 5 minutes
                 result_ttl=3600,  # Keep results for 1 hour
             )
-            print(f"✅ Job enqueued successfully!")
+            print("✅ Job enqueued successfully!")
             print(f"   Job ID: {job.id}")
             print(f"   Video ID: {video_id}")
             print(f"   Confidence threshold: {confidence_threshold}")
-            print(f"\n💡 Monitor progress with:")
-            print(f"   python -m rq info")
+            print("\n💡 Monitor progress with:")
+            print("   python -m rq info")
         except Exception as e:
             raise RuntimeError(f"Failed to enqueue job: {e}") from e
 
@@ -184,7 +185,7 @@ def main() -> None:
         except (ValueError, RuntimeError) as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
-        except Exception as e:
+        except (OSError, ConnectionError, AttributeError, KeyError) as e:
             print(f"Unexpected error: {e}", file=sys.stderr)
             import traceback
 
@@ -208,7 +209,7 @@ def main() -> None:
         except (ValueError, RuntimeError) as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
-        except Exception as e:
+        except (OSError, ConnectionError, AttributeError, KeyError) as e:
             print(f"Unexpected error: {e}", file=sys.stderr)
             import traceback
 
