@@ -1,45 +1,17 @@
-# Backend Deployment & Consolidation Guide
+# Backend Deployment: Fly.io Consolidation Guide
 
-This guide consolidates backend deployment for the Tennis Coach app. It focuses on a simple, low-risk path and keeps Supabase (DB/Auth/Storage) and Upstash Redis.
+This guide covers consolidating the Tennis Coach backend onto Fly.io. It focuses on a simple, low-risk path using Fly.io for both API and Worker, while keeping Supabase (DB/Auth/Storage) and Upstash Redis.
 
 ## Scope
 
-- **Backend API**: FastAPI service
-- **Background Worker**: RQ worker for video analysis
+- **Backend API**: FastAPI service on Fly.io
+- **Background Worker**: RQ worker for video analysis on Fly.io
 - **Redis**: Upstash (external)
 - **Database/Auth/Storage**: Supabase (keep as-is)
 
-## Choose a Consolidation Path
-
-### Option A: Consolidate on Fly.io (API + Worker)
-
-**Best for:** Keeping both services in one platform while retaining flexible CPU/RAM control.
-
-**Pros**
-- One platform for API + worker
-- Easy to scale worker separately from API
-- Good fit for CPU-heavy workloads
-
-**Cons**
-- Slightly more hands-on than Render
-- Requires a second Fly.io app for the API
-
-### Option B: Consolidate on Render (API + Worker)
-
-**Best for:** Simplest managed experience (fewest moving parts).
-
-**Pros**
-- Very managed experience
-- Simple deploy workflow from GitHub
-- Easy UI-based configuration
-
-**Cons**
-- Less granular scaling options
-- Worker pricing is fixed to instance tiers
-
 ---
 
-## Common Prereqs (Both Paths)
+## Prerequisites
 
 ### Required Environment Variables
 
@@ -56,8 +28,8 @@ You already use these in both API and worker:
 
 Keep Upstash as-is:
 
-- Works with Fly.io and Render
-- Public endpoint, no IP allow-listing
+- Works seamlessly with Fly.io
+- Public endpoint, no IP allow-listing required
 - TLS supported with `rediss://`
 
 **Do you need to rethink Redis?**  
@@ -66,7 +38,6 @@ If you want London or near-London regions for all services, see the [Region Migr
 ### Region Targets (London or Close)
 
 - **Fly.io**: `lhr` (London)
-- **Render**: `London` (or `Ireland` if London is unavailable)
 - **Upstash**: `eu-west-2` (London) or `eu-west-1` (Ireland)
 - **Supabase**: `London` (if creating a new project; region is not changeable in-place)
 
@@ -80,30 +51,26 @@ If you're migrating existing services to London, follow this order to minimize d
 
 1. **Go to Upstash Dashboard**: https://console.upstash.com
 2. **Create New Database**:
-   - Name: `tennis-coach-redis-london` (or your preferred name)
+   - Name: `tennis-coach-redis-london`
    - Type: Redis
    - **Region**: `eu-west-2` (London) or `eu-west-1` (Ireland)
    - TLS: Enabled (recommended)
 3. **Get Connection String**:
-   - Copy the `rediss://` connection string from the database details
+   - Copy the `rediss://` connection string
    - Format: `rediss://default:password@region.upstash.io:6379`
-4. **Keep Old Redis Running**: Don't delete the old database yet
+4. **Keep Old Redis Running**: Don't delete the old database yet until migration is verified.
 
 **Note**: Any queued jobs in the old Redis will be lost. For a clean migration, wait for current jobs to complete before switching.
 
 ### Step 2: Check Supabase Region
 
 1. **Go to Supabase Dashboard**: https://app.supabase.com
-2. **Check Current Region**:
-   - Project Settings → Infrastructure → Region
-3. **If Already London/EU**: No action needed, keep using existing project
-4. **If US Region**: You have two options:
-   - **Option A (Recommended)**: Keep current Supabase. Latency from London to US Supabase is usually acceptable (<100ms).
-   - **Option B**: Create new Supabase project in London region and migrate data (complex, only if latency is an issue)
+2. **Check Current Region**: Project Settings → Infrastructure → Region
+3. **Recommendation**: Unless you're experiencing latency issues, keep your existing Supabase project regardless of region. Moving it requires a new project and data migration.
 
-**Recommendation**: Unless you're experiencing latency issues, keep your existing Supabase project regardless of region.
+### Step 3: Update Existing Worker to London
 
-### Step 3: Update Existing Worker to London (If on Fly.io)
+**Important**: Fly.io does NOT automatically move existing machines when you change `primary_region`. You must destroy existing machines first, then deploy to create new ones in the target region.
 
 If your worker is already on Fly.io:
 
@@ -111,36 +78,56 @@ If your worker is already on Fly.io:
 # 1. Update fly.toml
 # Change: primary_region = "lhr"
 
-# 2. Deploy to move machines to London
-# Fly.io Machines will automatically follow the primary_region in fly.toml
+# 2. List current machines to see their IDs
+fly machines list -a tennis-coach-worker
+
+# 3. Destroy existing machines in old region (e.g., IAD)
+# Replace <machine-id> with actual machine IDs from step 2
+fly machines destroy <machine-id-1> -a tennis-coach-worker
+fly machines destroy <machine-id-2> -a tennis-coach-worker
+
+# OR destroy all machines at once:
+fly machines list -a tennis-coach-worker | grep -E "^[0-9a-f]" | awk '{print $1}' | xargs -I {} fly machines destroy {} -a tennis-coach-worker
+
+# 4. Deploy - this will create NEW machines in LHR (based on primary_region)
 fly deploy -a tennis-coach-worker
 
-# 3. Update Redis URL to new London Upstash (if applicable)
+# 5. Update Redis URL to new London Upstash (if applicable)
 fly secrets set REDIS_URL="rediss://..." -a tennis-coach-worker
 
-# 4. Verify
+# 6. Verify machines are now in London
 fly status -a tennis-coach-worker
 ```
 
-**Note**: `fly regions set` is deprecated. Fly.io now manages regions based on where your Machines are placed, which is driven by `fly deploy` and your `fly.toml` config.
+**Alternative (Zero-Downtime Approach):**
+
+If you want to avoid downtime, create new machines in London first, then destroy old ones:
+
+```bash
+# 1. List machines to get an existing machine ID
+fly machines list -a tennis-coach-worker
+
+# 2. Clone a machine to London (creates new machine in LHR)
+fly machines clone <existing-machine-id> --region lhr -a tennis-coach-worker
+
+# 3. Verify new machine is running
+fly status -a tennis-coach-worker
+
+# 4. Destroy old machines in IAD
+fly machines destroy <old-machine-id-1> -a tennis-coach-worker
+fly machines destroy <old-machine-id-2> -a tennis-coach-worker
+```
+
+**Why this is necessary**: `primary_region` only affects **new machines** created during deployment. Existing machines stay in their current region until destroyed. `fly deploy` updates machines in place; it does not migrate them to a new region.
 
 ### Step 4: Migration Order (Recommended)
 
-**If consolidating on Fly.io:**
-1. Create new Upstash Redis (London) ← Do this first
+1. Create new Upstash Redis (London)
 2. Update existing worker to London + new Redis
 3. Create new API app in London with new Redis
 4. Test both services
-5. Update frontend API URL
+5. Update frontend API URL (pointing to new Fly.io API)
 6. Delete old Redis (after 24-48 hours of stability)
-
-**If consolidating on Render:**
-1. Create new Upstash Redis (London) ← Do this first
-2. Create new API service in London with new Redis
-3. Create new Worker service in London with new Redis
-4. Test both services
-5. Update frontend API URL
-6. Delete old services and old Redis (after 24-48 hours)
 
 ### Step 5: Update All Services to New Redis
 
@@ -148,23 +135,20 @@ After creating the London Upstash Redis, update `REDIS_URL` in:
 
 - Fly.io Worker: `fly secrets set REDIS_URL="rediss://..." -a tennis-coach-worker`
 - Fly.io API: `fly secrets set REDIS_URL="rediss://..." -a tennis-coach-api`
-- Render API: Dashboard → Environment → Update `REDIS_URL`
-- Render Worker: Dashboard → Environment → Update `REDIS_URL`
 
 ### Step 6: Verify Region Migration
 
 Check all services are in London:
 
 - **Fly.io**: `fly status` should show `lhr` region
-- **Render**: Dashboard → Service → Region should show `London`
-- **Upstash**: Dashboard → Database → Region should show `eu-west-2` or `eu-west-1`
+- **Upstash**: Dashboard should show `eu-west-2` or `eu-west-1`
 - **Test**: Upload a video and verify processing works end-to-end
 
 ---
 
-## Option A: Consolidate on Fly.io
+## Implementation: Fly.io Setup
 
-**Before starting**: If you want London regions, complete [Region Migration Steps](#region-migration-steps-london) first (especially creating London Upstash Redis).
+**Before starting**: If you want London regions, complete [Region Migration Steps](#region-migration-steps-london) first.
 
 You will run **two Fly.io apps**:
 
@@ -179,9 +163,7 @@ Create a new Fly app for the API:
 fly apps create tennis-coach-api
 ```
 
-Add a new `fly.api.toml` file (kept separate from worker config) or reuse the default `fly.toml` with a distinct app name.
-
-Suggested minimal config:
+Create a `fly.api.toml` file. Suggested minimal config:
 
 ```toml
 app = "tennis-coach-api"
@@ -219,12 +201,10 @@ fly secrets set \
 ### 3. Deploy API
 
 ```bash
-fly deploy -a tennis-coach-api
+fly deploy -a tennis-coach-api --config fly.api.toml
 ```
 
 ### 4. Scale API
-
-Start small:
 
 ```bash
 fly scale vm shared-cpu-1x --memory 512 -a tennis-coach-api
@@ -232,75 +212,24 @@ fly scale vm shared-cpu-1x --memory 512 -a tennis-coach-api
 
 ### 5. Worker (Existing)
 
-If migrating an existing worker to London, see [Step 3 in Region Migration Steps](#step-3-update-existing-worker-to-london-if-on-flyio).
+If migrating an existing worker to London, see [Step 3 in Region Migration Steps](#step-3-update-existing-worker-to-london). **Important**: You must destroy existing machines before deploying to a new region.
 
-If creating a new worker, follow the same pattern as the API but use `Dockerfile.worker` and set `SERVICE_TYPE=worker`.
-
-Reference:
-
-- `backend/docs/flyio-deployment.md`
-
-### 6. Update Frontend API URL
-
-Point `REACT_APP_API_URL` to the new Fly.io API hostname.
-
----
-
-## Option B: Consolidate on Render
-
-**Before starting**: If you want London regions, complete [Region Migration Steps](#region-migration-steps-london) first (especially creating London Upstash Redis).
-
-You will run **two Render services**:
-
-- `tennis-coach-api` (web service)
-- `tennis-coach-worker` (background worker)
-
-### 1. Create API Service (Web Service)
-
-- Region: `London` (or `Ireland`)
-- Runtime: Docker
-- Root directory: repo root
-- Dockerfile: `Dockerfile`
-- Start command: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
-
-### 2. Create Worker Service (Background Worker)
-
-- Region: same as API (`London` or `Ireland`)
-- Runtime: Docker
-- Root directory: repo root
-- Dockerfile: `Dockerfile.worker`
-- Start command: `python scripts/start_rq_worker.py`
-
-### 3. Set Environment Variables
-
-Apply the same secrets to both API and worker:
-
-- `SUPABASE_URL`
-- `SUPABASE_SECRET_KEY`
-- `SUPABASE_DB_URL`
-- `SUPABASE_STORAGE_BUCKET`
-- `PROFILE=production`
-- `REDIS_URL`
-- `SERVICE_TYPE` (`api` or `worker`)
-
-### 4. Update Frontend API URL
-
-Point `REACT_APP_API_URL` to the new Render API URL.
+If creating a new worker, follow the same pattern as the API but use `Dockerfile.worker`, `fly.toml`, and set `SERVICE_TYPE=worker`.
 
 ---
 
 ## Recommended Validation Checklist
 
-- API `/health` returns OK
-- Upload a video
-- Worker picks up a job (check logs)
-- Processed outputs appear in Supabase storage
+- [ ] API `/health` returns OK
+- [ ] Upload a video from frontend/app
+- [ ] Worker picks up a job (check `fly logs -a tennis-coach-worker`)
+- [ ] Processed outputs appear in Supabase storage
+- [ ] Database records are updated with analysis results
 
 ---
 
-## Rollback Plan (Simple)
+## Rollback Plan
 
-1. Keep old services running during the cutover
-2. Switch frontend API URL back if needed
-3. Delete new services only after verifying stability
-
+1. Keep old services (e.g., on Render) running during the cutover.
+2. If issues arise, switch the frontend `REACT_APP_API_URL` back to the old URL.
+3. Delete old services only after 48 hours of verified stability.
