@@ -1,5 +1,5 @@
 # Optimized Worker Dockerfile for Fly.io
-# Uses CPU-only PyTorch to reduce image size from 8GB+ to ~2GB
+# Pose detection only (MediaPipe) - no PyTorch/Ultralytics to reduce image size
 
 # Build stage - for installing dependencies
 FROM python:3.11-slim AS builder
@@ -15,16 +15,44 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend/pyproject.toml ./backend/
 WORKDIR /app/backend
 
-# CRITICAL: Install CPU-only PyTorch FIRST (200MB vs 2GB)
-# This prevents ultralytics from pulling in CUDA-enabled PyTorch
-RUN pip install --no-cache-dir \
-    torch torchvision --index-url https://download.pytorch.org/whl/cpu
-
 # Install opencv-python-headless (no GUI dependencies needed - encoding removed)
 RUN pip install --no-cache-dir opencv-python-headless
 
-# Now install the rest (ultralytics will use already-installed torch)
-RUN pip install --no-cache-dir -e .
+# Install worker extras (MediaPipe only - no PyTorch/Ultralytics)
+RUN pip install --no-cache-dir -e ".[worker]"
+
+# Development stage - for local development with docker-compose
+FROM python:3.11-slim AS development
+
+WORKDIR /app
+
+# Install runtime system dependencies
+# opencv-python-headless requires libxcb1 for some internal operations
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ffmpeg \
+    libglib2.0-0 \
+    libgomp1 \
+    libxcb1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python dependencies from builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Install dev dependencies
+RUN pip install --no-cache-dir pytest ruff
+
+# Copy backend code (will be overridden by volume mount in docker-compose)
+COPY backend/ ./backend/
+
+WORKDIR /app/backend
+
+# Create required directories
+RUN mkdir -p ml_models data/videos/raw data/videos/processed data/analysis_cache data/database
+
+EXPOSE 8000
+CMD ["python", "scripts/start_rq_worker.py"]
 
 # Runtime stage - minimal final image
 FROM python:3.11-slim AS runtime
@@ -33,12 +61,13 @@ WORKDIR /app
 
 # Install only runtime system dependencies (no build tools)
 # ffmpeg is needed for video decoding (frame extraction)
-# libglib2.0-0 and libgomp1 are required for PyTorch/OpenCV runtime
+# libglib2.0-0, libgomp1, and libxcb1 are required for OpenCV runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ffmpeg \
     libglib2.0-0 \
     libgomp1 \
+    libxcb1 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 

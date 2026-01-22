@@ -127,7 +127,7 @@ SUPABASE_SECRET_KEY=your-secret-key
 ```bash
 # Service Configuration
 SERVICE_TYPE=api  # 'api' for API service, 'worker' for Background Worker service (default: 'api')
-ENVIRONMENT=development  # 'development' or 'production'
+PROFILE=local  # 'local' for local development (disables auth), 'production' for production
 
 # Redis Queue (for background tasks)
 REDIS_URL=redis://localhost:6379/0
@@ -267,6 +267,29 @@ alembic downgrade -1
 # View migration history
 alembic history
 ```
+
+#### Running Migrations in Docker
+
+When using Docker Compose for local development, run migrations inside the container:
+
+```bash
+# Check current migration status
+docker exec tennis-coach-api alembic current
+
+# Run all pending migrations
+docker exec tennis-coach-api alembic upgrade head
+
+# Run migrations one at a time
+docker exec tennis-coach-api alembic upgrade +1
+
+# View migration history
+docker exec tennis-coach-api alembic history
+
+# Downgrade to previous version
+docker exec tennis-coach-api alembic downgrade -1
+```
+
+**Note**: The container name may vary. Check running containers with `docker ps` to find the correct name.
 
 ### Demo Videos
 

@@ -358,7 +358,7 @@ For the current background task system implementation, see:
 This guide covers:
 
 - Local development setup
-- Production setup (Render)
+- Production setup (Fly.io)
 - Worker management
 - Task implementation
 - Monitoring and troubleshooting

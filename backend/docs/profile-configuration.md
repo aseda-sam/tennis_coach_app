@@ -176,7 +176,7 @@ SUPABASE_STORAGE_BUCKET=videos
 
 ```bash
 REACT_APP_PROFILE=production
-REACT_APP_API_URL=https://your-api.render.com/v0  # Deployed backend
+REACT_APP_API_URL=https://tennis-coach-api.fly.dev/v0  # Deployed backend (Fly.io)
 REACT_APP_SUPABASE_URL=https://your-project.supabase.co
 REACT_APP_SUPABASE_PUBLISHABLE_KEY=your-anon-public-key
 ```

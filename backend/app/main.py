@@ -145,28 +145,20 @@ async def lifespan(app: FastAPI) -> None:
     logger.info("=" * 60)
     create_tables_if_not_exists()
 
-    # Start RQ worker in production (only if not running as separate worker service)
-    # IMPORTANT: With Fly.io worker deployed, Render API should NOT start its own worker
+    # Worker startup logic
+    # Only start worker if this is the API service and no dedicated worker service exists
     worker_process = None
     service_type = os.getenv("SERVICE_TYPE", "api").lower()
 
-    # Check if we should start a worker on this API service
-    # Only start if:
-    # 1. This is the API service (not a dedicated worker service)
-    # 2. ENVIRONMENT=production is set (legacy check - will be replaced with PROFILE in PR 3)
-    # 3. No existing workers found (checked inside start_rq_worker)
-    #
-    # With Fly.io worker running, start_rq_worker() should detect it and return None
-    # To be extra safe: Remove ENVIRONMENT=production from Render API env vars
-    if os.getenv("ENVIRONMENT") == "production" and service_type == "api":
-        logger.info("Checking if worker should start on API service...")
+    if service_type == "api":
+        logger.info("Running as API service - checking if worker should start...")
         # The worker startup function checks for existing workers to prevent duplicates
-        # If Fly.io worker is running, this should return None
+        # If a dedicated worker service is running, this should return None
         worker_process = start_rq_worker()
         if worker_process:
             logger.warning(
                 "Started RQ worker on API service. "
-                "If you have a separate Fly.io worker, remove ENVIRONMENT=production from Render API."
+                "Consider using a dedicated worker service (SERVICE_TYPE=worker) for better separation."
             )
         else:
             logger.info(

@@ -12,7 +12,7 @@ Complete guide to the background task system using Redis Queue (RQ) in the Tenni
 - [Architecture](#architecture)
 - [How RQ Works](#how-rq-works)
 - [Local Development Setup](#local-development-setup)
-- [Production Setup (Render)](#production-setup-render)
+- [Production Setup (Fly.io)](#production-setup-flyio)
 - [Worker Deployment](#worker-deployment)
 - [Configuration](#configuration)
 - [Task Implementation](#task-implementation)
@@ -136,8 +136,7 @@ RQ does **not** store Python code or machine code. It stores:
 **Workers can run on**:
 
 - Same machine (different processes) - **Local development**
-- Same server (different processes) - **Render (same service)**
-- Separate Render service - **Render (separate service)**
+- Separate Fly.io app - **Fly.io (recommended for production)**
 - Separate machines/instances - **EC2, other cloud providers**
 
 ## Local Development Setup
@@ -272,16 +271,24 @@ The worker runs as a separate Fly.io app. See [Backend Deployment Guide](../back
 └─────────────────────────────────┘
 ```
 
-#### Production: Same Service (Render Free Tier)
+#### Production: Fly.io (Separate Apps)
 
 ```
 ┌─────────────────────────────────┐
-│      Render Service             │
-│                                 │
-│  Process 1: FastAPI            │
-│  Process 2: RQ Worker          │
-│                                 │
-│  → Render Redis (separate)      │
+│   Fly.io API App               │
+│   Process: FastAPI             │
+└─────────────────────────────────┘
+              │
+              │ (via Redis)
+              │
+┌─────────────────────────────────┐
+│   Fly.io Worker App            │
+│   Process: RQ Worker           │
+└─────────────────────────────────┘
+              │
+              │
+┌─────────────────────────────────┐
+│   Upstash Redis (managed)      │
 └─────────────────────────────────┘
 ```
 
@@ -505,7 +512,7 @@ rq-dashboard --redis-url=redis://localhost:6379/0 --port 9181
 - **Job Details**: Click any job to see its arguments, result, and error messages
 - **Real-time Updates**: Dashboard refreshes automatically
 
-**Production**: Not recommended to expose publicly. Use Render logs or internal monitoring.
+**Production**: Not recommended to expose publicly. Use Fly.io logs (`fly logs`) or internal monitoring.
 
 ### Queue Statistics
 
@@ -604,7 +611,7 @@ HGETALL rq:job:<job_id>
 
 1. Reduce worker count
 2. Process smaller videos
-3. Monitor memory: `docker stats` or Render metrics
+3. Monitor memory: `docker stats` (local) or `fly metrics` (production)
 4. Check for memory leaks
 
 ### Redis Connection Errors
@@ -993,6 +1000,6 @@ RQ provides a robust, scalable solution for background task processing:
 - ✅ **Reliable**: Tasks persist, can be retried
 - ✅ **Scalable**: Multiple workers, multiple servers/instances
 - ✅ **Monitorable**: Built-in dashboard and Redis inspection
-- ✅ **Production-ready**: Works with Render's managed Redis
+- ✅ **Production-ready**: Works with Upstash Redis or any managed Redis service
 
 The system supports workers on the same machine, same service, separate services, or completely separate instances (EC2, etc.) as long as they have access to the same codebase and can connect to Redis.
