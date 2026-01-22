@@ -1,12 +1,12 @@
 # Upstash Redis Setup Guide
 
-This guide walks you through setting up Upstash Redis for use with both Render API and Fly.io Worker.
+This guide walks you through setting up Upstash Redis for use with Fly.io API and Worker services.
 
 ## Why Upstash?
 
 - ✅ **Free tier**: 10K commands/day, 256MB storage
 - ✅ **Public endpoint**: No IP whitelisting needed
-- ✅ **Works everywhere**: Render, Fly.io, local dev
+- ✅ **Works everywhere**: Fly.io, local dev, any cloud provider
 - ✅ **Simple setup**: 5 minutes
 
 ## Step 1: Create Upstash Account
@@ -60,15 +60,13 @@ fly secrets set REDIS_URL="rediss://default:your-password@your-region.upstash.io
 
 **Note**: `rediss://` (with double 's') indicates TLS/SSL connection.
 
-## Step 5: Update Render API (Optional but Recommended)
+## Step 5: Update Fly.io API Secrets
 
-Using the same Redis for both services simplifies setup:
+Using the same Redis for both API and Worker services simplifies setup:
 
-1. Go to [Render Dashboard](https://dashboard.render.com)
-2. Select your API service
-3. Go to **"Environment"** tab
-4. Update `REDIS_URL` to your Upstash connection string
-5. Save changes (service will restart)
+```bash
+fly secrets set REDIS_URL="rediss://default:your-password@your-region.upstash.io:6379" -a tennis-coach-api
+```
 
 ## Step 6: Verify Connection
 
@@ -84,9 +82,13 @@ Look for:
 - `RQ Worker Startup`
 - `Listening on queues: default, analysis`
 
-### Test from Render API
+### Test from Fly.io API
 
-Check Render logs for:
+```bash
+fly logs -a tennis-coach-api
+```
+
+Look for:
 
 - `Successfully connected to Redis`
 - No Redis connection errors
@@ -131,11 +133,11 @@ Check Render logs for:
 - Rotate passwords periodically
 - Monitor access in Upstash dashboard
 
-## Migration from Render Redis
+## Migration from Other Redis Providers
 
-If you were using Render Redis:
+If you were using another Redis provider:
 
-1. **Data migration**: If you have existing jobs in Render Redis, they won't automatically migrate
+1. **Data migration**: Existing jobs won't automatically migrate - wait for queues to drain or accept job loss
 2. **Queue names**: Should be the same (`default`, `analysis`)
 3. **No downtime**: Both can run simultaneously during migration
 

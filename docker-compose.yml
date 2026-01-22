@@ -12,6 +12,7 @@ services:
       - ./data:/app/data
     working_dir: /app/backend
     environment:
+      - PROFILE=local
       - DEBUG=True
       - DATABASE_URL=sqlite:///../data/database/tennis_coach.db
       - LOG_LEVEL=DEBUG
@@ -51,13 +52,14 @@ services:
     container_name: tennis-coach-worker
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.worker
       target: development
     volumes:
       - ./backend:/app/backend
       - ./data:/app/data
     working_dir: /app/backend
     environment:
+      - PROFILE=local
       - DEBUG=True
       - DATABASE_URL=sqlite:///../data/database/tennis_coach.db
       - LOG_LEVEL=DEBUG
