@@ -23,8 +23,8 @@ RUN pip install --no-cache-dir \
 # Install opencv-python-headless (no GUI dependencies needed - encoding removed)
 RUN pip install --no-cache-dir opencv-python-headless
 
-# Now install the rest (ultralytics will use already-installed torch)
-RUN pip install --no-cache-dir -e .
+# Now install the rest with worker extras (ultralytics will use already-installed torch)
+RUN pip install --no-cache-dir -e ".[worker]"
 
 # Runtime stage - minimal final image
 FROM python:3.11-slim AS runtime

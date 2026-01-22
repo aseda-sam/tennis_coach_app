@@ -24,22 +24,13 @@ You already use these in both API and worker:
 - `PROFILE=production`
 - `REDIS_URL` (Upstash)
 
-### Redis (Upstash) Guidance
+### Redis (Upstash) & Supabase
 
-Keep Upstash as-is:
+**Upstash Redis**: Already in London region - no migration needed.
 
-- Works seamlessly with Fly.io
-- Public endpoint, no IP allow-listing required
-- TLS supported with `rediss://`
+**Supabase**: In Stockholm (North EU) - close enough to London for acceptable latency. No migration needed.
 
-**Do you need to rethink Redis?**  
-If you want London or near-London regions for all services, see the [Region Migration Steps](#region-migration-steps-london) section below to create a new Upstash Redis database in **`eu-west-2` (London)** or **`eu-west-1` (Ireland)**. Otherwise keep it as-is.
-
-### Region Targets (London or Close)
-
-- **Fly.io**: `lhr` (London)
-- **Upstash**: `eu-west-2` (London) or `eu-west-1` (Ireland)
-- **Supabase**: `London` (if creating a new project; region is not changeable in-place)
+Both services are already optimally located for London-based Fly.io services.
 
 ---
 
@@ -47,18 +38,23 @@ If you want London or near-London regions for all services, see the [Region Migr
 
 If you're migrating existing services to London, follow this order to minimize downtime.
 
-### Step 1: Create New Upstash Redis (London)
+### Step 1: Verify Upstash Redis Region (Skip if Already in London)
+
+**If your Redis is already in London**: Skip this step and proceed to Step 2.
+
+**If your Redis is in a different region** and you want to move it to London:
 
 1. **Go to Upstash Dashboard**: https://console.upstash.com
-2. **Create New Database**:
+2. **Check Current Region**: View your existing database → Details → Region
+3. **If not in London**, create a new database:
    - Name: `tennis-coach-redis-london`
    - Type: Redis
    - **Region**: `eu-west-2` (London) or `eu-west-1` (Ireland)
    - TLS: Enabled (recommended)
-3. **Get Connection String**:
+4. **Get Connection String**:
    - Copy the `rediss://` connection string
    - Format: `rediss://default:password@region.upstash.io:6379`
-4. **Keep Old Redis Running**: Don't delete the old database yet until migration is verified.
+5. **Keep Old Redis Running**: Don't delete the old database yet until migration is verified.
 
 **Note**: Any queued jobs in the old Redis will be lost. For a clean migration, wait for current jobs to complete before switching.
 
@@ -92,11 +88,13 @@ fly machines list -a tennis-coach-worker | grep -E "^[0-9a-f]" | awk '{print $1}
 # 4. Deploy - this will create NEW machines in LHR (based on primary_region)
 fly deploy -a tennis-coach-worker
 
-# 5. Update Redis URL to new London Upstash (if applicable)
-fly secrets set REDIS_URL="rediss://..." -a tennis-coach-worker
+# 5. Scale worker to prevent startup timeout (CRITICAL)
+# The worker needs 2GB RAM to start properly with PyTorch/OpenCV dependencies
+fly scale vm shared-cpu-2x --memory 2048 -a tennis-coach-worker
 
-# 6. Verify machines are now in London
+# 6. Verify machines are now in London and running
 fly status -a tennis-coach-worker
+fly logs -a tennis-coach-worker
 ```
 
 **Alternative (Zero-Downtime Approach):**
@@ -122,16 +120,33 @@ fly machines destroy <old-machine-id-2> -a tennis-coach-worker
 
 ### Step 4: Migration Order (Recommended)
 
-1. Create new Upstash Redis (London)
-2. Update existing worker to London + new Redis
-3. Create new API app in London with new Redis
+**Assuming Redis is already in London:**
+
+1. Update existing worker to London (see Step 3)
+2. Create new API app in London
+3. Verify both services connect to existing London Redis
 4. Test both services
 5. Update frontend API URL (pointing to new Fly.io API)
-6. Delete old Redis (after 24-48 hours of stability)
 
-### Step 5: Update All Services to New Redis
+**If you created a new Redis in Step 1:**
 
-After creating the London Upstash Redis, update `REDIS_URL` in:
+1. Update existing worker to London + new Redis connection string
+2. Create new API app in London with new Redis connection string
+3. Test both services
+4. Update frontend API URL
+5. Delete old Redis (after 24-48 hours of stability)
+
+### Step 5: Verify Redis Connection
+
+**If Redis is already in London**: Verify that your existing `REDIS_URL` secrets are correct:
+
+```bash
+# Check current Redis URL
+fly secrets list -a tennis-coach-worker
+fly secrets list -a tennis-coach-api
+```
+
+**If you created a new Redis in Step 1**: Update `REDIS_URL` in both services:
 
 - Fly.io Worker: `fly secrets set REDIS_URL="rediss://..." -a tennis-coach-worker`
 - Fly.io API: `fly secrets set REDIS_URL="rediss://..." -a tennis-coach-api`
@@ -214,7 +229,18 @@ fly scale vm shared-cpu-1x --memory 512 -a tennis-coach-api
 
 If migrating an existing worker to London, see [Step 3 in Region Migration Steps](#step-3-update-existing-worker-to-london). **Important**: You must destroy existing machines before deploying to a new region.
 
+**After deploying worker, scale it immediately:**
+```bash
+# Worker requires 2GB RAM to start properly (prevents startup timeout)
+fly scale vm shared-cpu-2x --memory 2048 -a tennis-coach-worker
+```
+
 If creating a new worker, follow the same pattern as the API but use `Dockerfile.worker`, `fly.toml`, and set `SERVICE_TYPE=worker`.
+
+**Worker VM Requirements:**
+- **Memory**: 2048 MB (2 GB) minimum - required for PyTorch/OpenCV startup
+- **CPU**: 2 shared CPUs minimum
+- **Region**: `lhr` (London)
 
 ---
 
@@ -225,6 +251,40 @@ If creating a new worker, follow the same pattern as the API but use `Dockerfile
 - [ ] Worker picks up a job (check `fly logs -a tennis-coach-worker`)
 - [ ] Processed outputs appear in Supabase storage
 - [ ] Database records are updated with analysis results
+
+---
+
+## Troubleshooting
+
+### Worker Startup Timeout
+
+**Error**: `timeout reached waiting for machine's state to change`
+
+**Cause**: Worker machine doesn't have enough memory to start with PyTorch/OpenCV dependencies.
+
+**Solution**:
+```bash
+# Scale worker to 2GB RAM (required minimum)
+fly scale vm shared-cpu-2x --memory 2048 -a tennis-coach-worker
+
+# Then check logs
+fly logs -a tennis-coach-worker
+```
+
+**Prevention**: Always scale worker to 2GB RAM immediately after first deploy.
+
+### Worker Not Starting
+
+- Check logs: `fly logs -a tennis-coach-worker`
+- Verify secrets: `fly secrets list -a tennis-coach-worker`
+- Check Redis connectivity (worker should connect to Upstash Redis)
+- Verify memory allocation: `fly status -a tennis-coach-worker`
+
+### Worker Crashes
+
+- Check memory usage: `fly metrics -a tennis-coach-worker`
+- Increase memory if needed: `fly scale vm shared-cpu-4x --memory 4096 -a tennis-coach-worker`
+- Check logs for errors: `fly logs -a tennis-coach-worker`
 
 ---
 

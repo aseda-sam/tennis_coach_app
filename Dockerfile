@@ -4,14 +4,11 @@ FROM python:3.11-slim AS base
 WORKDIR /app
 
 # Install system dependencies (ARM64 compatible)
+# Note: ffmpeg and GUI libs removed - API doesn't extract frames or need GUI
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
-    ffmpeg \
     libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -24,8 +21,8 @@ FROM base AS development
 COPY backend/ ./backend/
 WORKDIR /app/backend
 
-# Install dependencies
-RUN pip install --no-cache-dir -e . && \
+# Install dependencies (API extras only - no ML stack)
+RUN pip install --no-cache-dir -e ".[api]" && \
     pip install --no-cache-dir pytest ruff
 
 # Create required directories
@@ -40,8 +37,8 @@ FROM base AS production
 COPY backend/ ./backend/
 WORKDIR /app/backend
 
-# Install dependencies
-RUN pip install --no-cache-dir -e .
+# Install dependencies (API extras only - no ML stack)
+RUN pip install --no-cache-dir -e ".[api]"
 
 # Create required directories
 RUN mkdir -p data/videos/raw data/videos/processed data/analysis_cache data/database
