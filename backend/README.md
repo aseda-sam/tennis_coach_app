@@ -127,7 +127,7 @@ SUPABASE_SECRET_KEY=your-secret-key
 ```bash
 # Service Configuration
 SERVICE_TYPE=api  # 'api' for API service, 'worker' for Background Worker service (default: 'api')
-ENVIRONMENT=development  # 'development' or 'production'
+PROFILE=local  # 'local' for local development (disables auth), 'production' for production
 
 # Redis Queue (for background tasks)
 REDIS_URL=redis://localhost:6379/0
