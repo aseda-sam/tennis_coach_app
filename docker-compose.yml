@@ -12,6 +12,7 @@ services:
       - ./data:/app/data
     working_dir: /app/backend
     environment:
+      - PROFILE=local
       - DEBUG=True
       - DATABASE_URL=sqlite:///../data/database/tennis_coach.db
       - LOG_LEVEL=DEBUG
@@ -58,6 +59,7 @@ services:
       - ./data:/app/data
     working_dir: /app/backend
     environment:
+      - PROFILE=local
       - DEBUG=True
       - DATABASE_URL=sqlite:///../data/database/tennis_coach.db
       - LOG_LEVEL=DEBUG

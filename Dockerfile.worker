@@ -1,5 +1,5 @@
 # Optimized Worker Dockerfile for Fly.io
-# Uses CPU-only PyTorch to reduce image size from 8GB+ to ~2GB
+# Pose detection only (MediaPipe) - no PyTorch/Ultralytics to reduce image size
 
 # Build stage - for installing dependencies
 FROM python:3.11-slim AS builder
@@ -15,15 +15,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend/pyproject.toml ./backend/
 WORKDIR /app/backend
 
-# CRITICAL: Install CPU-only PyTorch FIRST (200MB vs 2GB)
-# This prevents ultralytics from pulling in CUDA-enabled PyTorch
-RUN pip install --no-cache-dir \
-    torch torchvision --index-url https://download.pytorch.org/whl/cpu
-
 # Install opencv-python-headless (no GUI dependencies needed - encoding removed)
 RUN pip install --no-cache-dir opencv-python-headless
 
-# Now install the rest with worker extras (ultralytics will use already-installed torch)
+# Install worker extras (MediaPipe only - no PyTorch/Ultralytics)
 RUN pip install --no-cache-dir -e ".[worker]"
 
 # Development stage - for local development with docker-compose
@@ -64,7 +59,7 @@ WORKDIR /app
 
 # Install only runtime system dependencies (no build tools)
 # ffmpeg is needed for video decoding (frame extraction)
-# libglib2.0-0 and libgomp1 are required for PyTorch/OpenCV runtime
+# libglib2.0-0 and libgomp1 are required for OpenCV runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ffmpeg \

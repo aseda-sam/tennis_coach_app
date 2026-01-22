@@ -36,10 +36,9 @@ api = [
 ]
 worker = [
     # ML stack dependencies (only needed in worker)
-    "ultralytics>=8.0.0",
+    # Currently: Pose detection only (MediaPipe)
+    # Ball detection (Ultralytics/PyTorch) removed to reduce image size below 8GB unpack limit
     "mediapipe>=0.10.0",
-    # Note: torch and torchvision are installed separately in Dockerfile.worker
-    # to ensure CPU-only installation order
 ]
 dev = [
     "ruff>=0.1.0",
