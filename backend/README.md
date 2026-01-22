@@ -268,6 +268,29 @@ alembic downgrade -1
 alembic history
 ```
 
+#### Running Migrations in Docker
+
+When using Docker Compose for local development, run migrations inside the container:
+
+```bash
+# Check current migration status
+docker exec tennis-coach-api alembic current
+
+# Run all pending migrations
+docker exec tennis-coach-api alembic upgrade head
+
+# Run migrations one at a time
+docker exec tennis-coach-api alembic upgrade +1
+
+# View migration history
+docker exec tennis-coach-api alembic history
+
+# Downgrade to previous version
+docker exec tennis-coach-api alembic downgrade -1
+```
+
+**Note**: The container name may vary. Check running containers with `docker ps` to find the correct name.
+
 ### Demo Videos
 
 Demo videos are served from a public Supabase bucket (when configured) and are accessible to all authenticated users. Only one demo video can be active at a time.

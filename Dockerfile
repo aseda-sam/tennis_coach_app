@@ -4,12 +4,13 @@ FROM python:3.11-slim AS base
 WORKDIR /app
 
 # Install system dependencies (ARM64 compatible)
-# Note: ffmpeg and GUI libs removed - API doesn't extract frames or need GUI
+# Note: opencv-python-headless still requires libxcb1 for some internal operations
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
     libglib2.0-0 \
     libgomp1 \
+    libxcb1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better layer caching
