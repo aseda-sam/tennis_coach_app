@@ -81,15 +81,15 @@ def get_cpu_count() -> int:
 
 def get_recommended_worker_count() -> int:
     """
-    Get recommended worker count based on environment.
+    Get recommended worker count based on profile.
 
     Local development: Use 2-4 workers (M1 MacBook has 8 cores)
-    Production (free tier): Use 1 worker (limited resources)
+    Production: Use 1 worker (conservative for managed services)
     """
-    env = os.getenv("ENVIRONMENT", "development").lower()
+    profile = os.getenv("PROFILE", "local").lower()
 
-    if env == "production":
-        # Free tier: very limited resources
+    if profile == "production":
+        # Production: conservative worker count for managed services
         return 1
 
     # Local development: M1 MacBook Pro considerations
@@ -111,6 +111,6 @@ def get_worker_info() -> dict:
     return {
         "cpu_count": get_cpu_count(),
         "recommended_workers": get_recommended_worker_count(),
-        "environment": os.getenv("ENVIRONMENT", "development"),
+        "profile": os.getenv("PROFILE", "local"),
         "redis_url": _mask_redis_url(REDIS_URL),  # Mask credentials in response
     }
