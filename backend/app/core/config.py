@@ -102,9 +102,6 @@ class Settings(BaseSettings):
     REDIS_URL: Optional[str] = (
         None  # Redis connection URL for RQ (defaults to localhost in redis_config.py)
     )
-    ENVIRONMENT: Optional[str] = (
-        None  # Environment: development or production (defaults to development)
-    )
     SERVICE_TYPE: Optional[str] = (
         None  # Service type: 'api' or 'worker' (defaults to 'api' in main.py)
     )

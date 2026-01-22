@@ -103,7 +103,7 @@ if __name__ == "__main__":
     print("=" * 60)
     print("RQ Worker Startup")
     print("=" * 60)
-    print(f"Environment: {info['environment']}")
+    print(f"Profile: {info['profile']}")
     print(f"CPU Cores: {info['cpu_count']}")
     print(f"Recommended Workers: {recommended}")
     print(f"Redis URL: {info['redis_url']}")

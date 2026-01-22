@@ -207,11 +207,14 @@ fly secrets set \
   SUPABASE_SECRET_KEY="..." \
   SUPABASE_DB_URL="postgresql://..." \
   SUPABASE_STORAGE_BUCKET="..." \
+  SUPABASE_DEMO_BUCKET="demo-videos" \
   REDIS_URL="rediss://..." \
   PROFILE="production" \
   SERVICE_TYPE="api" \
   -a tennis-coach-api
 ```
+
+**Note**: `SUPABASE_DEMO_BUCKET` is optional but recommended if you plan to use the demo video feature. Create a public bucket named `demo-videos` in Supabase Storage first.
 
 ### 3. Deploy API
 
@@ -225,7 +228,29 @@ fly deploy -a tennis-coach-api --config fly.api.toml
 fly scale vm shared-cpu-1x --memory 512 -a tennis-coach-api
 ```
 
-### 5. Worker (Existing)
+### 5. Run Database Migrations
+
+After first deployment, run Alembic migrations:
+
+```bash
+# Option 1: Via SSH console
+fly ssh console -a tennis-coach-api
+cd /app
+python -m alembic upgrade head
+exit
+
+# Option 2: Via fly ssh command
+fly ssh console -a tennis-coach-api -C "cd /app && python -m alembic upgrade head"
+```
+
+**Verify migrations:**
+```bash
+fly ssh console -a tennis-coach-api -C "cd /app && python -m alembic current"
+```
+
+**Note**: Migrations only need to be run once per database. If you're using an existing Supabase database, migrations may already be applied.
+
+### 6. Worker (Existing)
 
 If migrating an existing worker to London, see [Step 3 in Region Migration Steps](#step-3-update-existing-worker-to-london). **Important**: You must destroy existing machines before deploying to a new region.
 
@@ -246,7 +271,10 @@ If creating a new worker, follow the same pattern as the API but use `Dockerfile
 
 ## Recommended Validation Checklist
 
-- [ ] API `/health` returns OK
+- [ ] API `/health` returns OK (`curl https://tennis-coach-api.fly.dev/health`)
+- [ ] Database migrations applied (`fly ssh console -a tennis-coach-api -C "cd /app && python -m alembic current"`)
+- [ ] All secrets configured (`fly secrets list -a tennis-coach-api` and `fly secrets list -a tennis-coach-worker`)
+- [ ] Worker scaled to 2GB RAM (`fly status -a tennis-coach-worker`)
 - [ ] Upload a video from frontend/app
 - [ ] Worker picks up a job (check `fly logs -a tennis-coach-worker`)
 - [ ] Processed outputs appear in Supabase storage

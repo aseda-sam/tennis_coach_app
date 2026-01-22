@@ -178,7 +178,7 @@ docker-compose up redis -d
 
 # 2. Configure environment (.env file)
 REDIS_URL=redis://localhost:6379/0
-ENVIRONMENT=development
+PROFILE=local
 
 # 3. Start worker
 cd backend
@@ -197,125 +197,62 @@ For M1 MacBook Pro (8 cores, 8GB RAM):
 
 **Note for macOS**: The startup script automatically sets `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` to handle fork() conflicts with Objective-C runtime.
 
-## Production Setup (Render)
+## Production Setup (Fly.io + Upstash)
 
-### Render Key Value Service
+### Upstash Redis
 
-1. Create Key Value instance in Render dashboard (same region as API service)
-2. **Important**: Set **Maxmemory Policy** to `volatile-ttl` (recommended for job queues with result TTLs)
-   - **Why `volatile-ttl`?**:
-     - Automatically evicts expired result keys (which have TTLs set via `result_ttl`)
-     - **Protects queued jobs**: Job keys don't have TTLs, so they're never evicted
-     - Prevents memory pressure by cleaning up expired results automatically
-     - More graceful than `noeviction` which rejects writes when memory is full
-   - **Alternative**: `noeviction` prevents all eviction but can cause write failures when memory fills up
-3. Get **internal URL** from Render Dashboard (format: `redis://red-xxxxx:6379`)
-   - Use internal URL for lower latency and private network communication
-   - Internal URL doesn't require authentication by default
-4. Set environment variables:
-   - `REDIS_URL=redis://red-xxxxx:6379/0`
-   - `ENVIRONMENT=production`
-   - `SERVICE_TYPE=api` (for API service) or `SERVICE_TYPE=worker` (for Background Worker service)
+1. **Create Upstash Redis Database**:
+   - Go to [Upstash Console](https://console.upstash.com)
+   - Create a new Redis database
+   - **Region**: Choose `eu-west-2` (London) or `eu-west-1` (Ireland) for optimal latency with Fly.io
+   - **TLS**: Enabled (recommended)
+   
+2. **Get Connection String**:
+   - Copy the `rediss://` connection string from Upstash dashboard
+   - Format: `rediss://default:password@region.upstash.io:6379`
+   
+3. **Set Environment Variables**:
+   - `REDIS_URL=rediss://...` (from Upstash)
+   - `PROFILE=production`
+   - `SERVICE_TYPE=api` (for API service) or `SERVICE_TYPE=worker` (for Worker service)
 
-**Instance Configuration:**
+**Upstash Configuration:**
 
-- **Free tier**: 25MB RAM, 10 connections, no persistence (data lost on restart)
-- **Paid tier**: More RAM, more connections, persists data to disk every second
-- Choose instance type based on workload
-- API service and Key Value must be in same region and workspace
+- **Free tier**: 10,000 commands/day, 256MB storage
+- **Paid tier**: Higher limits, better performance
+- **Memory Policy**: Upstash manages this automatically
+- **Persistence**: Automatic backups available
 
-### Worker Deployment Options
+### Worker Deployment on Fly.io
 
-#### Option 1: Same Service (Free Tier)
+The worker runs as a separate Fly.io app. See [Backend Deployment Guide](../backend-deployment.md) for complete setup instructions.
 
-Run worker in the same Render service as API using FastAPI's `lifespan` context manager:
+**Quick Setup:**
 
-```python
-# In backend/app/main.py
-import os
-import subprocess
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from rq import Worker
+1. **Deploy Worker App**:
+   ```bash
+   fly deploy -a tennis-coach-worker --config fly.toml
+   ```
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> None:
-    # Startup
-    worker_process = None
-    if os.getenv("ENVIRONMENT") == "production":
-        worker_process = start_rq_worker()
+2. **Set Secrets**:
+   ```bash
+   fly secrets set \
+     REDIS_URL="rediss://..." \
+     PROFILE="production" \
+     SERVICE_TYPE="worker" \
+     -a tennis-coach-worker
+   ```
 
-    yield
-
-    # Shutdown
-    if worker_process:
-        worker_process.terminate()
-        worker_process.wait()
-
-def start_rq_worker() -> subprocess.Popen:
-    """Start RQ worker process with duplicate check."""
-    # Check for existing workers to prevent duplicates
-    try:
-        from app.core.redis_config import redis_conn
-        existing_workers = Worker.all(connection=redis_conn)
-        if existing_workers:
-            logger.warning(f"Found {len(existing_workers)} existing workers, skipping startup")
-            return None
-    except Exception as e:
-        logger.warning(f"Could not check for existing workers: {e}")
-
-    redis_url = os.getenv("REDIS_URL")
-    if not redis_url:
-        raise ValueError("REDIS_URL not set in production")
-
-    logger.info("Starting RQ worker process")
-    return subprocess.Popen([
-        "rq", "worker", "analysis", "default",
-        "--url", redis_url
-    ])
-
-app = FastAPI(lifespan=lifespan)
-```
-
-**Integration Steps:**
-
-1. Add worker startup function to `backend/app/main.py`
-2. Integrate into `lifespan` context manager
-3. Worker auto-starts when API service starts
-4. Worker gracefully terminates on API shutdown
-
-**Limitations**: Free tier (512MB RAM, 0.5 CPU) - **1 worker only**
-
-#### Option 2: Separate Service (Paid Tier)
-
-Create separate Render service for workers:
-
-1. **New Background Worker Service** → Same repo
-2. **Start Command**: `python scripts/start_rq_worker.py` (or `rq worker analysis default --url $REDIS_URL`)
-3. **Environment Variables**:
-   - `ENVIRONMENT=production`
-   - `REDIS_URL=redis://red-xxxxx:6379/0` (same as API service)
-   - `SERVICE_TYPE=worker` (prevents API service from starting its own worker)
-
-**Benefits**: Independent scaling, better resource allocation
+3. **Scale Worker** (required - worker needs 2GB RAM minimum):
+   ```bash
+   fly scale vm shared-cpu-2x --memory 2048 -a tennis-coach-worker
+   ```
 
 **API Service Configuration** (when using separate worker):
 
 - Set `SERVICE_TYPE=api` (or omit, defaults to `api`)
 - The API service will detect existing workers and skip starting its own
-
-### Render Considerations
-
-**Free Tier**:
-
-- Single worker recommended
-- Monitor memory usage (video analysis is memory-intensive)
-
-**Paid Tier**:
-
-- Can run multiple workers
-- Better resource allocation
-- Horizontal scaling possible
+- See [Backend Deployment Guide](../backend-deployment.md) for API setup
 
 ## Worker Deployment
 
@@ -394,12 +331,12 @@ default_queue = Queue("default", connection=redis_conn)
 | Variable       | Description                                                       | Default                    | Required |
 | -------------- | ----------------------------------------------------------------- | -------------------------- | -------- |
 | `REDIS_URL`    | Redis connection string for RQ                                    | `redis://localhost:6379/0` | Yes      |
-| `ENVIRONMENT`  | Environment (development/production)                              | `development`              | No       |
+| `PROFILE`      | Profile: `local` or `production`                                 | `local`                    | No       |
 | `SERVICE_TYPE` | Service type: `api` (API service) or `worker` (Background Worker) | `api`                      | No       |
 
 **Note on `SERVICE_TYPE`**:
 
-- **API Service**: Set `SERVICE_TYPE=api` (or omit, defaults to `api`). The API service will attempt to start a worker if `ENVIRONMENT=production` and no existing workers are detected.
+- **API Service**: Set `SERVICE_TYPE=api` (or omit, defaults to `api`). The API service will attempt to start a worker if no existing workers are detected (for local development).
 - **Worker Service**: Set `SERVICE_TYPE=worker` to explicitly run as a worker service. This prevents the API from starting its own worker.
 
 ## Task Implementation
