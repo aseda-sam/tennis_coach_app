@@ -2,7 +2,7 @@
 # This worker processes video analysis jobs from the Redis queue
 
 app = "tennis-coach-worker"
-primary_region = "iad"  # Washington, D.C. (change to your preferred region)
+primary_region = "lhr"  # Washington, D.C. (change to your preferred region)
 
 [build]
   dockerfile = "Dockerfile.worker"
