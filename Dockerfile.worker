@@ -26,6 +26,37 @@ RUN pip install --no-cache-dir opencv-python-headless
 # Now install the rest with worker extras (ultralytics will use already-installed torch)
 RUN pip install --no-cache-dir -e ".[worker]"
 
+# Development stage - for local development with docker-compose
+FROM python:3.11-slim AS development
+
+WORKDIR /app
+
+# Install runtime system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ffmpeg \
+    libglib2.0-0 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python dependencies from builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Install dev dependencies
+RUN pip install --no-cache-dir pytest ruff
+
+# Copy backend code (will be overridden by volume mount in docker-compose)
+COPY backend/ ./backend/
+
+WORKDIR /app/backend
+
+# Create required directories
+RUN mkdir -p ml_models data/videos/raw data/videos/processed data/analysis_cache data/database
+
+EXPOSE 8000
+CMD ["python", "scripts/start_rq_worker.py"]
+
 # Runtime stage - minimal final image
 FROM python:3.11-slim AS runtime
 

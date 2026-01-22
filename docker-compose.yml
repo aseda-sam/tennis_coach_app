@@ -51,7 +51,7 @@ services:
     container_name: tennis-coach-worker
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.worker
       target: development
     volumes:
       - ./backend:/app/backend

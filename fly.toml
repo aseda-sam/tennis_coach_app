@@ -2,7 +2,7 @@
 # This worker processes video analysis jobs from the Redis queue
 
 app = "tennis-coach-worker"
-primary_region = "lhr"  # Washington, D.C. (change to your preferred region)
+primary_region = "lhr"  # London, UK
 
 [build]
   dockerfile = "Dockerfile.worker"
@@ -21,9 +21,12 @@ primary_region = "lhr"  # Washington, D.C. (change to your preferred region)
 [processes]
   worker = "python scripts/start_rq_worker.py"
 
-# Note: VM resources (memory, CPU) are configured via CLI:
-#   fly scale vm shared-cpu-2x --memory 1024
-#
+# VM configuration - set BEFORE deploying to ensure machines are created with correct resources
+# Worker requires 2GB RAM minimum for PyTorch/OpenCV startup
+[[vm]]
+  size = "shared-cpu-2x"
+  memory_mb = 2048
+
 # Scaling to zero is configured via:
 #   fly scale count 0
 #

@@ -1,0 +1,29 @@
+name: Deploy Fly.io API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "Dockerfile"
+      - "fly.api.toml"
+      - ".github/workflows/deploy-flyio-api.yml"
+
+concurrency:
+  group: flyio-api-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy --config fly.api.toml --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
