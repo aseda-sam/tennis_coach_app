@@ -4,6 +4,7 @@ Basic tests for video API endpoints.
 
 import os
 import tempfile
+import uuid
 from typing import TYPE_CHECKING
 
 import pytest
@@ -259,16 +260,16 @@ class TestVideoAPI:
         self, client: TestClient, test_user_id: str
     ) -> None:
         """Test that unauthorized users cannot upload demo videos."""
-        import tempfile
-
         # Create a mock video file
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
             tmp_file.write(b"fake video content" * 1000)
             tmp_file_path = tmp_file.name
 
         try:
+            # Use unique filename to avoid duplicate file errors
+            unique_filename = f"test_{uuid.uuid4().hex[:8]}.mp4"
             with open(tmp_file_path, "rb") as f:
-                files = {"file": ("test.mp4", f, "video/mp4")}
+                files = {"file": (unique_filename, f, "video/mp4")}
                 # Try to upload as demo with unauthorized user (different from DEMO_UPLOAD_USER_ID)
                 response = client.post("/v0/videos/upload?is_demo=true", files=files)
 
@@ -276,8 +277,6 @@ class TestVideoAPI:
             # Check that it's either 403 or 200 (local profile allows it)
             assert response.status_code in [200, 403]
         finally:
-            import os
-
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)
 
