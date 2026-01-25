@@ -1,12 +1,12 @@
 ---
 name: Supabase Signup Control
-overview: Prevent random users from creating accounts by disabling public signups in Supabase. For hobby projects where manual user validation is preferred. Requires no code changes - just dashboard configuration.
+overview: Prevent random users from creating accounts by disabling public signups in Supabase. Only relevant for PROFILE=production where authentication is required. For hobby projects where manual user validation is preferred. Requires no code changes - just dashboard configuration.
 todos:
   - id: disable-email-signups
     content: Disable email signups in Supabase dashboard (Authentication → Settings)
     status: pending
   - id: test-signup-disabled
-    content: Test that signup attempts fail with appropriate error message
+    content: Test that signup attempts fail with appropriate error message (PROFILE=production only)
     status: pending
   - id: hide-signup-ui
     content: Optionally hide signup form in frontend or show disabled message
@@ -20,7 +20,8 @@ isProject: false
 # Supabase Signup Control
 
 **Purpose:** Prevent random users from creating accounts on the application
-**Context:** Hobby project where manual user validation is preferred
+**Context:** Serve-focused MVP hobby project where manual user validation is preferred
+**Profile Context:** Only applies when `PROFILE=production` (auth required). When `PROFILE=local`, authentication is disabled and this plan is not applicable.
 
 ---
 
@@ -28,9 +29,22 @@ isProject: false
 
 By default, Supabase allows anyone to sign up via the authentication API. For hobby projects or applications where you want to control who can access the system, you can disable public signups and manually create users through the Supabase dashboard.
 
+**Important:** This plan only applies when running with `PROFILE=production`. When `PROFILE=local`, authentication is completely disabled (see `backend/app/core/config.py` - `auth_required` property returns `False` for local profile), so signup control is not relevant.
+
 ---
 
+## Profile-Based Authentication
+
+The application uses a **profile-based configuration system** (see `backend/app/core/config.py` and `backend/docs/config.md`):
+
+- **`PROFILE=local`**: Authentication is **disabled** - returns mock user automatically. Supabase signup control is **not applicable**.
+- **`PROFILE=production`**: Authentication is **required** - uses Supabase JWT tokens. Signup control **applies here**.
+
+This plan is only relevant when deploying or testing with `PROFILE=production`.
+
 ## How to Disable Signups
+
+**Prerequisites:** Ensure your backend is configured with `PROFILE=production` and required Supabase environment variables (`SUPABASE_URL`, `SUPABASE_SECRET_KEY`, etc.)
 
 ### Step 1: Access Supabase Dashboard
 
@@ -74,20 +88,23 @@ After disabling signups, you can manually create users:
 
 ## Frontend Behavior
 
-With signups disabled:
+With signups disabled (and `PROFILE=production`):
 
 - The signup form in the frontend will still exist (if not hidden)
 - Attempting to sign up will return an error like: `"Signups are disabled"` or `"Email signup is disabled"`
 - Existing users can still sign in normally
 - Password reset functionality still works (if enabled)
+- Frontend auth interceptor (`frontend/src/utils/authInterceptor.ts`) only adds Bearer tokens when `REACT_APP_PROFILE !== 'local'`
 
 ### Optional: Hide Signup UI
 
 If you want to hide the signup form entirely, you can:
 
-1. Conditionally render the signup component based on an environment variable
+1. Conditionally render the signup component based on `REACT_APP_PROFILE` environment variable
 2. Show a message like "Signups are currently disabled. Please contact the administrator."
 3. Remove the signup route/page entirely
+
+**Note:** The frontend already respects the profile system - when `REACT_APP_PROFILE=local`, auth headers are not sent to the backend.
 
 ---
 
@@ -127,14 +144,35 @@ This requires significant code changes and is overkill for most hobby projects.
 
 ## Related Configuration
 
+### Backend Profile System
+
+- **Profile-based auth:** See `backend/app/core/config.py` - `auth_required` property
+- **Local development:** Set `PROFILE=local` to disable auth entirely (no Supabase needed)
+- **Production:** Set `PROFILE=production` and configure Supabase environment variables
+- **Auth dependency:** `backend/app/dependencies/auth.py` returns mock user when `PROFILE=local`
+
+### Supabase Settings
+
 - **Email confirmation:** Can be disabled in Authentication → Settings → Email Auth
 - **Password reset:** Can be enabled/disabled separately from signups
 - **OAuth providers:** Can be enabled/disabled independently (Google, GitHub, etc.)
+
+### User Data Isolation
+
+All data models include `user_id` fields for proper isolation:
+
+- `videos.user_id` - Videos are scoped to users
+- `serve_attempts.user_id` - Serve attempts are scoped to users
+- `players.user_id` - Players are scoped to users
+
+When manually creating users, ensure they can access their own data via the `user_id` field.
 
 ---
 
 ## Notes
 
+- **Profile context:** This plan only applies when `PROFILE=production`. When `PROFILE=local`, authentication is disabled and signup control is not relevant.
 - Disabling signups only affects the signup API. Existing users and sign-in functionality are unaffected.
 - You can re-enable signups at any time through the dashboard.
 - Manual user creation is immediate - no email confirmation needed if "Auto Confirm User" is checked.
+- The serve MVP focuses on serve analysis - user accounts are needed to track serve attempts and metrics per user.
