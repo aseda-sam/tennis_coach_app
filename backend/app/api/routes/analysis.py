@@ -392,26 +392,6 @@ async def get_task_stats(
         ) from e
 
 
-@router.get("/queue-stats")
-async def get_queue_stats_endpoint(
-    current_user: dict = Depends(get_current_user),
-) -> Dict[str, Any]:
-    """
-    Get detailed queue statistics (RQ).
-
-    Returns:
-        Detailed queue and worker statistics
-    """
-    try:
-        return get_queue_stats()
-    except Exception as e:
-        logger.exception("Error getting queue stats")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get queue stats. Please try again later.",
-        ) from e
-
-
 @router.delete("/tasks/{job_id}")
 async def cancel_task(
     job_id: str,

@@ -29,7 +29,6 @@ class Player(Base):
     user_id = Column(String(36), nullable=False, index=True)  # UUID as string
 
     # Relationships
-    video_appearances = relationship("VideoPlayer", back_populates="player")
     serve_attempts = relationship("ServeAttempt", back_populates="player")
 
     # Convenience properties

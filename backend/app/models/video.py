@@ -74,15 +74,6 @@ class Video(Base):
     video_annotations = relationship(
         "VideoAnnotation", back_populates="video", cascade="all, delete-orphan"
     )
-    video_players = relationship(
-        "VideoPlayer", back_populates="video", cascade="all, delete-orphan"
-    )
     serve_attempts = relationship(
         "ServeAttempt", back_populates="video", cascade="all, delete-orphan"
     )
-
-    # Convenience property to get just the players
-    @property
-    def players(self) -> list:
-        """Get list of players associated with this video."""
-        return [vp.player for vp in self.video_players]
