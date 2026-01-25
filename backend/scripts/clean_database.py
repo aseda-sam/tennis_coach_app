@@ -14,8 +14,6 @@ backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
 from app.core.database import get_db  # noqa: E402
-from app.models.analysis import Analysis  # noqa: E402
-from app.models.ball_detection import BallDetection  # noqa: E402
 from app.models.pose_detection import PoseDetection  # noqa: E402
 from app.models.serve_attempt import ServeAttempt  # noqa: E402
 from app.models.video import Video  # noqa: E402
@@ -32,25 +30,19 @@ def clean_database() -> None:
     try:
         # Count records before deletion
         video_count = db.query(Video).count()
-        analysis_count = db.query(Analysis).count()
         pose_count = db.query(PoseDetection).count()
-        ball_count = db.query(BallDetection).count()
         serve_attempt_count = db.query(ServeAttempt).count()
         annotation_count = db.query(VideoAnnotation).count()
 
         print("📊 Current record counts:")
         print(f"   Videos: {video_count}")
-        print(f"   Analyses (legacy): {analysis_count}")
         print(f"   Pose Detections: {pose_count}")
-        print(f"   Ball Detections: {ball_count}")
         print(f"   Serve Attempts: {serve_attempt_count}")
         print(f"   Video Annotations: {annotation_count}")
 
         if (
             video_count == 0
-            and analysis_count == 0
             and pose_count == 0
-            and ball_count == 0
             and serve_attempt_count == 0
             and annotation_count == 0
         ):
@@ -69,12 +61,6 @@ def clean_database() -> None:
 
         deleted_poses = db.query(PoseDetection).delete()
         print(f"   Deleted {deleted_poses} pose detections")
-
-        deleted_balls = db.query(BallDetection).delete()
-        print(f"   Deleted {deleted_balls} ball detections")
-
-        deleted_analyses = db.query(Analysis).delete()
-        print(f"   Deleted {deleted_analyses} analyses (legacy)")
 
         # Delete videos last
         deleted_videos = db.query(Video).delete()
