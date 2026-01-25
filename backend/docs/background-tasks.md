@@ -23,10 +23,9 @@ This document provides a historical reference to the legacy background task syst
 
 Tennis video analysis is **computationally expensive** and can take several minutes to complete:
 
-- **Ball Detection**: YOLO processes every frame (30fps video = 1800 frames for 1 minute)
 - **Pose Estimation**: MediaPipe analyzes player movements frame by frame
 - **Video Annotation**: Creates new video files with overlays
-- **Processing Time**: 2-5 minutes for a typical 30-second tennis video
+- **Processing Time**: 1-3 minutes for a typical 30-second tennis video
 
 ### The Solution
 
@@ -97,7 +96,6 @@ def get_task_status(task_id: int):
 **Integrated Services**:
 
 - **PoseDetectionService**: MediaPipe pose estimation
-- **BallDetectionService**: YOLO ball detection
 - **VideoAnnotationService**: Creates annotated videos with overlays
 
 ### Supported Analysis Types
@@ -109,12 +107,6 @@ def get_task_status(task_id: int):
 - **Dependencies**: None (independent)
 - **Processing Time**: 1-3 minutes
 
-#### 2. `ball_only`
-
-- **Purpose**: Detect tennis balls using YOLO
-- **Output**: BallDetection database records
-- **Dependencies**: None (independent)
-- **Processing Time**: 2-4 minutes
 
 
 ### Task Storage (Current Implementation)
@@ -125,7 +117,7 @@ _active_tasks: Dict[int, Dict[str, Any]] = {
     1: {
         "task_id": 1,
         "video_id": 123,
-        "analysis_type": "ball_only",
+        "analysis_type": "pose_only",
         "confidence_threshold": 0.7,
         "status": "processing",  # queued, processing, completed, failed, cancelled
         "progress": 45,  # 0-100
@@ -167,9 +159,7 @@ def _run_analysis_task(self, task_id, video_id, analysis_type, confidence_thresh
         _active_tasks[task_id]["status"] = "processing"
 
         # Route to appropriate analysis service
-        if analysis_type == "ball_only":
-            result = self._run_ball_only_analysis(...)
-        elif analysis_type == "pose_only":
+        if analysis_type == "pose_only":
             result = self._run_pose_only_analysis(...)
         # ... etc
 
@@ -279,13 +269,13 @@ GET /v0/analysis/status/1
 ```json
 {
   "progress": 45,
-  "current_stage": "ball_detection",
+  "current_stage": "pose_detection",
   "stage_progress": 75,
-  "stage_message": "Processing frame 1200 of 1500"
+  "stage_message": "Processing frame 800 of 1000"
 }
 ```
 
-**Translation**: Overall task is 45% complete, currently in ball detection stage which is 75% complete, processing frame 1200 of 1500.
+**Translation**: Overall task is 45% complete, currently in pose detection stage which is 75% complete, processing frame 800 of 1000.
 
 ## Current Limitations
 
@@ -449,15 +439,14 @@ rq-dashboard --redis-url=redis://localhost:6379/0 --port 9181
 {
     "id": 1,
     "video_id": 123,
-    "analysis_type": "ball_only",
-    "status": "completed",
-    "progress": 100,
-    "total_frames": 1500,
-    "frames_with_balls": 1200,
-    "detection_rate": 0.8,
-    "processing_time": 180.5,
-    "model_used": "yolov8n.pt",
-    "confidence_threshold": 0.7,
+  "analysis_type": "pose_only",
+  "status": "completed",
+  "progress": 100,
+  "total_frames": 1500,
+  "frames_with_poses": 1200,
+  "detection_rate": 0.8,
+  "processing_time": 120.5,
+  "confidence_threshold": 0.7,
     "created_at": "2024-01-15T10:30:00Z",
     "completed_at": "2024-01-15T10:33:00Z"
 }
@@ -467,7 +456,7 @@ rq-dashboard --redis-url=redis://localhost:6379/0 --port 9181
 
 ```typescript
 // Start analysis
-const response = await api.startAnalysis(videoId, "ball_only", 0.7);
+const response = await api.startAnalysis(videoId, "pose_only", 0.7);
 const taskId = response.analysis_id;
 
 // Poll for status updates

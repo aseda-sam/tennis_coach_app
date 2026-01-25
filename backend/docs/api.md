@@ -61,14 +61,14 @@ Demo videos are served from a public Supabase bucket (when configured) and do no
 - `GET /v0/analysis/status/{analysis_id}` - Get analysis processing status
 - `DELETE /v0/analysis/{analysis_id}` - Delete analysis results
 
-### Ball Contacts
+### Serve Attempts
 
-- `POST /v0/ball-contacts/` - Create a new ball contact marker
-- `GET /v0/ball-contacts/video/{video_id}` - Get all ball contacts for a video
-- `GET /v0/ball-contacts/video/{video_id}/timestamps` - Get ball contact timestamps for a video
-- `GET /v0/ball-contacts/{ball_contact_id}` - Get a specific ball contact by ID
-- `PUT /v0/ball-contacts/{ball_contact_id}` - Update a ball contact
-- `DELETE /v0/ball-contacts/{ball_contact_id}` - Delete a ball contact
+- `POST /v0/serve-attempts/` - Create a new serve attempt
+- `GET /v0/serve-attempts/me` - Get my serve attempts (with optional filters)
+- `GET /v0/serve-attempts/{serve_attempt_id}` - Get a specific serve attempt by ID
+- `PUT /v0/serve-attempts/{serve_attempt_id}` - Update a serve attempt
+- `DELETE /v0/serve-attempts/{serve_attempt_id}` - Delete a serve attempt
+- `POST /v0/videos/{video_id}/analyze-serves` - Batch analyze serve attempts for a video
 
 ## Authentication
 
@@ -126,103 +126,6 @@ The API is configured to allow requests from:
 - http://127.0.0.1:3000
 
 This enables the React frontend to communicate with the backend.
-
-## Ball Contact Endpoints
-
-### Create Ball Contact
-
-**POST** `/v0/ball-contacts/`
-
-Creates a new ball contact marker for a video.
-
-**Request Body:**
-
-```json
-{
-  "video_id": 1,
-  "video_timestamp": 5.23,
-  "contact_hand": "right",
-  "stroke_type": "ground_stroke",
-  "stroke_subtype": "forehand",
-  "detection_source": "manual"
-}
-```
-
-**Response:** `201 Created`
-
-```json
-{
-  "id": 1,
-  "video_id": 1,
-  "video_timestamp": 5.23,
-  "contact_hand": "right",
-  "stroke_type": "ground_stroke",
-  "stroke_subtype": "forehand",
-  "detection_source": "manual",
-  "created_at": "2025-01-01T12:00:00Z"
-}
-```
-
-### Get Ball Contacts for Video
-
-**GET** `/v0/ball-contacts/video/{video_id}`
-
-Retrieves all ball contacts for a specific video.
-
-**Response:** `200 OK`
-
-```json
-[
-  {
-    "id": 1,
-    "video_timestamp": 5.23,
-    "contact_hand": "right",
-    "stroke_type": "ground_stroke",
-    "detection_source": "manual"
-  }
-]
-```
-
-### Get Ball Contact Timestamps
-
-**GET** `/v0/ball-contacts/video/{video_id}/timestamps`
-
-Retrieves only the timestamps of ball contacts for a video.
-
-**Response:** `200 OK`
-
-```json
-[5.23, 8.45, 12.67]
-```
-
-### Update Ball Contact
-
-**PUT** `/v0/ball-contacts/{ball_contact_id}`
-
-Updates an existing ball contact.
-
-**Request Body:**
-
-```json
-{
-  "stroke_type": "serve",
-  "stroke_subtype": "flat"
-}
-```
-
-### Delete Ball Contact
-
-**DELETE** `/v0/ball-contacts/{ball_contact_id}`
-
-Deletes a ball contact marker.
-
-**Response:** `200 OK`
-
-```json
-{
-  "message": "Ball contact deleted successfully"
-}
-```
 
 ## Overlay Data Endpoints
 
@@ -432,9 +335,8 @@ curl -X POST "http://localhost:8000/v0/analysis/videos/1" \
   -H "accept: application/json" \
   -H "Content-Type: application/json" \
   -d '{
-    "analysis_type": "ball_tracking",
-    "confidence_threshold": 0.5,
-    "include_pose_detection": true
+    "analysis_type": "pose_only",
+    "confidence_threshold": 0.7
   }'
 ```
 

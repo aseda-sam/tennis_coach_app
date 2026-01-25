@@ -36,9 +36,7 @@ Complete guide to the background task system using Redis Queue (RQ) in the Tenni
 RQ is used for **CPU and memory-intensive operations** that would block the API:
 
 - **Pose Detection**: MediaPipe pose estimation (1-3 minutes)
-- **Ball Detection**: YOLO ball detection (2-4 minutes)
-- **Video Annotation**: Creating annotated videos with overlays (1-2 minutes)
-- **Combined Analysis**: Pose detection + annotation pipeline
+- **Serve Analysis**: Batch analysis of serve attempts (elbow angle calculation)
 
 **Not used for**: Fast operations like database queries, simple API responses, or file uploads.
 
@@ -415,11 +413,10 @@ job = analysis_queue.enqueue(
     job_timeout=300,
 )
 
-# Ball detection: 2 retries with 60s interval
+# Serve analysis: 2 retries with 60s interval
 job = analysis_queue.enqueue(
-    analyze_ball_detection_rq,
+    analyze_serve_attempts_rq,
     video_id=video_id,
-    video_path=video_path,
     retry=Retry(max=2, interval=60),
     job_timeout=300,
 )
@@ -470,7 +467,7 @@ job = analysis_queue.enqueue(
 
 - Jobs exceeding `job_timeout` are automatically killed
 - Worker marks job as failed
-- Timeout should be set based on analysis type (pose: 300s, ball: 300s, annotation: 180s)
+- Timeout should be set based on analysis type (pose: 300s, serve analysis: 300s, annotation: 180s)
 
 **Result TTL:**
 
@@ -722,9 +719,9 @@ Phase 3: Gradual Migration
 │    • Test thoroughly                                    │
 │    • Keep ThreadPoolExecutor for other types            │
 │                                                          │
-│  Step 2: Migrate ball_only                              │
-│    • Create RQ task: analyze_ball_detection()            │
-│    • Update API to use RQ for ball_only                 │
+│  Step 2: Migrate serve analysis                        │
+│    • Create RQ task: analyze_serve_attempts_rq()         │
+│    • Update API to use RQ for serve analysis            │
 │    • Test thoroughly                                    │
 │                                                          │
 │  Step 3: Migrate video_annotation_only                  │
@@ -948,11 +945,11 @@ async def get_analysis_status(task_id: str) -> Dict[str, Any]:
   - [ ] Test thoroughly
   - [ ] Monitor in production
 
-- [ ] **Phase 3: Migrate ball_only**
+- [ ] **Phase 3: Migrate serve analysis**
 
-  - [ ] Create `analyze_ball_detection_rq()` task
-  - [ ] Update API endpoint
-  - [ ] Test thoroughly
+  - [x] Create `analyze_serve_attempts_rq()` task
+  - [x] Update API endpoint
+  - [x] Test thoroughly
 
 - [ ] **Phase 4: Migrate video_annotation_only**
 

@@ -63,7 +63,7 @@ alembic upgrade head
 
 **What this does:**
 
-- Creates all tables: `videos`, `players`, `video_players`, `ball_detections`, `pose_detections`, `ball_contacts`, `video_annotations`
+- Creates all tables: `videos`, `players`, `video_players`, `pose_detections`, `serve_attempts`, `video_annotations`
 - Sets up indexes and relationships
 - Ready to use!
 
@@ -107,8 +107,8 @@ Try these operations:
 
 - ✅ Upload video → Check `videos` table
 - ✅ Create player → Check `players` table
-- ✅ Run analysis → Check `ball_detections`, `pose_detections` tables
-- ✅ Add ball contact → Check `ball_contacts` table
+- ✅ Run pose analysis → Check `pose_detections` table
+- ✅ Tag serve attempts → Check `serve_attempts` table
 
 ## What Gets Created
 
@@ -117,10 +117,9 @@ The migration creates these tables:
 1. **videos** - Video metadata and file information
 2. **players** - Player profiles
 3. **video_players** - Many-to-many relationship between videos and players
-4. **ball_detections** - Ball detection analysis results
-5. **pose_detections** - Pose estimation analysis results
-6. **ball_contacts** - Ball contact markers and events
-7. **video_annotations** - Annotated video records
+4. **pose_detections** - Pose estimation analysis results
+5. **serve_attempts** - Manually-tagged serve attempts with metrics
+6. **video_annotations** - Annotated video records
 
 All with proper indexes, foreign keys, and relationships!
 
