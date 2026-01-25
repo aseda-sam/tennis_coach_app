@@ -59,8 +59,6 @@ def analyze_pose_detection_rq(
     """
     RQ task for pose detection analysis.
 
-    Replaces: BackgroundTaskService._run_pose_only_analysis()
-
     Args:
         video_id: Video ID from database
         video_path: Path to video file (can be cloud path)
@@ -170,8 +168,6 @@ def analyze_ball_detection_rq(
 ) -> Dict[str, Any]:
     """
     RQ task for ball detection analysis.
-
-    Replaces: BackgroundTaskService._run_ball_only_analysis()
 
     Args:
         video_id: Video ID from database

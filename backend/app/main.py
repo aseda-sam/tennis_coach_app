@@ -18,10 +18,8 @@ from starlette.responses import Response
 
 from app.api.routes import (
     analysis,
-    ball_detection,
     overlay_data,
     players,
-    pose_detection,
     serve_attempts,
     video,
     video_players,
@@ -271,24 +269,6 @@ app.include_router(
 app.include_router(
     video_players.router,
     tags=["video-players"],
-    responses={
-        400: {"description": "Bad Request"},
-        404: {"description": "Not Found"},
-        500: {"description": "Internal Server Error"},
-    },
-)
-
-app.include_router(
-    ball_detection.router,
-    responses={
-        400: {"description": "Bad Request"},
-        404: {"description": "Not Found"},
-        500: {"description": "Internal Server Error"},
-    },
-)
-
-app.include_router(
-    pose_detection.router,
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},
