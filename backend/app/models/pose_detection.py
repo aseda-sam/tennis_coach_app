@@ -41,9 +41,6 @@ class PoseDetection(Base):
     visibility_scores = Column(Text, nullable=True)  # Visibility scores per keypoint
     confidence_scores = Column(Text, nullable=True)  # Confidence scores per frame
 
-    # Annotated video path
-    annotated_video_path = Column(String, nullable=True)  # Path to annotated video
-
     # Performance metrics
     processing_time_seconds = Column(Float, nullable=False)
     frame_processing_rate = Column(Float, nullable=True)  # frames per second

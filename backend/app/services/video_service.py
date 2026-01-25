@@ -133,19 +133,6 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
         pose_detections = (
             db.query(PoseDetection).filter(PoseDetection.video_id == video_id).all()
         )
-        for pose_detection in pose_detections:
-            # Delete annotated video files using storage service
-            if pose_detection.annotated_video_path:
-                try:
-                    # Use storage service to delete (handles both local and Supabase)
-                    storage_service.delete_file(pose_detection.annotated_video_path)
-                    logger.info(
-                        f"Deleted pose detection annotated video: {pose_detection.annotated_video_path}"
-                    )
-                except (ValueError, RuntimeError, OSError) as e:
-                    logger.warning(
-                        f"Failed to delete pose detection annotated video {pose_detection.annotated_video_path}: {e}"
-                    )
 
         # Delete original video file from storage (local or Supabase)
 

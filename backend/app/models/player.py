@@ -31,13 +31,3 @@ class Player(Base):
     # Relationships
     serve_attempts = relationship("ServeAttempt", back_populates="player")
 
-    # Convenience properties
-    @property
-    def videos(self) -> list:
-        """Get list of videos where this player appears."""
-        return [vp.video for vp in self.video_appearances]
-
-    @property
-    def total_videos(self) -> int:
-        """Get total number of videos where this player appears."""
-        return len(self.video_appearances)
