@@ -63,14 +63,8 @@ def find_orphaned_videos(raw_dir: Path) -> List[Tuple[Path, str]]:
             # Determine reason for orphaned status
             if file_path.name.startswith("test_"):
                 reason = "test file"
-            elif (
-                file_path.name.startswith("aseda")
-                or file_path.name.startswith("alc")
-                or file_path.name.startswith("jannik")
-            ):
-                reason = "user upload (no DB record)"
             else:
-                reason = "unknown origin"
+                reason = "no DB record"
 
             orphaned.append((file_path, reason))
 
