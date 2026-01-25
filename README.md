@@ -62,7 +62,7 @@ npm start
 tennis_coach_app/
 ├── backend/          # FastAPI + Computer Vision
 ├── frontend/         # React + TypeScript
-├── ml_models/        # Model assets (README only for now)
+├── backend/ml_models/  # MediaPipe pose model (auto-downloaded)
 └── project_docs/     # Local implementation notes (not in git)
 ```
 
@@ -86,7 +86,6 @@ tennis_coach_app/
 - **[Backend docs index](backend/docs/README.md)** - Serve MVP, config, background jobs, deploy notes
 - **[Frontend Components](frontend/docs/components.md)** - Component documentation
 - **[Frontend API Integration](frontend/docs/api-integration.md)** - API communication
-- **[ML Models](ml_models/README.md)** - Machine learning models and usage
 
 ### Project Documentation
 
