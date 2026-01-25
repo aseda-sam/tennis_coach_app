@@ -185,7 +185,6 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
 
         # Delete from database (this will cascade delete all related records)
         # The cascade relationships will automatically delete:
-        # - BallDetection records
         # - PoseDetection records
         # - VideoAnnotation records
         if not delete_video_record(db, video_id):

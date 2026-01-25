@@ -13,7 +13,6 @@ class TaskStatus(BaseModel):
     video_id: int = Field(description="Video ID being analyzed")
     analysis_type: Literal[
         "pose_only",
-        "ball_only",
     ] = Field(description="Type of analysis being performed")
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
         description="Current task status (mapped from RQ statuses)"
@@ -46,7 +45,6 @@ class TaskStartResponse(BaseModel):
     video_id: int = Field(description="Video ID being analyzed")
     analysis_type: Literal[
         "pose_only",
-        "ball_only",
     ] = Field(description="Type of analysis being performed")
     status: Literal["queued"] = Field(description="Initial task status")
     message: str = Field(description="Confirmation message")
@@ -86,7 +84,7 @@ class AnalysisRequest(BaseModel):
         default=0.7,
         ge=0.0,
         le=1.0,
-        description="YOLO confidence threshold",
+        description="Pose detection confidence threshold",
     )
 
 
@@ -97,7 +95,6 @@ class AnalysisResponse(BaseModel):
     video_id: int = Field(description="Video ID being analyzed")
     analysis_type: Literal[
         "pose_only",
-        "ball_only",
     ] = Field(description="Type of analysis being performed")
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
         description="Current task status (mapped from RQ statuses)"

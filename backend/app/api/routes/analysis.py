@@ -22,10 +22,7 @@ from app.core.redis_config import analysis_queue, redis_conn
 from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.rq_monitoring import get_queue_stats
-from app.services.rq_tasks import (
-    analyze_ball_detection_rq,
-    analyze_pose_detection_rq,
-)
+from app.services.rq_tasks import analyze_pose_detection_rq
 from app.utils.authorization import require_video_access, require_video_not_demo
 
 logger = logging.getLogger(__name__)
@@ -72,7 +69,6 @@ async def start_analysis(
         # Select RQ task function based on analysis type
         task_function_map = {
             "pose_only": analyze_pose_detection_rq,
-            "ball_only": analyze_ball_detection_rq,
         }
 
         task_function = task_function_map.get(request.analysis_type)
@@ -85,13 +81,11 @@ async def start_analysis(
         # Configure retry based on analysis type
         retry_config = {
             "pose_only": Retry(max=2, interval=60),
-            "ball_only": Retry(max=2, interval=60),
         }
 
         # Configure timeout based on analysis type
         timeout_config = {
             "pose_only": 300,  # 5 minutes
-            "ball_only": 300,  # 5 minutes
         }
 
         try:
@@ -566,8 +560,6 @@ def _get_analysis_type_from_job(job: Job) -> str:
 
     if "analyze_pose_detection_rq" in func_name:
         return "pose_only"
-    elif "analyze_ball_detection_rq" in func_name:
-        return "ball_only"
     else:
         return "pose_only"  # Default fallback
 
@@ -576,6 +568,5 @@ def _get_estimated_duration(analysis_type: str) -> float:
     """Get estimated duration for different analysis types."""
     estimates = {
         "pose_only": 120.0,  # 2 minutes
-        "ball_only": 180.0,  # 3 minutes
     }
-    return estimates.get(analysis_type, 180.0)
+    return estimates.get(analysis_type, 120.0)

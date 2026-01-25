@@ -68,9 +68,6 @@ class Video(Base):
     )  # When video was recorded (for trends)
 
     # New granular analysis relationships
-    ball_detections = relationship(
-        "BallDetection", back_populates="video", cascade="all, delete-orphan"
-    )
     pose_detections = relationship(
         "PoseDetection", back_populates="video", cascade="all, delete-orphan"
     )

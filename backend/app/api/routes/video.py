@@ -449,16 +449,6 @@ async def get_video_analysis_status(
             has_analysis = True
             analysis_types.append("pose_detection")
 
-        # Check for ball detection
-        from app.models.ball_detection import BallDetection
-
-        ball_detection = (
-            db.query(BallDetection).filter(BallDetection.video_id == video_id).first()
-        )
-        if ball_detection and ball_detection.status == "completed":
-            has_analysis = True
-            if "ball_detection" not in analysis_types:
-                analysis_types.append("ball_detection")
 
         return VideoAnalysisStatus(
             video_id=video_id,
@@ -489,7 +479,6 @@ async def get_bulk_analysis_status(
         Analysis status for each requested video
     """
     try:
-        from app.models.ball_detection import BallDetection
         from app.models.pose_detection import PoseDetection
         from app.models.video import Video
         from app.utils.authorization import is_admin
@@ -521,19 +510,8 @@ async def get_bulk_analysis_status(
             .all()
         )
 
-        # Fetch all ball detections in one query
-        ball_detections = (
-            db.query(BallDetection)
-            .filter(
-                BallDetection.video_id.in_(video_ids),
-                BallDetection.status == "completed",
-            )
-            .all()
-        )
-
         # Build lookup maps for O(1) access
         pose_map: Dict[int, PoseDetection] = {pd.video_id: pd for pd in pose_detections}
-        ball_map: Dict[int, BallDetection] = {bd.video_id: bd for bd in ball_detections}
 
         # Build response for each video
         statuses = []
@@ -544,11 +522,6 @@ async def get_bulk_analysis_status(
             if video_id in pose_map:
                 has_analysis = True
                 analysis_types.append("pose_detection")
-
-            if video_id in ball_map:
-                has_analysis = True
-                if "ball_detection" not in analysis_types:
-                    analysis_types.append("ball_detection")
 
             statuses.append(
                 VideoAnalysisStatus(

@@ -87,16 +87,14 @@ class TestAnalysisTiming:
         # Mock timing data structure
         timing_data = {
             "frame_extraction": 1.5,
-            "ball_detection": 3.2,
             "pose_detection": 2.1,
             "frame_annotation": 0.8,
             "video_creation": 1.2,
-            "total_analysis": 8.8,
+            "total_analysis": 5.6,
         }
 
         # Verify timing data structure
         assert "frame_extraction" in timing_data
-        assert "ball_detection" in timing_data
         assert "pose_detection" in timing_data
         assert "frame_annotation" in timing_data
         assert "video_creation" in timing_data
