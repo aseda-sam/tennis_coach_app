@@ -154,7 +154,6 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
               showControls={true}
               aspectRatioMode="contain"
               videoId={demoVideo.id}
-              showPostureAnalysis={false}
               hasPoseData={analysisStatus?.has_analysis || false}
               controlsBelow={true}
               onNavigateReady={handleNavigateReady}

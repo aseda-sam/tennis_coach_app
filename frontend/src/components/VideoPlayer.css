@@ -415,6 +415,7 @@
 }
 
 /* Contact Markers */
+.serve-attempt-ranges,
 .contact-markers {
   position: absolute;
   top: 0;
@@ -757,6 +758,7 @@
   box-shadow: var(--shadow-primary-lg);
 }
 
+.video-controls-below__serve-attempt-ranges,
 .video-controls-below__contact-markers {
   position: absolute;
   top: 0;
@@ -767,10 +769,13 @@
   z-index: 3;
 }
 
+.video-controls-below__serve-attempt-ranges .serve-attempt-range,
 .video-controls-below__contact-markers .ball-contact-marker {
   top: var(--spacing-xs);
 }
 
+.video-controls-below__serve-attempt-ranges .serve-attempt-range,
+.video-controls-below__serve-attempt-ranges .serve-attempt-range *,
 .video-controls-below__contact-markers .ball-contact-marker,
 .video-controls-below__contact-markers .ball-contact-marker * {
   pointer-events: auto;

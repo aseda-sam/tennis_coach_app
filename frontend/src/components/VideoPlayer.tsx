@@ -5,15 +5,14 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useBallContacts } from '../hooks/useBallContacts';
+import { useServeAttempts } from '../hooks/useServeAttempts';
 import { useVideoMetadata } from '../hooks/useVideos';
 import { useVideoUrl } from '../hooks/useVideoUrl';
-import { BallContact, BallContactCreate } from '../services/ballContactApi';
-import AddContactButton from './AddContactButton';
-import BallContactMarker from './BallContactMarker';
-import BallContactModal from './BallContactModal';
+import { ServeAttempt, ServeAttemptCreate } from '../services/serveAttemptApi';
+import AddServeAttemptButton from './AddServeAttemptButton';
+import ServeAttemptRange from './ServeAttemptRange';
+import ServeAttemptModal from './ServeAttemptModal';
 import {
-  AnalyticsIcon,
   ArrowBackIcon,
   CloseIcon,
   FullscreenIcon,
@@ -23,7 +22,6 @@ import {
   VolumeOffIcon,
   WarningIcon,
 } from './Icons';
-import PostureAnalysisSidebar from './PostureAnalysisSidebar';
 import VideoOverlay from './VideoOverlay';
 import './VideoPlayer.css';
 
@@ -33,12 +31,11 @@ interface VideoPlayerProps {
   onClose?: () => void;
   showControls?: boolean;
   aspectRatioMode?: 'cover' | 'contain' | 'auto';
-  videoId?: number; // Video ID for fetching ball contacts
-  showPostureAnalysis?: boolean; // Show posture analysis sidebar
+  videoId?: number; // Video ID for fetching serve attempts
   hasPoseData?: boolean; // Whether pose detection data exists
   controlsBelow?: boolean; // Render controls below video instead of overlaying
-  onContactNavigate?: (contactId: number) => void; // Callback when contact is navigated to
-  onNavigateReady?: (navigateFn: (contactId: number) => void) => void; // Callback to expose navigate function
+  onContactNavigate?: (serveAttemptId: number) => void; // Callback when serve attempt is navigated to
+  onNavigateReady?: (navigateFn: (serveAttemptId: number) => void) => void; // Callback to expose navigate function
   isDemo?: boolean; // If true, disable contact creation and modification
 }
 
@@ -49,7 +46,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   showControls = true,
   aspectRatioMode = 'contain',
   videoId,
-  showPostureAnalysis = false,
   hasPoseData = false,
   controlsBelow = false,
   onContactNavigate,
@@ -65,13 +61,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
-  const [selectedContact, setSelectedContact] = useState<BallContact | null>(
+  const [selectedServeAttempt, setSelectedServeAttempt] = useState<ServeAttempt | null>(
     null
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPostureSidebarOpen, setIsPostureSidebarOpen] =
-    useState(showPostureAnalysis);
-  const [selectedContactId, setSelectedContactId] = useState<
+  const [selectedServeAttemptId, setSelectedServeAttemptId] = useState<
     number | undefined
   >();
   const [showOverlay, setShowOverlay] = useState(true);
@@ -84,14 +78,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [openRequestId, setOpenRequestId] = useState(0);
   const isAddContactVisible = !!videoId && !error && duration > 0;
 
-  // Use ball contacts hook if videoId is provided
+  // Use serve attempts hook if videoId is provided
   const {
-    contacts: ballContacts,
-    updateContact,
-    deleteContact,
-    createContact,
-  } = useBallContacts({
-    videoId: videoId || 0,
+    serveAttempts,
+    updateServeAttempt,
+    deleteServeAttempt,
+    createServeAttempt,
+  } = useServeAttempts({
+    videoId,
+    filters: videoId ? { video_id: videoId } : undefined,
     autoRefresh: !!videoId,
   });
 
@@ -345,11 +340,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     navigateFrame('backward');
   }, [navigateFrame]);
 
-  // Navigate to a specific contact by ID (exposed via callback)
-  const navigateToContactById = useCallback(
-    (contactId: number) => {
-      const contact = ballContacts.find((c) => c.id === contactId);
-      if (!contact) return;
+  // Navigate to a specific serve attempt by ID (exposed via callback)
+  const navigateToServeAttemptById = useCallback(
+    (serveAttemptId: number) => {
+      const serveAttempt = serveAttempts.find((sa) => sa.id === serveAttemptId);
+      if (!serveAttempt) return;
 
       const video = videoRef.current;
       if (!video) return;
@@ -359,89 +354,104 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         video.pause();
       }
 
+      // Use contact_timestamp if available, otherwise start_timestamp
+      const targetTime = serveAttempt.contact_timestamp || serveAttempt.start_timestamp;
+
       // Update state first to ensure overlay gets the new time immediately
-      setCurrentTime(contact.video_timestamp);
-      setSelectedContactId(contact.id);
+      setCurrentTime(targetTime);
+      setSelectedServeAttemptId(serveAttempt.id);
       
       // Then seek video (this will trigger seeked event which overlay listens to)
-      video.currentTime = contact.video_timestamp;
+      video.currentTime = targetTime;
       
-      onContactNavigate?.(contact.id);
+      onContactNavigate?.(serveAttempt.id);
     },
-    [ballContacts, isPlaying, onContactNavigate]
+    [serveAttempts, isPlaying, onContactNavigate]
   );
 
-  // Get sorted contacts for navigation
-  const sortedContacts = useMemo(() => {
-    return [...ballContacts].sort((a, b) => a.video_timestamp - b.video_timestamp);
-  }, [ballContacts]);
+  // Get sorted serve attempts for navigation (by contact_timestamp or start_timestamp)
+  const sortedServeAttempts = useMemo(() => {
+    return [...serveAttempts].sort((a, b) => {
+      const timeA = a.contact_timestamp || a.start_timestamp;
+      const timeB = b.contact_timestamp || b.start_timestamp;
+      return timeA - timeB;
+    });
+  }, [serveAttempts]);
 
-  // Navigate to previous/next contact
-  const navigateToPreviousContact = useCallback(() => {
-    if (sortedContacts.length === 0) return;
-
-    const video = videoRef.current;
-    const videoTime = video?.currentTime ?? currentTime;
-
-    // Find the contact before current time (with small tolerance)
-    const tolerance = 0.1;
-    const previousContacts = sortedContacts.filter(
-      (c) => c.video_timestamp < videoTime - tolerance
-    );
-
-    if (previousContacts.length > 0) {
-      const previousContact = previousContacts[previousContacts.length - 1];
-      navigateToContactById(previousContact.id);
-    }
-  }, [sortedContacts, currentTime, navigateToContactById]);
-
-  const navigateToNextContact = useCallback(() => {
-    if (sortedContacts.length === 0) return;
+  // Navigate to previous/next serve attempt
+  const navigateToPreviousServeAttempt = useCallback(() => {
+    if (sortedServeAttempts.length === 0) return;
 
     const video = videoRef.current;
     const videoTime = video?.currentTime ?? currentTime;
 
-    // Find the contact after current time (with small tolerance)
+    // Find the serve attempt before current time (with small tolerance)
     const tolerance = 0.1;
-    const nextContact = sortedContacts.find(
-      (c) => c.video_timestamp > videoTime + tolerance
-    );
+    const previousAttempts = sortedServeAttempts.filter((sa) => {
+      const saTime = sa.contact_timestamp || sa.start_timestamp;
+      return saTime < videoTime - tolerance;
+    });
 
-    if (nextContact) {
-      navigateToContactById(nextContact.id);
+    if (previousAttempts.length > 0) {
+      const previousAttempt = previousAttempts[previousAttempts.length - 1];
+      navigateToServeAttemptById(previousAttempt.id);
     }
-  }, [sortedContacts, currentTime, navigateToContactById]);
+  }, [sortedServeAttempts, currentTime, navigateToServeAttemptById]);
+
+  const navigateToNextServeAttempt = useCallback(() => {
+    if (sortedServeAttempts.length === 0) return;
+
+    const video = videoRef.current;
+    const videoTime = video?.currentTime ?? currentTime;
+
+    // Find the serve attempt after current time (with small tolerance)
+    const tolerance = 0.1;
+    const nextAttempt = sortedServeAttempts.find((sa) => {
+      const saTime = sa.contact_timestamp || sa.start_timestamp;
+      return saTime > videoTime + tolerance;
+    });
+
+    if (nextAttempt) {
+      navigateToServeAttemptById(nextAttempt.id);
+    }
+  }, [sortedServeAttempts, currentTime, navigateToServeAttemptById]);
 
   // Check if previous/next navigation is available
-  const hasPreviousContact = useMemo(() => {
+  const hasPreviousServeAttempt = useMemo(() => {
     const tolerance = 0.1;
-    return sortedContacts.some((c) => c.video_timestamp < currentTime - tolerance);
-  }, [sortedContacts, currentTime]);
+    return sortedServeAttempts.some((sa) => {
+      const saTime = sa.contact_timestamp || sa.start_timestamp;
+      return saTime < currentTime - tolerance;
+    });
+  }, [sortedServeAttempts, currentTime]);
 
-  const hasNextContact = useMemo(() => {
+  const hasNextServeAttempt = useMemo(() => {
     const tolerance = 0.1;
-    return sortedContacts.some((c) => c.video_timestamp > currentTime + tolerance);
-  }, [sortedContacts, currentTime]);
+    return sortedServeAttempts.some((sa) => {
+      const saTime = sa.contact_timestamp || sa.start_timestamp;
+      return saTime > currentTime + tolerance;
+    });
+  }, [sortedServeAttempts, currentTime]);
 
-  const navigateRef = useRef(navigateToContactById);
+  const navigateRef = useRef(navigateToServeAttemptById);
 
   useEffect(() => {
-    navigateRef.current = navigateToContactById;
-  }, [navigateToContactById]);
+    navigateRef.current = navigateToServeAttemptById;
+  }, [navigateToServeAttemptById]);
 
-  const stableNavigateToContactById = useCallback((contactId: number) => {
-    navigateRef.current(contactId);
+  const stableNavigateToServeAttemptById = useCallback((serveAttemptId: number) => {
+    navigateRef.current(serveAttemptId);
   }, []);
 
   // Expose navigate function to parent
   useEffect(() => {
     if (onNavigateReady) {
-      onNavigateReady(stableNavigateToContactById);
+      onNavigateReady(stableNavigateToServeAttemptById);
     }
-  }, [onNavigateReady, stableNavigateToContactById]);
+  }, [onNavigateReady, stableNavigateToServeAttemptById]);
 
-  // Open add contact form at current time (for keyboard shortcut)
-  const openAddContactForm = useCallback(() => {
+  // Open add serve attempt form at current time (for keyboard shortcut)
+  const openAddServeAttemptForm = useCallback(() => {
     if (!isAddContactVisible) return;
 
     const video = videoRef.current;
@@ -462,16 +472,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setHighlightTimestamp(timestamp);
     } else {
       // For overlay mode, trigger via the button's onFormOpen callback
-      // We'll handle this by setting a state that the overlay AddContactButton can react to
       setHighlightTimestamp(timestamp);
-      // The overlay AddContactButton will be triggered via a ref or we can add a similar mechanism
-      // For now, let's use the same mechanism for consistency
       setOpenTimestamp(timestamp);
       setOpenRequestId((prev) => prev + 1);
     }
   }, [isAddContactVisible, currentTime, isPlaying, controlsBelow]);
 
-  // Keyboard shortcuts for frame navigation, play/pause, and contact navigation
+  // Keyboard shortcuts for frame navigation, play/pause, and serve attempt navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Only handle keyboard shortcuts when video player is focused or when not in input fields
@@ -498,20 +505,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           break;
         case '[':
           event.preventDefault();
-          navigateToPreviousContact();
+          navigateToPreviousServeAttempt();
           break;
         case ']':
           event.preventDefault();
-          navigateToNextContact();
+          navigateToNextServeAttempt();
           break;
         case 'a':
         case 'A':
           event.preventDefault();
           if (isDemo) {
-            alert('Manual Contact Creation is disabled in Demo Mode!');
+            alert('Manual Serve Attempt Creation is disabled in Demo Mode!');
             break;
           }
-          openAddContactForm();
+          openAddServeAttemptForm();
           break;
         default:
           break;
@@ -529,9 +536,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     togglePlay,
     navigateToPreviousFrame,
     navigateToNextFrame,
-    navigateToPreviousContact,
-    navigateToNextContact,
-    openAddContactForm,
+    navigateToPreviousServeAttempt,
+    navigateToNextServeAttempt,
+    openAddServeAttemptForm,
     isDemo,
   ]);
 
@@ -617,24 +624,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <CloseIcon size={20} />
           </button>
           <h2 className="video-title">{title}</h2>
-          {videoId && (
-            <button
-              className="posture-analysis-toggle"
-              onClick={() => setIsPostureSidebarOpen(!isPostureSidebarOpen)}
-              title="Toggle posture analysis"
-            >
-              <AnalyticsIcon size={18} />
-            </button>
-          )}
         </div>
       )}
 
-      <div
-        className={`video-player-wrapper ${isPostureSidebarOpen ? 'with-sidebar' : ''}`}
-        style={{
-          minHeight: isPostureSidebarOpen ? '500px' : 'auto',
-        }}
-      >
+      <div className="video-player-wrapper">
         {/* Controls row (kept minimal) - only show when controlsBelow is false */}
         {hasPoseData && !controlsBelow && (
           <div className="overlay-toggle-container">
@@ -651,7 +644,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         )}
 
         <div
-          className={`video-player-main ${isPostureSidebarOpen ? 'with-sidebar' : ''}`}
+          className="video-player-main"
         >
           {/* Video Container */}
           <div
@@ -692,15 +685,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
             )}
 
-            {/* Add Contact Button (overlay placement) */}
+            {/* Add Serve Attempt Button (overlay placement) */}
             {!controlsBelow && (
-              <AddContactButton
+              <AddServeAttemptButton
                 currentTime={currentTime}
                 videoId={videoId || 0}
                 videoDuration={duration}
                 fps={videoMetadata?.fps}
-                onAddContact={async (contact: BallContactCreate) => {
-                  await createContact(contact);
+                onAddServeAttempt={async (serveAttempt: ServeAttemptCreate) => {
+                  await createServeAttempt(serveAttempt);
                 }}
                 isVisible={isAddContactVisible}
                 isReadOnly={isDemo}
@@ -768,35 +761,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       }}
                       step={frameStep}
                     />
-              {/* Contact markers */}
-              {ballContacts.length > 0 && duration > 0 && (
-                <div className="contact-markers" data-tour="contact-markers">
-                  {ballContacts.map((contact) => {
-                          const position =
-                            (contact.video_timestamp / duration) * 100;
-                          const isSelected = selectedContactId === contact.id;
+              {/* Serve attempt ranges */}
+              {serveAttempts.length > 0 && duration > 0 && (
+                <div className="serve-attempt-ranges" data-tour="serve-attempt-ranges">
+                  {serveAttempts.map((serveAttempt) => {
+                    const isSelected = selectedServeAttemptId === serveAttempt.id;
 
-                          return (
-                            <BallContactMarker
-                              key={contact.id}
-                              contact={contact}
-                              position={position}
-                              isSelected={isSelected}
-                              onClick={() => {
-                                setSelectedContact(contact);
-                                setSelectedContactId(contact.id);
-                                setIsModalOpen(true);
-                              }}
-                              onAnalyzeClick={() => {
-                                setSelectedContactId(contact.id);
-                                // The analysis will be handled by the sidebar
-                              }}
-                              showAnalysisButton={isPostureSidebarOpen}
-                            />
-                          );
-                        })}
-                      </div>
-                    )}
+                    return (
+                      <ServeAttemptRange
+                        key={serveAttempt.id}
+                        serveAttempt={serveAttempt}
+                        duration={duration}
+                        isSelected={isSelected}
+                        onClick={() => {
+                          setSelectedServeAttempt(serveAttempt);
+                          setSelectedServeAttemptId(serveAttempt.id);
+                          setIsModalOpen(true);
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
                     {/* Highlight marker for locked contact timestamp */}
                     {highlightTimestamp !== null && duration > 0 && (
                       <div
@@ -862,25 +848,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             )}
           </div>
 
-          {/* Posture Analysis Sidebar */}
-          {videoId && (
-            <PostureAnalysisSidebar
-              ballContacts={ballContacts}
-              videoId={videoId}
-              onContactSelect={(contact) => {
-                setSelectedContact(contact);
-                setSelectedContactId(contact.id);
-                // Seek to the contact time
-                const video = videoRef.current;
-                if (video) {
-                  video.currentTime = contact.video_timestamp;
-                }
-              }}
-              selectedContactId={selectedContactId}
-              isVisible={isPostureSidebarOpen}
-              onClose={() => setIsPostureSidebarOpen(false)}
-            />
-          )}
+          {/* Posture Analysis Sidebar - Removed: serve attempts already have metrics via serve analysis */}
         </div>
       </div>
 
@@ -900,17 +868,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onPointerDown={handleAddBandPointerDown}
                 title={
                   isDemo
-                    ? 'Demo mode: manual contact creation is disabled'
-                    : 'Click to manually add contact (or press A)'
+                    ? 'Demo mode: manual serve attempt creation is disabled'
+                    : 'Click to manually tag serve attempt (or press A)'
                 }
               />
-              <AddContactButton
+              <AddServeAttemptButton
                 currentTime={currentTime}
                 videoId={videoId || 0}
                 videoDuration={duration}
                 fps={videoMetadata?.fps}
-                onAddContact={async (contact: BallContactCreate) => {
-                  await createContact(contact);
+                onAddServeAttempt={async (serveAttempt: ServeAttemptCreate) => {
+                  await createServeAttempt(serveAttempt);
                 }}
                 isVisible={isAddContactVisible}
                 isReadOnly={isDemo}
@@ -951,31 +919,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onTouchEnd={handleSeekEnd}
                 step={frameStep}
               />
-              {/* Contact markers */}
-              {ballContacts.length > 0 && duration > 0 && (
+              {/* Serve attempt ranges */}
+              {serveAttempts.length > 0 && duration > 0 && (
                 <div
-                  className="video-controls-below__contact-markers"
-                  data-tour="contact-markers"
+                  className="video-controls-below__serve-attempt-ranges"
+                  data-tour="serve-attempt-ranges"
                 >
-                  {ballContacts.map((contact) => {
-                    const position = (contact.video_timestamp / duration) * 100;
-                    const isSelected = selectedContactId === contact.id;
+                  {serveAttempts.map((serveAttempt) => {
+                    const isSelected = selectedServeAttemptId === serveAttempt.id;
 
                     return (
-                      <BallContactMarker
-                        key={contact.id}
-                        contact={contact}
-                        position={position}
+                      <ServeAttemptRange
+                        key={serveAttempt.id}
+                        serveAttempt={serveAttempt}
+                        duration={duration}
                         isSelected={isSelected}
                         onClick={() => {
-                          setSelectedContact(contact);
-                          setSelectedContactId(contact.id);
+                          setSelectedServeAttempt(serveAttempt);
+                          setSelectedServeAttemptId(serveAttempt.id);
                           setIsModalOpen(true);
                         }}
-                        onAnalyzeClick={() => {
-                          setSelectedContactId(contact.id);
-                        }}
-                        showAnalysisButton={isPostureSidebarOpen}
                       />
                     );
                   })}
@@ -1010,12 +973,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <div className="video-controls-below__center-controls">
               <button
                 className="video-controls-below__nav-btn"
-                disabled={!hasPreviousContact}
-                onClick={navigateToPreviousContact}
-                title={hasPreviousContact ? 'Go to previous contact' : 'No previous contact'}
+                disabled={!hasPreviousServeAttempt}
+                onClick={navigateToPreviousServeAttempt}
+                title={hasPreviousServeAttempt ? 'Go to previous serve attempt' : 'No previous serve attempt'}
               >
                 <ArrowBackIcon size={16} />
-                Previous Contact
+                Previous Serve
               </button>
               <button
                 className="video-controls-below__play-btn"
@@ -1025,11 +988,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </button>
               <button
                 className="video-controls-below__next-btn"
-                disabled={!hasNextContact}
-                onClick={navigateToNextContact}
-                title={hasNextContact ? 'Go to next contact' : 'No next contact'}
+                disabled={!hasNextServeAttempt}
+                onClick={navigateToNextServeAttempt}
+                title={hasNextServeAttempt ? 'Go to next serve attempt' : 'No next serve attempt'}
               >
-                Next Contact
+                Next Serve
                 <span className="video-controls-below__arrow-right">
                   <ArrowBackIcon size={16} />
                 </span>
@@ -1053,22 +1016,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Ball Contact Management Modal */}
-      <BallContactModal
-        contact={selectedContact}
+      {/* Serve Attempt Management Modal */}
+      <ServeAttemptModal
+        serveAttempt={selectedServeAttempt}
         isOpen={isModalOpen}
         videoDuration={duration}
         isDemo={isDemo}
         onClose={() => {
           setIsModalOpen(false);
-          setSelectedContact(null);
-          setSelectedContactId(undefined);
+          setSelectedServeAttempt(null);
+          setSelectedServeAttemptId(undefined);
         }}
-        onUpdate={async (contactId, updates) => {
-          await updateContact(contactId, updates);
+        onUpdate={async (serveAttemptId, updates) => {
+          await updateServeAttempt(serveAttemptId, updates);
         }}
-        onDelete={async (contactId) => {
-          await deleteContact(contactId);
+        onDelete={async (serveAttemptId) => {
+          await deleteServeAttempt(serveAttemptId);
         }}
       />
     </div>

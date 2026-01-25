@@ -3,7 +3,48 @@
 We use **Redis Queue (RQ)** for slow work:
 
 - Pose detection (MediaPipe)
-- Serve attempt analysis (writes metrics into `serve_attempts`)
+- Serve attempt analysis runs synchronously (not via RQ)
+
+## Data Flow: Serve Analysis Loop
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant API
+    participant RQ
+    participant PoseService
+    participant ServeService
+    participant DB
+
+    User->>Frontend: Upload serve video
+    Frontend->>API: POST /v0/videos/upload
+    API->>DB: Create video record
+    API->>Frontend: Return video_id
+
+    User->>Frontend: Tag serve attempts
+    Frontend->>API: POST /v0/serve-attempts/
+    API->>DB: Create serve_attempt records
+    API->>Frontend: Return serve_attempt_ids
+
+    User->>Frontend: Trigger pose analysis
+    Frontend->>API: POST /v0/analysis/videos/{id}
+    API->>RQ: Enqueue analyze_pose_detection_rq
+    API->>Frontend: Return job_id
+
+    RQ->>PoseService: Run pose detection
+    PoseService->>DB: Save pose_detections
+
+    User->>Frontend: Trigger serve analysis
+    Frontend->>API: POST /v0/videos/{id}/analyze-serves
+    API->>ServeService: Calculate metrics (sync)
+    ServeService->>DB: Update serve_attempts (elbow_angle_at_contact)
+
+    Frontend->>API: GET /v0/serve-attempts/me
+    API->>DB: Query serve_attempts
+    API->>Frontend: Return metrics + recommendations
+    Frontend->>User: Display metrics + one recommendation
+```
 
 ## Local dev (Docker Compose)
 

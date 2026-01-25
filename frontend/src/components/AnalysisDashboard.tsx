@@ -2,6 +2,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
+import { useServeAttempts } from '../hooks/useServeAttempts';
+import { serveAttemptApi } from '../services/serveAttemptApi';
 import './AnalysisDashboard.css';
 import AnalysisRightPanel from './AnalysisRightPanel';
 import { ArrowBackIcon } from './Icons';
@@ -64,22 +66,57 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   }, [startAnalysis]);
 
   const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
-    ((contactId: number) => void) | null
+    ((serveAttemptId: number) => void) | null
   >(null);
+  const [isAnalyzingServes, setIsAnalyzingServes] = useState(false);
 
-  const handleContactClick = useCallback(
-    (contactId: number) => {
-      videoPlayerNavigate?.(contactId);
+  // Get serve attempts for this video
+  const { serveAttempts } = useServeAttempts({
+    videoId,
+    filters: { video_id: videoId },
+    autoRefresh: true,
+  });
+
+  const handleServeAttemptClick = useCallback(
+    (serveAttemptId: number) => {
+      videoPlayerNavigate?.(serveAttemptId);
     },
     [videoPlayerNavigate]
   );
 
   const handleNavigateReady = useCallback(
-    (navigateFn: (contactId: number) => void) => {
+    (navigateFn: (serveAttemptId: number) => void) => {
       setVideoPlayerNavigate(() => navigateFn);
     },
     []
   );
+
+  const handleAnalyzeServes = useCallback(async () => {
+    if (serveAttempts.length === 0) {
+      alert('Please tag serve attempts first before analyzing.');
+      return;
+    }
+
+    setIsAnalyzingServes(true);
+    try {
+      await serveAttemptApi.analyzeServes(videoId);
+      // Invalidate serve attempts query to refresh with metrics
+      queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
+      alert('Serve analysis completed! Check the metrics below.');
+    } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { data?: { detail?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        axiosError?.response?.data?.detail ||
+        axiosError?.message ||
+        'Failed to analyze serves. Please try again.';
+      alert(errorMessage);
+    } finally {
+      setIsAnalyzingServes(false);
+    }
+  }, [videoId, serveAttempts.length, queryClient]);
 
   return (
     <div className="analysis-dashboard">
@@ -105,7 +142,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             showControls={true}
             aspectRatioMode="contain"
             videoId={videoId}
-            showPostureAnalysis={false}
             hasPoseData={analysisStatus?.has_analysis || false}
             controlsBelow={true}
             onNavigateReady={handleNavigateReady}
@@ -158,11 +194,23 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               )}
             </>
           )}
+          {analysisStatus?.has_analysis && serveAttempts.length > 0 && (
+            <div style={{ marginBottom: '1rem' }}>
+              <button
+                className="analysis-dashboard__analyze-btn"
+                onClick={handleAnalyzeServes}
+                disabled={isAnalyzingServes}
+                style={{ width: '100%' }}
+              >
+                {isAnalyzingServes ? 'Analyzing Serves...' : 'Analyze Serves'}
+              </button>
+            </div>
+          )}
           <AnalysisRightPanel
             videoId={videoId}
             videoFilename={videoFilename}
             analysisStatus={analysisStatus}
-            onContactClick={handleContactClick}
+            onContactClick={handleServeAttemptClick}
             isDemo={false}
           />
         </div>

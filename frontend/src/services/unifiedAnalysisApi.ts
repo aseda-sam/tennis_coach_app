@@ -117,7 +117,7 @@ class UnifiedAnalysisApi {
    */
   async getTaskStats(): Promise<TaskStatsResponse> {
     const response = await analysisApi.get<TaskStatsResponse>(
-      '/analysis/tasks/stats'
+      '/analysis/stats'
     );
     return response.data;
   }

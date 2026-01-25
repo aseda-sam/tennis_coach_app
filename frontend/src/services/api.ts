@@ -3,7 +3,6 @@ import {
   OverlayData,
   VideoListResponse,
   VideoMetadata,
-  VideoMetrics,
   VideoUploadResponse,
 } from '../types/video';
 import { supabase } from './supabaseClient';
@@ -81,12 +80,31 @@ const normalizeAnalysis = (data: unknown): AnalysisData => {
 
 export const videoApi = {
   // Upload a video file
-  uploadVideo: async (file: File, isDemo: boolean = false): Promise<VideoUploadResponse> => {
+  uploadVideo: async (
+    file: File,
+    isDemo: boolean = false,
+    metadata?: {
+      session_type?: string;
+      camera_angle?: string;
+    }
+  ): Promise<VideoUploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
 
+    const params = new URLSearchParams();
+    if (isDemo) {
+      params.append('is_demo', 'true');
+    }
+    if (metadata?.session_type) {
+      params.append('session_type', metadata.session_type);
+    }
+    if (metadata?.camera_angle) {
+      params.append('camera_angle', metadata.camera_angle);
+    }
+
+    const queryString = params.toString();
     const response = await api.post<VideoUploadResponse>(
-      `/videos/upload?is_demo=${isDemo}`,
+      `/videos/upload${queryString ? `?${queryString}` : ''}`,
       formData,
       {
         headers: {
@@ -166,11 +184,6 @@ export const videoApi = {
     return response.data.statuses;
   },
 
-  // Get video performance metrics
-  getVideoMetrics: async (videoId: number): Promise<VideoMetrics> => {
-    const response = await api.get<VideoMetrics>(`/videos/${videoId}/metrics`);
-    return response.data;
-  },
 
   // Get overlay data for client-side rendering
   getOverlayData: async (videoId: number): Promise<OverlayData> => {
@@ -328,7 +341,7 @@ export const analysisApi = {
 
   // Get task statistics
   getTaskStats: async (): Promise<TaskStatsResponse> => {
-    const response = await api.get<TaskStatsResponse>('/analysis/tasks/stats');
+    const response = await api.get<TaskStatsResponse>('/analysis/stats');
     return response.data;
   },
 
