@@ -49,8 +49,9 @@ venv.bak/
 *.swo
 *~
 
-# Cursor
+# Cursor (but track plans)
 .cursor/
+!.cursor/plans/
 
 # Claude AI
 .claude/
