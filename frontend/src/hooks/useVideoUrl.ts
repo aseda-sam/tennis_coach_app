@@ -34,7 +34,7 @@ export const useVideoUrl = ({
 
   // Return resolved URL: use signed URL if available, fallback to original URL on error or when not fetching
   const resolvedUrl = shouldFetchSignedUrl
-    ? (urlQuery.data || (urlQuery.error ? videoUrl : ''))
+    ? urlQuery.data || (urlQuery.error ? videoUrl : '')
     : videoUrl;
 
   return {

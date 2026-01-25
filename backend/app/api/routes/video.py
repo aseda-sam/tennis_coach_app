@@ -449,7 +449,6 @@ async def get_video_analysis_status(
             has_analysis = True
             analysis_types.append("pose_detection")
 
-
         return VideoAnalysisStatus(
             video_id=video_id,
             has_analysis=has_analysis,
