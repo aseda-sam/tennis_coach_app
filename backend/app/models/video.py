@@ -74,9 +74,6 @@ class Video(Base):
     pose_detections = relationship(
         "PoseDetection", back_populates="video", cascade="all, delete-orphan"
     )
-    ball_contacts = relationship(
-        "BallContact", back_populates="video", cascade="all, delete-orphan"
-    )
     video_annotations = relationship(
         "VideoAnnotation", back_populates="video", cascade="all, delete-orphan"
     )

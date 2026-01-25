@@ -86,12 +86,14 @@ Thumbs.db
 # Data files
 data/videos/raw/*
 data/videos/processed/*
+data/videos/demo/*
 data/analysis_cache/*
 data/database/*.db
 
 # Keep directories but ignore contents
 !data/videos/raw/.gitkeep
 !data/videos/processed/.gitkeep
+!data/videos/demo/.gitkeep
 !data/analysis_cache/.gitkeep
 !data/database/.gitkeep
 

@@ -14,9 +14,6 @@ class TaskStatus(BaseModel):
     analysis_type: Literal[
         "pose_only",
         "ball_only",
-        "video_annotation_only",
-        "pose_with_annotation",
-        "contact_metrics",
     ] = Field(description="Type of analysis being performed")
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
         description="Current task status (mapped from RQ statuses)"
@@ -50,9 +47,6 @@ class TaskStartResponse(BaseModel):
     analysis_type: Literal[
         "pose_only",
         "ball_only",
-        "video_annotation_only",
-        "pose_with_annotation",
-        "contact_metrics",
     ] = Field(description="Type of analysis being performed")
     status: Literal["queued"] = Field(description="Initial task status")
     message: str = Field(description="Confirmation message")
@@ -87,19 +81,12 @@ class AnalysisRequest(BaseModel):
     analysis_type: Literal[
         "pose_only",
         "ball_only",
-        "video_annotation_only",
-        "pose_with_annotation",
-        "contact_metrics",
     ] = Field(description="Type of analysis to perform")
     confidence_threshold: float = Field(
         default=0.7,
         ge=0.0,
         le=1.0,
-        description="YOLO confidence threshold (not used for contact_metrics)",
-    )
-    force_reanalysis: bool = Field(
-        default=False,
-        description="Force reanalysis even if already analyzed (for contact_metrics)",
+        description="YOLO confidence threshold",
     )
 
 
@@ -111,9 +98,6 @@ class AnalysisResponse(BaseModel):
     analysis_type: Literal[
         "pose_only",
         "ball_only",
-        "video_annotation_only",
-        "pose_with_annotation",
-        "contact_metrics",
     ] = Field(description="Type of analysis being performed")
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
         description="Current task status (mapped from RQ statuses)"

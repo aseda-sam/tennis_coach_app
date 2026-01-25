@@ -24,7 +24,6 @@ from app.services import video_service
 from app.services.rq_monitoring import get_queue_stats
 from app.services.rq_tasks import (
     analyze_ball_detection_rq,
-    analyze_contact_metrics_rq,
     analyze_pose_detection_rq,
 )
 from app.utils.authorization import require_video_access, require_video_not_demo
@@ -74,7 +73,6 @@ async def start_analysis(
         task_function_map = {
             "pose_only": analyze_pose_detection_rq,
             "ball_only": analyze_ball_detection_rq,
-            "contact_metrics": analyze_contact_metrics_rq,
         }
 
         task_function = task_function_map.get(request.analysis_type)
@@ -88,20 +86,13 @@ async def start_analysis(
         retry_config = {
             "pose_only": Retry(max=2, interval=60),
             "ball_only": Retry(max=2, interval=60),
-            "contact_metrics": Retry(max=1, interval=30),
         }
 
         # Configure timeout based on analysis type
         timeout_config = {
             "pose_only": 300,  # 5 minutes
             "ball_only": 300,  # 5 minutes
-            "contact_metrics": 60,  # 1 minute (should be fast)
         }
-
-        # Extract force_reanalysis for contact_metrics
-        force_reanalysis = (
-            request.force_reanalysis if hasattr(request, "force_reanalysis") else False
-        )
 
         try:
             logger.info(
@@ -116,26 +107,15 @@ async def start_analysis(
             # Enqueue RQ job
             logger.info(f"Enqueueing {request.analysis_type} job to Redis queue...")
             try:
-                # Build job arguments based on analysis type
-                if request.analysis_type == "contact_metrics":
-                    job = analysis_queue.enqueue(
-                        task_function,
-                        video_id=video_id,
-                        force_reanalysis=force_reanalysis,
-                        retry=retry_config[request.analysis_type],
-                        job_timeout=timeout_config[request.analysis_type],
-                        result_ttl=3600,  # Keep results for 1 hour
-                    )
-                else:
-                    job = analysis_queue.enqueue(
-                        task_function,
-                        video_id=video_id,
-                        video_path=video.file_path,
-                        confidence_threshold=request.confidence_threshold,
-                        retry=retry_config[request.analysis_type],
-                        job_timeout=timeout_config[request.analysis_type],
-                        result_ttl=3600,  # Keep results for 1 hour
-                    )
+                job = analysis_queue.enqueue(
+                    task_function,
+                    video_id=video_id,
+                    video_path=video.file_path,
+                    confidence_threshold=request.confidence_threshold,
+                    retry=retry_config[request.analysis_type],
+                    job_timeout=timeout_config[request.analysis_type],
+                    result_ttl=3600,  # Keep results for 1 hour
+                )
                 logger.info(
                     f"Successfully enqueued {request.analysis_type} analysis job {job.id} "
                     f"for video {video_id} to queue '{analysis_queue.name}'"
@@ -588,8 +568,6 @@ def _get_analysis_type_from_job(job: Job) -> str:
         return "pose_only"
     elif "analyze_ball_detection_rq" in func_name:
         return "ball_only"
-    elif "analyze_contact_metrics_rq" in func_name:
-        return "contact_metrics"
     else:
         return "pose_only"  # Default fallback
 
@@ -599,6 +577,5 @@ def _get_estimated_duration(analysis_type: str) -> float:
     estimates = {
         "pose_only": 120.0,  # 2 minutes
         "ball_only": 180.0,  # 3 minutes
-        "contact_metrics": 30.0,  # 30 seconds (should be fast)
     }
     return estimates.get(analysis_type, 180.0)

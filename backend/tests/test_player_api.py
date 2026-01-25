@@ -3,8 +3,6 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models.video import Video
-
 
 class TestPlayerAPI:
     """Test cases for Player API endpoints."""
@@ -17,7 +15,6 @@ class TestPlayerAPI:
             "name": "John Doe",
             "dominant_hand": "right",
             "backhand_style": "two_handed",
-            "height": 180.5,
             "notes": "Professional player",
         }
 
@@ -28,7 +25,6 @@ class TestPlayerAPI:
         assert data["name"] == "John Doe"
         assert data["dominant_hand"] == "right"
         assert data["backhand_style"] == "two_handed"
-        assert data["height"] == 180.5
         assert data["notes"] == "Professional player"
         assert "id" in data
         assert "created_at" in data
@@ -40,7 +36,6 @@ class TestPlayerAPI:
         player_data = {
             "name": "Jane Smith",
             "dominant_hand": "left",
-            "height": 175.0,
         }
 
         response = client.post("/v0/players/", json=player_data)
@@ -50,7 +45,6 @@ class TestPlayerAPI:
         assert data["name"] == "Jane Smith"
         assert data["dominant_hand"] == "left"
         assert data["backhand_style"] is None
-        assert data["height"] == 175.0
         assert "id" in data
         assert "created_at" in data
 
@@ -185,7 +179,6 @@ class TestPlayerAPI:
             "name": "Test Player",
             "dominant_hand": "right",
             "backhand_style": "two_handed",
-            "height": 175.0,
         }
 
         create_response = client.post("/v0/players/", json=player_data)
@@ -196,7 +189,6 @@ class TestPlayerAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Test Player"
-        assert data["height"] == 175.0
 
     def test_get_player_by_id_not_found(
         self, client: TestClient, db_session: Session
@@ -223,7 +215,6 @@ class TestPlayerAPI:
         # Update player
         update_data = {
             "name": "Updated Name",
-            "height": 180.0,
             "notes": "Updated notes",
         }
 
@@ -232,7 +223,6 @@ class TestPlayerAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Updated Name"
-        assert data["height"] == 180.0
         assert data["notes"] == "Updated notes"
         assert data["dominant_hand"] == "right"  # Unchanged
         assert data["backhand_style"] == "two_handed"  # Unchanged
@@ -342,48 +332,3 @@ class TestPlayerAPI:
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"]
-
-    def test_player_with_ball_contacts(
-        self, client: TestClient, db_session: Session, test_user_id: str
-    ) -> None:
-        """Test player can be retrieved after ball contacts are created."""
-        # Create player
-        player_data = {
-            "name": "Test Player",
-            "dominant_hand": "right",
-            "backhand_style": "two_handed",
-        }
-        create_response = client.post("/v0/players/", json=player_data)
-        player_id = create_response.json()["id"]
-
-        # Create a video directly in the database for testing
-        test_video = Video(
-            filename="test_video.mp4",
-            file_path="/path/to/test_video.mp4",
-            file_size=1000000,
-            duration=60.0,
-            width=1920,
-            height=1080,
-            status="uploaded",
-            user_id=test_user_id,
-        )
-        db_session.add(test_video)
-        db_session.commit()
-        video_id = test_video.id
-
-        # Create ball contacts for the player
-        ball_contact_data = {
-            "video_id": video_id,
-            "video_timestamp": 10.0,
-            "contact_hand": "right",
-            "stroke_type": "ground_stroke",
-            "player_id": player_id,
-        }
-        client.post("/v0/ball-contacts/", json=ball_contact_data)
-
-        # Get player and verify it still works
-        response = client.get(f"/v0/players/{player_id}")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["name"] == "Test Player"

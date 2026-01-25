@@ -64,16 +64,3 @@ class PlayerWithVideos(BaseModel):
     total_videos: int = Field(description="Number of videos for this player")
 
     model_config = {"from_attributes": True}
-
-
-class BallContactPlayerOptions(BaseModel):
-    """Schema for ball contact player assignment options."""
-
-    auto_assign: Optional[int] = Field(
-        None, description="Player ID to auto-assign if only one player in video"
-    )
-    player_name: Optional[str] = Field(None, description="Name of auto-assigned player")
-    options: list[PlayerInfo] = Field(description="Available player options")
-    message: Optional[str] = Field(
-        None, description="Message explaining assignment logic"
-    )

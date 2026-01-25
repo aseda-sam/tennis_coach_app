@@ -40,7 +40,6 @@ def _create_player_info(db: Session, player: Player) -> PlayerInfo:
         name=player.name,
         dominant_hand=player.dominant_hand,
         backhand_style=player.backhand_style,
-        height=player.height,
         notes=player.notes,
         created_at=player.created_at,
         updated_at=player.updated_at,
@@ -61,7 +60,6 @@ def create_player(
             dominant_hand=player.dominant_hand,
             user_id=current_user["id"],
             backhand_style=player.backhand_style,
-            height=player.height,
             notes=player.notes,
         )
 
@@ -102,7 +100,6 @@ def get_players(
                 name=player.name,
                 dominant_hand=player.dominant_hand,
                 backhand_style=player.backhand_style,
-                height=player.height,
                 created_at=player.created_at,
             )
             for player in players

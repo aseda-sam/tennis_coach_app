@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas.video_player import (
-    BallContactPlayerOptions,
     PlayerWithVideos,
     VideoPlayerCreate,
     VideoPlayerInfo,
@@ -25,9 +24,6 @@ from app.services.video_player_service import (
     delete_video_player_association,
     get_players_in_video,
     get_videos_for_player,
-)
-from app.services.video_player_service import (
-    get_ball_contact_player_options as get_ball_contact_options,
 )
 from app.services.video_player_service import (
     update_video_player_association as update_video_player,
@@ -267,28 +263,3 @@ def get_player_videos(
     except ValueError as e:
         log_and_raise_error(e, "get_player_videos", {"player_id": player_id})
 
-
-@router.get(
-    "/videos/{video_id}/player-options/", response_model=BallContactPlayerOptions
-)
-def get_ball_contact_player_options(
-    video_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> BallContactPlayerOptions:
-    """Get player assignment options for ball contact creation."""
-    try:
-        # Get video to check authorization
-        video = video_service.get_video_by_id(db, video_id)
-        if not video:
-            raise ValueError(f"Video with ID {video_id} not found")
-
-        # Check authorization
-        require_video_access(video, current_user)
-
-        options = get_ball_contact_options(db, video_id)
-        return BallContactPlayerOptions(**options)
-    except ValueError as e:
-        log_and_raise_error(
-            e, "get_ball_contact_player_options", {"video_id": video_id}
-        )

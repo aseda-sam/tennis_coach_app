@@ -348,7 +348,7 @@ async def api_info() -> dict[str, str]:
         "version": "0.1.0",
         "status": "alpha",
         "warning": "This API is in alpha stage. Breaking changes may occur without notice.",
-        "endpoints": "videos: /v0/videos, ball-contacts: /v0/ball-contacts, players: /v0/players, video-quality: /v0/video-quality, ball-detection: /v0/ball-detection, pose-detection: /v0/pose-detection, analysis: /v0/analysis",
+        "endpoints": "videos: /v0/videos, serve-attempts: /v0/serve-attempts, players: /v0/players, video-players: /v0/videos/{video_id}/players, overlay-data: /v0/overlay-data, analysis: /v0/analysis",
     }
 
 

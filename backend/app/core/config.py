@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "../data/videos/raw"
     PROCESSED_DIR: str = "../data/videos/processed"
     MAX_FILE_SIZE: int = 104857600  # 100MB
+    SUPPORTED_FORMATS: list[str] = [".mp4", ".mov", ".avi", ".mkv", ".wmv"]
 
     # Redis (optional - defaults to localhost)
     REDIS_URL: Optional[str] = None
@@ -55,9 +56,6 @@ class Settings(BaseSettings):
     POSE_DETECTION_CONFIDENCE: float = 0.5
     POSE_TRACKING_CONFIDENCE: float = 0.5
     POSE_OVERALL_CONFIDENCE: float = 0.8
-
-    # Ball Contact Detection
-    BALL_CONTACT_TIMESTAMP_TOLERANCE: float = 0.1
 
     # Processing limits
     MAX_VIDEO_DURATION: int = 300  # 5 minutes

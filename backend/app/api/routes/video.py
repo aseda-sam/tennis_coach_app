@@ -34,7 +34,6 @@ from app.api.schemas.video import (
     VideoInfo,
     VideoListItem,
     VideoMetadata,
-    VideoMetrics,
     VideoSignedUrlResponse,
     VideoUploadResponse,
 )
@@ -567,60 +566,6 @@ async def get_bulk_analysis_status(
         log_and_raise_error(
             e, "get_bulk_analysis_status", {"video_ids": request.video_ids}
         )
-
-
-@router.get("/{video_id}/metrics", response_model=VideoMetrics)
-async def get_video_metrics(
-    video_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> VideoMetrics:
-    """
-    Get aggregated performance metrics for a video.
-
-    Calculates metrics from ball contacts including serve count,
-    average elbow angle, and other performance indicators.
-
-    Args:
-        video_id: Unique video identifier
-
-    Returns:
-        VideoMetrics with aggregated performance data
-    """
-    try:
-        from app.services.ball_contact_service import get_ball_contacts_by_video_id
-
-        # Verify video exists and check authorization
-        db_video = video_service.get_video_by_id(db, video_id)
-        if not db_video:
-            raise handle_not_found_error("video", str(video_id))
-
-        require_video_access(db_video, current_user)
-
-        # Get all ball contacts for the video
-        contacts = get_ball_contacts_by_video_id(db, video_id)
-
-        # Filter serves
-        serves = [c for c in contacts if c.stroke_type == "serve"]
-        serve_count = len(serves)
-
-        # Calculate average elbow angle from serves
-        elbow_angles = [s.elbow_angle for s in serves if s.elbow_angle is not None]
-        avg_elbow = (
-            round(sum(elbow_angles) / len(elbow_angles)) if elbow_angles else None
-        )
-
-        return VideoMetrics(
-            video_id=video_id,
-            serve_count=serve_count,
-            avg_elbow_angle=avg_elbow,
-            total_contacts=len(contacts),
-            toss_height=None,  # Placeholder for future implementation
-            contact_height=None,  # Placeholder for future implementation
-        )
-
-    except (OSError, ValueError) as e:
-        log_and_raise_error(e, "get_video_metrics", {"video_id": video_id})
 
 
 @router.delete("/{video_id}", response_model=VideoDeleteResponse)
