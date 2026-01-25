@@ -1,4 +1,4 @@
-/** Canonical shot type and subtype definitions for tennis ball contacts. */
+/** Canonical shot type and subtype definitions for tennis strokes. */
 
 export type StrokeType =
   | 'ground_stroke'

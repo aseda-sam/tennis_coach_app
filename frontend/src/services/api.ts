@@ -258,27 +258,18 @@ export interface AnalysisData {
   video_filename: string;
   analysis_type: string;
   total_frames: number;
-  frames_with_balls: number;
-  total_ball_detections: number;
-  average_detections_per_frame: number;
-  detection_rate: number;
   processing_time: number;
   model_used?: string;
   confidence_threshold?: number;
   include_pose_detection?: boolean;
   frames_with_pose?: number;
   pose_detection_rate?: number;
-  contact_frames?: number;
-  contact_timestamps?: number[];
-  contact_detections?: unknown[];
-  ball_detections: unknown[];
   pose_detections: unknown[];
   created_at: string;
   updated_at?: string;
   // New timing information
   timing?: {
     frame_extraction?: number;
-    ball_detection?: number;
     pose_detection?: number;
     frame_annotation?: number;
     video_creation?: number;

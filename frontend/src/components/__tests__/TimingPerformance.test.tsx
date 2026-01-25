@@ -5,11 +5,10 @@ import TimingPerformance from '../TimingPerformance';
 describe('TimingPerformance', () => {
   const mockTimingData = {
     frame_extraction: 2.5,
-    ball_detection: 8.3,
     pose_detection: 12.1,
     frame_annotation: 3.2,
     video_creation: 1.8,
-    total_analysis: 27.9,
+    total_analysis: 19.6,
   };
 
   describe('with detailed timing data', () => {
@@ -29,7 +28,6 @@ describe('TimingPerformance', () => {
       render(<TimingPerformance timing={mockTimingData} />);
 
       expect(screen.getByText('2.50s')).toBeInTheDocument(); // frame_extraction
-      expect(screen.getByText('8.30s')).toBeInTheDocument(); // ball_detection
       expect(screen.getByText('12.10s')).toBeInTheDocument(); // pose_detection
       expect(screen.getByText('3.20s')).toBeInTheDocument(); // frame_annotation
       expect(screen.getByText('1.80s')).toBeInTheDocument(); // video_creation
@@ -38,12 +36,10 @@ describe('TimingPerformance', () => {
     it('calculates and displays correct percentages', () => {
       render(<TimingPerformance timing={mockTimingData} />);
 
-      // frame_extraction: 2.5 / 27.9 * 100 = 8.96%
-      expect(screen.getByText('9.0%')).toBeInTheDocument();
-      // ball_detection: 8.3 / 27.9 * 100 = 29.75%
-      expect(screen.getByText('29.7%')).toBeInTheDocument();
-      // pose_detection: 12.1 / 27.9 * 100 = 43.37%
-      expect(screen.getByText('43.4%')).toBeInTheDocument();
+      // frame_extraction: 2.5 / 19.6 * 100 = 12.76%
+      expect(screen.getByText('12.8%')).toBeInTheDocument();
+      // pose_detection: 12.1 / 19.6 * 100 = 61.73%
+      expect(screen.getByText('61.7%')).toBeInTheDocument();
     });
 
     it('displays performance insights', () => {
@@ -53,10 +49,7 @@ describe('TimingPerformance', () => {
         screen.getByText(/Analysis completed in a reasonable time/)
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/Ball detection took 29.7% of total time/)
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Pose detection took 43.4% of total time/)
+        screen.getByText(/Pose detection took 61.7% of total time/)
       ).toBeInTheDocument();
     });
 
@@ -143,7 +136,7 @@ describe('TimingPerformance', () => {
     it('handles zero timing values', () => {
       const zeroTiming = {
         frame_extraction: 0,
-        ball_detection: 0,
+        pose_detection: 0,
         total_analysis: 0,
       };
 

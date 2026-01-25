@@ -46,7 +46,6 @@ analysisApi.interceptors.response.use(
 export interface AnalysisRequest {
   analysis_type:
     | 'pose_only'
-    | 'ball_only'
     | 'video_annotation_only'
     | 'pose_with_annotation'
     | 'contact_metrics';
@@ -68,7 +67,6 @@ export interface TaskStatus {
   video_id: number;
   analysis_type:
     | 'pose_only'
-    | 'ball_only'
     | 'video_annotation_only'
     | 'pose_with_annotation'
     | 'contact_metrics';
@@ -159,19 +157,6 @@ class UnifiedAnalysisApi {
   ): Promise<AnalysisResponse> {
     return this.startAnalysis(videoId, {
       analysis_type: 'pose_only',
-      confidence_threshold: confidenceThreshold,
-    });
-  }
-
-  /**
-   * Start ball-only analysis
-   */
-  async startBallAnalysis(
-    videoId: number,
-    confidenceThreshold: number = 0.5
-  ): Promise<AnalysisResponse> {
-    return this.startAnalysis(videoId, {
-      analysis_type: 'ball_only',
       confidence_threshold: confidenceThreshold,
     });
   }

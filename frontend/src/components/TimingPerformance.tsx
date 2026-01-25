@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   AnalyticsIcon,
-  BallDetectionIcon,
   FrameExtractionIcon,
   PoseDetectionIcon,
   VideoAnnotationIcon,
@@ -11,7 +10,6 @@ import './TimingPerformance.css';
 
 interface TimingData {
   frame_extraction?: number;
-  ball_detection?: number;
   pose_detection?: number;
   frame_annotation?: number;
   video_creation?: number;
@@ -38,8 +36,6 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
     switch (stageName) {
       case 'frame_extraction':
         return <FrameExtractionIcon size={16} />;
-      case 'ball_detection':
-        return <BallDetectionIcon size={16} />;
       case 'pose_detection':
         return <PoseDetectionIcon size={16} />;
       case 'frame_annotation':
@@ -56,7 +52,6 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
   const getStageDisplayName = (stageName: string): string => {
     const names: Record<string, string> = {
       frame_extraction: 'Frame Extraction',
-      ball_detection: 'Ball Detection',
       pose_detection: 'Pose Detection',
       frame_annotation: 'Frame Annotation',
       video_creation: 'Video Creation',
@@ -155,20 +150,7 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
           </span>
         </div>
 
-        {timing.ball_detection && timing.pose_detection && (
-          <div className="insight-item">
-            <span className="insight-icon" aria-hidden="true">
-              <BallDetectionIcon size={16} />
-            </span>
-            <span className="insight-text">
-              Ball detection took{' '}
-              {((timing.ball_detection / totalTime) * 100).toFixed(1)}% of total
-              time
-            </span>
-          </div>
-        )}
-
-        {timing.pose_detection && timing.ball_detection && (
+        {timing.pose_detection && (
           <div className="insight-item">
             <span className="insight-icon" aria-hidden="true">
               <PoseDetectionIcon size={16} />

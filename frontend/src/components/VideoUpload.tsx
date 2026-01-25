@@ -253,7 +253,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
         <h3 className="guidance-title">What videos work best?</h3>
         <ul className="guidance-list">
           <li>Record from the side or slightly behind for serves</li>
-          <li>Capture your full body and the ball in frame</li>
+          <li>Capture your full body in frame</li>
           <li>Good lighting helps us see your form clearly</li>
           <li>Videos should be at least a few seconds long</li>
         </ul>

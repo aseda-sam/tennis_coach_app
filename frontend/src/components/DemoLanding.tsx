@@ -2,7 +2,6 @@ import React from 'react';
 import './DemoLanding.css';
 import {
   AnalyticsIcon,
-  BallDetectionIcon,
   PlayIcon,
   PoseDetectionIcon,
   UploadIcon,
@@ -122,9 +121,9 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
 
             <div className="demo-landing__feature-card">
               <div className="demo-landing__feature-icon demo-landing__feature-icon--contact">
-                <BallDetectionIcon size={20} color="white" />
+                <VideoIcon size={20} color="white" />
               </div>
-              <h4 className="demo-landing__feature-title">Contact Markers</h4>
+              <h4 className="demo-landing__feature-title">Serve Attempts</h4>
               <p className="demo-landing__feature-description">
                 Jump to key moments and review timing with timestamps.
               </p>
