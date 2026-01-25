@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.schemas.common import PaginationParams
+from app.api.schemas.serve_attempt import ServeAnalysisSummary
 from app.api.schemas.video import (
     VideoDeleteResponse,
     VideoInfo,
@@ -672,6 +673,15 @@ async def delete_video(
 async def upload_video(
     file: UploadFile = File(...),
     is_demo: bool = Query(False, description="Upload as demo video"),
+    session_type: Optional[str] = Query(
+        None, description="Session type: 'serve_drill', 'match', 'practice', 'other'"
+    ),
+    camera_angle: Optional[str] = Query(
+        None, description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'"
+    ),
+    recorded_at: Optional[datetime] = Query(
+        None, description="When video was recorded (UTC; optional override)"
+    ),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VideoUploadResponse:
@@ -681,6 +691,9 @@ async def upload_video(
     Args:
         file: Video file to upload
         is_demo: If True, upload as demo video (requires authorization)
+        session_type: Session type for serve-focused workflow
+        camera_angle: Camera angle for serve analysis
+        recorded_at: When video was recorded (for trends)
 
     Returns:
         Upload confirmation with video information
@@ -805,6 +818,9 @@ async def upload_video(
             height=metadata.height,
             frame_count=metadata.frame_count,
             is_demo=is_demo,
+            session_type=session_type,
+            camera_angle=camera_angle,
+            recorded_at=recorded_at,
         )
 
         # Perform quick quality assessment
@@ -953,3 +969,90 @@ async def assess_video_quality(
         raise
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "assess_video_quality", {"video_id": video_id})
+
+
+@router.post("/{video_id}/analyze-serves", response_model=ServeAnalysisSummary)
+async def analyze_serve_attempts(
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ServeAnalysisSummary:
+    """
+    Batch analyze all serve attempts for a video.
+    Triggers RQ task to calculate elbow angles.
+    """
+    try:
+        from app.core.redis_config import analysis_queue
+        from app.models.serve_attempt import ServeAttempt
+        from app.services.rq_tasks import analyze_serve_attempts_rq
+        from rq import Retry
+        from rq.exceptions import RedisConnectionError, RedisTimeoutError
+
+        # Get video to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Video with ID {video_id} not found",
+            )
+
+        # Check authorization
+        require_video_access(video, current_user)
+
+        # Prevent modification of demo videos
+        require_video_not_demo(video, current_user)
+
+        # Check if there are serve attempts to analyze
+        serve_attempts = (
+            db.query(ServeAttempt)
+            .filter(ServeAttempt.video_id == video_id)
+            .all()
+        )
+
+        if not serve_attempts:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No serve attempts found for this video. Please tag serve attempts first.",
+            )
+
+        # Count serves with contact
+        serves_with_contact = sum(
+            1 for sa in serve_attempts if sa.contact_timestamp is not None
+        )
+
+        # Enqueue analysis task
+        try:
+            job = analysis_queue.enqueue(
+                analyze_serve_attempts_rq,
+                video_id=video_id,
+                retry=Retry(max=2, interval=60),
+                job_timeout=300,  # 5 minutes
+                result_ttl=3600,  # Keep results for 1 hour
+            )
+            logger.info(
+                f"Enqueued serve analysis job {job.id} for video {video_id}"
+            )
+        except (RedisConnectionError, RedisTimeoutError) as e:
+            logger.error(f"Failed to enqueue job to Redis: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Failed to enqueue analysis job: {e!s}",
+            ) from e
+
+        # Return summary (will be updated when analysis completes)
+        return ServeAnalysisSummary(
+            video_id=video_id,
+            total_serves=len(serve_attempts),
+            serves_with_contact=serves_with_contact,
+            avg_elbow_angle=None,  # Will be calculated by RQ task
+            recommendations=[],  # Will be populated by recommendation engine
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error starting serve analysis")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to start serve analysis. Please try again later.",
+        ) from e

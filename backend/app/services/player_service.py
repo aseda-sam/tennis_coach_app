@@ -226,3 +226,41 @@ def delete_player(db: Session, player_id: int) -> None:
     db.commit()
 
     logger.info(f"✅ Successfully deleted player ID={player_id} (name='{player.name}')")
+
+
+def get_or_create_default_player(db: Session, user_id: str) -> Player:
+    """
+    Get or create the default "Me" player for a user.
+
+    Creates a player named "Me" (or user's name if available) owned by user_id.
+    This becomes the default selection for serve attempt tagging.
+
+    Args:
+        db: Database session
+        user_id: User ID (UUID string)
+
+    Returns:
+        Player: The default player for this user
+    """
+    # Check for existing default player
+    default_player = db.query(Player).filter(
+        Player.user_id == user_id,
+        Player.name.in_(["Me", "Default"])  # Flexible naming
+    ).first()
+
+    if default_player:
+        logger.debug(f"Found existing default player for user {user_id}: ID={default_player.id}")
+        return default_player
+
+    # Create new default player
+    logger.info(f"Creating default player 'Me' for user {user_id}")
+    default_player = Player(
+        name="Me",
+        dominant_hand="right",  # Default, user can update later
+        user_id=user_id
+    )
+    db.add(default_player)
+    db.commit()
+    db.refresh(default_player)
+    logger.info(f"✅ Created default player for user {user_id}: ID={default_player.id}")
+    return default_player

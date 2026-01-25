@@ -26,6 +26,9 @@ def create_video_record(
     height: Optional[int] = None,
     frame_count: Optional[int] = None,
     is_demo: bool = False,
+    session_type: Optional[str] = None,
+    camera_angle: Optional[str] = None,
+    recorded_at: Optional[datetime] = None,
 ) -> Video:
     """Create a new video record in the database.
 
@@ -42,6 +45,9 @@ def create_video_record(
         height: Video height in pixels
         frame_count: Total number of frames
         is_demo: Whether this is a demo video
+        session_type: Session type ('serve_drill', 'match', 'practice', 'other')
+        camera_angle: Camera angle ('behind', 'profile', 'diagonal', 'unknown')
+        recorded_at: When video was recorded (for trends)
     """
     db_video = Video(
         filename=filename,
@@ -56,6 +62,9 @@ def create_video_record(
         status="uploaded",
         user_id=user_id,
         is_demo=is_demo,
+        session_type=session_type,
+        camera_angle=camera_angle,
+        recorded_at=recorded_at,
     )
     db.add(db_video)
     db.commit()

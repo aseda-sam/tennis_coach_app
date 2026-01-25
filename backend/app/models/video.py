@@ -56,6 +56,11 @@ class Video(Base):
     # Original user_id before promotion to demo (for unpromote/restore)
     original_user_id = Column(String(36), nullable=True)
 
+    # Session metadata (serve-focused)
+    session_type = Column(String(20), nullable=True)  # 'serve_drill', 'match', 'practice', 'other'
+    camera_angle = Column(String(20), nullable=True)  # 'behind', 'profile', 'diagonal', 'unknown'
+    recorded_at = Column(DateTime(timezone=True), nullable=True)  # When video was recorded (for trends)
+
     # New granular analysis relationships
     ball_detections = relationship(
         "BallDetection", back_populates="video", cascade="all, delete-orphan"
@@ -71,6 +76,9 @@ class Video(Base):
     )
     video_players = relationship(
         "VideoPlayer", back_populates="video", cascade="all, delete-orphan"
+    )
+    serve_attempts = relationship(
+        "ServeAttempt", back_populates="video", cascade="all, delete-orphan"
     )
 
     # Convenience property to get just the players

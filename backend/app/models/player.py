@@ -32,6 +32,7 @@ class Player(Base):
     # Relationships
     ball_contacts = relationship("BallContact", back_populates="player")
     video_appearances = relationship("VideoPlayer", back_populates="player")
+    serve_attempts = relationship("ServeAttempt", back_populates="player")
 
     # Convenience properties
     @property

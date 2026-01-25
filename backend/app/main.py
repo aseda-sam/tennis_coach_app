@@ -23,6 +23,7 @@ from app.api.routes import (
     overlay_data,
     players,
     pose_detection,
+    serve_attempts,
     video,
     video_players,
     video_quality,
@@ -328,6 +329,17 @@ app.include_router(
 
 app.include_router(
     overlay_data.router,
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Error"},
+    },
+)
+
+app.include_router(
+    serve_attempts.router,
+    prefix="/v0/serve-attempts",
+    tags=["serve-attempts"],
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},
