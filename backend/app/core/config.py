@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     MAX_VIDEO_RESOLUTION: tuple[int, int] = (3840, 2160)  # 4K
     MAX_FPS: int = 60
 
+    # Upload limits (primarily for production)
+    # Note: enforced only when PROFILE != "local" and user is not admin.
+    MAX_VIDEO_UPLOADS_PER_DAY: int = 20
+
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:3000",

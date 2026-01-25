@@ -704,8 +704,8 @@ async def upload_video(
             finally:
                 tmp_path.unlink()
         else:
-            # For local storage, use the actual file path
-            file_path = Path(storage_path)
+            # For local storage, resolve the storage path to actual file system path
+            file_path = storage_service.get_local_file_path(storage_path)
             metadata = extract_video_metadata(file_path)
 
         # Validate video metadata
