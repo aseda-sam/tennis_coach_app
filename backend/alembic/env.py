@@ -14,7 +14,6 @@ from app.models import player as _player_model  # noqa: F401
 from app.models import pose_detection as _pose_detection_model  # noqa: F401
 from app.models import serve_attempt as _serve_attempt_model  # noqa: F401
 from app.models import video as _video_model  # noqa: F401
-from app.models import video_annotation as _video_annotation_model  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

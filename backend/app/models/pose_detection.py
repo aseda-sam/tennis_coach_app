@@ -58,7 +58,6 @@ class PoseDetection(Base):
 
     # Relationships
     video = relationship("Video", back_populates="pose_detections")
-    video_annotations = relationship("VideoAnnotation", back_populates="pose_detection")
 
     def __repr__(self) -> str:
         """String representation of pose detection record."""

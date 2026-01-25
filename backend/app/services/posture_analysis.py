@@ -28,11 +28,8 @@ def calculate_elbow_angle(
         Elbow angle in degrees, or None if keypoints missing or invalid stroke type
     """
     try:
-        # Supported stroke types for elbow angle calculation
-        # Serves and forehands/ground_strokes are single-handed strokes that work well
-        # Backhands with both hands on racket are more complex and will be handled later
-        supported_strokes = ["forehand", "ground_stroke", "serve"]
-        if stroke_type and stroke_type.lower() not in supported_strokes:
+        # Serve-only MVP: ignore non-serve stroke types.
+        if stroke_type and stroke_type.lower() != "serve":
             logger.info(
                 f"Skipping elbow angle calculation for stroke type: {stroke_type}"
             )

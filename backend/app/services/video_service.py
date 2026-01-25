@@ -127,29 +127,8 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     filename = video.filename
 
     try:
-        # Delete video annotations
-        from app.models.video_annotation import VideoAnnotation
-        from app.services.storage_service import storage_service
-
-        video_annotations = (
-            db.query(VideoAnnotation).filter(VideoAnnotation.video_id == video_id).all()
-        )
-        for annotation in video_annotations:
-            # Delete annotated video files using storage service
-            if annotation.annotated_video_path:
-                try:
-                    # Use storage service to delete (handles both local and Supabase)
-                    storage_service.delete_file(annotation.annotated_video_path)
-                    logger.info(
-                        f"Deleted video annotation file: {annotation.annotated_video_path}"
-                    )
-                except (ValueError, RuntimeError, OSError) as e:
-                    logger.warning(
-                        f"Failed to delete video annotation file {annotation.annotated_video_path}: {e}"
-                    )
-
-        # Delete pose detection annotated video files
         from app.models.pose_detection import PoseDetection
+        from app.services.storage_service import storage_service
 
         pose_detections = (
             db.query(PoseDetection).filter(PoseDetection.video_id == video_id).all()
@@ -186,7 +165,6 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
         # Delete from database (this will cascade delete all related records)
         # The cascade relationships will automatically delete:
         # - PoseDetection records
-        # - VideoAnnotation records
         if not delete_video_record(db, video_id):
             logger.error(f"Database deletion failed for video {video_id}")
             return False, filename, video_id
