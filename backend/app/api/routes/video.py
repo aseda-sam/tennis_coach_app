@@ -35,8 +35,6 @@ from app.api.schemas.video import (
     VideoListItem,
     VideoMetadata,
     VideoMetrics,
-    VideoQualityAssessmentResponse,
-    VideoQualityMetrics,
     VideoSignedUrlResponse,
     VideoUploadResponse,
 )
@@ -45,7 +43,6 @@ from app.core.database import get_db
 from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.storage_service import storage_service
-from app.services.video_quality import VideoQualityService
 from app.utils.authorization import (
     is_admin,
     is_demo_editor,
@@ -823,60 +820,6 @@ async def upload_video(
             recorded_at=recorded_at,
         )
 
-        # Perform quick quality assessment
-        # Reuse file_content already in memory (no need to download from Supabase)
-        quality_metrics = None
-        try:
-            logger.info(f"Starting quality assessment for {unique_filename}")
-            quality_service = VideoQualityService()
-
-            if settings.STORAGE_TYPE == "supabase":
-                # Reuse file_content already in memory (no download needed)
-                tmp_path = _create_temp_file_for_processing(
-                    file_content, unique_filename
-                )
-                try:
-                    quality_metrics = quality_service.quick_assess(tmp_path)
-                finally:
-                    tmp_path.unlink()
-            else:
-                quality_metrics = quality_service.quick_assess(Path(storage_path))
-
-            # Update video record with quality metrics
-            video_service.update_video_quality(
-                db=db,
-                video_id=db_video.id,
-                quality_score=quality_metrics["quality_score"],
-                blur_score=quality_metrics["blur_score"],
-                lighting_score=quality_metrics["lighting_score"],
-                resolution_score=quality_metrics["resolution_score"],
-                quality_level=quality_metrics["quality_level"],
-            )
-
-            logger.info(
-                f"Quality assessment completed: "
-                f"{quality_metrics['quality_level']} quality"
-            )
-
-        except (OSError, RuntimeError, ValueError) as e:
-            logger.warning(f"Quality assessment failed for {unique_filename}: {e}")
-            # Continue with upload even if quality assessment fails
-
-        # Create quality metrics response if available
-        quality_metrics_response = None
-        if quality_metrics:
-            quality_metrics_response = VideoQualityMetrics(
-                quality_score=quality_metrics["quality_score"],
-                blur_score=quality_metrics["blur_score"],
-                lighting_score=quality_metrics["lighting_score"],
-                resolution_score=quality_metrics["resolution_score"],
-                quality_level=quality_metrics["quality_level"],
-                recommended_confidence_threshold=quality_metrics[
-                    "recommended_confidence_threshold"
-                ],
-                frame_count_analyzed=quality_metrics["frame_count_analyzed"],
-            )
-
         return VideoUploadResponse(
             video_id=db_video.id,
             filename=db_video.filename,
@@ -884,7 +827,7 @@ async def upload_video(
             status="uploaded",
             message="Video uploaded successfully",
             metadata=metadata,
-            quality_metrics=quality_metrics_response,
+            quality_metrics=None,  # Video quality assessment removed for MVP
         )
     except (OSError, ValueError) as e:
         log_and_raise_error(
@@ -1040,12 +983,13 @@ async def analyze_serve_attempts(
             ) from e
 
         # Return summary (will be updated when analysis completes)
+        # Note: Actual results will be available via job status endpoint
         return ServeAnalysisSummary(
             video_id=video_id,
             total_serves=len(serve_attempts),
             serves_with_contact=serves_with_contact,
             avg_elbow_angle=None,  # Will be calculated by RQ task
-            recommendations=[],  # Will be populated by recommendation engine
+            recommendations=[],  # Will be populated by recommendation engine when task completes
         )
 
     except HTTPException:

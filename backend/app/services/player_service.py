@@ -14,7 +14,6 @@ ALLOWED_PLAYER_FIELDS = {
     "name",
     "dominant_hand",
     "backhand_style",
-    "height",
     "notes",
 }
 
@@ -25,7 +24,6 @@ def create_player(
     dominant_hand: Literal["left", "right"],
     user_id: str,
     backhand_style: Optional[Literal["one_handed", "two_handed"]] = None,
-    height: Optional[float] = None,
     notes: Optional[str] = None,
 ) -> Player:
     """
@@ -66,7 +64,6 @@ def create_player(
         name=name,
         dominant_hand=dominant_hand,
         backhand_style=backhand_style,
-        height=height,
         notes=notes,
         user_id=user_id,
     )
