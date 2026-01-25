@@ -104,6 +104,3 @@ class ServeAnalysisSummary(BaseModel):
     avg_elbow_angle: Optional[float] = Field(
         default=None, ge=0, le=180, description="Average elbow angle in degrees"
     )
-    recommendations: List[str] = Field(
-        default_factory=list, description="Recommendations based on analysis"
-    )

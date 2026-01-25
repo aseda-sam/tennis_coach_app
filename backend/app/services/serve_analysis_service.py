@@ -199,11 +199,6 @@ class ServeAnalysisService:
                 sum(elbow_angles) / len(elbow_angles) if elbow_angles else None
             )
 
-            # Generate recommendations
-            recommendations = self._generate_recommendations(
-                avg_elbow_angle, elbow_angles
-            )
-
             return {
                 "video_id": video_id,
                 "total_serves": len(serve_attempts),
@@ -212,7 +207,6 @@ class ServeAnalysisService:
                 "skipped": skipped_count,
                 "avg_elbow_angle": avg_elbow_angle,
                 "elbow_angles": elbow_angles,
-                "recommendations": recommendations,
             }
 
         except Exception as e:
@@ -248,68 +242,3 @@ class ServeAnalysisService:
             contact_hand=contact_hand,
             stroke_type="serve",
         )
-
-    def _generate_recommendations(
-        self, avg_elbow_angle: Optional[float], elbow_angles: List[float]
-    ) -> List[str]:
-        """
-        Generate simple recommendations based on elbow angle analysis.
-
-        Ideal elbow angle for serves is typically 150-170 degrees.
-        Below 140° suggests too much bend (reduced power).
-        Above 175° suggests overextension (reduced control).
-
-        Args:
-            avg_elbow_angle: Average elbow angle in degrees
-            elbow_angles: List of all elbow angles
-
-        Returns:
-            List of recommendation strings
-        """
-        recommendations: List[str] = []
-
-        if avg_elbow_angle is None:
-            return ["No elbow angle data available for recommendations."]
-
-        # Ideal range for serve elbow angle: 150-170 degrees
-        ideal_min = 150.0
-        ideal_max = 170.0
-        ideal_center = 160.0
-
-        if avg_elbow_angle < ideal_min:
-            # Too much bend - need more extension
-            diff = ideal_center - avg_elbow_angle
-            recommendations.append(
-                f"Your average elbow angle is {diff:.1f}° below ideal. "
-                f"Try extending your arm more at contact for better power. "
-                f"Target: {ideal_center:.0f}° (current: {avg_elbow_angle:.1f}°)"
-            )
-        elif avg_elbow_angle > ideal_max:
-            # Overextension - need more control
-            diff = avg_elbow_angle - ideal_center
-            recommendations.append(
-                f"Your average elbow angle is {diff:.1f}° above ideal. "
-                f"Try slightly bending your arm for better control. "
-                f"Target: {ideal_center:.0f}° (current: {avg_elbow_angle:.1f}°)"
-            )
-        else:
-            # Within ideal range
-            recommendations.append(
-                f"Great! Your elbow angle ({avg_elbow_angle:.1f}°) is within the ideal range "
-                f"({ideal_min:.0f}°-{ideal_max:.0f}°). Keep up the good form!"
-            )
-
-        # Add consistency feedback if multiple serves
-        if len(elbow_angles) > 1:
-            angle_range = max(elbow_angles) - min(elbow_angles)
-            if angle_range > 15.0:
-                recommendations.append(
-                    f"Your elbow angles vary by {angle_range:.1f}° across serves. "
-                    "Focus on consistent form for more predictable results."
-                )
-            elif angle_range < 5.0:
-                recommendations.append(
-                    "Excellent consistency! Your elbow angles are very consistent across serves."
-                )
-
-        return recommendations

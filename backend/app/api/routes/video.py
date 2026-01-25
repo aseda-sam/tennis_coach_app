@@ -826,7 +826,6 @@ async def analyze_serve_attempts(
             total_serves=len(serve_attempts),
             serves_with_contact=serves_with_contact,
             avg_elbow_angle=None,  # Will be calculated by RQ task
-            recommendations=[],  # Will be populated by recommendation engine when task completes
         )
 
     except HTTPException:

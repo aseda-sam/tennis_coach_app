@@ -203,7 +203,6 @@ def analyze_serve_attempts_rq(video_id: int) -> Dict[str, Any]:
                 "failed": results.get("failed", 0),
                 "skipped": results.get("skipped", 0),
                 "avg_elbow_angle": results.get("avg_elbow_angle"),
-                "recommendations": results.get("recommendations", []),
                 "analysis_type": "serve_attempts",
             }
 
