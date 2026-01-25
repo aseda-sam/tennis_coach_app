@@ -2,9 +2,7 @@
 
 Complete guide to the background task system using Redis Queue (RQ) in the Tennis Coach App. This system replaces the in-memory `ThreadPoolExecutor` with a robust, scalable solution that works across multiple servers and survives restarts.
 
-**This is the primary documentation for background task processing.** For information about the deprecated ThreadPoolExecutor system, see [Background Tasks (Legacy)](background-tasks.md).
-
-**Legacy System Reference**: The previous `BackgroundTaskService` implementation using ThreadPoolExecutor can be found in [`backend/app/services/background_service.py`](../app/services/background_service.py). This file contains the original analysis methods (`_run_pose_only_analysis`, `_run_ball_only_analysis`, etc.) that have been migrated to RQ task functions.
+**This is the primary documentation for background task processing.**
 
 ## Table of Contents
 
