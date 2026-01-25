@@ -1,8 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
-import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { useServeAttempts } from '../hooks/useServeAttempts';
+import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { serveAttemptApi } from '../services/serveAttemptApi';
 import './AnalysisDashboard.css';
 import AnalysisRightPanel from './AnalysisRightPanel';
@@ -31,17 +31,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     useVideoAnalysisStatus(videoId);
 
   // Memoize the completion callback to prevent infinite re-renders
-  const handleAnalysisComplete = useCallback(
-    async () => {
-      // Refresh analysis status after completion without reloading page
-      await refetchAnalysisStatus();
-      // Also invalidate the query to ensure fresh data
-      queryClient.invalidateQueries({
-        queryKey: ['video-analysis-status', videoId],
-      });
-    },
-    [refetchAnalysisStatus, queryClient, videoId]
-  );
+  const handleAnalysisComplete = useCallback(async () => {
+    // Refresh analysis status after completion without reloading page
+    await refetchAnalysisStatus();
+    // Also invalidate the query to ensure fresh data
+    queryClient.invalidateQueries({
+      queryKey: ['video-analysis-status', videoId],
+    });
+  }, [refetchAnalysisStatus, queryClient, videoId]);
 
   // Analysis manager for pose analysis
   const {
@@ -104,6 +101,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
       alert('Serve analysis completed! Check the metrics below.');
     } catch (error: unknown) {
+      // Error detail is already normalized to string by axios interceptor
       const axiosError = error as {
         response?: { data?: { detail?: string } };
         message?: string;

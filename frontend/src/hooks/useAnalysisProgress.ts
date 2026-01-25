@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import unifiedAnalysisApi, { TaskStatus } from '../services/unifiedAnalysisApi';
 import { AnalysisData } from '../services/api';
+import unifiedAnalysisApi, { TaskStatus } from '../services/unifiedAnalysisApi';
 
 export interface AnalysisProgress {
   jobId: string;
@@ -138,8 +138,15 @@ export function useAnalysisProgress(
           return;
         }
       } catch (err: unknown) {
-        const axiosError = err as { message?: string };
-        const errorMessage = axiosError?.message || 'Failed to get job status';
+        // Error detail is already normalized to string by axios interceptor
+        const axiosError = err as {
+          response?: { data?: { detail?: string } };
+          message?: string;
+        };
+        const errorMessage =
+          axiosError?.response?.data?.detail ||
+          axiosError?.message ||
+          'Failed to get job status';
         setError(errorMessage);
         setIsLoading(false);
         // Keep polling on transient errors
@@ -165,10 +172,7 @@ export function useAnalysisProgress(
 
       // Set up interval for continued polling (only when visible)
       intervalRef.current = setInterval(() => {
-        if (
-          currentJobIdRef.current === jobId &&
-          isVisibleRef.current
-        ) {
+        if (currentJobIdRef.current === jobId && isVisibleRef.current) {
           pollTaskStatus(jobId);
         }
       }, pollInterval);

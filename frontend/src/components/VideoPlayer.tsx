@@ -103,7 +103,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Reset aspect ratio when video URL changes
   useEffect(() => {
     setVideoAspectRatio(null);
-  }, [resolvedVideoUrl]);
+  }, [resolvedVideoUrl, videoId, videoUrl]);
 
   // Clear error state when URL changes
   useEffect(() => {

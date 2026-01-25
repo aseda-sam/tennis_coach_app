@@ -11,10 +11,9 @@ services:
       - ./backend:/app/backend
       - ./data:/app/data
     working_dir: /app/backend
+    env_file:
+      - ./backend/.env
     environment:
-      - PROFILE=local
-      - DEBUG=True
-      - DATABASE_URL=sqlite:///../data/database/tennis_coach.db
       - LOG_LEVEL=DEBUG
       - REDIS_URL=redis://redis:6379/0
     depends_on:
@@ -32,8 +31,9 @@ services:
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
+    env_file:
+      - ./frontend/.env
     environment:
-      - REACT_APP_API_URL=http://localhost:8000/v0
       - CHOKIDAR_USEPOLLING=true
     depends_on:
       - backend
@@ -58,10 +58,9 @@ services:
       - ./backend:/app/backend
       - ./data:/app/data
     working_dir: /app/backend
+    env_file:
+      - ./backend/.env
     environment:
-      - PROFILE=local
-      - DEBUG=True
-      - DATABASE_URL=sqlite:///../data/database/tennis_coach.db
       - LOG_LEVEL=DEBUG
       - REDIS_URL=redis://redis:6379/0
       - SERVICE_TYPE=worker

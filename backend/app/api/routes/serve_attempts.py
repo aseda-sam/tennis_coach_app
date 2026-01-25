@@ -202,43 +202,6 @@ async def update_serve_attempt(
         ) from e
 
 
-@router.get("/{serve_attempt_id}", response_model=ServeAttemptDetail)
-async def get_serve_attempt(
-    serve_attempt_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> ServeAttemptDetail:
-    """Get details of a specific serve attempt."""
-    try:
-        serve_attempt = (
-            db.query(ServeAttempt).filter(ServeAttempt.id == serve_attempt_id).first()
-        )
-
-        if not serve_attempt:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Serve attempt with ID {serve_attempt_id} not found",
-            )
-
-        # Check authorization
-        if serve_attempt.user_id != current_user["id"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied",
-            )
-
-        return ServeAttemptDetail.model_validate(serve_attempt)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Error getting serve attempt")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get serve attempt. Please try again later.",
-        ) from e
-
-
 @router.get("/me", response_model=List[ServeAttemptInfo])
 async def get_my_serve_attempts(
     player_id: Optional[int] = Query(None, description="Filter by specific player"),
@@ -295,6 +258,43 @@ async def get_my_serve_attempts(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get serve attempts. Please try again later.",
+        ) from e
+
+
+@router.get("/{serve_attempt_id}", response_model=ServeAttemptDetail)
+async def get_serve_attempt(
+    serve_attempt_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ServeAttemptDetail:
+    """Get details of a specific serve attempt."""
+    try:
+        serve_attempt = (
+            db.query(ServeAttempt).filter(ServeAttempt.id == serve_attempt_id).first()
+        )
+
+        if not serve_attempt:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Serve attempt with ID {serve_attempt_id} not found",
+            )
+
+        # Check authorization
+        if serve_attempt.user_id != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied",
+            )
+
+        return ServeAttemptDetail.model_validate(serve_attempt)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error getting serve attempt")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get serve attempt. Please try again later.",
         ) from e
 
 

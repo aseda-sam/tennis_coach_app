@@ -10,7 +10,6 @@ from app.core.database import Base
 
 # IMPORTANT: Import model modules so their tables are registered on Base.metadata
 # Without these imports, autogenerate will see no tables and create empty migrations
-from app.models import ball_detection as _ball_detection_model  # noqa: F401
 from app.models import player as _player_model  # noqa: F401
 from app.models import pose_detection as _pose_detection_model  # noqa: F401
 from app.models import serve_attempt as _serve_attempt_model  # noqa: F401

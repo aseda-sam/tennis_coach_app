@@ -5,8 +5,8 @@ import {
   VideoMetadata,
   VideoUploadResponse,
 } from '../types/video';
-import { supabase } from './supabaseClient';
 import { createAuthInterceptor } from '../utils/authInterceptor';
+import { supabase } from './supabaseClient';
 
 // API configuration
 const API_BASE_URL =
@@ -26,6 +26,33 @@ const api = axios.create({
 
 // Add auth interceptor to analysisApiInstance (used by analysisApi.startAnalysis)
 createAuthInterceptor(analysisApiInstance, 'Analysis API Instance');
+
+// Normalize errors for analysisApiInstance too
+analysisApiInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Normalize FastAPI error responses to always have string detail
+    if (
+      error.response?.data?.detail &&
+      Array.isArray(error.response.data.detail)
+    ) {
+      const messages = error.response.data.detail
+        .map((err: { type?: string; loc?: unknown[]; msg?: string }) => {
+          if (typeof err === 'object' && err !== null && 'msg' in err) {
+            const loc = Array.isArray(err.loc)
+              ? err.loc.slice(1).join('.')
+              : '';
+            return loc ? `${loc}: ${err.msg}` : err.msg;
+          }
+          return String(err);
+        })
+        .filter(Boolean);
+      error.response.data.detail =
+        messages.length > 0 ? messages.join('; ') : 'Validation error';
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Add request/response interceptors
 api.interceptors.request.use(async (config) => {
@@ -48,12 +75,29 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Errors are handled by calling code through error callbacks
-    // No need to log here - let the application handle errors appropriately
+    // Normalize FastAPI error responses to always have string detail
+    // FastAPI validation errors return detail as array: [{type, loc, msg, input}]
+    if (
+      error.response?.data?.detail &&
+      Array.isArray(error.response.data.detail)
+    ) {
+      const messages = error.response.data.detail
+        .map((err: { type?: string; loc?: unknown[]; msg?: string }) => {
+          if (typeof err === 'object' && err !== null && 'msg' in err) {
+            const loc = Array.isArray(err.loc)
+              ? err.loc.slice(1).join('.')
+              : '';
+            return loc ? `${loc}: ${err.msg}` : err.msg;
+          }
+          return String(err);
+        })
+        .filter(Boolean);
+      error.response.data.detail =
+        messages.length > 0 ? messages.join('; ') : 'Validation error';
+    }
     return Promise.reject(error);
   }
 );
-
 
 export const videoApi = {
   // Upload a video file
@@ -124,7 +168,10 @@ export const videoApi = {
   },
 
   // Get signed URL for video (preferred - avoids redirect race conditions)
-  getVideoUrl: async (videoId: number, expiresIn: number = 3600): Promise<string> => {
+  getVideoUrl: async (
+    videoId: number,
+    expiresIn: number = 3600
+  ): Promise<string> => {
     const response = await api.get<{ url: string; expires_in: number }>(
       `/videos/${videoId}/url?expires_in=${expiresIn}`
     );
@@ -146,11 +193,13 @@ export const videoApi = {
   // Bulk check video analysis statuses (optimized)
   getBulkVideoAnalysisStatus: async (
     videoIds: number[]
-  ): Promise<{
-    video_id: number;
-    has_analysis: boolean;
-    analysis_types: string[];
-  }[]> => {
+  ): Promise<
+    {
+      video_id: number;
+      has_analysis: boolean;
+      analysis_types: string[];
+    }[]
+  > => {
     const response = await api.post<{
       statuses: {
         video_id: number;
@@ -161,7 +210,6 @@ export const videoApi = {
     return response.data.statuses;
   },
 
-
   // Get overlay data for client-side rendering
   getOverlayData: async (videoId: number): Promise<OverlayData> => {
     try {
@@ -170,7 +218,9 @@ export const videoApi = {
       );
       return response.data;
     } catch (error: unknown) {
-      const axiosError = error as { response?: { status?: number; data?: { detail?: string } } };
+      const axiosError = error as {
+        response?: { status?: number; data?: { detail?: string } };
+      };
       if (axiosError.response?.status === 404) {
         throw new Error(
           'Pose data not found for this video. Please run pose detection analysis first.'
