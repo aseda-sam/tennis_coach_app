@@ -2,9 +2,9 @@
 
 import logging
 import tempfile
-import time
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import cv2
 from fastapi import (
@@ -49,6 +49,7 @@ from app.utils.authorization import (
     require_upload_limit,
     require_video_access,
     require_video_deletable,
+    require_video_not_demo,
 )
 from app.utils.error_handling import (
     handle_file_error,
@@ -846,11 +847,12 @@ async def analyze_serve_attempts(
     Triggers RQ task to calculate elbow angles.
     """
     try:
+        from rq import Retry
+        from rq.exceptions import RedisConnectionError, RedisTimeoutError
+
         from app.core.redis_config import analysis_queue
         from app.models.serve_attempt import ServeAttempt
         from app.services.rq_tasks import analyze_serve_attempts_rq
-        from rq import Retry
-        from rq.exceptions import RedisConnectionError, RedisTimeoutError
 
         # Get video to check authorization
         video = video_service.get_video_by_id(db, video_id)
