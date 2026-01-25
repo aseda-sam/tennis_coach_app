@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -72,14 +72,14 @@ async def create_serve_attempt(
         player_id = serve_attempt.player_id
         if not player_id:
             default_player = player_service.get_or_create_default_player(
-                db, current_user["user_id"]
+                db, current_user["id"]
             )
             player_id = default_player.id
             logger.debug(f"Auto-assigned default player {player_id} for serve attempt")
 
         # Validate player ownership
         player = db.query(Player).filter(Player.id == player_id).first()
-        if not player or player.user_id != current_user["user_id"]:
+        if not player or player.user_id != current_user["id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Player not found or access denied",
@@ -88,7 +88,7 @@ async def create_serve_attempt(
         # Create serve attempt with user_id from auth
         db_serve_attempt = ServeAttempt(
             video_id=serve_attempt.video_id,
-            user_id=current_user["user_id"],
+            user_id=current_user["id"],
             player_id=player_id,
             start_timestamp=serve_attempt.start_timestamp,
             end_timestamp=serve_attempt.end_timestamp,
@@ -139,7 +139,7 @@ async def update_serve_attempt(
             )
 
         # Check authorization
-        if serve_attempt.user_id != current_user["user_id"]:
+        if serve_attempt.user_id != current_user["id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied",
@@ -153,7 +153,7 @@ async def update_serve_attempt(
         # Validate player ownership if player_id is being updated
         if updates.player_id is not None:
             player = db.query(Player).filter(Player.id == updates.player_id).first()
-            if not player or player.user_id != current_user["user_id"]:
+            if not player or player.user_id != current_user["id"]:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Player not found or access denied",
@@ -221,7 +221,7 @@ async def get_serve_attempt(
             )
 
         # Check authorization
-        if serve_attempt.user_id != current_user["user_id"]:
+        if serve_attempt.user_id != current_user["id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied",
@@ -257,14 +257,14 @@ async def get_my_serve_attempts(
     """
     try:
         query = db.query(ServeAttempt).filter(
-            ServeAttempt.user_id == current_user["user_id"]
+            ServeAttempt.user_id == current_user["id"]
         )
 
         # Apply filters
         if player_id is not None:
             # Validate player ownership
             player = db.query(Player).filter(Player.id == player_id).first()
-            if not player or player.user_id != current_user["user_id"]:
+            if not player or player.user_id != current_user["id"]:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Player not found or access denied",
@@ -295,4 +295,53 @@ async def get_my_serve_attempts(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get serve attempts. Please try again later.",
+        ) from e
+
+
+@router.delete("/{serve_attempt_id}")
+async def delete_serve_attempt(
+    serve_attempt_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, str]:
+    """Delete a serve attempt."""
+    try:
+        # Get serve attempt
+        serve_attempt = (
+            db.query(ServeAttempt).filter(ServeAttempt.id == serve_attempt_id).first()
+        )
+
+        if not serve_attempt:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Serve attempt with ID {serve_attempt_id} not found",
+            )
+
+        # Check authorization
+        if serve_attempt.user_id != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied",
+            )
+
+        # Get video to check demo status
+        video = video_service.get_video_by_id(db, serve_attempt.video_id)
+        if video:
+            require_video_not_demo(video, current_user)
+
+        # Delete serve attempt
+        db.delete(serve_attempt)
+        db.commit()
+
+        logger.info(f"Deleted serve attempt {serve_attempt_id}")
+
+        return {"message": f"Serve attempt {serve_attempt_id} deleted successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error deleting serve attempt")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete serve attempt. Please try again later.",
         ) from e

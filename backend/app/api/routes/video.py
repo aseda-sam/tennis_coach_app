@@ -762,15 +762,11 @@ async def analyze_serve_attempts(
 ) -> ServeAnalysisSummary:
     """
     Batch analyze all serve attempts for a video.
-    Triggers RQ task to calculate elbow angles.
+    Calculates elbow angles synchronously (no RQ).
     """
     try:
-        from rq import Retry
-        from rq.exceptions import RedisConnectionError, RedisTimeoutError
-
-        from app.core.redis_config import analysis_queue
         from app.models.serve_attempt import ServeAttempt
-        from app.services.rq_tasks import analyze_serve_attempts_rq
+        from app.services.serve_analysis_service import ServeAnalysisService
 
         # Get video to check authorization
         video = video_service.get_video_by_id(db, video_id)
@@ -802,34 +798,36 @@ async def analyze_serve_attempts(
             1 for sa in serve_attempts if sa.contact_timestamp is not None
         )
 
-        # Enqueue analysis task
-        try:
-            job = analysis_queue.enqueue(
-                analyze_serve_attempts_rq,
-                video_id=video_id,
-                retry=Retry(max=2, interval=60),
-                job_timeout=300,  # 5 minutes
-                result_ttl=3600,  # Keep results for 1 hour
-            )
-            logger.info(f"Enqueued serve analysis job {job.id} for video {video_id}")
-        except (RedisConnectionError, RedisTimeoutError) as e:
-            logger.error(f"Failed to enqueue job to Redis: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Failed to enqueue analysis job: {e!s}",
-            ) from e
+        # Run analysis inline (fast: uses already-computed pose detections)
+        analysis_service = ServeAnalysisService()
+        results = analysis_service.analyze_serve_attempts(
+            db=db, video_id=video_id, serve_attempts=serve_attempts
+        )
 
-        # Return summary (will be updated when analysis completes)
-        # Note: Actual results will be available via job status endpoint
+        avg_elbow_angle = results.get("avg_elbow_angle")
+        if avg_elbow_angle is not None and not (0.0 <= avg_elbow_angle <= 180.0):
+            logger.warning(
+                "Serve analysis returned invalid avg_elbow_angle=%s for video_id=%s",
+                avg_elbow_angle,
+                video_id,
+            )
+            avg_elbow_angle = None
+
         return ServeAnalysisSummary(
             video_id=video_id,
             total_serves=len(serve_attempts),
             serves_with_contact=serves_with_contact,
-            avg_elbow_angle=None,  # Will be calculated by RQ task
+            avg_elbow_angle=avg_elbow_angle,
         )
 
     except HTTPException:
         raise
+    except ValueError as e:
+        # Common expected error cases (e.g., missing pose detection)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.exception("Error starting serve analysis")
         raise HTTPException(
