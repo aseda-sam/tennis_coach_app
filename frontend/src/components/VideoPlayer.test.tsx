@@ -31,16 +31,6 @@ jest.mock('./Icons', () => ({
 }));
 
 // Mock hooks and components that VideoPlayer depends on
-jest.mock('../hooks/useBallContacts', () => ({
-  useBallContacts: () => ({
-    contacts: [],
-    loading: false,
-    error: null,
-    createContact: jest.fn(),
-    updateContact: jest.fn(),
-    deleteContact: jest.fn(),
-  }),
-}));
 
 jest.mock('../hooks/useVideoUrl', () => ({
   useVideoUrl: ({ videoUrl }: { videoUrl: string }) => ({
@@ -68,23 +58,6 @@ jest.mock('./VideoOverlay', () => {
   };
 });
 
-jest.mock('./AddContactButton', () => {
-  return function MockAddContactButton() {
-    return <div data-testid="add-contact-button">Manually Add Contact</div>;
-  };
-});
-
-jest.mock('./BallContactMarker', () => {
-  return function MockBallContactMarker() {
-    return <div data-testid="ball-contact-marker">Marker</div>;
-  };
-});
-
-jest.mock('./BallContactModal', () => {
-  return function MockBallContactModal() {
-    return <div data-testid="ball-contact-modal">Modal</div>;
-  };
-});
 
 jest.mock('../services/api', () => ({
   videoApi: {

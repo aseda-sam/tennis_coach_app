@@ -54,29 +54,6 @@ api.interceptors.response.use(
   }
 );
 
-// Normalize analysis data to ensure arrays are always returned
-const normalizeAnalysis = (data: unknown): AnalysisData => {
-  const analysisData = data as Record<string, unknown>;
-  return {
-    ...analysisData,
-    ball_detections:
-      typeof analysisData.ball_detections === 'string'
-        ? JSON.parse(analysisData.ball_detections || '[]')
-        : (analysisData.ball_detections ?? []),
-    pose_detections:
-      typeof analysisData.pose_detections === 'string'
-        ? JSON.parse(analysisData.pose_detections || '[]')
-        : (analysisData.pose_detections ?? []),
-    contact_timestamps:
-      typeof analysisData.contact_timestamps === 'string'
-        ? JSON.parse(analysisData.contact_timestamps as string || '[]')
-        : (analysisData.contact_timestamps ?? []),
-    contact_detections:
-      typeof analysisData.contact_detections === 'string'
-        ? JSON.parse(analysisData.contact_detections as string || '[]')
-        : (analysisData.contact_detections ?? []),
-  } as AnalysisData;
-};
 
 export const videoApi = {
   // Upload a video file
@@ -303,30 +280,7 @@ export const analysisApi = {
     return response.data;
   },
 
-  // Get analysis results by analysis ID
-  getAnalysis: async (analysisId: number): Promise<AnalysisData> => {
-    const response = await api.get<AnalysisData>(`/analysis/${analysisId}`);
-    return normalizeAnalysis(response.data);
-  },
-
-  // Get analysis results by video ID
-  getAnalysisByVideo: async (videoId: number): Promise<AnalysisData> => {
-    const response = await api.get<AnalysisData>(`/analysis/videos/${videoId}`);
-    return normalizeAnalysis(response.data);
-  },
-
-  // Get all analyses
-  getAllAnalyses: async (): Promise<AnalysisData[]> => {
-    const response = await api.get<AnalysisData[]>('/analysis/');
-    return response.data.map(normalizeAnalysis);
-  },
-
-  // Delete analysis by analysis ID
-  deleteAnalysis: async (analysisId: number): Promise<void> => {
-    await api.delete(`/analysis/${analysisId}`);
-  },
-
-  // New methods for task status tracking
+  // Task status tracking methods
   // Get job status by job ID (RQ)
   getTaskStatus: async (jobId: string): Promise<TaskStatus> => {
     const response = await api.get<TaskStatus>(`/analysis/status/${jobId}`);
