@@ -42,7 +42,6 @@ async def start_analysis(
 
     This endpoint provides a unified interface for starting different types of analysis:
     - pose_only: Extract player pose keypoints using MediaPipe
-    - ball_only: Detect tennis balls using YOLO
 
     Args:
         video_id: ID of the video to analyze

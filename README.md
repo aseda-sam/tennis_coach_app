@@ -8,17 +8,16 @@
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-4B8BBE.svg)](https://github.com/astral-sh/ruff)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A computer vision-based tennis coaching platform that analyzes your tennis videos to provide insights on ball tracking, pose estimation, and stroke analysis.
+A tennis coaching app (hobby project) focused on a **serve-analysis MVP**: upload a serve video, tag serve attempts, compute a small set of coach-meaningful metrics, and return one recommendation.
 
 ## 🎾 What It Does
 
 - **User accounts** with secure authentication
-- **Upload tennis videos** and get instant analysis
-- **Ball detection** using YOLO computer vision
-- **Pose estimation** with MediaPipe for stroke analysis
-- **Manual ball contact marking** for precise timing analysis
-- **Annotated video generation** with AI overlays
-- **Real-time analysis dashboard** with progress tracking
+- **Upload videos** and tag **serve attempts**
+- **Pose estimation** (MediaPipe) for biomechanics signals
+- **Serve metrics** computed from pose at key timestamps
+- **Background job processing** (Redis Queue / RQ)
+- **Real-time dashboard** with progress tracking
 
 ## 🚀 Quick Start
 
@@ -63,13 +62,13 @@ npm start
 tennis_coach_app/
 ├── backend/          # FastAPI + Computer Vision
 ├── frontend/         # React + TypeScript
-├── ml_models/        # YOLO models
+├── ml_models/        # Model assets (README only for now)
 └── project_docs/     # Local implementation notes (not in git)
 ```
 
 **Tech Stack:**
 
-- **Backend**: FastAPI, SQLAlchemy, YOLO, MediaPipe
+- **Backend**: FastAPI, SQLAlchemy, MediaPipe, RQ
 - **Frontend**: React, TypeScript, HTML5 Video
 - **Database**: SQLite (dev) → PostgreSQL (prod)
 - **Authentication**: JWT-based (configurable provider)
@@ -84,12 +83,7 @@ tennis_coach_app/
 
 ### Detailed Documentation
 
-- **[Backend API](backend/docs/api.md)** - Complete API reference
-- **[Backend Database Schema](backend/docs/database_schema.md)** - Database models and relationships
-- **[Backend Profile Configuration](backend/docs/profile-configuration.md)** - Profile-based configuration system
-- **[Backend Cloud Database Setup](backend/docs/cloud-database-setup.md)** - PostgreSQL/Supabase setup
-- **[Backend Cloud Storage Setup](backend/docs/cloud-storage-setup.md)** - Supabase storage configuration
-- **[Backend Background Tasks](backend/docs/background-tasks.md)** - Background task system
+- **[Backend docs index](backend/docs/README.md)** - Serve MVP, config, background jobs, deploy notes
 - **[Frontend Components](frontend/docs/components.md)** - Component documentation
 - **[Frontend API Integration](frontend/docs/api-integration.md)** - API communication
 - **[ML Models](ml_models/README.md)** - Machine learning models and usage
@@ -134,5 +128,3 @@ docker compose exec frontend npm test
 MIT License
 
 ---
-
-**Built with ❤️ for tennis and software engineering**
