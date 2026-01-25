@@ -14,6 +14,7 @@ from app.api.schemas.serve_attempt import (
     ServeAttemptUpdate,
 )
 from app.core.database import get_db
+from app.core.shot_types import SERVE_SUBTYPES, is_valid_serve_subtype
 from app.dependencies.auth import get_current_user
 from app.models.player import Player
 from app.models.serve_attempt import ServeAttempt
@@ -66,6 +67,16 @@ async def create_serve_attempt(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="contact_timestamp must be between start_timestamp and end_timestamp",
+            )
+
+        # Validate serve subtype
+        if serve_attempt.serve_subtype and not is_valid_serve_subtype(
+            serve_attempt.serve_subtype
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid serve_subtype: {serve_attempt.serve_subtype}. "
+                f"Valid options: {', '.join(SERVE_SUBTYPES)}",
             )
 
         # Auto-assign default player if not provided
@@ -178,6 +189,16 @@ async def update_serve_attempt(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="contact_timestamp must be between start_timestamp and end_timestamp",
+            )
+
+        # Validate serve subtype if being updated
+        if updates.serve_subtype is not None and not is_valid_serve_subtype(
+            updates.serve_subtype
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid serve_subtype: {updates.serve_subtype}. "
+                f"Valid options: {', '.join(SERVE_SUBTYPES)}",
             )
 
         # Update fields

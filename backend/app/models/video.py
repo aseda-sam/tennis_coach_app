@@ -34,16 +34,6 @@ class Video(Base):
     )  # uploaded, processing, completed, failed
     error_message = Column(Text, nullable=True)
 
-    # Quality metrics (assessed once on upload)
-    quality_score = Column(Float, nullable=True)
-    blur_score = Column(Float, nullable=True)
-    lighting_score = Column(Float, nullable=True)
-    resolution_score = Column(Float, nullable=True)
-    quality_level = Column(
-        String(20), nullable=True
-    )  # 'excellent', 'good', 'fair', 'poor'
-    quality_assessed_at = Column(DateTime(timezone=True), nullable=True)
-
     # Authentication - user who owns this video
     user_id = Column(String(36), nullable=False, index=True)  # UUID as string
 

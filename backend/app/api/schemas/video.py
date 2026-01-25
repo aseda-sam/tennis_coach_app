@@ -24,40 +24,6 @@ class VideoMetadata(BaseModel):
     )
 
 
-class VideoQualityMetrics(BaseModel):
-    """Video quality assessment metrics."""
-
-    quality_score: float = Field(ge=0, le=1, description="Overall quality score (0-1)")
-    blur_score: float = Field(ge=0, le=1, description="Blur quality score (0-1)")
-    lighting_score: float = Field(
-        ge=0, le=1, description="Lighting quality score (0-1)"
-    )
-    resolution_score: float = Field(
-        ge=0, le=1, description="Resolution quality score (0-1)"
-    )
-    quality_level: str = Field(
-        description="Quality level (excellent, good, fair, poor, unknown)"
-    )
-    recommended_confidence_threshold: float = Field(
-        ge=0, le=1, description="Recommended confidence threshold for analysis"
-    )
-    frame_count_analyzed: int = Field(
-        ge=0, description="Number of frames analyzed for quality assessment"
-    )
-
-
-class VideoQualityAssessmentResponse(BaseModel):
-    """Response model for video quality assessment."""
-
-    video_id: int = Field(description="Video ID")
-    filename: str = Field(description="Video filename")
-    quality_metrics: VideoQualityMetrics = Field(
-        description="Quality assessment results"
-    )
-    assessment_time: float = Field(description="Assessment duration in seconds")
-    message: str = Field(description="Assessment status message")
-
-
 class VideoInfo(BaseModel):
     """Complete video information."""
 
@@ -78,25 +44,6 @@ class VideoInfo(BaseModel):
     status: str = Field(description="Video processing status")
     error_message: Optional[str] = Field(
         default=None, description="Error message if processing failed"
-    )
-    # Quality metrics (assessed once on upload)
-    quality_score: Optional[float] = Field(
-        default=None, ge=0, le=1, description="Overall quality score (0-1)"
-    )
-    blur_score: Optional[float] = Field(
-        default=None, ge=0, le=1, description="Blur quality score (0-1)"
-    )
-    lighting_score: Optional[float] = Field(
-        default=None, ge=0, le=1, description="Lighting quality score (0-1)"
-    )
-    resolution_score: Optional[float] = Field(
-        default=None, ge=0, le=1, description="Resolution quality score (0-1)"
-    )
-    quality_level: Optional[str] = Field(
-        default=None, description="Quality level (excellent, good, fair, poor, unknown)"
-    )
-    quality_assessed_at: Optional[datetime] = Field(
-        default=None, description="Quality assessment timestamp"
     )
     is_demo: bool = Field(
         default=False,
@@ -133,13 +80,6 @@ class VideoListItem(BaseModel):
     height: Optional[int] = Field(default=None, description="Height in pixels")
     created_at: datetime = Field(description="Upload timestamp")
     status: str = Field(description="Video processing status")
-    # Quality metrics for list display
-    quality_score: Optional[float] = Field(
-        default=None, ge=0, le=1, description="Overall quality score (0-1)"
-    )
-    quality_level: Optional[str] = Field(
-        default=None, description="Quality level (excellent, good, fair, poor, unknown)"
-    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -154,10 +94,6 @@ class VideoUploadResponse(BaseModel):
     message: str = Field(description="Status message")
     metadata: Optional[VideoMetadata] = Field(
         default=None, description="Extracted metadata"
-    )
-    # Quality assessment results
-    quality_metrics: Optional[VideoQualityMetrics] = Field(
-        default=None, description="Quality assessment results"
     )
 
 

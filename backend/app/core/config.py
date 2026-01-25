@@ -45,7 +45,6 @@ class Settings(BaseSettings):
 
     # ML Models
     ML_MODELS_DIR: str = "ml_models"
-    CONFIDENCE_THRESHOLD: float = 0.5
 
     # Pose Detection
     POSE_DETECTION_CONFIDENCE: float = 0.5

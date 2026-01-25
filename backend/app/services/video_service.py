@@ -213,30 +213,6 @@ def update_video_status(
     return None
 
 
-def update_video_quality(
-    db: Session,
-    video_id: int,
-    quality_score: float,
-    blur_score: float,
-    lighting_score: float,
-    resolution_score: float,
-    quality_level: str,
-) -> Optional[Video]:
-    """Update video quality metrics."""
-    video = db.query(Video).filter(Video.id == video_id).first()
-    if video:
-        video.quality_score = quality_score
-        video.blur_score = blur_score
-        video.lighting_score = lighting_score
-        video.resolution_score = resolution_score
-        video.quality_level = quality_level
-        video.quality_assessed_at = datetime.utcnow()
-        db.commit()
-        db.refresh(video)
-        return video
-    return None
-
-
 def extract_frames(
     video_path: Path, max_frames: Optional[int] = None
 ) -> List[np.ndarray]:
