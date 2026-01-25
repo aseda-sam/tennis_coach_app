@@ -11,7 +11,8 @@ class ServeAttemptCreate(BaseModel):
 
     video_id: int = Field(description="Video ID")
     player_id: Optional[int] = Field(
-        default=None, description="Player ID (optional - defaults to user's 'Me' player)"
+        default=None,
+        description="Player ID (optional - defaults to user's 'Me' player)",
     )
     start_timestamp: float = Field(ge=0, description="Start timestamp in seconds")
     end_timestamp: float = Field(ge=0, description="End timestamp in seconds")

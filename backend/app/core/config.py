@@ -22,7 +22,9 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # Database (auto-detected from PROFILE)
-    DATABASE_URL: Optional[str] = None  # Only used if PROFILE=local and you want Postgres
+    DATABASE_URL: Optional[str] = (
+        None  # Only used if PROFILE=local and you want Postgres
+    )
     SUPABASE_DB_URL: Optional[str] = None  # Required if PROFILE=production
 
     # Supabase (only needed if PROFILE=production)
@@ -114,12 +116,16 @@ class Settings(BaseSettings):
     @property
     def effective_max_file_size(self) -> int:
         """Max file size - smaller in production."""
-        return 20971520 if self.PROFILE == "production" else self.MAX_FILE_SIZE  # 20MB prod, 100MB local
+        return (
+            20971520 if self.PROFILE == "production" else self.MAX_FILE_SIZE
+        )  # 20MB prod, 100MB local
 
     @property
     def effective_max_video_duration(self) -> int:
         """Max video duration - smaller in production."""
-        return 60 if self.PROFILE == "production" else self.MAX_VIDEO_DURATION  # 1min prod, 5min local
+        return (
+            60 if self.PROFILE == "production" else self.MAX_VIDEO_DURATION
+        )  # 1min prod, 5min local
 
     @property
     def effective_frame_skip_ratio(self) -> int:
@@ -140,7 +146,9 @@ if settings.PROFILE == "production":
     }
     missing = [k for k, v in required.items() if not v]
     if missing:
-        raise ValueError(f"Missing required vars for PROFILE=production: {', '.join(missing)}")
+        raise ValueError(
+            f"Missing required vars for PROFILE=production: {', '.join(missing)}"
+        )
 
 # Setup logging
 logging.basicConfig(
@@ -152,6 +160,7 @@ logging.basicConfig(
 for d in [settings.UPLOAD_DIR, settings.PROCESSED_DIR, "../data/database"]:
     Path(d).mkdir(parents=True, exist_ok=True)
 
+
 # Environment limits (for video validation)
 def get_environment_limits() -> dict:
     """Get video processing limits - same for Docker and local."""
@@ -162,6 +171,9 @@ def get_environment_limits() -> dict:
         "environment": "docker" if os.path.exists("/.dockerenv") else "local",
     }
 
+
 env_limits = get_environment_limits()
 
-logger.info(f"Profile: {settings.PROFILE}, Storage: {settings.storage_type}, Auth: {settings.auth_required}")
+logger.info(
+    f"Profile: {settings.PROFILE}, Storage: {settings.storage_type}, Auth: {settings.auth_required}"
+)

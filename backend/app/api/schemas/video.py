@@ -108,10 +108,12 @@ class VideoInfo(BaseModel):
     )
     # Session metadata (serve-focused)
     session_type: Optional[str] = Field(
-        default=None, description="Session type: 'serve_drill', 'match', 'practice', 'other'"
+        default=None,
+        description="Session type: 'serve_drill', 'match', 'practice', 'other'",
     )
     camera_angle: Optional[str] = Field(
-        default=None, description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'"
+        default=None,
+        description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'",
     )
     recorded_at: Optional[datetime] = Field(
         default=None, description="When video was recorded (for trends)"

@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas.serve_attempt import (
-    ServeAnalysisSummary,
     ServeAttemptCreate,
     ServeAttemptDetail,
     ServeAttemptInfo,
@@ -60,12 +59,9 @@ async def create_serve_attempt(
                 detail="start_timestamp must be less than end_timestamp",
             )
 
-        if (
-            serve_attempt.contact_timestamp is not None
-            and (
-                serve_attempt.contact_timestamp < serve_attempt.start_timestamp
-                or serve_attempt.contact_timestamp > serve_attempt.end_timestamp
-            )
+        if serve_attempt.contact_timestamp is not None and (
+            serve_attempt.contact_timestamp < serve_attempt.start_timestamp
+            or serve_attempt.contact_timestamp > serve_attempt.end_timestamp
         ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -79,9 +75,7 @@ async def create_serve_attempt(
                 db, current_user["user_id"]
             )
             player_id = default_player.id
-            logger.debug(
-                f"Auto-assigned default player {player_id} for serve attempt"
-            )
+            logger.debug(f"Auto-assigned default player {player_id} for serve attempt")
 
         # Validate player ownership
         player = db.query(Player).filter(Player.id == player_id).first()
@@ -135,9 +129,7 @@ async def update_serve_attempt(
     try:
         # Get serve attempt
         serve_attempt = (
-            db.query(ServeAttempt)
-            .filter(ServeAttempt.id == serve_attempt_id)
-            .first()
+            db.query(ServeAttempt).filter(ServeAttempt.id == serve_attempt_id).first()
         )
 
         if not serve_attempt:
@@ -170,7 +162,11 @@ async def update_serve_attempt(
         # Validate timestamps if being updated
         start_ts = updates.start_timestamp or serve_attempt.start_timestamp
         end_ts = updates.end_timestamp or serve_attempt.end_timestamp
-        contact_ts = updates.contact_timestamp if updates.contact_timestamp is not None else serve_attempt.contact_timestamp
+        contact_ts = (
+            updates.contact_timestamp
+            if updates.contact_timestamp is not None
+            else serve_attempt.contact_timestamp
+        )
 
         if start_ts >= end_ts:
             raise HTTPException(
@@ -215,9 +211,7 @@ async def get_serve_attempt(
     """Get details of a specific serve attempt."""
     try:
         serve_attempt = (
-            db.query(ServeAttempt)
-            .filter(ServeAttempt.id == serve_attempt_id)
-            .first()
+            db.query(ServeAttempt).filter(ServeAttempt.id == serve_attempt_id).first()
         )
 
         if not serve_attempt:
@@ -302,5 +296,3 @@ async def get_my_serve_attempts(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get serve attempts. Please try again later.",
         ) from e
-
-

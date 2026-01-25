@@ -57,9 +57,15 @@ class Video(Base):
     original_user_id = Column(String(36), nullable=True)
 
     # Session metadata (serve-focused)
-    session_type = Column(String(20), nullable=True)  # 'serve_drill', 'match', 'practice', 'other'
-    camera_angle = Column(String(20), nullable=True)  # 'behind', 'profile', 'diagonal', 'unknown'
-    recorded_at = Column(DateTime(timezone=True), nullable=True)  # When video was recorded (for trends)
+    session_type = Column(
+        String(20), nullable=True
+    )  # 'serve_drill', 'match', 'practice', 'other'
+    camera_angle = Column(
+        String(20), nullable=True
+    )  # 'behind', 'profile', 'diagonal', 'unknown'
+    recorded_at = Column(
+        DateTime(timezone=True), nullable=True
+    )  # When video was recorded (for trends)
 
     # New granular analysis relationships
     ball_detections = relationship(

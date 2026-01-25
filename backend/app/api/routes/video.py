@@ -870,9 +870,7 @@ async def analyze_serve_attempts(
 
         # Check if there are serve attempts to analyze
         serve_attempts = (
-            db.query(ServeAttempt)
-            .filter(ServeAttempt.video_id == video_id)
-            .all()
+            db.query(ServeAttempt).filter(ServeAttempt.video_id == video_id).all()
         )
 
         if not serve_attempts:
@@ -895,9 +893,7 @@ async def analyze_serve_attempts(
                 job_timeout=300,  # 5 minutes
                 result_ttl=3600,  # Keep results for 1 hour
             )
-            logger.info(
-                f"Enqueued serve analysis job {job.id} for video {video_id}"
-            )
+            logger.info(f"Enqueued serve analysis job {job.id} for video {video_id}")
         except (RedisConnectionError, RedisTimeoutError) as e:
             logger.error(f"Failed to enqueue job to Redis: {e}")
             raise HTTPException(

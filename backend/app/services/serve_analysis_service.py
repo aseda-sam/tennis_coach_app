@@ -136,7 +136,11 @@ class ServeAnalysisService:
                     continue
 
                 # Get player to determine contact hand
-                player = db.query(Player).filter(Player.id == serve_attempt.player_id).first()
+                player = (
+                    db.query(Player)
+                    .filter(Player.id == serve_attempt.player_id)
+                    .first()
+                )
                 if not player:
                     logger.warning(
                         f"Player {serve_attempt.player_id} not found for serve attempt {serve_attempt.id}"
@@ -196,7 +200,9 @@ class ServeAnalysisService:
             )
 
             # Generate recommendations
-            recommendations = self._generate_recommendations(avg_elbow_angle, elbow_angles)
+            recommendations = self._generate_recommendations(
+                avg_elbow_angle, elbow_angles
+            )
 
             return {
                 "video_id": video_id,
@@ -210,7 +216,10 @@ class ServeAnalysisService:
             }
 
         except Exception as e:
-            logger.error(f"Error analyzing serve attempts for video {video_id}: {e}", exc_info=True)
+            logger.error(
+                f"Error analyzing serve attempts for video {video_id}: {e}",
+                exc_info=True,
+            )
             raise
 
     def calculate_elbow_angle_at_contact(
@@ -263,31 +272,31 @@ class ServeAnalysisService:
             return ["No elbow angle data available for recommendations."]
 
         # Ideal range for serve elbow angle: 150-170 degrees
-        IDEAL_MIN = 150.0
-        IDEAL_MAX = 170.0
-        IDEAL_CENTER = 160.0
+        ideal_min = 150.0
+        ideal_max = 170.0
+        ideal_center = 160.0
 
-        if avg_elbow_angle < IDEAL_MIN:
+        if avg_elbow_angle < ideal_min:
             # Too much bend - need more extension
-            diff = IDEAL_CENTER - avg_elbow_angle
+            diff = ideal_center - avg_elbow_angle
             recommendations.append(
                 f"Your average elbow angle is {diff:.1f}° below ideal. "
                 f"Try extending your arm more at contact for better power. "
-                f"Target: {IDEAL_CENTER:.0f}° (current: {avg_elbow_angle:.1f}°)"
+                f"Target: {ideal_center:.0f}° (current: {avg_elbow_angle:.1f}°)"
             )
-        elif avg_elbow_angle > IDEAL_MAX:
+        elif avg_elbow_angle > ideal_max:
             # Overextension - need more control
-            diff = avg_elbow_angle - IDEAL_CENTER
+            diff = avg_elbow_angle - ideal_center
             recommendations.append(
                 f"Your average elbow angle is {diff:.1f}° above ideal. "
                 f"Try slightly bending your arm for better control. "
-                f"Target: {IDEAL_CENTER:.0f}° (current: {avg_elbow_angle:.1f}°)"
+                f"Target: {ideal_center:.0f}° (current: {avg_elbow_angle:.1f}°)"
             )
         else:
             # Within ideal range
             recommendations.append(
                 f"Great! Your elbow angle ({avg_elbow_angle:.1f}°) is within the ideal range "
-                f"({IDEAL_MIN:.0f}°-{IDEAL_MAX:.0f}°). Keep up the good form!"
+                f"({ideal_min:.0f}°-{ideal_max:.0f}°). Keep up the good form!"
             )
 
         # Add consistency feedback if multiple serves

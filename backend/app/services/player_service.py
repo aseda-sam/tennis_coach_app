@@ -240,13 +240,19 @@ def get_or_create_default_player(db: Session, user_id: str) -> Player:
         Player: The default player for this user
     """
     # Check for existing default player
-    default_player = db.query(Player).filter(
-        Player.user_id == user_id,
-        Player.name.in_(["Me", "Default"])  # Flexible naming
-    ).first()
+    default_player = (
+        db.query(Player)
+        .filter(
+            Player.user_id == user_id,
+            Player.name.in_(["Me", "Default"]),  # Flexible naming
+        )
+        .first()
+    )
 
     if default_player:
-        logger.debug(f"Found existing default player for user {user_id}: ID={default_player.id}")
+        logger.debug(
+            f"Found existing default player for user {user_id}: ID={default_player.id}"
+        )
         return default_player
 
     # Create new default player
@@ -254,7 +260,7 @@ def get_or_create_default_player(db: Session, user_id: str) -> Player:
     default_player = Player(
         name="Me",
         dominant_hand="right",  # Default, user can update later
-        user_id=user_id
+        user_id=user_id,
     )
     db.add(default_player)
     db.commit()

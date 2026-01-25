@@ -356,9 +356,7 @@ def analyze_serve_attempts_rq(video_id: int) -> Dict[str, Any]:
         from app.models.serve_attempt import ServeAttempt
         from app.services.serve_analysis_service import ServeAnalysisService
 
-        logger.info(
-            f"RQ task: Starting serve attempts analysis for video {video_id}"
-        )
+        logger.info(f"RQ task: Starting serve attempts analysis for video {video_id}")
 
         # Create database session
         with SessionLocal() as db:
@@ -369,9 +367,7 @@ def analyze_serve_attempts_rq(video_id: int) -> Dict[str, Any]:
 
             # Load serve attempts for this video
             serve_attempts = (
-                db.query(ServeAttempt)
-                .filter(ServeAttempt.video_id == video_id)
-                .all()
+                db.query(ServeAttempt).filter(ServeAttempt.video_id == video_id).all()
             )
 
             if not serve_attempts:
