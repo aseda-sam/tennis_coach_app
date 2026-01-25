@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -216,9 +216,13 @@ class Settings(BaseSettings):
         # Default fallback
         return "supabase"
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    # Pydantic v2 settings config
+    # - extra="ignore": tolerate legacy/unused env vars (e.g. ENVIRONMENT)
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore",
+    )
 
 
 # Create settings instance
