@@ -217,11 +217,11 @@ class Settings(BaseSettings):
         return "supabase"
 
     # Pydantic v2 settings config
-    # - extra="ignore": tolerate legacy/unused env vars (e.g. ENVIRONMENT)
+    # We do NOT support legacy env keys (e.g. ENVIRONMENT). Unknown keys should fail fast.
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
-        extra="ignore",
+        extra="forbid",
     )
 
 
