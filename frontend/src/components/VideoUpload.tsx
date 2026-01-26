@@ -9,15 +9,21 @@ interface VideoUploadProps {
   onUploadSuccess: (video: VideoMetadata) => void;
 }
 
+type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
+
 const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedVideoId, setUploadedVideoId] = useState<number | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
   const [sessionType, setSessionType] = useState<string>('');
   const [cameraAngle, setCameraAngle] = useState<string>('');
+  const [isUpdatingMetadata, setIsUpdatingMetadata] = useState(false);
   const { user } = useAuth();
 
   // Check if user can upload demo videos
@@ -47,68 +53,103 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
         return;
       }
 
-      setIsUploading(true);
+      setSelectedFile(file);
       setError(null);
+      setUploadStatus('uploading');
       setUploadProgress(0);
 
       try {
-        // Build query params for session metadata
-        const params = new URLSearchParams();
-        if (isDemo) {
-          params.append('is_demo', 'true');
-        }
-        if (sessionType) {
-          params.append('session_type', sessionType);
-        }
-        if (cameraAngle) {
-          params.append('camera_angle', cameraAngle);
-        }
+        // Upload file immediately without metadata
+        const response = await videoApi.uploadVideo(file, isDemo, {});
 
-        const response = await videoApi.uploadVideo(file, isDemo, {
-          session_type: sessionType || undefined,
-          camera_angle: cameraAngle || undefined,
-        });
-
-        // Create a video object from the response data
-        const video: VideoMetadata = {
-          id: response.video_id,
-          filename: response.filename,
-          file_path: '', // This will be filled by the backend
-          file_size: response.file_size,
-          status: response.status,
-          created_at: new Date().toISOString(),
-          // Add metadata if available
-          ...(response.metadata && {
-            duration: response.metadata.duration,
-            fps: response.metadata.fps,
-            width: response.metadata.width,
-            height: response.metadata.height,
-            frame_count: response.metadata.frame_count,
-          }),
-        };
-
-        onUploadSuccess(video);
+        setUploadedVideoId(response.video_id);
         setUploadProgress(100);
+        setUploadStatus('success');
+        setStep(2); // Move to Step 2: Details
       } catch (err: unknown) {
         const axiosError = err as {
           response?: {
             data?: { detail?: string; error?: { message?: string } };
           };
         };
-        // Handle error responses
         const detail =
           axiosError.response?.data?.detail ||
           axiosError.response?.data?.error?.message;
 
-        // Handle errors
         const errorMessage = detail || 'Upload failed. Please try again.';
         setError(errorMessage);
-      } finally {
-        setIsUploading(false);
+        setUploadStatus('error');
       }
     },
-    [onUploadSuccess, isDemo, sessionType, cameraAngle]
+    [isDemo]
   );
+
+  const handleFinishUpload = useCallback(async () => {
+    if (!uploadedVideoId || !sessionType) {
+      return;
+    }
+
+    setIsUpdatingMetadata(true);
+    setError(null);
+
+    try {
+      // Update video metadata
+      await videoApi.updateVideoMetadata(uploadedVideoId, {
+        session_type: sessionType,
+        camera_angle: cameraAngle || undefined,
+      });
+
+      // Get updated video info
+      const updatedVideo = await videoApi.getVideo(uploadedVideoId);
+
+      // Create VideoMetadata object
+      const video: VideoMetadata = {
+        id: updatedVideo.id,
+        filename: updatedVideo.filename,
+        file_path: updatedVideo.file_path || '',
+        file_size: updatedVideo.file_size,
+        status: updatedVideo.status,
+        created_at: updatedVideo.created_at,
+        session_type: updatedVideo.session_type,
+        camera_angle: updatedVideo.camera_angle,
+        ...(updatedVideo.duration && { duration: updatedVideo.duration }),
+        ...(updatedVideo.fps && { fps: updatedVideo.fps }),
+        ...(updatedVideo.width && { width: updatedVideo.width }),
+        ...(updatedVideo.height && { height: updatedVideo.height }),
+        ...(updatedVideo.frame_count && { frame_count: updatedVideo.frame_count }),
+      };
+
+      onUploadSuccess(video);
+    } catch (err: unknown) {
+      const axiosError = err as {
+        response?: {
+          data?: { detail?: string; error?: { message?: string } };
+        };
+      };
+      const detail =
+        axiosError.response?.data?.detail ||
+        axiosError.response?.data?.error?.message;
+
+      const errorMessage = detail || 'Failed to update video details. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setIsUpdatingMetadata(false);
+    }
+  }, [uploadedVideoId, sessionType, cameraAngle, onUploadSuccess]);
+
+  const handleReplaceFile = useCallback(() => {
+    setSelectedFile(null);
+    setUploadedVideoId(null);
+    setUploadStatus('idle');
+    setUploadProgress(0);
+    setStep(1);
+    setSessionType('');
+    setCameraAngle('');
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -125,12 +166,16 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
       e.preventDefault();
       setIsDragOver(false);
 
+      if (step === 2) {
+        return; // Don't allow dropping new files in Step 2
+      }
+
       const files = Array.from(e.dataTransfer.files);
       if (files.length > 0) {
         handleFileSelect(files[0]);
       }
     },
-    [handleFileSelect]
+    [handleFileSelect, step]
   );
 
   const handleFileInput = useCallback(
@@ -144,123 +189,170 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
   );
 
   const handleAreaClick = useCallback(() => {
-    if (!isUploading && fileInputRef.current) {
+    if (step === 2) {
+      return; // Don't allow clicking upload area in Step 2
+    }
+    if (uploadStatus !== 'uploading' && fileInputRef.current) {
       fileInputRef.current.click();
     }
-  }, [isUploading]);
+  }, [step, uploadStatus]);
 
   return (
     <div className="video-upload">
-      <div
-        className={`upload-area ${isDragOver ? 'drag-over' : ''} ${isUploading ? 'uploading' : ''}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={handleAreaClick}
-      >
-        {isUploading ? (
-          <div className="upload-progress">
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
-            </div>
-            <p>Uploading... {uploadProgress}%</p>
+      {/* Step Indicator */}
+      <div className="upload-steps">
+        <div className={`step-indicator ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
+          <span className="step-number">1</span>
+          <span className="step-label">Upload</span>
+        </div>
+        <div className={`step-indicator ${step >= 2 ? 'active' : ''}`}>
+          <span className="step-number">2</span>
+          <span className="step-label">Details</span>
+        </div>
+      </div>
+
+      {step === 1 && (
+        <>
+          <div
+            className={`upload-area ${isDragOver ? 'drag-over' : ''} ${uploadStatus === 'uploading' ? 'uploading' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={handleAreaClick}
+          >
+            {uploadStatus === 'uploading' ? (
+              <div className="upload-progress">
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
+                <p>Uploading... {uploadProgress}%</p>
+              </div>
+            ) : uploadStatus === 'success' ? (
+              <div className="upload-success">
+                <div className="upload-icon" aria-hidden="true">
+                  <UploadIcon size={48} color="#22c55e" />
+                </div>
+                <p className="upload-main-text">Uploaded: {selectedFile?.name}</p>
+                <button
+                  type="button"
+                  onClick={handleReplaceFile}
+                  className="replace-file-btn"
+                >
+                  Replace file
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="upload-icon" aria-hidden="true">
+                  <UploadIcon size={48} color="#64748b" />
+                </div>
+                <p className="upload-main-text">
+                  Drag and drop your tennis video here
+                </p>
+                <p className="upload-or-text">or</p>
+                <label
+                  className="file-input-label"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Choose File
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="video/*"
+                    onChange={handleFileInput}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </>
+            )}
           </div>
-        ) : (
-          <>
+
+          {canUploadDemo && (
+            <div className="demo-upload-option">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={isDemo}
+                  onChange={(e) => setIsDemo(e.target.checked)}
+                  disabled={uploadStatus === 'uploading'}
+                />
+                <span>Upload as demo video (public, accessible to all users)</span>
+              </label>
+            </div>
+          )}
+        </>
+      )}
+
+      {step === 2 && (
+        <div className="upload-details-step">
+          <div className="uploaded-file-info">
             <div className="upload-icon" aria-hidden="true">
-              <UploadIcon size={48} color="#64748b" />
+              <UploadIcon size={32} color="#22c55e" />
             </div>
-            <p className="upload-main-text">
-              Drag and drop your tennis video here
-            </p>
-            <p className="upload-or-text">or</p>
-            <label
-              className="file-input-label"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Choose File
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="video/*"
-                onChange={handleFileInput}
-                disabled={isUploading}
-                style={{ display: 'none' }}
-              />
-            </label>
-          </>
-        )}
-      </div>
-
-      <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        {canUploadDemo && (
-          <div className="demo-upload-option" style={{ padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', backgroundColor: '#f8fafc' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={isDemo}
-                onChange={(e) => setIsDemo(e.target.checked)}
-                disabled={isUploading}
-              />
-              <span style={{ fontSize: '0.875rem', color: '#475569' }}>
-                Upload as demo video (public, accessible to all users)
-              </span>
-            </label>
+            <div className="uploaded-file-details">
+              <p className="uploaded-filename">{selectedFile?.name}</p>
+              <p className="uploaded-status">Uploaded successfully</p>
+            </div>
           </div>
-        )}
 
-        <div style={{ padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', backgroundColor: '#f8fafc' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#475569' }}>
-            Session Type (optional)
-          </label>
-          <select
-            value={sessionType}
-            onChange={(e) => setSessionType(e.target.value)}
-            disabled={isUploading}
-            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1' }}
-          >
-            <option value="">Select session type</option>
-            <option value="serve_drill">Serve Drill</option>
-            <option value="match">Match</option>
-            <option value="practice">Practice</option>
-            <option value="other">Other</option>
-          </select>
+          <div className="details-form">
+            <div className={`form-field ${sessionType ? 'selected' : ''}`}>
+              <label>
+                Session Type <span className="required">(required)</span>
+              </label>
+              <select
+                value={sessionType}
+                onChange={(e) => setSessionType(e.target.value)}
+                disabled={isUpdatingMetadata}
+              >
+                <option value="">Select session type</option>
+                <option value="serve_practice">Serve Practice</option>
+                <option value="match">Match</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div className={`form-field ${cameraAngle ? 'selected' : ''}`}>
+              <label>
+                Camera Angle <span className="optional">(optional)</span>
+              </label>
+              <select
+                value={cameraAngle}
+                onChange={(e) => setCameraAngle(e.target.value)}
+                disabled={isUpdatingMetadata}
+              >
+                <option value="">Select camera angle</option>
+                <option value="behind">Behind</option>
+                <option value="profile">Profile</option>
+                <option value="diagonal">Diagonal</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </div>
+
+            <div className="finish-upload-actions">
+              <button
+                type="button"
+                onClick={handleReplaceFile}
+                className="replace-file-btn-secondary"
+                disabled={isUpdatingMetadata}
+              >
+                Replace file
+              </button>
+              <button
+                type="button"
+                onClick={handleFinishUpload}
+                className="finish-upload-btn"
+                disabled={!sessionType || isUpdatingMetadata}
+              >
+                {isUpdatingMetadata ? 'Finishing...' : 'Finish upload'}
+              </button>
+            </div>
+          </div>
         </div>
-
-        <div style={{ padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', backgroundColor: '#f8fafc' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#475569' }}>
-            Camera Angle (optional)
-          </label>
-          <select
-            value={cameraAngle}
-            onChange={(e) => setCameraAngle(e.target.value)}
-            disabled={isUploading}
-            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1' }}
-          >
-            <option value="">Select camera angle</option>
-            <option value="behind">Behind</option>
-            <option value="profile">Profile</option>
-            <option value="diagonal">Diagonal</option>
-            <option value="unknown">Unknown</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="upload-guidance">
-        <h3 className="guidance-title">What videos work best?</h3>
-        <ul className="guidance-list">
-          <li>Record from the side or slightly behind for serves</li>
-          <li>Capture your full body in frame</li>
-          <li>Good lighting helps us see your form clearly</li>
-          <li>Videos should be at least a few seconds long</li>
-        </ul>
-        <p className="file-info">
-          Supported formats: MP4, AVI, MOV, WMV, FLV • Maximum size: 100MB
-        </p>
-      </div>
+      )}
 
       {error && <div className="error-message">{error}</div>}
     </div>

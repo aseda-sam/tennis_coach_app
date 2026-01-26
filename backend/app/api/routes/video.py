@@ -34,6 +34,7 @@ from app.api.schemas.video import (
     VideoInfo,
     VideoListItem,
     VideoMetadata,
+    VideoMetadataUpdateRequest,
     VideoSignedUrlResponse,
     VideoUploadResponse,
 )
@@ -584,12 +585,55 @@ async def delete_video(
         log_and_raise_error(e, "delete_video", {"video_id": video_id})
 
 
+@router.patch("/{video_id}/metadata", response_model=VideoInfo)
+async def update_video_metadata(
+    video_id: int,
+    metadata_update: VideoMetadataUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VideoInfo:
+    """
+    Update video metadata (session_type and camera_angle).
+
+    Args:
+        video_id: Unique video identifier
+        metadata_update: Metadata fields to update
+        current_user: Authenticated user
+
+    Returns:
+        Updated video information
+    """
+    try:
+        # Get video to check authorization
+        db_video = video_service.get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Check authorization (only owner can update)
+        require_video_access(db_video, current_user)
+
+        # Update metadata
+        updated_video = video_service.update_video_metadata(
+            db=db,
+            video_id=video_id,
+            session_type=metadata_update.session_type,
+            camera_angle=metadata_update.camera_angle,
+        )
+
+        if not updated_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        return VideoInfo.model_validate(updated_video)
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "update_video_metadata", {"video_id": video_id})
+
+
 @router.post("/upload", response_model=VideoUploadResponse)
 async def upload_video(
     file: UploadFile = File(...),
     is_demo: bool = Query(False, description="Upload as demo video"),
     session_type: Optional[str] = Query(
-        None, description="Session type: 'serve_drill', 'match', 'practice', 'other'"
+        None, description="Session type: 'serve_practice', 'match', 'other'"
     ),
     camera_angle: Optional[str] = Query(
         None, description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'"

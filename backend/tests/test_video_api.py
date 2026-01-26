@@ -231,6 +231,120 @@ class TestVideoAPI:
         assert regular_video.id in video_ids
         assert demo_video.id not in video_ids
 
+    def test_update_video_metadata_success(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test updating video metadata (session_type and camera_angle)."""
+        from app.models.video import Video
+
+        # Create a video
+        video = Video(
+            filename="test_video.mp4",
+            file_path="raw/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+            session_type=None,
+            camera_angle=None,
+        )
+        db_session.add(video)
+        db_session.commit()
+        video_id = video.id
+
+        # Update metadata
+        update_data = {
+            "session_type": "serve_practice",
+            "camera_angle": "behind",
+        }
+        response = client.patch(f"/v0/videos/{video_id}/metadata", json=update_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == video_id
+        assert data["session_type"] == "serve_practice"
+        assert data["camera_angle"] == "behind"
+
+        # Verify database was updated
+        db_session.refresh(video)
+        assert video.session_type == "serve_practice"
+        assert video.camera_angle == "behind"
+
+    def test_update_video_metadata_partial(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test updating only session_type (camera_angle remains unchanged)."""
+        from app.models.video import Video
+
+        # Create a video with existing camera_angle
+        video = Video(
+            filename="test_video2.mp4",
+            file_path="raw/test_video2.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+            session_type=None,
+            camera_angle="profile",
+        )
+        db_session.add(video)
+        db_session.commit()
+        video_id = video.id
+
+        # Update only session_type
+        update_data = {"session_type": "match"}
+        response = client.patch(f"/v0/videos/{video_id}/metadata", json=update_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["session_type"] == "match"
+        assert data["camera_angle"] == "profile"  # Should remain unchanged
+
+    def test_update_video_metadata_not_found(self, client: TestClient) -> None:
+        """Test updating metadata for non-existent video."""
+        update_data = {"session_type": "serve_practice"}
+        response = client.patch("/v0/videos/99999/metadata", json=update_data)
+
+        assert response.status_code == 404
+        error_data = response.json()
+        assert "error" in error_data
+
+    def test_update_video_metadata_unauthorized(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test that users cannot update metadata for videos they don't own."""
+        from app.models.video import Video
+
+        # Create a video owned by a different user
+        other_user_id = "other-user-id-12345"
+        video = Video(
+            filename="other_video.mp4",
+            file_path="raw/other_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=other_user_id,
+        )
+        db_session.add(video)
+        db_session.commit()
+        video_id = video.id
+
+        # Try to update metadata (should fail - different user)
+        update_data = {"session_type": "serve_practice"}
+        response = client.patch(f"/v0/videos/{video_id}/metadata", json=update_data)
+
+        # Should return 403 or 404 (depending on implementation)
+        assert response.status_code in [403, 404]
+
 
 if __name__ == "__main__":
     # Run basic tests

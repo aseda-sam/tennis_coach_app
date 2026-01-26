@@ -45,7 +45,7 @@ def create_video_record(
         height: Video height in pixels
         frame_count: Total number of frames
         is_demo: Whether this is a demo video
-        session_type: Session type ('serve_drill', 'match', 'practice', 'other')
+        session_type: Session type ('serve_practice', 'match', 'other')
         camera_angle: Camera angle ('behind', 'profile', 'diagonal', 'unknown')
         recorded_at: When video was recorded (for trends)
     """
@@ -171,6 +171,37 @@ def update_video_status(
         db.refresh(video)
         return video
     return None
+
+
+def update_video_metadata(
+    db: Session,
+    video_id: int,
+    session_type: Optional[str] = None,
+    camera_angle: Optional[str] = None,
+) -> Optional[Video]:
+    """Update video metadata (session_type and camera_angle).
+
+    Args:
+        db: Database session
+        video_id: Video ID to update
+        session_type: Session type ('serve_practice', 'match', 'other')
+        camera_angle: Camera angle ('behind', 'profile', 'diagonal', 'unknown')
+
+    Returns:
+        Updated Video object, or None if video not found
+    """
+    video = get_video_by_id(db, video_id)
+    if not video:
+        return None
+
+    if session_type is not None:
+        video.session_type = session_type
+    if camera_angle is not None:
+        video.camera_angle = camera_angle
+
+    db.commit()
+    db.refresh(video)
+    return video
 
 
 def extract_frames(
