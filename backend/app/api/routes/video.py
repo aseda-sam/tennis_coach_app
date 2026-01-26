@@ -95,7 +95,7 @@ logger = logging.getLogger(__name__)
 
 def _create_temp_file_for_processing(file_content: bytes, filename: str) -> Path:
     """
-    Create a temporary file for video processing (metadata extraction, quality assessment).
+    Create a temporary file for video processing (metadata extraction).
 
     Args:
         file_content: File content as bytes
@@ -311,12 +311,12 @@ async def stream_video(
                     },
                 )
         else:
-            # For local storage, use FileResponse
-            file_path = Path(db_video.file_path)
-            validate_file_exists(file_path, db_video.filename)
+            # For local storage, resolve the storage path to actual file system path
+            resolved_path = storage_service.get_local_file_path(db_video.file_path)
+            validate_file_exists(resolved_path, db_video.filename)
 
             return FileResponse(
-                path=str(file_path),
+                path=str(resolved_path),
                 media_type=db_video.content_type or "video/mp4",
                 filename=get_safe_filename(db_video.filename),
             )

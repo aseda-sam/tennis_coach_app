@@ -22,9 +22,34 @@ Thank you for considering contributing to Tennis Coach App!
 - Use type hints in Python and TypeScript types in the frontend.
 
 ## Tests
+
+### Running Tests
 - Backend: `pytest`
 - Frontend: `npm test -- --watchAll=false`
-- Add/Update tests for new features and bug fixes.
+
+### Test-Driven Development (TDD) Checklist
+
+**For new features:**
+- [ ] Write failing test first (Red)
+- [ ] Implement minimum code to pass (Green)
+- [ ] Refactor if needed (Refactor)
+- [ ] Test covers contract (status codes, response shapes), not implementation details
+
+**For bug fixes:**
+- [ ] Write failing test that reproduces the bug
+- [ ] Fix the bug (test should pass)
+- [ ] Verify test covers the edge case
+
+**For API endpoints:**
+- [ ] Contract test: status codes, response models, error cases
+- [ ] Integration test: full workflow if endpoint is part of a flow
+- [ ] Use `PROFILE=local` in fixtures, not internal config fields
+
+**For refactors:**
+- [ ] Keep tests unchanged if behavior is unchanged
+- [ ] Update tests only if contract changes (document why)
+
+See `.cursor/rules/testing-patterns.mdc` for detailed TDD guidance.
 
 ## Pull Requests
 - Ensure CI passes (backend, frontend, security scans)

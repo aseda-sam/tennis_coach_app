@@ -1,7 +1,17 @@
 """
-End-to-end tests for the complete serve analysis workflow.
+End-to-end contract tests for the complete serve analysis workflow.
 
-Tests the full flow: video upload → serve attempt creation → pose detection → serve analysis → metrics display.
+TDD Contract Tests: These tests define the public API contract for the serve MVP workflow.
+They test behavior (status codes, response shapes, side effects), not implementation details.
+
+Workflow Contract:
+1. POST /v0/videos/upload → returns 200 with video_id
+2. POST /v0/serve-attempts/ → returns 201 with serve_attempt_id
+3. POST /v0/analysis/videos/{id} → returns 200 with job_id (pose detection)
+4. POST /v0/videos/{id}/analyze-serves → returns 200 with metrics
+5. GET /v0/serve-attempts/me → returns serve attempts with metrics
+
+These tests ensure the contract remains stable when internals change.
 """
 
 import json

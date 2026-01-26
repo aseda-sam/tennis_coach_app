@@ -38,21 +38,6 @@ class TaskStatus(BaseModel):
     )
 
 
-class TaskStartResponse(BaseModel):
-    """Response model for starting a background task (deprecated, use AnalysisResponse)."""
-
-    task_id: int = Field(description="Unique task identifier (deprecated, use job_id)")
-    video_id: int = Field(description="Video ID being analyzed")
-    analysis_type: Literal["pose_only",] = Field(
-        description="Type of analysis being performed"
-    )
-    status: Literal["queued"] = Field(description="Initial task status")
-    message: str = Field(description="Confirmation message")
-    estimated_duration: Optional[float] = Field(
-        default=None, description="Estimated completion time in seconds"
-    )
-
-
 class TaskListResponse(BaseModel):
     """Response model for listing all tasks."""
 

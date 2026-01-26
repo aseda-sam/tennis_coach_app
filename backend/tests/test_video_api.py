@@ -161,6 +161,14 @@ class TestVideoAPI:
         self, client: TestClient, test_user_id: str
     ) -> None:
         """Test that unauthorized users cannot upload demo videos."""
+        # Skip if using Supabase storage - demo uploads require Supabase demo bucket
+        from app.services.storage_service import storage_service
+
+        if storage_service.storage_type == "supabase":
+            pytest.skip(
+                "Test requires local storage - demo uploads use Supabase bucket"
+            )
+
         # Create a mock video file
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
             tmp_file.write(b"fake video content" * 1000)

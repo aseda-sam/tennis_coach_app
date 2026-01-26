@@ -14,6 +14,7 @@ from app.models.pose_detection import PoseDetection
 from app.models.video import Video
 from app.services.pose_detection import PoseDetectionService
 
+
 class TestPoseDetectionService:
     """Test pose detection service functionality."""
 
@@ -167,9 +168,7 @@ class TestPoseDetectionService:
 class TestPoseDetectionAPI:
     """Test pose detection API endpoints."""
 
-    def test_analyze_pose_detection_video_not_found(
-        self, client: TestClient
-    ) -> None:
+    def test_analyze_pose_detection_video_not_found(self, client: TestClient) -> None:
         """Test pose detection analysis with non-existent video."""
         response = client.post(
             "/v0/analysis/videos/999", json={"analysis_type": "pose_only"}
