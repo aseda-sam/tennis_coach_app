@@ -18,7 +18,7 @@ class TestPostureAnalysisService:
             "right_wrist": [0.6, 0.5, 0.9],
         }
 
-        angle = calculate_elbow_angle(pose_landmarks, "right", "forehand")
+        angle = calculate_elbow_angle(pose_landmarks, "right", "serve")
 
         assert angle is not None
         assert 0.0 <= angle <= 180.0
@@ -32,7 +32,7 @@ class TestPostureAnalysisService:
             "left_wrist": [0.4, 0.5, 0.9],
         }
 
-        angle = calculate_elbow_angle(pose_landmarks, "left", "forehand")
+        angle = calculate_elbow_angle(pose_landmarks, "left", "serve")
 
         assert angle is not None
         assert 0.0 <= angle <= 180.0
@@ -44,7 +44,7 @@ class TestPostureAnalysisService:
             "right_elbow": [0.5, 0.4, 0.9],
         }
 
-        angle = calculate_elbow_angle(pose_landmarks, "right", "forehand")
+        angle = calculate_elbow_angle(pose_landmarks, "right", "serve")
         assert angle is None
 
     def test_calculate_elbow_angle_invalid_hand(self) -> None:
@@ -55,7 +55,7 @@ class TestPostureAnalysisService:
             "right_wrist": [0.6, 0.5, 0.9],
         }
 
-        angle = calculate_elbow_angle(pose_landmarks, "invalid", "forehand")
+        angle = calculate_elbow_angle(pose_landmarks, "invalid", "serve")
         assert angle is None
 
     def test_calculate_elbow_angle_unsupported_stroke(self) -> None:
@@ -77,7 +77,7 @@ class TestPostureAnalysisService:
             "right_wrist": [0.7, 0.4, 0.9],
         }
 
-        angle = calculate_elbow_angle(pose_landmarks, "right", "forehand")
+        angle = calculate_elbow_angle(pose_landmarks, "right", "serve")
 
         assert angle is not None
         assert 170.0 <= angle <= 180.0
@@ -90,7 +90,7 @@ class TestPostureAnalysisService:
             "right_wrist": [0.5, 0.4, 0.9],
         }
 
-        angle = calculate_elbow_angle(pose_landmarks, "right", "forehand")
+        angle = calculate_elbow_angle(pose_landmarks, "right", "serve")
 
         assert angle is not None
         assert 80.0 <= angle <= 100.0

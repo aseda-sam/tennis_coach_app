@@ -76,10 +76,9 @@ class TaskStatsResponse(BaseModel):
 class AnalysisRequest(BaseModel):
     """Request model for starting analysis."""
 
-    analysis_type: Literal[
-        "pose_only",
-        "ball_only",
-    ] = Field(description="Type of analysis to perform")
+    analysis_type: Literal["pose_only"] = Field(
+        description="Type of analysis to perform"
+    )
     confidence_threshold: float = Field(
         default=0.7,
         ge=0.0,
