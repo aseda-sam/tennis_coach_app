@@ -90,13 +90,6 @@ export function validateManualTimestamp(
     return basicValidation;
   }
 
-  // Additional validation for manual input
-  if (videoDuration > 0 && timestamp < 0.5) {
-    return {
-      isValid: false,
-      error: 'Timestamp should be at least 0.5 seconds into the video',
-    };
-  }
-
+  // No additional restrictions - serve attempts can start from the beginning of the video
   return { isValid: true };
 }

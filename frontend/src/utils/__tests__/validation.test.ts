@@ -60,12 +60,16 @@ describe('Validation Utils', () => {
       expect(result.error).toBeUndefined();
     });
 
-    it('should reject timestamps too early in the video', () => {
-      const result = validateManualTimestamp(0.3, 60);
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe(
-        'Timestamp should be at least 0.5 seconds into the video'
-      );
+    it('should allow timestamps from the beginning of the video', () => {
+      const result = validateManualTimestamp(0, 60);
+      expect(result.isValid).toBe(true);
+      expect(result.error).toBeUndefined();
+    });
+
+    it('should allow timestamps very early in the video', () => {
+      const result = validateManualTimestamp(0.1, 60);
+      expect(result.isValid).toBe(true);
+      expect(result.error).toBeUndefined();
     });
 
     it('should inherit basic validation from validateTimestamp', () => {
