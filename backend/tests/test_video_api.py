@@ -98,9 +98,9 @@ class TestVideoAPI:
                 assert response.status_code == 200
                 data = response.json()
                 # The filename might be modified by ensure_unique_filename (e.g., test_1.mp4, test_2.mp4)
-                assert data["filename"].startswith("test") and data["filename"].endswith(
-                    ".mp4"
-                )
+                assert data["filename"].startswith("test") and data[
+                    "filename"
+                ].endswith(".mp4")
                 assert "message" in data
                 assert "video_id" in data
 
@@ -115,9 +115,7 @@ class TestVideoAPI:
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)
 
-    def test_upload_video_succeeds_when_enqueue_fails(
-        self, client: TestClient
-    ) -> None:
+    def test_upload_video_succeeds_when_enqueue_fails(self, client: TestClient) -> None:
         """Test that upload succeeds even if enqueue fails (Redis down)."""
         # Create a mock video file
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
