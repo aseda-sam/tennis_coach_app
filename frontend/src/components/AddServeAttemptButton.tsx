@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ServeAttemptCreate } from '../services/serveAttemptApi';
 import { formatTime, validateManualTimestamp } from '../utils/validation';
 import TimelineMarkers from './TimelineMarkers';
@@ -14,7 +15,7 @@ interface AddServeAttemptButtonProps {
   isReadOnly?: boolean;
   placement?: 'overlay' | 'scrubber';
   openRequestId?: number;
-  openTimestamp?: number;
+  openRange?: { start: number; end: number };
   onFormOpen?: (timestamp: number) => void;
   onFormClose?: () => void;
   onSeek?: (time: number) => void;
@@ -30,7 +31,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
   isReadOnly = false,
   placement = 'overlay',
   openRequestId,
-  openTimestamp,
+  openRange,
   onFormOpen,
   onFormClose,
   onSeek,
@@ -40,13 +41,11 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [lockedTimestamp, setLockedTimestamp] = useState<number | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [formData, setFormData] = useState<
-    ServeAttemptCreate & { contact_timestamp: number | null }
-  >({
+  const [formData, setFormData] = useState<ServeAttemptCreate>({
     video_id: videoId,
     start_timestamp: currentTime,
     end_timestamp: currentTime + 3, // Default 3 second window
-    contact_timestamp: currentTime + 1.5, // Default contact in middle
+    contact_timestamp: null,
     court_side: null,
     serve_number: null,
     serve_subtype: null,
@@ -67,10 +66,35 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
         ...prev,
         start_timestamp: timestamp,
         end_timestamp: Math.min(timestamp + 3, videoDuration || timestamp + 3),
-        contact_timestamp: timestamp + 1.5,
+        contact_timestamp: null,
       }));
       setIsOpen(true);
       onFormOpen?.(timestamp);
+    },
+    [isReadOnly, onFormOpen, videoDuration]
+  );
+
+  const openAtRange = useCallback(
+    (rangeStart: number, rangeEnd: number) => {
+      if (isReadOnly) {
+        alert('Manual Serve Attempt Creation is disabled in Demo Mode!');
+        return;
+      }
+
+      const start = Math.max(0, Math.min(rangeStart, rangeEnd));
+      const end = Math.min(videoDuration || rangeEnd, Math.max(rangeStart, rangeEnd));
+      const clampedEnd = Math.max(start + 0.1, end);
+
+      setLockedTimestamp(start);
+      setShowAdvanced(false);
+      setFormData((prev) => ({
+        ...prev,
+        start_timestamp: start,
+        end_timestamp: clampedEnd,
+        contact_timestamp: null,
+      }));
+      setIsOpen(true);
+      onFormOpen?.(start);
     },
     [isReadOnly, onFormOpen, videoDuration]
   );
@@ -93,19 +117,22 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
         ...prev,
         start_timestamp: currentTime,
         end_timestamp: Math.min(currentTime + 3, videoDuration || currentTime + 3),
-        contact_timestamp: currentTime + 1.5,
+        contact_timestamp: null,
       }));
       setValidationError(null);
     }
   }, [currentTime, isOpen, lockedTimestamp, videoDuration]);
 
   useEffect(() => {
-    if (!openRequestId || openTimestamp === undefined) return;
+    if (!openRequestId) return;
     if (openRequestId === lastOpenRequestId.current) return;
 
     lastOpenRequestId.current = openRequestId;
-    openAtTimestamp(openTimestamp);
-  }, [openRequestId, openTimestamp, openAtTimestamp]);
+
+    if (openRange) {
+      openAtRange(openRange.start, openRange.end);
+    }
+  }, [openRequestId, openRange, openAtRange]);
 
   useEffect(() => {
     if (videoDuration > 0) {
@@ -117,26 +144,12 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
         formData.end_timestamp,
         videoDuration
       );
-      const contactTimestamp = formData.contact_timestamp ?? null;
-      const contactValidation =
-        contactTimestamp !== null
-          ? validateManualTimestamp(contactTimestamp, videoDuration)
-          : { isValid: true };
-
       if (!startValidation.isValid) {
         setValidationError(startValidation.error || null);
       } else if (!endValidation.isValid) {
         setValidationError(endValidation.error || null);
-      } else if (!contactValidation.isValid) {
-        setValidationError(contactValidation.error || null);
       } else if (formData.start_timestamp >= formData.end_timestamp) {
         setValidationError('Start time must be before end time');
-      } else if (
-        contactTimestamp !== null &&
-        (contactTimestamp < formData.start_timestamp ||
-          contactTimestamp > formData.end_timestamp)
-      ) {
-        setValidationError('Contact time must be between start and end time');
       } else {
         setValidationError(null);
       }
@@ -169,7 +182,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
         video_id: videoId,
         start_timestamp: currentTime,
         end_timestamp: Math.min(currentTime + 3, videoDuration || currentTime + 3),
-        contact_timestamp: currentTime + 1.5,
+        contact_timestamp: null,
         court_side: null,
         serve_number: null,
         serve_subtype: null,
@@ -206,15 +219,276 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
   const isAdvancedPanel = supportsCompact && showAdvanced;
   const containerClassName = `add-contact-container ${
     placement === 'scrubber' ? 'add-contact-container--scrubber' : ''
-  } ${isOpen ? 'is-open' : ''}`.trim();
+  } ${placement === 'overlay' ? 'add-contact-container--overlay' : ''} ${
+    isOpen ? 'is-open' : ''
+  }`.trim();
   const buttonClassName = `add-contact-btn ${
     placement === 'scrubber' ? 'add-contact-btn--scrubber' : ''
   } ${isReadOnly ? 'add-contact-btn--readonly' : ''}`.trim();
+  const isOverlayPlacement = placement === 'overlay';
   const formClassName = `add-contact-form ${
-    placement === 'scrubber' ? 'add-contact-form--scrubber' : 'add-contact-form--overlay'
+    placement === 'scrubber' ? 'add-contact-form--scrubber' : ''
   } ${isCompact ? 'add-contact-form--compact' : ''} ${
     isAdvancedPanel ? 'add-contact-form--advanced' : ''
   }`.trim();
+
+  const formContent = (
+    <div
+      className={formClassName}
+      onClick={(e) => e.stopPropagation()}
+      style={isOverlayPlacement ? undefined : formPosition}
+    >
+      {isCompact ? (
+        <>
+          <div className="compact-form-header">
+            <div className="compact-form-title">Create Serve Attempt</div>
+            <button
+              className="close-form-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClose();
+              }}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+          <div className="compact-range-row">
+            <span className="compact-range-label">Range</span>
+            <span className="compact-range-values">
+              {formatTime(formData.start_timestamp)} –{' '}
+              {formatTime(formData.end_timestamp)}
+            </span>
+          </div>
+
+          <TimelineMarkers
+            startTime={formData.start_timestamp}
+            endTime={formData.end_timestamp}
+            videoDuration={videoDuration}
+            currentTime={currentTime}
+            onStartChange={(time) =>
+              setFormData({
+                ...formData,
+                start_timestamp: time,
+              })
+            }
+            onEndChange={(time) =>
+              setFormData({
+                ...formData,
+                end_timestamp: time,
+              })
+            }
+            onSeek={onSeek}
+            density="compact"
+            showHeader={false}
+            showActions={false}
+          />
+
+          <div className="compact-actions">
+            <div className="compact-actions-right">
+              <button
+                className="compact-btn compact-btn--secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClose();
+                }}
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className="compact-btn compact-btn--primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddServeAttempt();
+                }}
+                disabled={isLoading || !!validationError}
+              >
+                {isLoading ? 'Creating...' : 'Create'}
+              </button>
+              <button
+                className="compact-btn compact-btn--details"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAdvanced(true);
+                }}
+              >
+                Details
+              </button>
+            </div>
+          </div>
+
+          {validationError && (
+            <div className="validation-error validation-error--compact">
+              {validationError}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="form-header">
+            <div className="timestamp-header">
+              <div className="timestamp-label">Serve attempt range</div>
+              <div className="timestamp-display">
+                {formatTime(formData.start_timestamp)} –{' '}
+                {formatTime(formData.end_timestamp)}
+                {lockedFrameNumber !== null && (
+                  <span className="frame-number"> (frame {lockedFrameNumber})</span>
+                )}
+              </div>
+            </div>
+            <div className="form-header-actions">
+              {supportsCompact && (
+                <button
+                  className="compact-toggle-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAdvanced(false);
+                  }}
+                >
+                  Range only
+                </button>
+              )}
+              <button
+                className="close-form-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClose();
+                }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+
+          <div className="form-fields">
+            <TimelineMarkers
+              startTime={formData.start_timestamp}
+              endTime={formData.end_timestamp}
+              videoDuration={videoDuration}
+              currentTime={currentTime}
+              onStartChange={(time) =>
+                setFormData({
+                  ...formData,
+                  start_timestamp: time,
+                })
+              }
+              onEndChange={(time) =>
+                setFormData({
+                  ...formData,
+                  end_timestamp: time,
+                })
+              }
+              onSeek={onSeek}
+            />
+
+            <div className="form-row">
+              <div className="form-group form-group--compact">
+                <label>Court Side</label>
+                <select
+                  value={formData.court_side || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      court_side: e.target.value || null,
+                    })
+                  }
+                >
+                  <option value="">Optional</option>
+                  <option value="deuce">Deuce</option>
+                  <option value="ad">Ad</option>
+                </select>
+              </div>
+              <div className="form-group form-group--compact">
+                <label>Serve #</label>
+                <select
+                  value={formData.serve_number || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      serve_number: e.target.value ? parseInt(e.target.value) : null,
+                    })
+                  }
+                >
+                  <option value="">Optional</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </select>
+              </div>
+
+              <div className="form-group form-group--compact">
+                <label>Type</label>
+                <select
+                  value={formData.serve_subtype || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      serve_subtype: e.target.value || null,
+                    })
+                  }
+                >
+                  <option value="">Optional</option>
+                  <option value="flat">Flat</option>
+                  <option value="slice">Slice</option>
+                  <option value="kick">Kick</option>
+                </select>
+              </div>
+
+              <div className="form-group form-group--compact">
+                <label>In/Out</label>
+                <select
+                  value={formData.in_out || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      in_out: e.target.value || null,
+                    })
+                  }
+                >
+                  <option value="">Optional</option>
+                  <option value="in">In</option>
+                  <option value="out_long">Out (Long)</option>
+                  <option value="out_wide">Out (Wide)</option>
+                  <option value="net">Net</option>
+                  <option value="unknown">Unknown</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {validationError && (
+            <div className="validation-error" style={{ color: 'red', padding: '8px' }}>
+              {validationError}
+            </div>
+          )}
+
+          <div className="form-actions">
+            <button
+              className="btn btn-secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClose();
+              }}
+              disabled={isLoading}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddServeAttempt();
+              }}
+              disabled={isLoading || !!validationError}
+            >
+              {isLoading ? 'Creating...' : 'Create Serve Attempt'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   return (
     <div className={containerClassName}>
@@ -229,7 +503,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
             title={
               isReadOnly
                 ? 'Demo mode: manual serve attempt creation is disabled'
-                : `Manually add serve attempt at ${formatTime(currentTime)}`
+                : `Tag serve attempt range near ${formatTime(currentTime)}`
             }
             aria-disabled={isReadOnly}
           >
@@ -238,282 +512,14 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
           </button>
         )
       ) : (
-        <div
-          className={formClassName}
-          onClick={(e) => e.stopPropagation()}
-          style={formPosition}
-        >
-          {isCompact ? (
-            <>
-              <div className="compact-range-row">
-                <span className="compact-range-label">Serve window</span>
-                <span className="compact-range-values">
-                  {formatTime(formData.start_timestamp)} –{' '}
-                  {formatTime(formData.end_timestamp)}
-                  {formData.contact_timestamp !== null && (
-                    <span className="compact-range-contact">
-                      {' '}
-                      • Contact {formatTime(formData.contact_timestamp)}
-                    </span>
-                  )}
-                </span>
-              </div>
-
-              <TimelineMarkers
-                startTime={formData.start_timestamp}
-                endTime={formData.end_timestamp}
-                contactTime={formData.contact_timestamp}
-                videoDuration={videoDuration}
-                currentTime={currentTime}
-                onStartChange={(time) =>
-                  setFormData({
-                    ...formData,
-                    start_timestamp: time,
-                  })
-                }
-                onEndChange={(time) =>
-                  setFormData({
-                    ...formData,
-                    end_timestamp: time,
-                  })
-                }
-                onContactChange={(time) =>
-                  setFormData({
-                    ...formData,
-                    contact_timestamp: time,
-                  })
-                }
-                onSeek={onSeek}
-                density="compact"
-                showHeader={false}
-                showActions={false}
-              />
-
-              <div className="compact-actions">
-                <button
-                  className="compact-btn compact-btn--ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFormData((prev) => ({
-                      ...prev,
-                      contact_timestamp:
-                        prev.contact_timestamp === null
-                          ? (prev.start_timestamp + prev.end_timestamp) / 2
-                          : null,
-                    }));
-                  }}
-                >
-                  {formData.contact_timestamp === null ? 'Add Contact' : 'Remove Contact'}
-                </button>
-                <div className="compact-actions-right">
-                  <button
-                    className="compact-btn compact-btn--secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClose();
-                    }}
-                    disabled={isLoading}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="compact-btn compact-btn--primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddServeAttempt();
-                    }}
-                    disabled={isLoading || !!validationError}
-                  >
-                    {isLoading ? 'Adding...' : 'Add'}
-                  </button>
-                  <button
-                    className="compact-btn compact-btn--details"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowAdvanced(true);
-                    }}
-                  >
-                    Details
-                  </button>
-                </div>
-              </div>
-
-              {validationError && (
-                <div className="validation-error validation-error--compact">
-                  {validationError}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="form-header">
-                <div className="timestamp-header">
-                  <div className="timestamp-label">Tag serve attempt:</div>
-                  <div className="timestamp-display">
-                    {formatTime(lockedTimestamp ?? 0)}
-                    {lockedFrameNumber !== null && (
-                      <span className="frame-number"> (frame {lockedFrameNumber})</span>
-                    )}
-                  </div>
-                </div>
-                <div className="form-header-actions">
-                  {supportsCompact && (
-                    <button
-                      className="compact-toggle-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowAdvanced(false);
-                      }}
-                    >
-                      Range only
-                    </button>
-                  )}
-                  <button
-                    className="close-form-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClose();
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-
-              <div className="form-fields">
-                <TimelineMarkers
-                  startTime={formData.start_timestamp}
-                  endTime={formData.end_timestamp}
-                  contactTime={formData.contact_timestamp}
-                  videoDuration={videoDuration}
-                  currentTime={currentTime}
-                  onStartChange={(time) =>
-                    setFormData({
-                      ...formData,
-                      start_timestamp: time,
-                    })
-                  }
-                  onEndChange={(time) =>
-                    setFormData({
-                      ...formData,
-                      end_timestamp: time,
-                    })
-                  }
-                  onContactChange={(time) =>
-                    setFormData({
-                      ...formData,
-                      contact_timestamp: time,
-                    })
-                  }
-                  onSeek={onSeek}
-                />
-
-                <div className="form-row">
-                  <div className="form-group form-group--compact">
-                    <label>Court Side</label>
-                    <select
-                      value={formData.court_side || ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          court_side: e.target.value || null,
-                        })
-                      }
-                    >
-                      <option value="">Optional</option>
-                      <option value="deuce">Deuce</option>
-                      <option value="ad">Ad</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group form-group--compact">
-                    <label>Serve #</label>
-                    <select
-                      value={formData.serve_number || ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          serve_number: e.target.value ? parseInt(e.target.value) : null,
-                        })
-                      }
-                    >
-                      <option value="">Optional</option>
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group form-group--compact">
-                    <label>Type</label>
-                    <select
-                      value={formData.serve_subtype || ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          serve_subtype: e.target.value || null,
-                        })
-                      }
-                    >
-                      <option value="">Optional</option>
-                      <option value="flat">Flat</option>
-                      <option value="slice">Slice</option>
-                      <option value="kick">Kick</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group form-group--compact">
-                    <label>In/Out</label>
-                    <select
-                      value={formData.in_out || ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          in_out: e.target.value || null,
-                        })
-                      }
-                    >
-                      <option value="">Optional</option>
-                      <option value="in">In</option>
-                      <option value="out_long">Out (Long)</option>
-                      <option value="out_wide">Out (Wide)</option>
-                      <option value="net">Net</option>
-                      <option value="unknown">Unknown</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {validationError && (
-                <div className="validation-error" style={{ color: 'red', padding: '8px' }}>
-                  {validationError}
-                </div>
-              )}
-
-              <div className="form-actions">
-                <button
-                  className="btn btn-secondary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClose();
-                  }}
-                  disabled={isLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddServeAttempt();
-                  }}
-                  disabled={isLoading || !!validationError}
-                >
-                  {isLoading ? 'Adding...' : 'Add Serve Attempt'}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        createPortal(
+          <div className="serve-attempt-modal-backdrop" onClick={handleClose}>
+            <div className="serve-attempt-modal-container" onClick={(e) => e.stopPropagation()}>
+              {formContent}
+            </div>
+          </div>,
+          document.body
+        )
       )}
     </div>
   );
