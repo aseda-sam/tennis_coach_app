@@ -171,8 +171,16 @@ async def update_serve_attempt(
                 )
 
         # Validate timestamps if being updated
-        start_ts = updates.start_timestamp or serve_attempt.start_timestamp
-        end_ts = updates.end_timestamp or serve_attempt.end_timestamp
+        start_ts = (
+            updates.start_timestamp
+            if updates.start_timestamp is not None
+            else serve_attempt.start_timestamp
+        )
+        end_ts = (
+            updates.end_timestamp
+            if updates.end_timestamp is not None
+            else serve_attempt.end_timestamp
+        )
         contact_ts = (
             updates.contact_timestamp
             if updates.contact_timestamp is not None
