@@ -57,4 +57,3 @@ def downgrade() -> None:
     op.create_index(
         op.f("ix_ball_contacts_video_id"), "ball_contacts", ["video_id"], unique=False
     )
-

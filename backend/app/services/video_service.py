@@ -127,12 +127,7 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     filename = video.filename
 
     try:
-        from app.models.pose_detection import PoseDetection
         from app.services.storage_service import storage_service
-
-        pose_detections = (
-            db.query(PoseDetection).filter(PoseDetection.video_id == video_id).all()
-        )
 
         # Delete original video file from storage (local or Supabase)
 

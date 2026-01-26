@@ -11,9 +11,9 @@ class TaskStatus(BaseModel):
 
     job_id: str = Field(description="Unique job identifier (UUID string)")
     video_id: int = Field(description="Video ID being analyzed")
-    analysis_type: Literal[
-        "pose_only",
-    ] = Field(description="Type of analysis being performed")
+    analysis_type: Literal["pose_only",] = Field(
+        description="Type of analysis being performed"
+    )
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
         description="Current task status (mapped from RQ statuses)"
     )
@@ -43,9 +43,9 @@ class TaskStartResponse(BaseModel):
 
     task_id: int = Field(description="Unique task identifier (deprecated, use job_id)")
     video_id: int = Field(description="Video ID being analyzed")
-    analysis_type: Literal[
-        "pose_only",
-    ] = Field(description="Type of analysis being performed")
+    analysis_type: Literal["pose_only",] = Field(
+        description="Type of analysis being performed"
+    )
     status: Literal["queued"] = Field(description="Initial task status")
     message: str = Field(description="Confirmation message")
     estimated_duration: Optional[float] = Field(
@@ -93,9 +93,9 @@ class AnalysisResponse(BaseModel):
 
     job_id: str = Field(description="Background job identifier (UUID string)")
     video_id: int = Field(description="Video ID being analyzed")
-    analysis_type: Literal[
-        "pose_only",
-    ] = Field(description="Type of analysis being performed")
+    analysis_type: Literal["pose_only",] = Field(
+        description="Type of analysis being performed"
+    )
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
         description="Current task status (mapped from RQ statuses)"
     )

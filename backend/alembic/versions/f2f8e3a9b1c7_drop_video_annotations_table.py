@@ -9,6 +9,7 @@ Create Date: 2026-01-25 15:12:00.000000
 from typing import Sequence, Union
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -38,7 +39,9 @@ def upgrade() -> None:
         return
 
     if _index_exists("video_annotations", op.f("ix_video_annotations_video_id")):
-        op.drop_index(op.f("ix_video_annotations_video_id"), table_name="video_annotations")
+        op.drop_index(
+            op.f("ix_video_annotations_video_id"), table_name="video_annotations"
+        )
     if _index_exists("video_annotations", op.f("ix_video_annotations_id")):
         op.drop_index(op.f("ix_video_annotations_id"), table_name="video_annotations")
 

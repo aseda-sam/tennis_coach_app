@@ -36,11 +36,7 @@ def clean_database() -> None:
         print(f"   Pose Detections: {pose_count}")
         print(f"   Serve Attempts: {serve_attempt_count}")
 
-        if (
-            video_count == 0
-            and pose_count == 0
-            and serve_attempt_count == 0
-        ):
+        if video_count == 0 and pose_count == 0 and serve_attempt_count == 0:
             print("✅ Database is already clean!")
             return
 

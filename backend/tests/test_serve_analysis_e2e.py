@@ -7,9 +7,7 @@ Tests the full flow: video upload → serve attempt creation → pose detection 
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -37,15 +35,15 @@ class TestServeAnalysisE2E:
                     "session_type": "serve_practice",
                     "camera_angle": "side_view",
                 }
-                response = client.post(
-                    "/v0/videos/upload", files=files, params=params
-                )
+                response = client.post("/v0/videos/upload", files=files, params=params)
 
             assert response.status_code == 200
             upload_data = response.json()
             video_id = upload_data["video_id"]
             assert "video_id" in upload_data
-            assert "test_serve" in upload_data["filename"]  # Filename may be modified for uniqueness
+            assert (
+                "test_serve" in upload_data["filename"]
+            )  # Filename may be modified for uniqueness
 
             # Verify video was created with metadata
             video = db_session.query(Video).filter(Video.id == video_id).first()
@@ -101,7 +99,9 @@ class TestServeAnalysisE2E:
                 if response.status_code != 201:
                     print(f"Failed to create serve attempt: {response.status_code}")
                     print(f"Response: {response.json()}")
-                assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.json()}"
+                assert response.status_code == 201, (
+                    f"Expected 201, got {response.status_code}: {response.json()}"
+                )
                 created_attempt = response.json()
                 assert "id" in created_attempt
                 assert created_attempt["video_id"] == video_id
@@ -371,7 +371,9 @@ class TestServeAnalysisE2E:
                 if response.status_code != 201:
                     print(f"Failed to create serve attempt {i}: {response.status_code}")
                     print(f"Response: {response.json()}")
-                assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.json()}"
+                assert response.status_code == 201, (
+                    f"Expected 201, got {response.status_code}: {response.json()}"
+                )
 
             # Verify serve attempts were created (check via database due to routing issue)
             serve_attempts = (

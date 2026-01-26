@@ -30,4 +30,3 @@ class Player(Base):
 
     # Relationships
     serve_attempts = relationship("ServeAttempt", back_populates="player")
-

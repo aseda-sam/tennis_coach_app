@@ -110,5 +110,3 @@ class TestAnalyzePoseDetectionRq:
             analyze_pose_detection_rq(
                 video_id=1, video_path="/test/path/video.mp4", confidence_threshold=0.7
             )
-
-

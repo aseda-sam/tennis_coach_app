@@ -32,7 +32,7 @@ def upgrade() -> None:
     """Remove video quality columns from videos table."""
     # Drop quality assessment columns (legacy from ball detection days)
     video_columns = _get_columns("videos")
-    
+
     if "quality_assessed_at" in video_columns:
         op.drop_column("videos", "quality_assessed_at")
     if "quality_level" in video_columns:

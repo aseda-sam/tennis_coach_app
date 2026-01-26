@@ -29,12 +29,12 @@ def upgrade() -> None:
     1. The ball_contacts table was dropped in migration 3f2a1c9d7b10
     2. The shot_types functions it depended on were removed in favor of serve-only MVP
     3. This migration likely already ran before the table was dropped
-    
+
     If the ball_contacts table exists, this migration will skip (table already dropped).
     """
     bind = op.get_bind()
     inspector = sa.inspect(bind)
-    
+
     # Check if ball_contacts table exists (it shouldn't after migration 3f2a1c9d7b10)
     if "ball_contacts" not in inspector.get_table_names():
         logger.info(
@@ -42,7 +42,7 @@ def upgrade() -> None:
             "(table was dropped in migration 3f2a1c9d7b10)"
         )
         return
-    
+
     # If table exists (shouldn't happen), log warning but don't fail
     logger.warning(
         "ball_contacts table still exists but migration dependencies removed. "

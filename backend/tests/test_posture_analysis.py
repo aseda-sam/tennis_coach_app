@@ -94,4 +94,3 @@ class TestPostureAnalysisService:
 
         assert angle is not None
         assert 80.0 <= angle <= 100.0
-

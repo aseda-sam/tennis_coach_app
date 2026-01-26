@@ -1,7 +1,7 @@
 """Unified analysis API routes with RQ background task support."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from redis.exceptions import ConnectionError as RedisConnectionError
