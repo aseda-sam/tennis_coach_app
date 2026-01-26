@@ -21,7 +21,7 @@ from app.core.redis_config import analysis_queue, redis_conn
 from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.rq_monitoring import get_queue_stats
-from app.services.rq_tasks import analyze_pose_detection_rq, enqueue_pose_analysis, enqueue_pose_analysis
+from app.services.rq_tasks import enqueue_pose_analysis
 from app.utils.authorization import require_video_access, require_video_not_demo
 
 logger = logging.getLogger(__name__)

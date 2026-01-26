@@ -102,7 +102,7 @@ def enqueue_pose_analysis(
 
         return job
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - Intentionally catch all to allow upload to succeed
         # Log error but don't raise - allows upload to succeed even if Redis is down
         logger.warning(
             f"Failed to enqueue pose detection job for video {video_id}: {e}. "

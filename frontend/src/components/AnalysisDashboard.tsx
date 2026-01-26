@@ -94,12 +94,21 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       return;
     }
 
+    // Check if any serve attempts already have metrics
+    const hasExistingMetrics = serveAttempts.some(
+      (sa) => sa.elbow_angle_at_contact !== null && sa.elbow_angle_at_contact !== undefined
+    );
+
     setIsAnalyzingServes(true);
     try {
       await serveAttemptApi.analyzeServes(videoId);
       // Invalidate serve attempts query to refresh with metrics
       queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
-      alert('Serve analysis completed! Check the metrics below.');
+      // Show different message based on whether metrics already existed
+      const message = hasExistingMetrics
+        ? 'Serves re-analyzed! Updated metrics are shown below.'
+        : 'Serve analysis completed! Check the metrics below.';
+      alert(message);
     } catch (error: unknown) {
       // Error detail is already normalized to string by axios interceptor
       const axiosError = error as {
@@ -114,7 +123,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     } finally {
       setIsAnalyzingServes(false);
     }
-  }, [videoId, serveAttempts.length, queryClient]);
+  }, [videoId, serveAttempts, queryClient]);
 
   return (
     <div className="analysis-dashboard">
@@ -172,7 +181,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   onClick={handleFocusAnalysis}
                   disabled={isAnalysisLoading}
                 >
-                  Analyze
+                  Track Body Movement
                 </button>
               )}
               {analysisState.status === 'failed' && (
@@ -186,7 +195,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     onClick={handleFocusAnalysis}
                     disabled={isAnalysisLoading}
                   >
-                    Retry Analysis
+                    Retry Body Tracking
                   </button>
                 </div>
               )}
@@ -200,7 +209,15 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 disabled={isAnalyzingServes}
                 style={{ width: '100%' }}
               >
-                {isAnalyzingServes ? 'Analyzing Serves...' : 'Analyze Serves'}
+                {isAnalyzingServes
+                  ? 'Analyzing Serves...'
+                  : serveAttempts.some(
+                      (sa) =>
+                        sa.elbow_angle_at_contact !== null &&
+                        sa.elbow_angle_at_contact !== undefined
+                    )
+                    ? 'Re-Analyze Serves'
+                    : 'Analyze Serves'}
               </button>
             </div>
           )}
