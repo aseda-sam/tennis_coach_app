@@ -113,8 +113,8 @@ class Settings(BaseSettings):
     def effective_max_file_size(self) -> int:
         """Max file size - smaller in production."""
         return (
-            20971520 if self.PROFILE == "production" else self.MAX_FILE_SIZE
-        )  # 20MB prod, 100MB local
+            52428800 if self.PROFILE == "production" else self.MAX_FILE_SIZE
+        )  # 50MB prod, 100MB local
 
     @property
     def effective_max_video_duration(self) -> int:

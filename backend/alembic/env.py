@@ -48,11 +48,14 @@ def run_migrations_offline() -> None:
     """
     # Override the URL from settings to ensure consistency
     url = settings.database_url
+    # Enable batch mode for SQLite to handle constraint changes
+    render_as_batch = url.startswith("sqlite://")
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=render_as_batch,
     )
 
     with context.begin_transaction():
@@ -77,7 +80,13 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        # Enable batch mode for SQLite to handle constraint changes
+        render_as_batch = settings.database_url.startswith("sqlite://")
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            render_as_batch=render_as_batch,
+        )
 
         with context.begin_transaction():
             context.run_migrations()
