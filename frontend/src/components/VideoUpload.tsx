@@ -137,7 +137,19 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
     }
   }, [uploadedVideoId, sessionType, cameraAngle, onUploadSuccess]);
 
-  const handleReplaceFile = useCallback(() => {
+  const handleReplaceFile = useCallback(async () => {
+    // If a video was already uploaded, delete it from the server to avoid orphaned videos
+    if (uploadedVideoId) {
+      try {
+        await videoApi.deleteVideo(uploadedVideoId);
+      } catch (err) {
+        // Log error but don't block the replace action
+        // User can manually delete orphaned videos later if needed
+        console.warn('Failed to delete replaced video:', err);
+      }
+    }
+
+    // Reset client state
     setSelectedFile(null);
     setUploadedVideoId(null);
     setUploadStatus('idle');
@@ -149,7 +161,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, []);
+  }, [uploadedVideoId]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
