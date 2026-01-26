@@ -5,29 +5,25 @@ import './TimelineMarkers.css';
 interface TimelineMarkersProps {
   startTime: number;
   endTime: number;
-  contactTime: number | null;
   videoDuration: number;
   currentTime: number;
   onStartChange: (time: number) => void;
   onEndChange: (time: number) => void;
-  onContactChange: (time: number | null) => void;
   onSeek?: (time: number) => void;
   density?: 'default' | 'compact';
   showHeader?: boolean;
   showActions?: boolean;
 }
 
-type MarkerType = 'start' | 'end' | 'contact' | null;
+type MarkerType = 'start' | 'end' | null;
 
 const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
   startTime,
   endTime,
-  contactTime,
   videoDuration,
   currentTime,
   onStartChange,
   onEndChange,
-  onContactChange,
   onSeek,
   density = 'default',
   showHeader = true,
@@ -40,7 +36,6 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
   // Calculate percentages for positioning
   const startPercent = (startTime / videoDuration) * 100;
   const endPercent = (endTime / videoDuration) * 100;
-  const contactPercent = contactTime ? (contactTime / videoDuration) * 100 : null;
   const currentPercent = (currentTime / videoDuration) * 100;
 
   // Get time from mouse position
@@ -80,10 +75,6 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
         const clampedTime = Math.max(startTime + 0.1, Math.min(time, videoDuration));
         onEndChange(clampedTime);
         if (onSeek) onSeek(clampedTime);
-      } else if (dragging === 'contact') {
-        const clampedTime = Math.max(startTime, Math.min(time, endTime));
-        onContactChange(clampedTime);
-        if (onSeek) onSeek(clampedTime);
       }
     };
 
@@ -98,7 +89,7 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragging, getTimeFromPosition, startTime, endTime, videoDuration, onStartChange, onEndChange, onContactChange, onSeek]);
+  }, [dragging, getTimeFromPosition, startTime, endTime, videoDuration, onStartChange, onEndChange, onSeek]);
 
   // Handle timeline click
   const handleTimelineClick = useCallback(
@@ -109,10 +100,9 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
       // Determine which marker to set based on click position
       const distToStart = Math.abs(time - startTime);
       const distToEnd = Math.abs(time - endTime);
-      const distToContact = contactTime ? Math.abs(time - contactTime) : Infinity;
       
       // If clicking near a marker, don't do anything (let drag handle it)
-      if (distToStart < 0.5 || distToEnd < 0.5 || distToContact < 0.5) {
+      if (distToStart < 0.5 || distToEnd < 0.5) {
         return;
       }
       
@@ -126,13 +116,20 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
         onEndChange(Math.min(videoDuration, time));
         if (onSeek) onSeek(time);
       }
-      // If clicking between start and end, set contact
+      // If clicking between start and end, move the nearest marker
       else {
-        onContactChange(time);
-        if (onSeek) onSeek(time);
+        if (distToStart <= distToEnd) {
+          const clampedTime = Math.max(0, Math.min(time, endTime - 0.1));
+          onStartChange(clampedTime);
+          if (onSeek) onSeek(clampedTime);
+        } else {
+          const clampedTime = Math.max(startTime + 0.1, Math.min(time, videoDuration));
+          onEndChange(clampedTime);
+          if (onSeek) onSeek(clampedTime);
+        }
       }
     },
-    [dragging, getTimeFromPosition, startTime, endTime, contactTime, videoDuration, onStartChange, onEndChange, onContactChange, onSeek]
+    [dragging, getTimeFromPosition, startTime, endTime, videoDuration, onStartChange, onEndChange, onSeek]
   );
 
   // Handle timeline hover
@@ -159,7 +156,7 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
     >
       {showHeader && (
         <div className="timeline-markers-header">
-          <div className="timeline-markers-label">Set Range</div>
+          <div className="timeline-markers-label">Serve attempt range</div>
           <div className="timeline-markers-values">
             <span className="timeline-value">
               IN: <strong>{formatTime(startTime)}</strong>
@@ -167,11 +164,6 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
             <span className="timeline-value">
               OUT: <strong>{formatTime(endTime)}</strong>
             </span>
-            {contactTime !== null && (
-              <span className="timeline-value timeline-value--contact">
-                CONTACT: <strong>{formatTime(contactTime)}</strong>
-              </span>
-            )}
           </div>
         </div>
       )}
@@ -233,37 +225,12 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
           <div className="timeline-marker-label">OUT</div>
         </div>
 
-        {/* Contact marker */}
-        {contactTime !== null && (
-          <div
-            className={`timeline-marker timeline-marker--contact ${dragging === 'contact' ? 'is-dragging' : ''}`}
-            style={{ left: `${contactPercent}%` }}
-            onMouseDown={(e) => handleMarkerMouseDown(e, 'contact')}
-            title={`CONTACT: ${formatTime(contactTime)}`}
-          >
-            <div className="timeline-marker-handle timeline-marker-handle--contact" />
-            <div className="timeline-marker-label timeline-marker-label--contact">
-              CONTACT
-            </div>
-          </div>
-        )}
       </div>
 
       {showActions && (
         <div className="timeline-markers-actions">
-          <button
-            className="timeline-action-btn"
-            onClick={() => {
-              const newContact =
-                contactTime === null ? (startTime + endTime) / 2 : null;
-              onContactChange(newContact);
-            }}
-            title={contactTime === null ? 'Add contact marker' : 'Remove contact marker'}
-          >
-            {contactTime === null ? '✓ Add Contact' : '✕ Remove Contact'}
-          </button>
           <div className="timeline-help-text">
-            Click timeline to set markers • Drag to adjust
+            Click to move the nearest marker • Drag to adjust
           </div>
         </div>
       )}

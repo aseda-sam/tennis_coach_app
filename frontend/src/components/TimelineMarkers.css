@@ -38,13 +38,6 @@
   font-weight: var(--font-weight-bold);
 }
 
-.timeline-value--contact {
-  color: var(--color-warning);
-}
-
-.timeline-value--contact strong {
-  color: var(--color-warning-dark);
-}
 
 /* Timeline Track */
 .timeline-markers-track {
@@ -222,17 +215,6 @@
   background: var(--color-error-light);
 }
 
-.timeline-marker-handle--contact {
-  border-color: var(--color-warning);
-  background: var(--color-warning-light);
-  width: 16px;
-  height: 16px;
-}
-
-.timeline-markers-container--compact .timeline-marker-handle--contact {
-  width: 10px;
-  height: 10px;
-}
 
 .timeline-marker-label {
   position: absolute;
@@ -270,9 +252,6 @@
   color: var(--color-error-dark);
 }
 
-.timeline-marker-label--contact {
-  color: var(--color-warning-dark);
-}
 
 /* Connection line from marker to track */
 .timeline-marker::before {
@@ -299,35 +278,13 @@
   background: var(--color-error);
 }
 
-.timeline-marker--contact::before {
-  background: var(--color-warning);
-  height: 16px;
-}
 
 /* Actions */
 .timeline-markers-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-top: var(--spacing-md);
-}
-
-.timeline-action-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.timeline-action-btn:hover {
-  background: var(--color-surface-hover);
-  border-color: var(--color-primary-light);
-  color: var(--color-primary);
 }
 
 .timeline-help-text {

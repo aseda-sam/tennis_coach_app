@@ -22,19 +22,11 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
   const width = endPercent - startPercent;
 
   const hasMetrics = serveAttempt.elbow_angle_at_contact !== null;
-  const hasContact = serveAttempt.contact_timestamp !== null;
 
   // Color based on whether metrics are available
   const rangeColor = hasMetrics
     ? '#3b82f6' // blue - has metrics
     : '#6b7280'; // gray - no metrics yet
-
-  // Contact point position within the range
-  const contactPercent = hasContact
-    ? ((serveAttempt.contact_timestamp! - serveAttempt.start_timestamp) /
-        (serveAttempt.end_timestamp - serveAttempt.start_timestamp)) *
-      100
-    : null;
 
   return (
     <div
@@ -55,16 +47,6 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
         }}
       />
 
-      {/* Contact point indicator */}
-      {hasContact && contactPercent !== null && (
-        <div
-          className="serve-attempt-range__contact-point"
-          style={{
-            left: `${contactPercent}%`,
-          }}
-        />
-      )}
-
       {/* Start marker */}
       <div className="serve-attempt-range__start-marker" />
 
@@ -75,7 +57,7 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
       <div className="serve-attempt-range__tooltip">
         <div className="tooltip-content">
           <div className="tooltip-header">
-            <span>Serve Attempt</span>
+            <span>Serve Attempt Range</span>
             {serveAttempt.serve_number && (
               <span>#{serveAttempt.serve_number}</span>
             )}
@@ -83,9 +65,6 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
           <div className="tooltip-details">
             <div>Start: {serveAttempt.start_timestamp.toFixed(2)}s</div>
             <div>End: {serveAttempt.end_timestamp.toFixed(2)}s</div>
-            {hasContact && (
-              <div>Contact: {serveAttempt.contact_timestamp!.toFixed(2)}s</div>
-            )}
             {hasMetrics && (
               <div>
                 Elbow Angle: {Math.round(serveAttempt.elbow_angle_at_contact!)}°

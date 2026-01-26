@@ -56,7 +56,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
                 </div>
                 <p className="demo-landing__card-body">
                 Start with a real clip and follow each moment. Jump between
-                contacts, review timing, and see what stands out.
+                serve attempts, review timing, and see what stands out.
                 </p>
                 <div className="demo-landing__card-actions">
                   <button
@@ -86,7 +86,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
                 </div>
                 <p className="demo-landing__card-body">
                   Ready to see your own swing. Upload a rally or serve and we will
-                  map timing, contact, and posture.
+                  map timing, serve attempt ranges, and posture.
                 </p>
                 <div className="demo-landing__card-actions">
                   <button
@@ -135,7 +135,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               </div>
               <h4 className="demo-landing__feature-title">Performance Metrics</h4>
               <p className="demo-landing__feature-description">
-                See angles and metrics computed from existing contacts.
+                See angles and metrics computed from existing serve attempts.
               </p>
             </div>
 
@@ -145,7 +145,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               </div>
               <h4 className="demo-landing__feature-title">Interactive Video</h4>
               <p className="demo-landing__feature-description">
-                Frame-by-frame controls and fast navigation between contacts.
+                Frame-by-frame controls and fast navigation between serve attempts.
               </p>
             </div>
           </div>

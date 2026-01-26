@@ -36,7 +36,7 @@ interface VideoPlayerProps {
   controlsBelow?: boolean; // Render controls below video instead of overlaying
   onContactNavigate?: (serveAttemptId: number) => void; // Callback when serve attempt is navigated to
   onNavigateReady?: (navigateFn: (serveAttemptId: number) => void) => void; // Callback to expose navigate function
-  isDemo?: boolean; // If true, disable contact creation and modification
+  isDemo?: boolean; // If true, disable manual range tagging and editing
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -73,10 +73,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const scrubberTrackRef = useRef<HTMLDivElement>(null);
   const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(null);
   const wasPlayingRef = useRef<boolean>(false);
-  const [hoverTimestamp, setHoverTimestamp] = useState<number | null>(null);
-  const [openTimestamp, setOpenTimestamp] = useState<number | null>(null);
   const [openRequestId, setOpenRequestId] = useState(0);
-  const isAddContactVisible = !!videoId && !error && duration > 0;
+  const [openRange, setOpenRange] = useState<{ start: number; end: number } | null>(
+    null
+  );
+  const [rangeInTime, setRangeInTime] = useState<number | null>(null);
+  const [rangeOutTime, setRangeOutTime] = useState<number | null>(null);
+  const isAddServeAttemptVisible = !!videoId && !error && duration > 0;
 
   // Use serve attempts hook if videoId is provided
   const {
@@ -277,7 +280,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setIsScrubbing(false);
 
     // Only resume playing if video was playing before AND user wants it to continue
-    // For ball contact creation, we want it to stay paused for precision
+    // For range tagging, we want it to stay paused for precision
     // Users can manually click play if they want to resume
   };
 
@@ -346,6 +349,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const navigateToPreviousFrame = useCallback(() => {
     navigateFrame('backward');
   }, [navigateFrame]);
+
+  const markedRange = useMemo(() => {
+    if (rangeInTime === null || rangeOutTime === null) return null;
+    const start = Math.min(rangeInTime, rangeOutTime);
+    const end = Math.max(rangeInTime, rangeOutTime);
+    return { start, end };
+  }, [rangeInTime, rangeOutTime]);
+
+  const hasRangeMarks = rangeInTime !== null || rangeOutTime !== null;
+
+  const clearRangeMarks = useCallback(() => {
+    setRangeInTime(null);
+    setRangeOutTime(null);
+    setOpenRange(null);
+  }, []);
+
+  const createServeAttemptFromMarks = useCallback(() => {
+    if (!markedRange) return;
+    setOpenRange(markedRange);
+    setOpenRequestId((prev) => prev + 1);
+  }, [markedRange]);
 
   // Navigate to a specific serve attempt by ID (exposed via callback)
   const navigateToServeAttemptById = useCallback(
@@ -457,34 +481,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [onNavigateReady, stableNavigateToServeAttemptById]);
 
-  // Open add serve attempt form at current time (for keyboard shortcut)
-  const openAddServeAttemptForm = useCallback(() => {
-    if (!isAddContactVisible) return;
-
-    const video = videoRef.current;
-    const timestamp = video?.currentTime ?? currentTime;
-
-    // Pause video if playing
-    if (video && isPlaying) {
-      video.pause();
-      wasPlayingRef.current = true;
-    } else {
-      wasPlayingRef.current = false;
-    }
-
-    if (controlsBelow) {
-      // For scrubber mode, use the programmatic open mechanism
-      setOpenTimestamp(timestamp);
-      setOpenRequestId((prev) => prev + 1);
-      setHighlightTimestamp(timestamp);
-    } else {
-      // For overlay mode, trigger via the button's onFormOpen callback
-      setHighlightTimestamp(timestamp);
-      setOpenTimestamp(timestamp);
-      setOpenRequestId((prev) => prev + 1);
-    }
-  }, [isAddContactVisible, currentTime, isPlaying, controlsBelow]);
-
   // Keyboard shortcuts for frame navigation, play/pause, and serve attempt navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -518,14 +514,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           event.preventDefault();
           navigateToNextServeAttempt();
           break;
-        case 'a':
-        case 'A':
+        case 'i':
+        case 'I':
           event.preventDefault();
           if (isDemo) {
-            alert('Manual Serve Attempt Creation is disabled in Demo Mode!');
+            alert('Range tagging is disabled in Demo Mode!');
             break;
           }
-          openAddServeAttemptForm();
+          setRangeInTime(videoRef.current?.currentTime ?? currentTime);
+          break;
+        case 'o':
+        case 'O':
+          event.preventDefault();
+          if (isDemo) {
+            alert('Range tagging is disabled in Demo Mode!');
+            break;
+          }
+          setRangeOutTime(videoRef.current?.currentTime ?? currentTime);
           break;
         default:
           break;
@@ -545,8 +550,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     navigateToNextFrame,
     navigateToPreviousServeAttempt,
     navigateToNextServeAttempt,
-    openAddServeAttemptForm,
     isDemo,
+    currentTime,
   ]);
 
   // Memoize formatted time strings to prevent unnecessary re-renders
@@ -558,6 +563,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     () => formatTime(duration),
     [duration, formatTime]
   );
+  const rangeInLabel = rangeInTime !== null ? formatTime(rangeInTime) : '—';
+  const rangeOutLabel = rangeOutTime !== null ? formatTime(rangeOutTime) : '—';
 
   const handleVideoClick = () => {
     // When controlsBelow is true, clicking video toggles play/pause
@@ -566,45 +573,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  const getTimestampFromClientX = useCallback(
-    (clientX: number): number | null => {
-      const track = scrubberTrackRef.current;
-      if (!track || duration <= 0) return null;
-
-      const rect = track.getBoundingClientRect();
-      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-      return ratio * duration;
-    },
-    [duration]
-  );
-
-  const handleAddBandPointerMove = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      const timestamp = getTimestampFromClientX(event.clientX);
-      if (timestamp !== null) {
-        setHoverTimestamp(timestamp);
-      }
-    },
-    [getTimestampFromClientX]
-  );
-
-  const handleAddBandPointerLeave = useCallback(() => {
-    setHoverTimestamp(null);
-  }, []);
-
-  const handleAddBandPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!isAddContactVisible) return;
-      const timestamp = getTimestampFromClientX(event.clientX);
-      if (timestamp === null) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      setOpenTimestamp(timestamp);
-      setOpenRequestId((prev) => prev + 1);
-    },
-    [getTimestampFromClientX, isAddContactVisible]
-  );
 
   const toggleFullscreen = () => {
     const video = videoRef.current;
@@ -701,13 +669,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 fps={videoMetadata?.fps}
                 onAddServeAttempt={async (serveAttempt: ServeAttemptCreate) => {
                   await createServeAttempt(serveAttempt);
+                  if (openRange) {
+                    clearRangeMarks();
+                  }
                 }}
-                isVisible={isAddContactVisible}
+                isVisible={isAddServeAttemptVisible}
                 isReadOnly={isDemo}
                 placement="overlay"
                 onSeek={seekToTime}
                 openRequestId={openRequestId}
-                openTimestamp={openTimestamp ?? undefined}
+                openRange={openRange ?? undefined}
                 onFormOpen={(timestamp) => {
                   // Pause video if playing
                   const video = videoRef.current;
@@ -723,8 +694,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onFormClose={() => {
                   // Clear highlight
                   setHighlightTimestamp(null);
-                  // Clear open timestamp
-                  setOpenTimestamp(null);
+                  setOpenRange(null);
                   // Note: We don't auto-resume playback - user can manually play
                   wasPlayingRef.current = false;
                 }}
@@ -791,7 +761,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   })}
                 </div>
               )}
-                    {/* Highlight marker for locked contact timestamp */}
+                    {rangeInTime !== null && duration > 0 && (
+                      <div
+                        className="range-mark-marker range-mark-marker--in"
+                        style={{
+                          left: `${(rangeInTime / duration) * 100}%`,
+                        }}
+                      >
+                        <span>IN</span>
+                      </div>
+                    )}
+                    {rangeOutTime !== null && duration > 0 && (
+                      <div
+                        className="range-mark-marker range-mark-marker--out"
+                        style={{
+                          left: `${(rangeOutTime / duration) * 100}%`,
+                        }}
+                      >
+                        <span>OUT</span>
+                      </div>
+                    )}
+                    {/* Highlight marker for locked range anchor */}
                     {highlightTimestamp !== null && duration > 0 && (
                       <div
                         className="contact-highlight-marker"
@@ -805,6 +795,34 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     <span>{formattedCurrentTime}</span>
                     <span>{formattedDuration}</span>
                   </div>
+                  {hasRangeMarks && (
+                    <div className="range-marked-row">
+                      <div className="range-marked-info">
+                        <span>IN {rangeInLabel}</span>
+                        <span>OUT {rangeOutLabel}</span>
+                      </div>
+                      <div className="range-marked-actions">
+                        <button
+                          className="range-marked-btn"
+                          onClick={createServeAttemptFromMarks}
+                          disabled={!markedRange || isDemo}
+                          title={
+                            isDemo
+                              ? 'Demo mode: range tagging is disabled'
+                              : 'Create serve attempt from marked range'
+                          }
+                        >
+                          Create serve attempt
+                        </button>
+                        <button
+                          className="range-marked-btn range-marked-btn--ghost"
+                          onClick={clearRangeMarks}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="controls-row">
@@ -869,17 +887,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               className="video-controls-below__scrubber-track"
               ref={scrubberTrackRef}
             >
-              <div
-                className="video-controls-below__add-band"
-                onPointerMove={handleAddBandPointerMove}
-                onPointerLeave={handleAddBandPointerLeave}
-                onPointerDown={handleAddBandPointerDown}
-                title={
-                  isDemo
-                    ? 'Demo mode: manual serve attempt creation is disabled'
-                    : 'Click to manually tag serve attempt (or press A)'
-                }
-              />
               <AddServeAttemptButton
                 currentTime={currentTime}
                 videoId={videoId || 0}
@@ -887,13 +894,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 fps={videoMetadata?.fps}
                 onAddServeAttempt={async (serveAttempt: ServeAttemptCreate) => {
                   await createServeAttempt(serveAttempt);
+                  if (openRange) {
+                    clearRangeMarks();
+                  }
                 }}
-                isVisible={isAddContactVisible}
+                isVisible={isAddServeAttemptVisible}
                 isReadOnly={isDemo}
                 placement="scrubber"
                 onSeek={seekToTime}
                 openRequestId={openRequestId}
-                openTimestamp={openTimestamp ?? undefined}
+                openRange={openRange ?? undefined}
                 onFormOpen={(timestamp) => {
                   // Pause video if playing
                   const video = videoRef.current;
@@ -909,8 +919,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onFormClose={() => {
                   // Clear highlight
                   setHighlightTimestamp(null);
-                  // Clear open timestamp
-                  setOpenTimestamp(null);
+                  setOpenRange(null);
                   // Note: We don't auto-resume playback - user can manually play
                   wasPlayingRef.current = false;
                 }}
@@ -953,15 +962,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   })}
                 </div>
               )}
-              {hoverTimestamp !== null && duration > 0 && (
+              {rangeInTime !== null && duration > 0 && (
                 <div
-                  className="contact-hover-marker"
+                  className="range-mark-marker range-mark-marker--in"
                   style={{
-                    left: `${(hoverTimestamp / duration) * 100}%`,
+                    left: `${(rangeInTime / duration) * 100}%`,
                   }}
-                />
+                >
+                  <span>IN</span>
+                </div>
               )}
-              {/* Highlight marker for locked contact timestamp */}
+              {rangeOutTime !== null && duration > 0 && (
+                <div
+                  className="range-mark-marker range-mark-marker--out"
+                  style={{
+                    left: `${(rangeOutTime / duration) * 100}%`,
+                  }}
+                >
+                  <span>OUT</span>
+                </div>
+              )}
+              {/* Highlight marker for locked range anchor */}
               {highlightTimestamp !== null && duration > 0 && (
                 <div
                   className="contact-highlight-marker"
@@ -975,6 +996,34 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <span>{formattedCurrentTime}</span>
               <span>{formattedDuration}</span>
             </div>
+            {hasRangeMarks && (
+              <div className="range-marked-row range-marked-row--below">
+                <div className="range-marked-info">
+                  <span>IN {rangeInLabel}</span>
+                  <span>OUT {rangeOutLabel}</span>
+                </div>
+                <div className="range-marked-actions">
+                  <button
+                    className="range-marked-btn"
+                    onClick={createServeAttemptFromMarks}
+                    disabled={!markedRange || isDemo}
+                    title={
+                      isDemo
+                        ? 'Demo mode: range tagging is disabled'
+                        : 'Create serve attempt from marked range'
+                    }
+                  >
+                    Create serve attempt
+                  </button>
+                  <button
+                    className="range-marked-btn range-marked-btn--ghost"
+                    onClick={clearRangeMarks}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Controls Row */}

@@ -8,10 +8,12 @@ interface KeyboardShortcutsBannerProps {
 const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
   isDemo = false,
 }) => {
-  const manualLabel = 'Manually Add Contact';
-  const manualTitle = isDemo
-    ? 'Manual Contact Creation is disabled in Demo Mode!'
-    : 'Manually add contact';
+  const rangeInTitle = isDemo
+    ? 'Range tagging is disabled in Demo Mode!'
+    : 'Mark the IN point for a serve attempt range';
+  const rangeOutTitle = isDemo
+    ? 'Range tagging is disabled in Demo Mode!'
+    : 'Mark the OUT point for a serve attempt range';
 
   return (
     <div className="keyboard-shortcuts">
@@ -29,17 +31,27 @@ const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
           </div>
           <div className="keyboard-shortcuts__item">
             <kbd className="keyboard-shortcuts__kbd">[ ]</kbd>
-            <span>Previous/Next contact</span>
+            <span>Previous/Next serve attempt</span>
           </div>
           <div
             className={`keyboard-shortcuts__item ${
               isDemo ? 'keyboard-shortcuts__item--disabled' : ''
             }`.trim()}
-            title={manualTitle}
+            title={rangeInTitle}
             aria-disabled={isDemo}
           >
-            <kbd className="keyboard-shortcuts__kbd">A</kbd>
-            <span>{manualLabel}</span>
+            <kbd className="keyboard-shortcuts__kbd">I</kbd>
+            <span>Mark IN point</span>
+          </div>
+          <div
+            className={`keyboard-shortcuts__item ${
+              isDemo ? 'keyboard-shortcuts__item--disabled' : ''
+            }`.trim()}
+            title={rangeOutTitle}
+            aria-disabled={isDemo}
+          >
+            <kbd className="keyboard-shortcuts__kbd">O</kbd>
+            <span>Mark OUT point</span>
           </div>
         </div>
       </div>

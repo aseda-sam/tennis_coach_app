@@ -69,25 +69,13 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
       const endVal = formData.end_timestamp;
       const startValidation = validateTimestamp(startVal, videoDuration);
       const endValidation = validateTimestamp(endVal, videoDuration);
-      const contactTimestamp = formData.contact_timestamp ?? null;
-      const contactValidation =
-        contactTimestamp !== null
-          ? validateTimestamp(contactTimestamp, videoDuration)
-          : { isValid: true };
 
       if (!startValidation.isValid) {
         setValidationError(startValidation.error || null);
       } else if (!endValidation.isValid) {
         setValidationError(endValidation.error || null);
-      } else if (!contactValidation.isValid) {
-        setValidationError(contactValidation.error || null);
       } else if (startVal >= endVal) {
         setValidationError('Start time must be before end time');
-      } else if (
-        contactTimestamp !== null &&
-        (contactTimestamp < startVal || contactTimestamp > endVal)
-      ) {
-        setValidationError('Contact time must be between start and end time');
       } else {
         setValidationError(null);
       }
@@ -210,27 +198,6 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
               </div>
 
               <div className="form-group">
-                <label>Contact Timestamp (seconds, optional):</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  min="0"
-                  max={videoDuration > 0 ? videoDuration : undefined}
-                  value={formData.contact_timestamp || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      contact_timestamp:
-                        e.target.value === ''
-                          ? null
-                          : parseFloat(e.target.value) || null,
-                    })
-                  }
-                  placeholder="Optional"
-                />
-              </div>
-
-              <div className="form-group">
                 <label>Court Side:</label>
                 <select
                   value={formData.court_side || ''}
@@ -323,15 +290,6 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
                   {formatTime(serveAttempt.end_timestamp)}
                 </span>
               </div>
-
-              {serveAttempt.contact_timestamp !== null && (
-                <div className="detail-row">
-                  <span className="detail-label">Contact:</span>
-                  <span className="detail-value">
-                    {formatTime(serveAttempt.contact_timestamp)}
-                  </span>
-                </div>
-              )}
 
               {serveAttempt.elbow_angle_at_contact !== null && (
                 <div className="detail-row">
