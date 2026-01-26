@@ -20,7 +20,7 @@ class ServeAttempt(Base):
     user_id = Column(String(36), nullable=False, index=True)  # Auth/tenancy boundary
     player_id = Column(
         Integer,
-        ForeignKey("players.id", ondelete="SET NULL"),
+        ForeignKey("players.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )  # Domain identity - REQUIRED for MVP
