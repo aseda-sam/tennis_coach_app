@@ -42,6 +42,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
 from app.services import video_service
+from app.services.rq_tasks import enqueue_pose_analysis
 from app.services.storage_service import storage_service
 from app.utils.authorization import (
     is_admin,
@@ -780,6 +781,14 @@ async def upload_video(
             session_type=session_type,
             camera_angle=camera_angle,
             recorded_at=recorded_at,
+        )
+
+        # Auto-enqueue pose detection analysis (silently fail if Redis unavailable)
+        # This allows uploads to succeed even if Redis is down, user can manually trigger analysis later
+        enqueue_pose_analysis(
+            video_id=db_video.id,
+            video_path=db_video.file_path,
+            confidence_threshold=0.7,  # Default threshold from AnalysisRequest schema
         )
 
         return VideoUploadResponse(

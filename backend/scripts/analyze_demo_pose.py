@@ -134,7 +134,7 @@ def run_pose_analysis(video_id: int, confidence_threshold: float = 0.7) -> None:
                 video_path=video_path,
                 confidence_threshold=confidence_threshold,
                 retry=Retry(max=2, interval=60),
-                job_timeout=300,  # 5 minutes
+                job_timeout=900,  # 15 minutes (increased from 5 min to handle longer videos)
                 result_ttl=3600,  # Keep results for 1 hour
             )
             print("✅ Job enqueued successfully!")

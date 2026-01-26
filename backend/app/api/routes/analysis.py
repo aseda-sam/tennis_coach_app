@@ -6,7 +6,6 @@ from typing import Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import TimeoutError as RedisTimeoutError
-from rq import Retry
 from rq.job import Job, NoSuchJobError
 from sqlalchemy.orm import Session
 
@@ -22,7 +21,7 @@ from app.core.redis_config import analysis_queue, redis_conn
 from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.rq_monitoring import get_queue_stats
-from app.services.rq_tasks import analyze_pose_detection_rq
+from app.services.rq_tasks import analyze_pose_detection_rq, enqueue_pose_analysis, enqueue_pose_analysis
 from app.utils.authorization import require_video_access, require_video_not_demo
 
 logger = logging.getLogger(__name__)
@@ -65,27 +64,12 @@ async def start_analysis(
         # Prevent re-running analysis on demo videos
         require_video_not_demo(video, current_user)
 
-        # Select RQ task function based on analysis type
-        task_function_map = {
-            "pose_only": analyze_pose_detection_rq,
-        }
-
-        task_function = task_function_map.get(request.analysis_type)
-        if not task_function:
+        # Validate analysis type
+        if request.analysis_type != "pose_only":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid analysis type: {request.analysis_type}",
             )
-
-        # Configure retry based on analysis type
-        retry_config = {
-            "pose_only": Retry(max=2, interval=60),
-        }
-
-        # Configure timeout based on analysis type
-        timeout_config = {
-            "pose_only": 300,  # 5 minutes
-        }
 
         try:
             logger.info(
@@ -97,22 +81,26 @@ async def start_analysis(
             # Redis connection is already checked in redis_config.py on module load
             # If Redis is unavailable, the connection will fail when enqueueing, which is handled below
 
-            # Enqueue RQ job
+            # Enqueue RQ job using shared helper
             logger.info(f"Enqueueing {request.analysis_type} job to Redis queue...")
             try:
-                job = analysis_queue.enqueue(
-                    task_function,
+                job = enqueue_pose_analysis(
                     video_id=video_id,
                     video_path=video.file_path,
                     confidence_threshold=request.confidence_threshold,
-                    retry=retry_config[request.analysis_type],
-                    job_timeout=timeout_config[request.analysis_type],
-                    result_ttl=3600,  # Keep results for 1 hour
                 )
+                if not job:
+                    # Helper returned None (Redis unavailable)
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="Failed to enqueue job to Redis. Please check Redis connection.",
+                    )
                 logger.info(
                     f"Successfully enqueued {request.analysis_type} analysis job {job.id} "
                     f"for video {video_id} to queue '{analysis_queue.name}'"
                 )
+            except HTTPException:
+                raise
             except (RedisConnectionError, RedisTimeoutError) as e:
                 logger.error(f"Failed to enqueue job to Redis: {e}")
                 raise HTTPException(
