@@ -68,7 +68,6 @@ PROFILE=local      # or production
 - Queue wiring: `app/core/redis_config.py`
 - Task functions:
   - `app/services/rq_tasks.py::analyze_pose_detection_rq`
-  - `app/services/rq_tasks.py::analyze_serve_attempts_rq`
 
 ## Operational notes
 
