@@ -49,7 +49,7 @@ class Video(Base):
     # Session metadata (serve-focused)
     session_type = Column(
         String(20), nullable=True
-    )  # 'serve_drill', 'match', 'practice', 'other'
+    )  # 'serve_practice', 'match', 'other'
     camera_angle = Column(
         String(20), nullable=True
     )  # 'behind', 'profile', 'diagonal', 'unknown'

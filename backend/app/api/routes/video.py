@@ -34,6 +34,7 @@ from app.api.schemas.video import (
     VideoInfo,
     VideoListItem,
     VideoMetadata,
+    VideoMetadataUpdateRequest,
     VideoSignedUrlResponse,
     VideoUploadResponse,
 )
@@ -41,6 +42,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
 from app.services import video_service
+from app.services.rq_tasks import enqueue_pose_analysis
 from app.services.storage_service import storage_service
 from app.utils.authorization import (
     is_admin,
@@ -584,12 +586,55 @@ async def delete_video(
         log_and_raise_error(e, "delete_video", {"video_id": video_id})
 
 
+@router.patch("/{video_id}/metadata", response_model=VideoInfo)
+async def update_video_metadata(
+    video_id: int,
+    metadata_update: VideoMetadataUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VideoInfo:
+    """
+    Update video metadata (session_type and camera_angle).
+
+    Args:
+        video_id: Unique video identifier
+        metadata_update: Metadata fields to update
+        current_user: Authenticated user
+
+    Returns:
+        Updated video information
+    """
+    try:
+        # Get video to check authorization
+        db_video = video_service.get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Check authorization (only owner can update)
+        require_video_access(db_video, current_user)
+
+        # Update metadata
+        updated_video = video_service.update_video_metadata(
+            db=db,
+            video_id=video_id,
+            session_type=metadata_update.session_type,
+            camera_angle=metadata_update.camera_angle,
+        )
+
+        if not updated_video:
+            raise handle_not_found_error("video", str(video_id))
+
+        return VideoInfo.model_validate(updated_video)
+    except (OSError, ValueError) as e:
+        log_and_raise_error(e, "update_video_metadata", {"video_id": video_id})
+
+
 @router.post("/upload", response_model=VideoUploadResponse)
 async def upload_video(
     file: UploadFile = File(...),
     is_demo: bool = Query(False, description="Upload as demo video"),
     session_type: Optional[str] = Query(
-        None, description="Session type: 'serve_drill', 'match', 'practice', 'other'"
+        None, description="Session type: 'serve_practice', 'match', 'other'"
     ),
     camera_angle: Optional[str] = Query(
         None, description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'"
@@ -737,6 +782,20 @@ async def upload_video(
             camera_angle=camera_angle,
             recorded_at=recorded_at,
         )
+
+        # Auto-enqueue pose detection analysis (silently fail if Redis unavailable)
+        # This allows uploads to succeed even if Redis is down, user can manually trigger analysis later
+        # enqueue_pose_analysis catches exceptions internally, but we also wrap in try/except
+        # to handle edge cases (e.g., if function signature changes or unexpected errors occur)
+        try:
+            enqueue_pose_analysis(
+                video_id=db_video.id,
+                video_path=db_video.file_path,
+                confidence_threshold=0.7,  # Default threshold from AnalysisRequest schema
+            )
+        except Exception:  # noqa: BLE001 - Intentionally catch all to ensure upload succeeds
+            # enqueue_pose_analysis already logs errors internally, just ensure upload doesn't fail
+            logger.debug("Failed to enqueue pose analysis, but upload succeeded")
 
         return VideoUploadResponse(
             video_id=db_video.id,

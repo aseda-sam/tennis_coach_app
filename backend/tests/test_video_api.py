@@ -6,9 +6,11 @@ import os
 import tempfile
 import uuid
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -82,19 +84,93 @@ class TestVideoAPI:
             tmp_file_path = tmp_file.name
 
         try:
-            with open(tmp_file_path, "rb") as f:
-                files = {"file": ("test.mp4", f, "video/mp4")}
-                response = client.post("/v0/videos/upload", files=files)
+            # Mock the enqueue function to verify it's called
+            mock_job = MagicMock()
+            mock_job.id = "test-job-id-123"
+            with patch(
+                "app.api.routes.video.enqueue_pose_analysis", return_value=mock_job
+            ) as mock_enqueue:
+                with open(tmp_file_path, "rb") as f:
+                    files = {"file": ("test.mp4", f, "video/mp4")}
+                    response = client.post("/v0/videos/upload", files=files)
 
-            # Should succeed (even though it's not a real video)
-            assert response.status_code == 200
-            data = response.json()
-            # The filename might be modified by ensure_unique_filename (e.g., test_1.mp4, test_2.mp4)
-            assert data["filename"].startswith("test") and data["filename"].endswith(
-                ".mp4"
-            )
-            assert "message" in data
-            assert "video_id" in data
+                # Should succeed (even though it's not a real video)
+                assert response.status_code == 200
+                data = response.json()
+                # The filename might be modified by ensure_unique_filename (e.g., test_1.mp4, test_2.mp4)
+                assert data["filename"].startswith("test") and data[
+                    "filename"
+                ].endswith(".mp4")
+                assert "message" in data
+                assert "video_id" in data
+
+                # Verify that enqueue was called with correct parameters
+                assert mock_enqueue.called
+                call_args = mock_enqueue.call_args
+                assert call_args.kwargs["video_id"] == data["video_id"]
+                assert call_args.kwargs["confidence_threshold"] == 0.7
+                assert "video_path" in call_args.kwargs
+        finally:
+            # Clean up
+            if os.path.exists(tmp_file_path):
+                os.unlink(tmp_file_path)
+
+    def test_upload_video_succeeds_when_enqueue_fails(self, client: TestClient) -> None:
+        """Test that upload succeeds even if enqueue fails (Redis down)."""
+        # Create a mock video file
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
+            tmp_file.write(b"fake video content" * 1000)
+            tmp_file_path = tmp_file.name
+
+        try:
+            # Mock enqueue to return None (simulating Redis failure)
+            with patch(
+                "app.api.routes.video.enqueue_pose_analysis", return_value=None
+            ) as mock_enqueue:
+                with open(tmp_file_path, "rb") as f:
+                    files = {"file": ("test.mp4", f, "video/mp4")}
+                    response = client.post("/v0/videos/upload", files=files)
+
+                # Upload should still succeed even if enqueue fails
+                assert response.status_code == 200
+                data = response.json()
+                assert "video_id" in data
+                assert "message" in data
+
+                # Verify that enqueue was attempted
+                assert mock_enqueue.called
+        finally:
+            # Clean up
+            if os.path.exists(tmp_file_path):
+                os.unlink(tmp_file_path)
+
+    def test_upload_video_succeeds_when_enqueue_raises_exception(
+        self, client: TestClient
+    ) -> None:
+        """Test that upload succeeds even if enqueue raises exception."""
+        # Create a mock video file
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
+            tmp_file.write(b"fake video content" * 1000)
+            tmp_file_path = tmp_file.name
+
+        try:
+            # Mock enqueue to raise RedisConnectionError
+            with patch(
+                "app.api.routes.video.enqueue_pose_analysis",
+                side_effect=RedisConnectionError("Redis unavailable"),
+            ) as mock_enqueue:
+                with open(tmp_file_path, "rb") as f:
+                    files = {"file": ("test.mp4", f, "video/mp4")}
+                    response = client.post("/v0/videos/upload", files=files)
+
+                # Upload should still succeed even if enqueue raises exception
+                assert response.status_code == 200
+                data = response.json()
+                assert "video_id" in data
+                assert "message" in data
+
+                # Verify that enqueue was attempted
+                assert mock_enqueue.called
         finally:
             # Clean up
             if os.path.exists(tmp_file_path):
@@ -230,6 +306,120 @@ class TestVideoAPI:
         video_ids = [v["id"] for v in videos]
         assert regular_video.id in video_ids
         assert demo_video.id not in video_ids
+
+    def test_update_video_metadata_success(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test updating video metadata (session_type and camera_angle)."""
+        from app.models.video import Video
+
+        # Create a video
+        video = Video(
+            filename="test_video.mp4",
+            file_path="raw/test_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+            session_type=None,
+            camera_angle=None,
+        )
+        db_session.add(video)
+        db_session.commit()
+        video_id = video.id
+
+        # Update metadata
+        update_data = {
+            "session_type": "serve_practice",
+            "camera_angle": "behind",
+        }
+        response = client.patch(f"/v0/videos/{video_id}/metadata", json=update_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == video_id
+        assert data["session_type"] == "serve_practice"
+        assert data["camera_angle"] == "behind"
+
+        # Verify database was updated
+        db_session.refresh(video)
+        assert video.session_type == "serve_practice"
+        assert video.camera_angle == "behind"
+
+    def test_update_video_metadata_partial(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test updating only session_type (camera_angle remains unchanged)."""
+        from app.models.video import Video
+
+        # Create a video with existing camera_angle
+        video = Video(
+            filename="test_video2.mp4",
+            file_path="raw/test_video2.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+            session_type=None,
+            camera_angle="profile",
+        )
+        db_session.add(video)
+        db_session.commit()
+        video_id = video.id
+
+        # Update only session_type
+        update_data = {"session_type": "match"}
+        response = client.patch(f"/v0/videos/{video_id}/metadata", json=update_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["session_type"] == "match"
+        assert data["camera_angle"] == "profile"  # Should remain unchanged
+
+    def test_update_video_metadata_not_found(self, client: TestClient) -> None:
+        """Test updating metadata for non-existent video."""
+        update_data = {"session_type": "serve_practice"}
+        response = client.patch("/v0/videos/99999/metadata", json=update_data)
+
+        assert response.status_code == 404
+        error_data = response.json()
+        assert "error" in error_data
+
+    def test_update_video_metadata_unauthorized(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test that users cannot update metadata for videos they don't own."""
+        from app.models.video import Video
+
+        # Create a video owned by a different user
+        other_user_id = "other-user-id-12345"
+        video = Video(
+            filename="other_video.mp4",
+            file_path="raw/other_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=other_user_id,
+        )
+        db_session.add(video)
+        db_session.commit()
+        video_id = video.id
+
+        # Try to update metadata (should fail - different user)
+        update_data = {"session_type": "serve_practice"}
+        response = client.patch(f"/v0/videos/{video_id}/metadata", json=update_data)
+
+        # Should return 403 or 404 (depending on implementation)
+        assert response.status_code in [403, 404]
 
 
 if __name__ == "__main__":

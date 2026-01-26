@@ -70,7 +70,7 @@ tennis_coach_app/
 
 - **Backend**: FastAPI, SQLAlchemy, MediaPipe, RQ
 - **Frontend**: React, TypeScript, HTML5 Video
-- **Database**: SQLite (dev) → PostgreSQL (prod)
+- **Database**: PostgreSQL (local Docker + production Supabase)
 - **Authentication**: JWT-based (configurable provider)
 - **Deployment**: Docker, GitHub Actions
 

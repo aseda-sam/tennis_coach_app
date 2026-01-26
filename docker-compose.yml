@@ -1,4 +1,22 @@
 services:
+  postgres:
+    container_name: tennis-coach-postgres
+    image: postgres:17.6-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: tennis
+      POSTGRES_PASSWORD: tennis_dev
+      POSTGRES_DB: tennis_coach
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tennis -d tennis_coach"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     container_name: tennis-coach-api
     build:
@@ -17,7 +35,10 @@ services:
       - LOG_LEVEL=DEBUG
       - REDIS_URL=redis://redis:6379/0
     depends_on:
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     restart: unless-stopped
 
   frontend:
@@ -67,8 +88,12 @@ services:
       - OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
     command: python scripts/start_rq_worker.py
     depends_on:
-      - redis
-      - backend
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      backend:
+        condition: service_started
     restart: unless-stopped
 
   rq-dashboard:
@@ -89,5 +114,6 @@ services:
     restart: unless-stopped
 
 volumes:
+  postgres_data:
   redis_data:
   frontend_node_modules:

@@ -126,7 +126,9 @@ if __name__ == "__main__":
                 connection=redis_conn,
                 name=worker_name,
             )
-            worker.work()
+            # Important: enable scheduler so delayed jobs / retries move from
+            # "scheduled" back to the queue automatically.
+            worker.work(with_scheduler=True)
             break  # Success, exit retry loop
         except ValueError as e:
             error_msg = str(e)

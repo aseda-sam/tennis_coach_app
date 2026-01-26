@@ -240,6 +240,39 @@ export const videoApi = {
       throw error;
     }
   },
+
+  // Update video metadata (session_type and camera_angle)
+  updateVideoMetadata: async (
+    videoId: number,
+    metadata: {
+      session_type?: string;
+      camera_angle?: string;
+    }
+  ): Promise<VideoMetadata> => {
+    try {
+      const response = await api.patch<VideoMetadata>(
+        `/videos/${videoId}/metadata`,
+        metadata
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { status?: number; data?: { detail?: string } };
+      };
+      if (axiosError.response?.status === 404) {
+        throw new Error('Video not found. Please check and try again.');
+      }
+      if (axiosError.response?.status === 400) {
+        throw new Error(
+          axiosError.response?.data?.detail || 'Invalid request.'
+        );
+      }
+      if (axiosError.response?.status === 500) {
+        throw new Error('Server error. Please try again later.');
+      }
+      throw error;
+    }
+  },
 };
 
 // Updated to match backend AnalysisStartResponse

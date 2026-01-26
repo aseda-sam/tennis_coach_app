@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnalysisData } from '../services/api';
 import unifiedAnalysisApi, {
   AnalysisRequest,
@@ -48,6 +48,7 @@ export const useAnalysisManager = ({
     error: null,
   });
   const [isLoading] = useState(false);
+  const shouldStartPollingRef = useRef<string | null>(null);
 
   // Memoize callbacks to prevent infinite re-renders
   const handleComplete = useCallback(
@@ -93,6 +94,65 @@ export const useAnalysisManager = ({
     onError: handleError,
     onProgress: handleProgress,
   });
+
+  // Check for active jobs on mount and resume polling if found
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkForActiveJobs = async () => {
+      try {
+        // Get all active tasks
+        const tasksResponse = await unifiedAnalysisApi.listTasks();
+
+        // Find active job for this video
+        const activeJob = Object.values(tasksResponse.tasks).find(
+          (task) =>
+            task.video_id === videoId &&
+            (task.status === 'queued' || task.status === 'processing')
+        );
+
+        if (activeJob && isMounted) {
+          // Found an active job, resume polling
+          // Check current state and update atomically, but keep side effect outside
+          setAnalysisState((prev) => {
+            // Only resume if still in idle state (avoid race conditions)
+            if (prev.status === 'idle' && !prev.jobId) {
+              // Store job_id in ref to start polling outside setState callback
+              shouldStartPollingRef.current = activeJob.job_id;
+              return {
+                ...prev,
+                status: 'processing',
+                jobId: activeJob.job_id,
+                progress: activeJob.progress || 0,
+                error: null,
+              };
+            }
+            return prev;
+          });
+          // Start polling outside setState callback (side effect)
+          // This ensures React best practices - side effects not in state updaters
+          if (shouldStartPollingRef.current) {
+            startPolling(shouldStartPollingRef.current);
+            shouldStartPollingRef.current = null;
+          }
+        }
+      } catch (err) {
+        // Silently fail - user can still manually start analysis
+        // This prevents blocking the UI if the API call fails
+        console.debug('Failed to check for active jobs:', err);
+      }
+    };
+
+    // Check on mount or when videoId changes
+    // On mount, state will be 'idle', so we'll check for active jobs
+    checkForActiveJobs();
+
+    return () => {
+      isMounted = false;
+      shouldStartPollingRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoId]); // Only run when videoId changes (on mount or when switching videos)
 
   // Function to start analysis using the new unified API
   const startAnalysis = useCallback(

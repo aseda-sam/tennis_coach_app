@@ -56,7 +56,7 @@ class VideoInfo(BaseModel):
     # Session metadata (serve-focused)
     session_type: Optional[str] = Field(
         default=None,
-        description="Session type: 'serve_drill', 'match', 'practice', 'other'",
+        description="Session type: 'serve_practice', 'match', 'other'",
     )
     camera_angle: Optional[str] = Field(
         default=None,
@@ -110,6 +110,19 @@ class VideoSignedUrlResponse(BaseModel):
 
     url: str = Field(description="Signed URL for video access")
     expires_in: int = Field(description="Number of seconds until URL expires")
+
+
+class VideoMetadataUpdateRequest(BaseModel):
+    """Request model for updating video metadata."""
+
+    session_type: Optional[str] = Field(
+        default=None,
+        description="Session type: 'serve_practice', 'match', 'other'",
+    )
+    camera_angle: Optional[str] = Field(
+        default=None,
+        description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'",
+    )
 
 
 # Validation functions

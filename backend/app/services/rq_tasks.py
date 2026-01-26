@@ -10,9 +10,13 @@ These functions are executed by RQ workers and must be:
 
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+from rq import Retry
+from rq.job import Job
 
 from app.core.database import SessionLocal
+from app.core.redis_config import analysis_queue
 from app.services import video_service
 from app.services.storage_service import storage_service
 
@@ -47,6 +51,64 @@ def _cleanup_temp_file(temp_path: Path | None) -> None:
             logger.debug(f"Cleaned up temp video file: {temp_path}")
         except OSError as e:
             logger.warning(f"Failed to delete temp video file {temp_path}: {e}")
+
+
+def enqueue_pose_analysis(
+    video_id: int,
+    video_path: str,
+    confidence_threshold: float = 0.7,
+) -> Optional[Job]:
+    """
+    Enqueue a pose detection analysis job.
+
+    This is a shared helper function used by both the manual analysis endpoint
+    and the automatic enqueue on upload. It wraps the RQ enqueue logic with
+    consistent retry/timeout settings.
+
+    Args:
+        video_id: Video ID from database
+        video_path: Path to video file (can be cloud path)
+        confidence_threshold: Detection confidence threshold (default 0.7)
+
+    Returns:
+        RQ Job object if enqueued successfully, None if enqueue failed
+        (failures are logged but not raised to allow upload to succeed)
+
+    Note:
+        This function swallows Redis errors to allow uploads to succeed
+        even if Redis is unavailable. The manual analysis endpoint should
+        still raise errors for user feedback.
+    """
+    try:
+        logger.info(
+            f"Enqueueing pose detection job for video {video_id}, "
+            f"confidence_threshold={confidence_threshold}"
+        )
+
+        job = analysis_queue.enqueue(
+            analyze_pose_detection_rq,
+            video_id=video_id,
+            video_path=video_path,
+            confidence_threshold=confidence_threshold,
+            retry=Retry(max=2, interval=60),
+            job_timeout=900,  # 15 minutes (increased from 5 min to handle longer videos)
+            result_ttl=3600,  # Keep results for 1 hour
+        )
+
+        logger.info(
+            f"Successfully enqueued pose detection job {job.id} "
+            f"for video {video_id} to queue '{analysis_queue.name}'"
+        )
+
+        return job
+
+    except Exception as e:  # noqa: BLE001 - Intentionally catch all to allow upload to succeed
+        # Log error but don't raise - allows upload to succeed even if Redis is down
+        logger.warning(
+            f"Failed to enqueue pose detection job for video {video_id}: {e}. "
+            "Upload succeeded, but analysis will need to be triggered manually."
+        )
+        return None
 
 
 def analyze_pose_detection_rq(

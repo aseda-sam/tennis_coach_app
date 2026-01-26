@@ -43,7 +43,7 @@ class TestServeAnalysisE2E:
                 files = {"file": ("test_serve.mp4", f, "video/mp4")}
                 params = {
                     "session_type": "serve_practice",
-                    "camera_angle": "side_view",
+                    "camera_angle": "profile",
                 }
                 response = client.post("/v0/videos/upload", files=files, params=params)
 
@@ -59,7 +59,7 @@ class TestServeAnalysisE2E:
             video = db_session.query(Video).filter(Video.id == video_id).first()
             assert video is not None
             assert video.session_type == "serve_practice"
-            assert video.camera_angle == "side_view"
+            assert video.camera_angle == "profile"
 
             # Set video metadata needed for pose detection (if not set by upload)
             if not video.fps:
