@@ -101,12 +101,6 @@ async def start_analysis(
                 )
             except HTTPException:
                 raise
-            except (RedisConnectionError, RedisTimeoutError) as e:
-                logger.error(f"Failed to enqueue job to Redis: {e}")
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail=f"Failed to enqueue job to Redis: {e!s}",
-                ) from e
 
             return AnalysisResponse(
                 job_id=job.id,
@@ -119,12 +113,6 @@ async def start_analysis(
 
         except HTTPException:
             raise
-        except (RedisConnectionError, RedisTimeoutError) as e:
-            logger.exception("Redis error while enqueueing job for video %s", video_id)
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Redis service error. Cannot start analysis. Please check Redis connection.",
-            ) from e
         except Exception as e:
             logger.exception("Failed to enqueue job for video %s", video_id)
             raise HTTPException(

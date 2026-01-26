@@ -785,12 +785,17 @@ async def upload_video(
 
         # Auto-enqueue pose detection analysis (silently fail if Redis unavailable)
         # This allows uploads to succeed even if Redis is down, user can manually trigger analysis later
-        # enqueue_pose_analysis catches exceptions internally and logs them, so upload always succeeds
-        enqueue_pose_analysis(
-            video_id=db_video.id,
-            video_path=db_video.file_path,
-            confidence_threshold=0.7,  # Default threshold from AnalysisRequest schema
-        )
+        # enqueue_pose_analysis catches exceptions internally, but we also wrap in try/except
+        # to handle edge cases (e.g., if function signature changes or unexpected errors occur)
+        try:
+            enqueue_pose_analysis(
+                video_id=db_video.id,
+                video_path=db_video.file_path,
+                confidence_threshold=0.7,  # Default threshold from AnalysisRequest schema
+            )
+        except Exception:  # noqa: BLE001 - Intentionally catch all to ensure upload succeeds
+            # enqueue_pose_analysis already logs errors internally, just ensure upload doesn't fail
+            logger.debug("Failed to enqueue pose analysis, but upload succeeded")
 
         return VideoUploadResponse(
             video_id=db_video.id,
