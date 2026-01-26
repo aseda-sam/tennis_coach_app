@@ -84,6 +84,44 @@ def production_profile() -> Generator[None, None, None]:
 SQLALCHEMY_DATABASE_URL = (
     "postgresql://tennis:tennis_dev@localhost:5432/tennis_coach_test"
 )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_test_database() -> Generator[None, None, None]:
+    """
+    Ensure test database exists before running tests.
+    
+    Creates tennis_coach_test database if it doesn't exist.
+    This runs once per test session.
+    """
+    from sqlalchemy import text
+    
+    # Connect to postgres database to create test database
+    admin_url = "postgresql://tennis:tennis_dev@localhost:5432/postgres"
+    admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
+    
+    try:
+        # Check if test database exists
+        with admin_engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = 'tennis_coach_test'")
+            )
+            exists = result.fetchone() is not None
+            
+            if not exists:
+                # Create test database
+                conn.execute(text("CREATE DATABASE tennis_coach_test"))
+                print("Created test database: tennis_coach_test")
+            else:
+                print("Test database already exists: tennis_coach_test")
+    except Exception as e:
+        pytest.skip(f"Could not create test database: {e}. Please create manually: CREATE DATABASE tennis_coach_test;")
+    finally:
+        admin_engine.dispose()
+    
+    yield
+
+
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
