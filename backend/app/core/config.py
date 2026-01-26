@@ -85,12 +85,12 @@ class Settings(BaseSettings):
             # Use DATABASE_URL if provided, otherwise auto-detect Docker vs local
             if self.DATABASE_URL:
                 return self.DATABASE_URL
-            
+
             # Detect if running in Docker (check for /.dockerenv)
             # In Docker, use service name 'postgres'; locally use 'localhost'
             postgres_host = "postgres" if os.path.exists("/.dockerenv") else "localhost"
             return f"postgresql://tennis:tennis_dev@{postgres_host}:5432/tennis_coach"
-        
+
         if not self.SUPABASE_DB_URL:
             raise ValueError("SUPABASE_DB_URL required when PROFILE=production")
         return self.SUPABASE_DB_URL
