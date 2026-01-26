@@ -6,7 +6,7 @@ The backend uses a **profile-based** config model: set one `PROFILE` and the app
 
 - `PROFILE=local`
   - **Auth**: disabled (mock user)
-  - **DB**: `DATABASE_URL` if set, otherwise SQLite default
+  - **DB**: `DATABASE_URL` if set, otherwise PostgreSQL Docker default (`postgresql://tennis:tennis_dev@localhost:5432/tennis_coach`)
   - **Storage**: local filesystem
 - `PROFILE=production`
   - **Auth**: required

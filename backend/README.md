@@ -42,10 +42,20 @@ FastAPI backend for a **serve-focused** tennis coaching MVP:
    pip install -e .
    ```
 
-3. **Create Data Directories**:
+3. **Start PostgreSQL Database**:
 
    ```bash
-   mkdir -p data/videos/raw data/videos/processed data/analysis_cache data/database
+   # Using Docker Compose (recommended)
+   docker compose up -d postgres
+   
+   # Or use your own PostgreSQL instance
+   # Make sure it's running and accessible
+   ```
+
+4. **Create Data Directories**:
+
+   ```bash
+   mkdir -p data/videos/raw data/videos/processed data/analysis_cache
    ```
 
 ### Running the Server
@@ -92,8 +102,10 @@ docker run -p 8000:8000 tennis-backend
 Create a `.env` file in the `backend/` directory:
 
 ```bash
-# Database
-DATABASE_URL=sqlite:///./data/database/tennis_coach.db
+# Database (PostgreSQL)
+# Defaults to Docker PostgreSQL when PROFILE=local
+# Override if using a different PostgreSQL instance
+DATABASE_URL=postgresql://tennis:tennis_dev@localhost:5432/tennis_coach
 
 # Supabase Storage (Production)
 SUPABASE_URL=https://your-project.supabase.co
@@ -363,7 +375,7 @@ backend/
 - **User-based Data Isolation**: videos/players/serve attempts are scoped per user
 - **REST API**: FastAPI + OpenAPI (`/docs`)
 - **Background jobs**: RQ + Redis
-- **DB**: SQLite locally, Postgres in production
+- **DB**: PostgreSQL (local Docker + production Supabase)
 - **Code quality**: Ruff + tests
 
 ## Documentation
@@ -387,8 +399,12 @@ kill -9 <PID>
 #### Database Issues
 
 ```bash
-# Reset database
-rm data/database/tennis_coach.db
+# Reset database (PostgreSQL)
+# Drop and recreate the database
+docker compose exec postgres psql -U tennis -c "DROP DATABASE IF EXISTS tennis_coach;"
+docker compose exec postgres psql -U tennis -c "CREATE DATABASE tennis_coach;"
+
+# Run migrations
 alembic upgrade head
 ```
 

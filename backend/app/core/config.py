@@ -22,9 +22,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # Database (auto-detected from PROFILE)
-    DATABASE_URL: Optional[str] = (
-        None  # Only used if PROFILE=local and you want Postgres
-    )
+    DATABASE_URL: Optional[str] = None  # Override default PostgreSQL URL if needed
     SUPABASE_DB_URL: Optional[str] = None  # Required if PROFILE=production
 
     # Supabase (only needed if PROFILE=production)
@@ -84,7 +82,15 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         """Get database URL - auto-detected from PROFILE."""
         if self.PROFILE == "local":
-            return self.DATABASE_URL or "sqlite:///../data/database/tennis_coach.db"
+            # Use DATABASE_URL if provided, otherwise auto-detect Docker vs local
+            if self.DATABASE_URL:
+                return self.DATABASE_URL
+            
+            # Detect if running in Docker (check for /.dockerenv)
+            # In Docker, use service name 'postgres'; locally use 'localhost'
+            postgres_host = "postgres" if os.path.exists("/.dockerenv") else "localhost"
+            return f"postgresql://tennis:tennis_dev@{postgres_host}:5432/tennis_coach"
+        
         if not self.SUPABASE_DB_URL:
             raise ValueError("SUPABASE_DB_URL required when PROFILE=production")
         return self.SUPABASE_DB_URL

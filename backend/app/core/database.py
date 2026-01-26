@@ -6,19 +6,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 
-
 # Create SQLAlchemy engine
-def _engine_kwargs() -> dict:
-    """Get engine kwargs based on environment."""
-    if "sqlite" in settings.database_url:
-        return {"connect_args": {"check_same_thread": False}}
-    else:
-        return {}
-
-
 engine = create_engine(
     settings.database_url,
-    **_engine_kwargs(),
 )
 
 # Create SessionLocal class

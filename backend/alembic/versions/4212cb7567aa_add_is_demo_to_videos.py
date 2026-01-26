@@ -21,53 +21,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add is_demo and original_user_id columns to videos table."""
-    bind = op.get_bind()
-    is_sqlite = bind.dialect.name == "sqlite"
-
-    if is_sqlite:
-        # SQLite: Use batch_alter_table
-        # SQLite stores Boolean as INTEGER (0/1), so use 0 for false
-        with op.batch_alter_table("videos", schema=None) as batch_op:
-            batch_op.add_column(
-                sa.Column(
-                    "is_demo", sa.Boolean(), nullable=False, server_default=sa.text("0")
-                )
-            )
-            batch_op.add_column(
-                sa.Column("original_user_id", sa.String(36), nullable=True)
-            )
-            batch_op.create_index("ix_videos_is_demo", ["is_demo"], unique=False)
-        # Set all existing videos to is_demo=0 (false) in SQLite
-        op.execute("UPDATE videos SET is_demo = 0")
-    else:
-        # PostgreSQL: Use direct operations
-        op.add_column(
-            "videos",
-            sa.Column(
-                "is_demo", sa.Boolean(), nullable=False, server_default=sa.text("false")
-            ),
-        )
-        op.add_column(
-            "videos", sa.Column("original_user_id", sa.String(36), nullable=True)
-        )
-        op.create_index("ix_videos_is_demo", "videos", ["is_demo"], unique=False)
-        # Set all existing videos to is_demo=false in PostgreSQL
-        op.execute("UPDATE videos SET is_demo = false")
+    op.add_column(
+        "videos",
+        sa.Column(
+            "is_demo", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
+    )
+    op.add_column("videos", sa.Column("original_user_id", sa.String(36), nullable=True))
+    op.create_index("ix_videos_is_demo", "videos", ["is_demo"], unique=False)
+    # Set all existing videos to is_demo=false
+    op.execute("UPDATE videos SET is_demo = false")
 
 
 def downgrade() -> None:
     """Remove is_demo and original_user_id columns from videos table."""
-    bind = op.get_bind()
-    is_sqlite = bind.dialect.name == "sqlite"
-
-    if is_sqlite:
-        # SQLite: Use batch_alter_table
-        with op.batch_alter_table("videos", schema=None) as batch_op:
-            batch_op.drop_index("ix_videos_is_demo")
-            batch_op.drop_column("original_user_id")
-            batch_op.drop_column("is_demo")
-    else:
-        # PostgreSQL: Use direct operations
-        op.drop_index("ix_videos_is_demo", table_name="videos")
-        op.drop_column("videos", "original_user_id")
-        op.drop_column("videos", "is_demo")
+    op.drop_index("ix_videos_is_demo", table_name="videos")
+    op.drop_column("videos", "original_user_id")
+    op.drop_column("videos", "is_demo")
