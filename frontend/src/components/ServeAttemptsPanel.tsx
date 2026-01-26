@@ -9,6 +9,38 @@ interface ServeAttemptsPanelProps {
   isDemo?: boolean;
 }
 
+interface ElbowAngleFeedback {
+  level: 'great' | 'solid' | 'focus';
+  pillText: string;
+  coachNote: string;
+}
+
+/**
+ * Maps elbow angle (in degrees) to feedback level, pill text, and coach note.
+ * Frontend-only heuristic for MVP - will be replaced with LLM-based recommendations.
+ */
+const getElbowAngleFeedback = (angleDeg: number): ElbowAngleFeedback => {
+  if (angleDeg >= 170) {
+    return {
+      level: 'great',
+      pillText: 'Great',
+      coachNote: 'Nice extension at contact—keep that relaxed arm through the finish.',
+    };
+  } else if (angleDeg >= 160) {
+    return {
+      level: 'solid',
+      pillText: 'Solid',
+      coachNote: 'Good extension—try reaching a touch more at contact for extra power.',
+    };
+  } else {
+    return {
+      level: 'focus',
+      pillText: 'Focus',
+      coachNote: 'Work on extending through contact—think "reach up and out" as you hit.',
+    };
+  }
+};
+
 const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
   videoId,
   onServeAttemptClick,
@@ -97,14 +129,33 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                     </div>
                   </div>
                   {hasMetrics ? (
-                    <div className="analysis-right-panel__metric-angle">
-                      <span className="analysis-right-panel__angle-value">
-                        {Math.round(serveAttempt.elbow_angle_at_contact as number)}°
-                      </span>
-                      <span className="analysis-right-panel__angle-label">
-                        Elbow Angle
-                      </span>
-                    </div>
+                    (() => {
+                      const feedback = getElbowAngleFeedback(
+                        serveAttempt.elbow_angle_at_contact as number
+                      );
+                      return (
+                        <>
+                          <div className="analysis-right-panel__metric-angle">
+                            <div className="analysis-right-panel__metric-angle-main">
+                              <span className="analysis-right-panel__angle-value">
+                                {Math.round(serveAttempt.elbow_angle_at_contact as number)}°
+                              </span>
+                              <span className="analysis-right-panel__angle-label">
+                                Elbow Angle
+                              </span>
+                            </div>
+                            <span
+                              className={`analysis-right-panel__feedback-pill analysis-right-panel__feedback-pill--${feedback.level}`}
+                            >
+                              {feedback.pillText}
+                            </span>
+                          </div>
+                          <div className="analysis-right-panel__coach-note">
+                            {feedback.coachNote}
+                          </div>
+                        </>
+                      );
+                    })()
                   ) : (
                     <div className="analysis-right-panel__metric-angle">
                       <span className="analysis-right-panel__angle-label">
