@@ -7,6 +7,7 @@ interface ServeAttemptRangeProps {
   duration: number;
   isSelected?: boolean;
   onClick?: () => void;
+  onContactClick?: () => void;
 }
 
 const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
@@ -14,12 +15,18 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
   duration,
   isSelected = false,
   onClick,
+  onContactClick,
 }) => {
   if (duration === 0) return null;
 
   const startPercent = (serveAttempt.start_timestamp / duration) * 100;
   const endPercent = (serveAttempt.end_timestamp / duration) * 100;
   const width = endPercent - startPercent;
+  
+  // Calculate contact marker position relative to the range
+  const contactPercent = serveAttempt.contact_timestamp !== null
+    ? ((serveAttempt.contact_timestamp - serveAttempt.start_timestamp) / (serveAttempt.end_timestamp - serveAttempt.start_timestamp)) * 100
+    : null;
 
   const hasMetrics = serveAttempt.elbow_angle_at_contact !== null;
 
@@ -36,7 +43,7 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
         width: `${width}%`,
       }}
       onClick={onClick}
-      title={`Serve attempt: ${serveAttempt.start_timestamp.toFixed(2)}s - ${serveAttempt.end_timestamp.toFixed(2)}s`}
+      title={`Serve: ${serveAttempt.start_timestamp.toFixed(2)}s - ${serveAttempt.end_timestamp.toFixed(2)}s`}
     >
       {/* Range band */}
       <div
@@ -53,18 +60,35 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
       {/* End marker */}
       <div className="serve-attempt-range__end-marker" />
 
+      {/* Contact marker (if contact timestamp exists) */}
+      {contactPercent !== null && (
+        <div
+          className="serve-attempt-range__contact-marker"
+          style={{ left: `${contactPercent}%` }}
+          title={`Contact: ${serveAttempt.contact_timestamp!.toFixed(2)}s (click to go to contact)`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onContactClick?.();
+          }}
+        />
+      )}
+
       {/* Tooltip on hover */}
       <div className="serve-attempt-range__tooltip">
         <div className="tooltip-content">
           <div className="tooltip-header">
-            <span>Serve Attempt Range</span>
+            <span>Serve</span>
             {serveAttempt.serve_number && (
               <span>#{serveAttempt.serve_number}</span>
             )}
           </div>
           <div className="tooltip-details">
-            <div>Start: {serveAttempt.start_timestamp.toFixed(2)}s</div>
-            <div>End: {serveAttempt.end_timestamp.toFixed(2)}s</div>
+            <div>{serveAttempt.start_timestamp.toFixed(2)}s - {serveAttempt.end_timestamp.toFixed(2)}s</div>
+            {serveAttempt.contact_timestamp !== null && (
+              <div>
+                Contact: {serveAttempt.contact_timestamp.toFixed(2)}s
+              </div>
+            )}
             {hasMetrics && (
               <div>
                 Elbow Angle: {Math.round(serveAttempt.elbow_angle_at_contact!)}°

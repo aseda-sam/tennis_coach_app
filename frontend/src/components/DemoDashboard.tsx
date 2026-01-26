@@ -67,9 +67,9 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
       },
       {
         target: 'serve-attempt-ranges',
-        title: 'Serve Attempt Ranges',
+        title: 'Serves',
         content:
-          'Jump to key moments using the serve attempt ranges on the timeline.',
+          'Jump to key moments using the serves on the timeline.',
         placement: 'top',
       },
       {

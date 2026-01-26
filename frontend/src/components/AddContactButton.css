@@ -385,6 +385,23 @@
   flex: 1;
 }
 
+.timestamp-display-readonly {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.timestamp-display-readonly .use-current-time-btn {
+  margin-left: auto;
+}
+
 .form-group input,
 .form-group select {
   width: 100%;

@@ -86,7 +86,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
                 </div>
                 <p className="demo-landing__card-body">
                   Ready to see your own swing. Upload a rally or serve and we will
-                  map timing, serve attempt ranges, and posture.
+                  map timing, serves, and posture.
                 </p>
                 <div className="demo-landing__card-actions">
                   <button

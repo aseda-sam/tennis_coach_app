@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { ServeAttempt, ServeAttemptUpdate } from '../services/serveAttemptApi';
-import { formatTime, validateTimestamp } from '../utils/validation';
+import {
+  formatTime,
+  validateContactTimestamp,
+  validateTimestamp,
+} from '../utils/validation';
 import './BallContactModal.css'; // Reuse styles
 
 interface ServeAttemptModalProps {
@@ -69,7 +73,6 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
       const endVal = formData.end_timestamp;
       const startValidation = validateTimestamp(startVal, videoDuration);
       const endValidation = validateTimestamp(endVal, videoDuration);
-
       if (!startValidation.isValid) {
         setValidationError(startValidation.error || null);
       } else if (!endValidation.isValid) {
@@ -77,7 +80,17 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
       } else if (startVal >= endVal) {
         setValidationError('Start time must be before end time');
       } else {
-        setValidationError(null);
+        const contactValidation = validateContactTimestamp(
+          formData.contact_timestamp ?? null,
+          startVal,
+          endVal,
+          videoDuration
+        );
+        if (!contactValidation.isValid) {
+          setValidationError(contactValidation.error || null);
+        } else {
+          setValidationError(null);
+        }
       }
     }
   }, [formData, videoDuration, isEditing]);
@@ -116,6 +129,22 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
         );
         return;
       }
+
+      if (startVal >= endVal) {
+        setValidationError('Start time must be before end time');
+        return;
+      }
+
+      const contactValidation = validateContactTimestamp(
+        formData.contact_timestamp ?? null,
+        startVal,
+        endVal,
+        videoDuration
+      );
+      if (!contactValidation.isValid) {
+        setValidationError(contactValidation.error || 'Invalid timestamp');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -124,7 +153,7 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
       setIsEditing(false);
       setValidationError(null);
     } catch (error) {
-      alert('Failed to update serve attempt. Please try again.');
+      alert('Failed to update serve. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -132,7 +161,7 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
 
   const handleDelete = async () => {
     if (
-      !window.confirm('Are you sure you want to delete this serve attempt?')
+      !window.confirm('Are you sure you want to delete this serve?')
     ) {
       return;
     }
@@ -152,7 +181,7 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
     <div className="ball-contact-modal-overlay" onClick={onClose}>
       <div className="ball-contact-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Serve Attempt Details</h3>
+          <h3>Serve Details</h3>
           <button className="close-btn" onClick={onClose}>
             ×
           </button>
@@ -191,6 +220,27 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
                     setFormData({
                       ...formData,
                       end_timestamp: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  className={validationError ? 'error' : ''}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Contact Timestamp (seconds, optional):</label>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  max={videoDuration > 0 ? videoDuration : undefined}
+                  value={formData.contact_timestamp ?? ''}
+                  placeholder="Leave blank"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      contact_timestamp: e.target.value
+                        ? parseFloat(e.target.value)
+                        : null,
                     })
                   }
                   className={validationError ? 'error' : ''}
@@ -278,18 +328,20 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
           ) : (
             <div className="contact-details">
               <div className="detail-row">
-                <span className="detail-label">Start:</span>
+                <span className="detail-label">Range:</span>
                 <span className="detail-value">
-                  {formatTime(serveAttempt.start_timestamp)}
+                  {formatTime(serveAttempt.start_timestamp)} - {formatTime(serveAttempt.end_timestamp)}
                 </span>
               </div>
 
-              <div className="detail-row">
-                <span className="detail-label">End:</span>
-                <span className="detail-value">
-                  {formatTime(serveAttempt.end_timestamp)}
-                </span>
-              </div>
+              {serveAttempt.contact_timestamp !== null && (
+                <div className="detail-row">
+                  <span className="detail-label">Contact:</span>
+                  <span className="detail-value">
+                    {formatTime(serveAttempt.contact_timestamp)}
+                  </span>
+                </div>
+              )}
 
               {serveAttempt.elbow_angle_at_contact !== null && (
                 <div className="detail-row">
@@ -333,13 +385,6 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
                   </span>
                 </div>
               )}
-
-              <div className="detail-row">
-                <span className="detail-label">Created:</span>
-                <span className="detail-value">
-                  {new Date(serveAttempt.created_at).toLocaleString()}
-                </span>
-              </div>
             </div>
           )}
         </div>
@@ -389,7 +434,7 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
         {isDemo && (
           <div className="modal-actions">
             <div className="demo-readonly-notice">
-              <p>Demo mode: Serve attempt editing is disabled</p>
+              <p>Demo mode: Serve editing is disabled</p>
             </div>
           </div>
         )}

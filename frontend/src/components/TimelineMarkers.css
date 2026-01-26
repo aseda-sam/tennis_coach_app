@@ -215,6 +215,11 @@
   background: var(--color-error-light);
 }
 
+.timeline-marker--contact .timeline-marker-handle {
+  border-color: var(--color-warning, #f59e0b);
+  background: var(--color-warning-light, #fef3c7);
+}
+
 
 .timeline-marker-label {
   position: absolute;
@@ -252,6 +257,10 @@
   color: var(--color-error-dark);
 }
 
+.timeline-marker--contact .timeline-marker-label {
+  color: var(--color-warning-dark, #d97706);
+}
+
 
 /* Connection line from marker to track */
 .timeline-marker::before {
@@ -276,6 +285,10 @@
 
 .timeline-marker--end::before {
   background: var(--color-error);
+}
+
+.timeline-marker--contact::before {
+  background: var(--color-warning, #f59e0b);
 }
 
 

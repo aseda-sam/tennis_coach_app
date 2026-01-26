@@ -93,3 +93,36 @@ export function validateManualTimestamp(
   // No additional restrictions - serve attempts can start from the beginning of the video
   return { isValid: true };
 }
+
+/**
+ * Validates an optional contact timestamp against a serve range.
+ * @param contactTimestamp - The optional contact timestamp in seconds
+ * @param startTimestamp - Serve attempt start timestamp in seconds
+ * @param endTimestamp - Serve attempt end timestamp in seconds
+ * @param videoDuration - The total duration of the video in seconds
+ * @returns Validation result with error message if invalid
+ */
+export function validateContactTimestamp(
+  contactTimestamp: number | null,
+  startTimestamp: number,
+  endTimestamp: number,
+  videoDuration: number
+): TimestampValidationResult {
+  if (contactTimestamp === null) {
+    return { isValid: true };
+  }
+
+  const basicValidation = validateTimestamp(contactTimestamp, videoDuration);
+  if (!basicValidation.isValid) {
+    return basicValidation;
+  }
+
+  if (contactTimestamp < startTimestamp || contactTimestamp > endTimestamp) {
+    return {
+      isValid: false,
+      error: 'Contact timestamp must be between start and end time',
+    };
+  }
+
+  return { isValid: true };
+}

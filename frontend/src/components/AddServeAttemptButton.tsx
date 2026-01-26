@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ServeAttemptCreate } from '../services/serveAttemptApi';
-import { formatTime, validateManualTimestamp } from '../utils/validation';
+import {
+  formatTime,
+  validateContactTimestamp,
+  validateManualTimestamp,
+} from '../utils/validation';
 import TimelineMarkers from './TimelineMarkers';
 import './AddContactButton.css'; // Reuse styles
 
@@ -57,7 +61,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
   const openAtTimestamp = useCallback(
     (timestamp: number) => {
       if (isReadOnly) {
-        alert('Manual Serve Attempt Creation is disabled in Demo Mode!');
+        alert('Manual serve creation is disabled in Demo Mode!');
         return;
       }
       setLockedTimestamp(timestamp);
@@ -77,7 +81,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
   const openAtRange = useCallback(
     (rangeStart: number, rangeEnd: number) => {
       if (isReadOnly) {
-        alert('Manual Serve Attempt Creation is disabled in Demo Mode!');
+        alert('Manual serve creation is disabled in Demo Mode!');
         return;
       }
 
@@ -134,6 +138,43 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
     }
   }, [openRequestId, openRange, openAtRange]);
 
+  // Keyboard shortcut for contact timestamp (C key)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't handle if typing in an input field
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+
+      if (event.key === 'c' || event.key === 'C') {
+        event.preventDefault();
+        // Set contact timestamp to current time, clamped to serve attempt range
+        setFormData((prev) => {
+          const clampedTime = Math.max(
+            prev.start_timestamp,
+            Math.min(currentTime, prev.end_timestamp)
+          );
+          if (onSeek) onSeek(clampedTime);
+          return {
+            ...prev,
+            contact_timestamp: clampedTime,
+          };
+        });
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, formData.start_timestamp, formData.end_timestamp, currentTime, onSeek]);
+
   useEffect(() => {
     if (videoDuration > 0) {
       const startValidation = validateManualTimestamp(
@@ -151,7 +192,17 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
       } else if (formData.start_timestamp >= formData.end_timestamp) {
         setValidationError('Start time must be before end time');
       } else {
-        setValidationError(null);
+        const contactValidation = validateContactTimestamp(
+          formData.contact_timestamp ?? null,
+          formData.start_timestamp,
+          formData.end_timestamp,
+          videoDuration
+        );
+        if (!contactValidation.isValid) {
+          setValidationError(contactValidation.error || null);
+        } else {
+          setValidationError(null);
+        }
       }
     }
   }, [formData, videoDuration]);
@@ -172,6 +223,22 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
         );
         return;
       }
+
+      if (formData.start_timestamp >= formData.end_timestamp) {
+        setValidationError('Start time must be before end time');
+        return;
+      }
+
+      const contactValidation = validateContactTimestamp(
+        formData.contact_timestamp ?? null,
+        formData.start_timestamp,
+        formData.end_timestamp,
+        videoDuration
+      );
+      if (!contactValidation.isValid) {
+        setValidationError(contactValidation.error || 'Invalid timestamp');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -189,7 +256,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
         in_out: null,
       });
     } catch (error) {
-      alert('Failed to add serve attempt. Please try again.');
+      alert('Failed to add serve. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -241,7 +308,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
       {isCompact ? (
         <>
           <div className="compact-form-header">
-            <div className="compact-form-title">Create Serve Attempt</div>
+            <div className="compact-form-title">Create Serve</div>
             <button
               className="close-form-btn"
               onClick={(e) => {
@@ -328,7 +395,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
         <>
           <div className="form-header">
             <div className="timestamp-header">
-              <div className="timestamp-label">Serve attempt range</div>
+              <div className="timestamp-label">Serve</div>
               <div className="timestamp-display">
                 {formatTime(formData.start_timestamp)} –{' '}
                 {formatTime(formData.end_timestamp)}
@@ -366,6 +433,13 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
             <TimelineMarkers
               startTime={formData.start_timestamp}
               endTime={formData.end_timestamp}
+              contactTime={formData.contact_timestamp}
+              onContactChange={(time) =>
+                setFormData({
+                  ...formData,
+                  contact_timestamp: time,
+                })
+              }
               videoDuration={videoDuration}
               currentTime={currentTime}
               onStartChange={(time) =>
@@ -382,6 +456,28 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
               }
               onSeek={onSeek}
             />
+
+            {formData.contact_timestamp != null && (
+              <div className="form-group">
+                <label>Contact Timestamp</label>
+                <div className="timestamp-display-readonly">
+                  {formatTime(formData.contact_timestamp as number)}
+                  <button
+                    className="use-current-time-btn"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFormData({
+                        ...formData,
+                        contact_timestamp: null,
+                      });
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="form-row">
               <div className="form-group form-group--compact">
@@ -482,7 +578,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
               }}
               disabled={isLoading || !!validationError}
             >
-              {isLoading ? 'Creating...' : 'Create Serve Attempt'}
+              {isLoading ? 'Creating...' : 'Create Serve'}
             </button>
           </div>
         </>
@@ -503,12 +599,12 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
             title={
               isReadOnly
                 ? 'Demo mode: manual serve attempt creation is disabled'
-                : `Tag serve attempt range near ${formatTime(currentTime)}`
+                : `Tag serve near ${formatTime(currentTime)}`
             }
             aria-disabled={isReadOnly}
           >
             <span className="add-icon">+</span>
-            <span className="add-text">Tag Serve Attempt</span>
+            <span className="add-text">Tag Serve</span>
           </button>
         )
       ) : (

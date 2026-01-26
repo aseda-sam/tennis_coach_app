@@ -385,8 +385,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         video.pause();
       }
 
-      // Use contact_timestamp if available, otherwise start_timestamp
-      const targetTime = serveAttempt.contact_timestamp || serveAttempt.start_timestamp;
+      // Navigate to start of serve attempt
+      const targetTime = serveAttempt.start_timestamp;
 
       // Update state first to ensure overlay gets the new time immediately
       setCurrentTime(targetTime);
@@ -400,12 +400,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     [serveAttempts, isPlaying, onContactNavigate]
   );
 
-  // Get sorted serve attempts for navigation (by contact_timestamp or start_timestamp)
+  // Get sorted serve attempts for navigation (by start_timestamp)
   const sortedServeAttempts = useMemo(() => {
     return [...serveAttempts].sort((a, b) => {
-      const timeA = a.contact_timestamp || a.start_timestamp;
-      const timeB = b.contact_timestamp || b.start_timestamp;
-      return timeA - timeB;
+      return a.start_timestamp - b.start_timestamp;
     });
   }, [serveAttempts]);
 
@@ -419,8 +417,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     // Find the serve attempt before current time (with small tolerance)
     const tolerance = 0.1;
     const previousAttempts = sortedServeAttempts.filter((sa) => {
-      const saTime = sa.contact_timestamp || sa.start_timestamp;
-      return saTime < videoTime - tolerance;
+      return sa.start_timestamp < videoTime - tolerance;
     });
 
     if (previousAttempts.length > 0) {
@@ -438,8 +435,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     // Find the serve attempt after current time (with small tolerance)
     const tolerance = 0.1;
     const nextAttempt = sortedServeAttempts.find((sa) => {
-      const saTime = sa.contact_timestamp || sa.start_timestamp;
-      return saTime > videoTime + tolerance;
+      return sa.start_timestamp > videoTime + tolerance;
     });
 
     if (nextAttempt) {
@@ -451,18 +447,48 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const hasPreviousServeAttempt = useMemo(() => {
     const tolerance = 0.1;
     return sortedServeAttempts.some((sa) => {
-      const saTime = sa.contact_timestamp || sa.start_timestamp;
-      return saTime < currentTime - tolerance;
+      return sa.start_timestamp < currentTime - tolerance;
     });
   }, [sortedServeAttempts, currentTime]);
 
   const hasNextServeAttempt = useMemo(() => {
     const tolerance = 0.1;
     return sortedServeAttempts.some((sa) => {
-      const saTime = sa.contact_timestamp || sa.start_timestamp;
-      return saTime > currentTime + tolerance;
+      return sa.start_timestamp > currentTime + tolerance;
     });
   }, [sortedServeAttempts, currentTime]);
+
+  // Find the serve attempt that contains the current time
+  const currentServeAttempt = useMemo(() => {
+    return sortedServeAttempts.find((sa) => {
+      return currentTime >= sa.start_timestamp && currentTime <= sa.end_timestamp;
+    });
+  }, [sortedServeAttempts, currentTime]);
+
+  // Check if current serve attempt has a contact point
+  const hasContactPoint = useMemo(() => {
+    return currentServeAttempt?.contact_timestamp !== null && currentServeAttempt?.contact_timestamp !== undefined;
+  }, [currentServeAttempt]);
+
+  // Navigate to a specific timestamp (for moments within serve attempts)
+  const navigateToTimestamp = useCallback((timestamp: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Pause if playing
+    if (isPlaying) {
+      video.pause();
+    }
+
+    setCurrentTime(timestamp);
+    video.currentTime = timestamp;
+  }, [isPlaying]);
+
+  // Navigate to contact point in current serve attempt
+  const navigateToContact = useCallback(() => {
+    if (!currentServeAttempt || !currentServeAttempt.contact_timestamp) return;
+    navigateToTimestamp(currentServeAttempt.contact_timestamp);
+  }, [currentServeAttempt, navigateToTimestamp]);
 
   const navigateRef = useRef(navigateToServeAttemptById);
 
@@ -514,8 +540,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           event.preventDefault();
           navigateToNextServeAttempt();
           break;
-        case 'i':
-        case 'I':
+        case 's':
+        case 'S':
           event.preventDefault();
           if (isDemo) {
             alert('Range tagging is disabled in Demo Mode!');
@@ -523,8 +549,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           }
           setRangeInTime(videoRef.current?.currentTime ?? currentTime);
           break;
-        case 'o':
-        case 'O':
+        case 'e':
+        case 'E':
           event.preventDefault();
           if (isDemo) {
             alert('Range tagging is disabled in Demo Mode!');
@@ -763,22 +789,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               )}
                     {rangeInTime !== null && duration > 0 && (
                       <div
-                        className="range-mark-marker range-mark-marker--in"
+                        className="range-mark-marker range-mark-marker--start"
                         style={{
                           left: `${(rangeInTime / duration) * 100}%`,
                         }}
                       >
-                        <span>IN</span>
+                        <span>START</span>
                       </div>
                     )}
                     {rangeOutTime !== null && duration > 0 && (
                       <div
-                        className="range-mark-marker range-mark-marker--out"
+                        className="range-mark-marker range-mark-marker--end"
                         style={{
                           left: `${(rangeOutTime / duration) * 100}%`,
                         }}
                       >
-                        <span>OUT</span>
+                        <span>END</span>
                       </div>
                     )}
                     {/* Highlight marker for locked range anchor */}
@@ -798,8 +824,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   {hasRangeMarks && (
                     <div className="range-marked-row">
                       <div className="range-marked-info">
-                        <span>IN {rangeInLabel}</span>
-                        <span>OUT {rangeOutLabel}</span>
+                        <span>START {rangeInLabel}</span>
+                        <span>END {rangeOutLabel}</span>
                       </div>
                       <div className="range-marked-actions">
                         <button
@@ -964,22 +990,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               )}
               {rangeInTime !== null && duration > 0 && (
                 <div
-                  className="range-mark-marker range-mark-marker--in"
+                  className="range-mark-marker range-mark-marker--start"
                   style={{
                     left: `${(rangeInTime / duration) * 100}%`,
                   }}
                 >
-                  <span>IN</span>
+                  <span>START</span>
                 </div>
               )}
               {rangeOutTime !== null && duration > 0 && (
                 <div
-                  className="range-mark-marker range-mark-marker--out"
+                  className="range-mark-marker range-mark-marker--end"
                   style={{
                     left: `${(rangeOutTime / duration) * 100}%`,
                   }}
                 >
-                  <span>OUT</span>
+                  <span>END</span>
                 </div>
               )}
               {/* Highlight marker for locked range anchor */}
@@ -999,8 +1025,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {hasRangeMarks && (
               <div className="range-marked-row range-marked-row--below">
                 <div className="range-marked-info">
-                  <span>IN {rangeInLabel}</span>
-                  <span>OUT {rangeOutLabel}</span>
+                  <span>START {rangeInLabel}</span>
+                  <span>END {rangeOutLabel}</span>
                 </div>
                 <div className="range-marked-actions">
                   <button
@@ -1055,6 +1081,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   <ArrowBackIcon size={16} />
                 </span>
               </button>
+              {hasContactPoint && (
+                <button
+                  className="video-controls-below__moment-btn"
+                  onClick={navigateToContact}
+                  title="Go to contact point"
+                >
+                  Contact
+                </button>
+              )}
             </div>
             {hasPoseData && (
               <label className="video-controls-below__annotation-toggle">

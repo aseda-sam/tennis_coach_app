@@ -1,4 +1,5 @@
 import {
+  validateContactTimestamp,
   formatTime,
   formatTimeWithDecimal,
   validateManualTimestamp,
@@ -74,6 +75,40 @@ describe('Validation Utils', () => {
 
     it('should inherit basic validation from validateTimestamp', () => {
       const result = validateManualTimestamp(-5, 60);
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe('Timestamp cannot be negative');
+    });
+  });
+
+  describe('validateContactTimestamp', () => {
+    it('should allow null contact timestamp', () => {
+      const result = validateContactTimestamp(null, 1, 2, 60);
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should allow contact timestamp within range', () => {
+      const result = validateContactTimestamp(1.5, 1, 2, 60);
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should reject contact timestamp before start', () => {
+      const result = validateContactTimestamp(0.5, 1, 2, 60);
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe(
+        'Contact timestamp must be between start and end time'
+      );
+    });
+
+    it('should reject contact timestamp after end', () => {
+      const result = validateContactTimestamp(2.5, 1, 2, 60);
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe(
+        'Contact timestamp must be between start and end time'
+      );
+    });
+
+    it('should inherit basic timestamp validation', () => {
+      const result = validateContactTimestamp(-1, 0, 2, 60);
       expect(result.isValid).toBe(false);
       expect(result.error).toBe('Timestamp cannot be negative');
     });
