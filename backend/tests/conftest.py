@@ -90,16 +90,32 @@ SQLALCHEMY_DATABASE_URL = (
 def ensure_test_database() -> Generator[None, None, None]:
     """
     Ensure test database exists before running tests.
-    
+
     Creates tennis_coach_test database if it doesn't exist.
     This runs once per test session.
+
+    SAFETY: This fixture only connects to localhost:5432 (local Docker PostgreSQL).
+    It will NOT affect production/Supabase databases because:
+    - Hardcoded to localhost (cannot connect to remote Supabase)
+    - Only runs during pytest execution (never in production code)
+    - Only creates test database (tennis_coach_test), never touches production DB
+    - Fails gracefully if PostgreSQL isn't accessible
     """
     from sqlalchemy import text
-    
-    # Connect to postgres database to create test database
+
+    # SAFETY: Hardcoded to localhost - cannot accidentally connect to production/Supabase
+    # This is intentional - tests should only run against local PostgreSQL
     admin_url = "postgresql://tennis:tennis_dev@localhost:5432/postgres"
+
+    # Verify we're connecting to localhost (safety check)
+    if "localhost" not in admin_url and "127.0.0.1" not in admin_url:
+        pytest.skip(
+            "Test database creation skipped: admin_url must point to localhost for safety"
+        )
+        return
+
     admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
-    
+
     try:
         # Check if test database exists
         with admin_engine.connect() as conn:
@@ -107,18 +123,27 @@ def ensure_test_database() -> Generator[None, None, None]:
                 text("SELECT 1 FROM pg_database WHERE datname = 'tennis_coach_test'")
             )
             exists = result.fetchone() is not None
-            
+
             if not exists:
                 # Create test database
                 conn.execute(text("CREATE DATABASE tennis_coach_test"))
                 print("Created test database: tennis_coach_test")
             else:
                 print("Test database already exists: tennis_coach_test")
-    except Exception as e:
-        pytest.skip(f"Could not create test database: {e}. Please create manually: CREATE DATABASE tennis_coach_test;")
+    except (
+        ConnectionError,
+        OSError,
+        Exception,  # noqa: BLE001 - Need to catch all DB connection errors
+    ) as e:
+        # Fail gracefully - tests can still run if database already exists
+        # Catching broad Exception is intentional here to handle any DB connection errors
+        pytest.skip(
+            f"Could not create test database: {e}. "
+            "Please create manually: CREATE DATABASE tennis_coach_test;"
+        )
     finally:
         admin_engine.dispose()
-    
+
     yield
 
 
