@@ -251,6 +251,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setCurrentTime(newTime);
   };
 
+  const seekToTime = useCallback((time: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = time;
+    setCurrentTime(time);
+  }, []);
+
   const handleSeekStart = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -698,6 +705,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 isVisible={isAddContactVisible}
                 isReadOnly={isDemo}
                 placement="overlay"
+                onSeek={seekToTime}
                 openRequestId={openRequestId}
                 openTimestamp={openTimestamp ?? undefined}
                 onFormOpen={(timestamp) => {
@@ -883,6 +891,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 isVisible={isAddContactVisible}
                 isReadOnly={isDemo}
                 placement="scrubber"
+                onSeek={seekToTime}
                 openRequestId={openRequestId}
                 openTimestamp={openTimestamp ?? undefined}
                 onFormOpen={(timestamp) => {

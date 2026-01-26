@@ -1,0 +1,356 @@
+/* Timeline Markers Component */
+.timeline-markers-container {
+  margin: var(--spacing-lg) 0;
+}
+
+.timeline-markers-container--compact {
+  margin: var(--spacing-sm) 0;
+}
+
+.timeline-markers-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.timeline-markers-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.timeline-markers-values {
+  display: flex;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+.timeline-value {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.timeline-value strong {
+  color: var(--color-text);
+  font-weight: var(--font-weight-bold);
+}
+
+.timeline-value--contact {
+  color: var(--color-warning);
+}
+
+.timeline-value--contact strong {
+  color: var(--color-warning-dark);
+}
+
+/* Timeline Track */
+.timeline-markers-track {
+  position: relative;
+  height: 60px;
+  cursor: pointer;
+  user-select: none;
+  margin: var(--spacing-md) 0;
+}
+
+.timeline-markers-container--compact .timeline-markers-track {
+  height: 28px;
+  margin: var(--spacing-xs) 0;
+}
+
+.timeline-track-bg {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 8px;
+  transform: translateY(-50%);
+  background: var(--color-border-light);
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    90deg,
+    var(--color-border-light) 0%,
+    var(--color-border) 50%,
+    var(--color-border-light) 100%
+  );
+}
+
+.timeline-markers-container--compact .timeline-track-bg,
+.timeline-markers-container--compact .timeline-range {
+  height: 4px;
+}
+
+/* Selected Range */
+.timeline-range {
+  position: absolute;
+  top: 50%;
+  height: 8px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  border-radius: var(--radius-full);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Current Time Indicator */
+.timeline-current-time {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.8);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.timeline-markers-container--compact .timeline-current-time {
+  width: 1px;
+}
+
+.timeline-current-time::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid rgba(255, 255, 255, 0.8);
+}
+
+/* Hover Indicator */
+.timeline-hover-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-primary);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.6;
+}
+
+.timeline-markers-container--compact .timeline-hover-indicator {
+  width: 1px;
+}
+
+.timeline-hover-time {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: var(--color-primary);
+  color: white;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.timeline-hover-time::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid var(--color-primary);
+}
+
+/* Markers */
+.timeline-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 10;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-marker:active,
+.timeline-marker.is-dragging {
+  cursor: grabbing;
+}
+
+.timeline-marker-handle {
+  width: 20px;
+  height: 20px;
+  background: white;
+  border: 3px solid var(--color-primary);
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.timeline-markers-container--compact .timeline-marker-handle {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.timeline-marker:hover .timeline-marker-handle,
+.timeline-marker.is-dragging .timeline-marker-handle {
+  transform: scale(1.2);
+  box-shadow: 0 4px 12px rgba(0, 188, 125, 0.4);
+}
+
+.timeline-marker--start .timeline-marker-handle {
+  border-color: var(--color-success);
+  background: var(--color-success-light);
+}
+
+.timeline-marker--end .timeline-marker-handle {
+  border-color: var(--color-error);
+  background: var(--color-error-light);
+}
+
+.timeline-marker-handle--contact {
+  border-color: var(--color-warning);
+  background: var(--color-warning-light);
+  width: 16px;
+  height: 16px;
+}
+
+.timeline-markers-container--compact .timeline-marker-handle--contact {
+  width: 10px;
+  height: 10px;
+}
+
+.timeline-marker-label {
+  position: absolute;
+  top: 100%;
+  margin-top: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  white-space: nowrap;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.timeline-markers-container--compact .timeline-marker-label {
+  display: none;
+}
+
+.timeline-marker:hover .timeline-marker-label,
+.timeline-marker.is-dragging .timeline-marker-label {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.timeline-marker--start .timeline-marker-label {
+  color: var(--color-success-dark);
+}
+
+.timeline-marker--end .timeline-marker-label {
+  color: var(--color-error-dark);
+}
+
+.timeline-marker-label--contact {
+  color: var(--color-warning-dark);
+}
+
+/* Connection line from marker to track */
+.timeline-marker::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 20px;
+  background: var(--color-primary);
+  transform: translateX(-50%) translateY(-50%);
+  z-index: 1;
+}
+
+.timeline-markers-container--compact .timeline-marker::before {
+  height: 10px;
+}
+
+.timeline-marker--start::before {
+  background: var(--color-success);
+}
+
+.timeline-marker--end::before {
+  background: var(--color-error);
+}
+
+.timeline-marker--contact::before {
+  background: var(--color-warning);
+  height: 16px;
+}
+
+/* Actions */
+.timeline-markers-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--spacing-md);
+}
+
+.timeline-action-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timeline-action-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.timeline-help-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .timeline-markers-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+
+  .timeline-markers-values {
+    gap: var(--spacing-md);
+  }
+
+  .timeline-markers-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+}
