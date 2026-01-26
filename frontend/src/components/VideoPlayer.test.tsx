@@ -46,9 +46,30 @@ jest.mock('../hooks/useVideos', () => ({
   }),
 }));
 
-jest.mock('./PostureAnalysisSidebar', () => {
-  return function MockPostureAnalysisSidebar() {
-    return <div data-testid="posture-sidebar">Posture Analysis</div>;
+jest.mock('../hooks/useServeAttempts', () => ({
+  useServeAttempts: () => ({
+    serveAttempts: [],
+    updateServeAttempt: jest.fn(),
+    deleteServeAttempt: jest.fn(),
+    createServeAttempt: jest.fn(),
+  }),
+}));
+
+jest.mock('./AddServeAttemptButton', () => {
+  return function MockAddServeAttemptButton() {
+    return <div data-testid="add-serve-attempt-button">Add Serve Attempt</div>;
+  };
+});
+
+jest.mock('./ServeAttemptRange', () => {
+  return function MockServeAttemptRange() {
+    return <div data-testid="serve-attempt-range">Serve Attempt Range</div>;
+  };
+});
+
+jest.mock('./ServeAttemptModal', () => {
+  return function MockServeAttemptModal() {
+    return <div data-testid="serve-attempt-modal">Serve Attempt Modal</div>;
   };
 });
 

@@ -16,9 +16,8 @@ describe('TimingPerformance', () => {
       render(<TimingPerformance timing={mockTimingData} />);
 
       expect(screen.getByText('Performance Breakdown')).toBeInTheDocument();
-      expect(screen.getByText('27.90s')).toBeInTheDocument();
+      expect(screen.getByText('19.60s')).toBeInTheDocument();
       expect(screen.getByText('Frame Extraction')).toBeInTheDocument();
-      expect(screen.getByText('Ball Detection')).toBeInTheDocument();
       expect(screen.getByText('Pose Detection')).toBeInTheDocument();
       expect(screen.getByText('Frame Annotation')).toBeInTheDocument();
       expect(screen.getByText('Video Creation')).toBeInTheDocument();
@@ -58,9 +57,6 @@ describe('TimingPerformance', () => {
 
       expect(
         screen.getByTestId('stage-icon-frame_extraction')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('stage-icon-ball_detection')
       ).toBeInTheDocument();
       expect(
         screen.getByTestId('stage-icon-pose_detection')
