@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnalysisData } from '../services/api';
 import unifiedAnalysisApi, {
   AnalysisRequest,
@@ -48,6 +48,7 @@ export const useAnalysisManager = ({
     error: null,
   });
   const [isLoading] = useState(false);
+  const shouldStartPollingRef = useRef<string | null>(null);
 
   // Memoize callbacks to prevent infinite re-renders
   const handleComplete = useCallback(
@@ -112,12 +113,12 @@ export const useAnalysisManager = ({
 
         if (activeJob && isMounted) {
           // Found an active job, resume polling
-          // Use functional update to check current state atomically
+          // Check current state and update atomically, but keep side effect outside
           setAnalysisState((prev) => {
             // Only resume if still in idle state (avoid race conditions)
             if (prev.status === 'idle' && !prev.jobId) {
-              // Update state and start polling
-              startPolling(activeJob.job_id);
+              // Store job_id in ref to start polling outside setState callback
+              shouldStartPollingRef.current = activeJob.job_id;
               return {
                 ...prev,
                 status: 'processing',
@@ -128,6 +129,12 @@ export const useAnalysisManager = ({
             }
             return prev;
           });
+          // Start polling outside setState callback (side effect)
+          // This ensures React best practices - side effects not in state updaters
+          if (shouldStartPollingRef.current) {
+            startPolling(shouldStartPollingRef.current);
+            shouldStartPollingRef.current = null;
+          }
         }
       } catch (err) {
         // Silently fail - user can still manually start analysis
@@ -142,6 +149,7 @@ export const useAnalysisManager = ({
 
     return () => {
       isMounted = false;
+      shouldStartPollingRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]); // Only run when videoId changes (on mount or when switching videos)
