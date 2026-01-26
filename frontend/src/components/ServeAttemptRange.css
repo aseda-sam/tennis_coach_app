@@ -1,0 +1,126 @@
+/* Serve Styles */
+.serve-attempt-range {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.2s ease;
+}
+
+.serve-attempt-range:hover {
+  z-index: 10;
+}
+
+.serve-attempt-range.selected {
+  z-index: 15;
+}
+
+.serve-attempt-range__band {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 2px;
+  transition: opacity 0.2s ease;
+}
+
+.serve-attempt-range.selected .serve-attempt-range__band {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+.serve-attempt-range__start-marker,
+.serve-attempt-range__end-marker {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  z-index: 1;
+}
+
+.serve-attempt-range__start-marker {
+  left: 0;
+}
+
+.serve-attempt-range__end-marker {
+  right: 0;
+}
+
+/* Contact marker - shows key moments within the serve */
+.serve-attempt-range__contact-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background-color: #fef3c7; /* warning-light */
+  border: 2px solid #f59e0b; /* warning */
+  border-radius: 50%;
+  z-index: 2;
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+  transition: all 0.2s ease;
+}
+
+.serve-attempt-range__contact-marker:hover {
+  transform: translate(-50%, -50%) scale(1.3);
+  background-color: #f59e0b; /* warning */
+  border-color: #d97706; /* warning-dark */
+  box-shadow: 0 3px 8px rgba(245, 158, 11, 0.5);
+}
+
+.serve-attempt-range.selected .serve-attempt-range__contact-marker {
+  background-color: #f59e0b; /* warning */
+  border-color: #d97706; /* warning-dark */
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.6);
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+.serve-attempt-range__tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 20;
+}
+
+.serve-attempt-range:hover .serve-attempt-range__tooltip {
+  opacity: 1;
+}
+
+.tooltip-content {
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tooltip-header {
+  display: flex;
+  gap: 8px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tooltip-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tooltip-details > div {
+  font-size: 11px;
+  opacity: 0.9;
+}

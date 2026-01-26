@@ -8,10 +8,12 @@ interface KeyboardShortcutsBannerProps {
 const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
   isDemo = false,
 }) => {
-  const manualLabel = 'Manually Add Contact';
-  const manualTitle = isDemo
-    ? 'Manual Contact Creation is disabled in Demo Mode!'
-    : 'Manually add contact';
+  const rangeStartTitle = isDemo
+    ? 'Range tagging is disabled in Demo Mode!'
+    : 'Mark the START point for a serve';
+  const rangeEndTitle = isDemo
+    ? 'Range tagging is disabled in Demo Mode!'
+    : 'Mark the END point for a serve';
 
   return (
     <div className="keyboard-shortcuts">
@@ -29,17 +31,41 @@ const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
           </div>
           <div className="keyboard-shortcuts__item">
             <kbd className="keyboard-shortcuts__kbd">[ ]</kbd>
-            <span>Previous/Next contact</span>
+            <span>Previous/Next serve attempt</span>
           </div>
           <div
             className={`keyboard-shortcuts__item ${
               isDemo ? 'keyboard-shortcuts__item--disabled' : ''
             }`.trim()}
-            title={manualTitle}
+            title={rangeStartTitle}
             aria-disabled={isDemo}
           >
-            <kbd className="keyboard-shortcuts__kbd">A</kbd>
-            <span>{manualLabel}</span>
+            <kbd className="keyboard-shortcuts__kbd">S</kbd>
+            <span>Mark START point</span>
+          </div>
+          <div
+            className={`keyboard-shortcuts__item ${
+              isDemo ? 'keyboard-shortcuts__item--disabled' : ''
+            }`.trim()}
+            title={rangeEndTitle}
+            aria-disabled={isDemo}
+          >
+            <kbd className="keyboard-shortcuts__kbd">E</kbd>
+            <span>Mark END point</span>
+          </div>
+          <div
+            className={`keyboard-shortcuts__item ${
+              isDemo ? 'keyboard-shortcuts__item--disabled' : ''
+            }`.trim()}
+            title={
+              isDemo
+                ? 'Demo mode: contact marking is disabled'
+                : 'Mark contact point (when creating serve)'
+            }
+            aria-disabled={isDemo}
+          >
+            <kbd className="keyboard-shortcuts__kbd">C</kbd>
+            <span>Mark contact point</span>
           </div>
         </div>
       </div>

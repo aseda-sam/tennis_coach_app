@@ -1,12 +1,9 @@
 import { useCallback, useState } from 'react';
+import { AnalysisData } from '../services/api';
 import unifiedAnalysisApi, {
   AnalysisRequest,
 } from '../services/unifiedAnalysisApi';
-import {
-  useAnalysisProgress,
-  AnalysisProgress,
-} from './useAnalysisProgress';
-import { AnalysisData } from '../services/api';
+import { AnalysisProgress, useAnalysisProgress } from './useAnalysisProgress';
 
 interface AnalysisState {
   videoId: number;
@@ -81,17 +78,14 @@ export const useAnalysisManager = ({
     [onAnalysisError]
   );
 
-  const handleProgress = useCallback(
-    (progress: AnalysisProgress) => {
-      setAnalysisState((prev) => ({
-        ...prev,
-        status: progress.status as AnalysisState['status'],
-        progress: progress.progress,
-        error: null,
-      }));
-    },
-    []
-  );
+  const handleProgress = useCallback((progress: AnalysisProgress) => {
+    setAnalysisState((prev) => ({
+      ...prev,
+      status: progress.status as AnalysisState['status'],
+      progress: progress.progress,
+      error: null,
+    }));
+  }, []);
 
   // Use the new unified analysis progress hook
   const { startPolling, stopPolling, isPolling } = useAnalysisProgress({
@@ -126,14 +120,24 @@ export const useAnalysisManager = ({
         // Start polling for progress
         startPolling(response.job_id);
       } catch (err: unknown) {
+        const axiosError = err as {
+          response?: { data?: { detail?: string } };
+          message?: string;
+          code?: string;
+        };
+        let errorMessage: string;
 
-        const axiosError = err as { response?: { data?: { detail?: string } }; message?: string; code?: string };
-        const errorMessage =
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          (axiosError?.code === 'ECONNABORTED'
-            ? 'Request timed out. The server may be busy or Redis may be unavailable.'
-            : 'Failed to start analysis');
+        if (axiosError?.code === 'ECONNABORTED') {
+          errorMessage =
+            'Request timed out. The server may be busy or Redis may be unavailable.';
+        } else {
+          // Error detail is already normalized to string by axios interceptor
+          errorMessage =
+            axiosError?.response?.data?.detail ||
+            axiosError?.message ||
+            'Failed to start analysis';
+        }
+
         setAnalysisState((prev) => ({
           ...prev,
           status: 'failed',
@@ -164,7 +168,10 @@ export const useAnalysisManager = ({
         jobId: null,
       }));
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { detail?: string } }; message?: string };
+      const axiosError = err as {
+        response?: { data?: { detail?: string } };
+        message?: string;
+      };
       const errorMessage =
         axiosError?.response?.data?.detail ||
         axiosError?.message ||

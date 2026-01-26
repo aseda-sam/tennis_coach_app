@@ -116,47 +116,6 @@ def require_player_access(player: "Player", user: dict) -> None:
         )
 
 
-def can_create_ball_contact_for_video(video: "Video", user: dict) -> bool:
-    """Check if user can create ball contacts for a video.
-
-    Only video owner can create ball contacts.
-
-    Args:
-        video: Video model instance
-        user: User dict with id, email, user_metadata, etc.
-
-    Returns:
-        True if user can create ball contacts, False otherwise
-    """
-    # Demo editors can manage demo video contacts
-    if video.is_demo and is_demo_editor(user):
-        return True
-
-    # Admins can create ball contacts for any video
-    if is_admin(user):
-        return True
-
-    # Only video owner can create ball contacts
-    return video.user_id == user["id"]
-
-
-def require_ball_contact_permission(video: "Video", user: dict) -> None:
-    """Raise exception if user can't create ball contacts for video.
-
-    Args:
-        video: Video model instance
-        user: User dict with id, email, user_metadata, etc.
-
-    Raises:
-        HTTPException: 403 if user can't create ball contacts
-    """
-    if not can_create_ball_contact_for_video(video, user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to create ball contacts for this video",
-        )
-
-
 def can_tag_player_to_video(video: "Video", player: "Player", user: dict) -> bool:
     """Check if user can tag a player to a video.
 

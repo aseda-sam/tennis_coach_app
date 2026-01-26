@@ -1,16 +1,57 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { playerApi } from '../services/playerApi';
 import './AuthForm.css';
 
 export function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [playerName, setPlayerName] = useState('');
+  const [dominantHand, setDominantHand] = useState('right');
+  const [backhandStyle, setBackhandStyle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showResendLink, setShowResendLink] = useState(false);
   const { signIn, signUp, resendConfirmationEmail } = useAuth();
+  const pendingProfileKey = 'pendingPlayerProfile';
+
+  const upsertPlayerProfile = async () => {
+    const profile = {
+      name: playerName?.trim() || undefined,
+      dominant_hand: dominantHand || undefined,
+      backhand_style: backhandStyle?.trim() || undefined,
+    };
+
+    const hasProfileData =
+      Boolean(profile.name) ||
+      Boolean(profile.dominant_hand) ||
+      Boolean(profile.backhand_style);
+
+    if (!hasProfileData) {
+      return;
+    }
+
+    await playerApi.upsertMe(profile);
+  };
+
+  const upsertPendingProfileIfNeeded = async () => {
+    const pending = localStorage.getItem(pendingProfileKey);
+    if (!pending) return;
+
+    try {
+      const profile = JSON.parse(pending) as {
+        name?: string;
+        dominant_hand?: string;
+        backhand_style?: string;
+      };
+      await playerApi.upsertMe(profile);
+      localStorage.removeItem(pendingProfileKey);
+    } catch (err) {
+      console.warn('Failed to apply pending player profile:', err);
+    }
+  };
 
   // Check if we just confirmed email (from URL hash)
   React.useEffect(() => {
@@ -33,12 +74,18 @@ export function AuthForm() {
       setLoading(false);
       if (authError) {
         setError(authError.message);
+      } else {
+        try {
+          await upsertPendingProfileIfNeeded();
+        } catch (err) {
+          console.warn('Failed to upsert player profile after login:', err);
+        }
       }
     } else {
       // Sign up
       const { data, error: authError } = await signUp(email, password);
       setLoading(false);
-      
+
       if (authError) {
         setError(authError.message);
       } else if (data?.user) {
@@ -48,11 +95,27 @@ export function AuthForm() {
         if (data.session) {
           // User is logged in (email confirmation disabled)
           setError(null);
+          try {
+            await upsertPlayerProfile();
+          } catch (err) {
+            console.warn('Failed to upsert player profile on signup:', err);
+          }
           // The auth state change will automatically update the UI
         } else {
           // Email confirmation required
-          setError('Please check your email to confirm your account before logging in.');
+          setError(
+            'Please check your email to confirm your account before logging in.'
+          );
           setShowResendLink(true);
+          const pendingProfile = {
+            name: playerName?.trim() || undefined,
+            dominant_hand: dominantHand || undefined,
+            backhand_style: backhandStyle?.trim() || undefined,
+          };
+          localStorage.setItem(
+            pendingProfileKey,
+            JSON.stringify(pendingProfile)
+          );
         }
       }
     }
@@ -97,6 +160,34 @@ export function AuthForm() {
           required
           disabled={loading}
         />
+        {!isLogin && (
+          <>
+            <input
+              type="text"
+              placeholder="Player name (e.g., Alex)"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              disabled={loading}
+            />
+            <select
+              value={dominantHand}
+              onChange={(e) => setDominantHand(e.target.value)}
+              disabled={loading}
+            >
+              <option value="right">Right-handed</option>
+              <option value="left">Left-handed</option>
+            </select>
+            <select
+              value={backhandStyle}
+              onChange={(e) => setBackhandStyle(e.target.value)}
+              disabled={loading}
+            >
+              <option value="">Backhand style (optional)</option>
+              <option value="one_handed">One-handed</option>
+              <option value="two_handed">Two-handed</option>
+            </select>
+          </>
+        )}
         {error && <div className="error">{error}</div>}
         {success && <div className="success">{success}</div>}
         <button type="submit" disabled={loading}>

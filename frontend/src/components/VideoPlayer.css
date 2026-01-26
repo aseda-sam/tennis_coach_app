@@ -415,6 +415,7 @@
 }
 
 /* Contact Markers */
+.serve-attempt-ranges,
 .contact-markers {
   position: absolute;
   top: 0;
@@ -437,6 +438,50 @@
   transform: translateX(-50%);
   pointer-events: none;
   z-index: 2;
+}
+
+/* Range START/END markers */
+.range-mark-marker {
+  position: absolute;
+  top: -22px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.range-mark-marker::before {
+  content: '';
+  width: 2px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}
+
+.range-mark-marker span {
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-pill);
+  padding: 2px 6px;
+  box-shadow: var(--shadow-xs);
+}
+
+.range-mark-marker--start::before {
+  background: var(--color-success);
+}
+
+.range-mark-marker--end::before {
+  background: var(--color-error);
+}
+
+.video-controls-below__scrubber-track .range-mark-marker {
+  top: 2px;
 }
 
 .contact-marker {
@@ -481,6 +526,68 @@
   font-size: 0.8rem;
   color: #9ca3af;
   font-weight: 500;
+}
+
+.range-marked-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-lg);
+  background: rgba(15, 23, 42, 0.55);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: var(--font-size-xs);
+}
+
+.range-marked-row--below {
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-light);
+}
+
+.range-marked-info {
+  display: flex;
+  gap: var(--spacing-md);
+  font-weight: var(--font-weight-medium);
+}
+
+.range-marked-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.range-marked-btn {
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.range-marked-btn:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.range-marked-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.range-marked-btn--ghost {
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.range-marked-row--below .range-marked-btn--ghost {
+  border-color: var(--color-border);
 }
 
 /* Controls Row */
@@ -689,17 +796,6 @@
   padding-top: var(--spacing-lg);
 }
 
-.video-controls-below__add-band {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--spacing-lg);
-  cursor: pointer;
-  z-index: 2;
-}
-
-
 .video-controls-below__scrubber-input {
   width: 100%;
   height: 6px;
@@ -757,6 +853,7 @@
   box-shadow: var(--shadow-primary-lg);
 }
 
+.video-controls-below__serve-attempt-ranges,
 .video-controls-below__contact-markers {
   position: absolute;
   top: 0;
@@ -767,27 +864,16 @@
   z-index: 3;
 }
 
+.video-controls-below__serve-attempt-ranges .serve-attempt-range,
 .video-controls-below__contact-markers .ball-contact-marker {
   top: var(--spacing-xs);
 }
 
+.video-controls-below__serve-attempt-ranges .serve-attempt-range,
+.video-controls-below__serve-attempt-ranges .serve-attempt-range *,
 .video-controls-below__contact-markers .ball-contact-marker,
 .video-controls-below__contact-markers .ball-contact-marker * {
   pointer-events: auto;
-}
-
-.contact-hover-marker {
-  position: absolute;
-  top: var(--spacing-xs);
-  width: var(--spacing-sm);
-  height: var(--spacing-sm);
-  border-radius: var(--radius-full);
-  background: var(--color-surface);
-  border: 2px solid var(--color-primary);
-  transform: translateX(-50%);
-  box-shadow: var(--shadow-sm);
-  pointer-events: none;
-  z-index: 2;
 }
 
 /* Highlight marker for locked contact timestamp (controls-below) */
@@ -906,6 +992,28 @@
 .video-controls-below__arrow-right {
   display: inline-flex;
   transform: rotate(180deg);
+}
+
+.video-controls-below__moment-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: var(--color-warning-light, #fef3c7);
+  border: 1px solid var(--color-warning, #f59e0b);
+  color: var(--color-warning-dark, #d97706);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.video-controls-below__moment-btn:hover {
+  background: var(--color-warning, #f59e0b);
+  border-color: var(--color-warning-dark, #d97706);
+  color: white;
 }
 
 /* Annotation Toggle */

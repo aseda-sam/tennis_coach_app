@@ -46,6 +46,7 @@ jest.mock('./services/api', () => ({
     uploadVideo: jest.fn(),
     getVideos: jest.fn(),
     getVideo: jest.fn(),
+    getDemoVideo: jest.fn(),
     deleteVideo: jest.fn(),
     streamVideo: jest.fn(),
     streamAnnotatedVideo: jest.fn(),
@@ -53,9 +54,6 @@ jest.mock('./services/api', () => ({
   },
   analysisApi: {
     startAnalysis: jest.fn(),
-    getAnalysis: jest.fn(),
-    getAllAnalyses: jest.fn(),
-    deleteAnalysis: jest.fn(),
   },
 }));
 

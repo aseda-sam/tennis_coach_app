@@ -52,7 +52,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   );
 
   const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
-    ((contactId: number) => void) | null
+    ((serveAttemptId: number) => void) | null
   >(null);
   const [isTourOpen, setIsTourOpen] = useState(false);
 
@@ -66,17 +66,17 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
         placement: 'bottom',
       },
       {
-        target: 'contact-markers',
-        title: 'Contact Markers',
+        target: 'serve-attempt-ranges',
+        title: 'Serves',
         content:
-          'Jump to key moments using the contact markers on the timeline.',
+          'Jump to key moments using the serves on the timeline.',
         placement: 'top',
       },
       {
         target: 'analysis-panel',
         title: 'Metrics & Analysis',
         content:
-          'Review metrics derived from existing contacts, including elbow angles and shot types.',
+          'Review metrics derived from existing serve attempts, including elbow angles and shot types.',
         placement: 'left',
       },
       {
@@ -105,15 +105,15 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
     localStorage.setItem('demoTourCompleted', 'true');
   }, []);
 
-  const handleContactClick = useCallback(
-    (contactId: number) => {
-      videoPlayerNavigate?.(contactId);
+  const handleServeAttemptClick = useCallback(
+    (serveAttemptId: number) => {
+      videoPlayerNavigate?.(serveAttemptId);
     },
     [videoPlayerNavigate]
   );
 
   const handleNavigateReady = useCallback(
-    (navigateFn: (contactId: number) => void) => {
+    (navigateFn: (serveAttemptId: number) => void) => {
       setVideoPlayerNavigate(() => navigateFn);
     },
     []
@@ -154,7 +154,6 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
               showControls={true}
               aspectRatioMode="contain"
               videoId={demoVideo.id}
-              showPostureAnalysis={false}
               hasPoseData={analysisStatus?.has_analysis || false}
               controlsBelow={true}
               onNavigateReady={handleNavigateReady}
@@ -194,7 +193,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
               videoId={demoVideo.id}
               videoFilename={demoVideo.filename}
               analysisStatus={analysisStatus}
-              onContactClick={handleContactClick}
+              onContactClick={handleServeAttemptClick}
               isDemo={isDemoReadOnly}
             />
           </div>

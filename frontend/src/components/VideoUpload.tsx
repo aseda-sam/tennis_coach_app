@@ -16,6 +16,8 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
+  const [sessionType, setSessionType] = useState<string>('');
+  const [cameraAngle, setCameraAngle] = useState<string>('');
   const { user } = useAuth();
 
   // Check if user can upload demo videos
@@ -50,7 +52,22 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
       setUploadProgress(0);
 
       try {
-        const response = await videoApi.uploadVideo(file, isDemo);
+        // Build query params for session metadata
+        const params = new URLSearchParams();
+        if (isDemo) {
+          params.append('is_demo', 'true');
+        }
+        if (sessionType) {
+          params.append('session_type', sessionType);
+        }
+        if (cameraAngle) {
+          params.append('camera_angle', cameraAngle);
+        }
+
+        const response = await videoApi.uploadVideo(file, isDemo, {
+          session_type: sessionType || undefined,
+          camera_angle: cameraAngle || undefined,
+        });
 
         // Create a video object from the response data
         const video: VideoMetadata = {
@@ -90,7 +107,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
         setIsUploading(false);
       }
     },
-    [onUploadSuccess, isDemo]
+    [onUploadSuccess, isDemo, sessionType, cameraAngle]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -178,27 +195,65 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
         )}
       </div>
 
-      {canUploadDemo && (
-        <div className="demo-upload-option" style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', backgroundColor: '#f8fafc' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={isDemo}
-              onChange={(e) => setIsDemo(e.target.checked)}
-              disabled={isUploading}
-            />
-            <span style={{ fontSize: '0.875rem', color: '#475569' }}>
-              Upload as demo video (public, accessible to all users)
-            </span>
+      <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {canUploadDemo && (
+          <div className="demo-upload-option" style={{ padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', backgroundColor: '#f8fafc' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={isDemo}
+                onChange={(e) => setIsDemo(e.target.checked)}
+                disabled={isUploading}
+              />
+              <span style={{ fontSize: '0.875rem', color: '#475569' }}>
+                Upload as demo video (public, accessible to all users)
+              </span>
+            </label>
+          </div>
+        )}
+
+        <div style={{ padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', backgroundColor: '#f8fafc' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#475569' }}>
+            Session Type (optional)
           </label>
+          <select
+            value={sessionType}
+            onChange={(e) => setSessionType(e.target.value)}
+            disabled={isUploading}
+            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1' }}
+          >
+            <option value="">Select session type</option>
+            <option value="serve_drill">Serve Drill</option>
+            <option value="match">Match</option>
+            <option value="practice">Practice</option>
+            <option value="other">Other</option>
+          </select>
         </div>
-      )}
+
+        <div style={{ padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', backgroundColor: '#f8fafc' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#475569' }}>
+            Camera Angle (optional)
+          </label>
+          <select
+            value={cameraAngle}
+            onChange={(e) => setCameraAngle(e.target.value)}
+            disabled={isUploading}
+            style={{ width: '100%', padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #cbd5e1' }}
+          >
+            <option value="">Select camera angle</option>
+            <option value="behind">Behind</option>
+            <option value="profile">Profile</option>
+            <option value="diagonal">Diagonal</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+      </div>
 
       <div className="upload-guidance">
         <h3 className="guidance-title">What videos work best?</h3>
         <ul className="guidance-list">
           <li>Record from the side or slightly behind for serves</li>
-          <li>Capture your full body and the ball in frame</li>
+          <li>Capture your full body in frame</li>
           <li>Good lighting helps us see your form clearly</li>
           <li>Videos should be at least a few seconds long</li>
         </ul>

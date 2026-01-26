@@ -1,6 +1,11 @@
 # Tennis Coach App - Backend
 
-FastAPI backend for the tennis analysis system with computer vision capabilities for ball detection and pose estimation.
+FastAPI backend for a **serve-focused** tennis coaching MVP:
+
+- Upload a serve video
+- Tag `serve_attempts`
+- Run pose detection + serve metrics in background jobs
+- Return a small set of coach-meaningful metrics + one recommendation
 
 ## Quick Start
 
@@ -41,13 +46,6 @@ FastAPI backend for the tennis analysis system with computer vision capabilities
 
    ```bash
    mkdir -p data/videos/raw data/videos/processed data/analysis_cache data/database
-   ```
-
-4. **Download YOLO Models (Optional)**:
-   ```bash
-   # Models will be downloaded automatically when needed, but you can pre-download them:
-   cd backend
-   python scripts/download_models.py
    ```
 
 ### Running the Server
@@ -136,12 +134,6 @@ REDIS_URL=redis://localhost:6379/0
 MAX_WORKERS=4
 BATCH_SIZE=10
 CONFIDENCE_THRESHOLD=0.5
-
-# Ball Contact Configuration
-BALL_CONTACT_TIMESTAMP_TOLERANCE=0.1  # Tolerance in seconds for duplicate detection
-
-# Profile configuration (for local development)
-PROFILE=local  # Disables auth automatically
 ```
 
 ## Authentication
@@ -162,7 +154,6 @@ For production, configure Supabase authentication:
 ```bash
 SUPABASE_URL=https://your-project.supabase.co/
 SUPABASE_SECRET_KEY=your-secret-key
-REQUIRE_AUTH=true
 PROFILE=production
 ```
 
@@ -182,7 +173,6 @@ The following endpoints require authentication:
 
 - Video upload and management
 - Player creation and management
-- Ball contact creation and management
 - Analysis requests
 
 ### Authorization
@@ -193,7 +183,7 @@ The application enforces user-based data isolation:
 - Video owners control access to their video data
 - Admin users (configured via Supabase metadata) can access all data
 
-See the [API documentation](docs/api.md) for details on authentication requirements for each endpoint.
+For endpoint details, use the OpenAPI docs at `http://localhost:8000/docs`.
 
 ## Development
 
@@ -295,7 +285,7 @@ docker exec tennis-coach-api alembic downgrade -1
 
 Demo videos are served from a public Supabase bucket (when configured) and are accessible to all authenticated users. Only one demo video can be active at a time.
 
-**📖 For complete setup and management guide, see [`docs/demo-videos-management.md`](docs/demo-videos-management.md)**
+**📖 For complete setup and management guide, see [`docs/demo-videos.md`](docs/demo-videos.md)**
 
 #### Setting Up Demo Bucket
 
@@ -310,7 +300,7 @@ Demo videos are served from a public Supabase bucket (when configured) and are a
    ```
 
 3. **Upload demo videos**:
-   - **Recommended**: Upload via app with "Upload as demo video" checkbox (see [guide](docs/demo-videos-management.md))
+   - **Recommended**: Upload via app with "Upload as demo video" checkbox (see [guide](docs/demo-videos.md))
    - **Alternative**: Upload videos to the demo bucket with paths starting with `demo/` and create video records manually
 
 #### Managing Active Demo
@@ -346,75 +336,39 @@ backend/
 │   │   ├── config.py        # Configuration
 │   │   └── database.py      # Database setup
 │   ├── models/              # SQLAlchemy models
-│   │   ├── analysis.py      # Analysis results
 │   │   └── video.py         # Video metadata
 │   ├── services/            # Business logic
-│   │   ├── analysis_service.py  # Analysis pipeline
+│   │   ├── serve_analysis_service.py  # Serve metrics pipeline
 │   │   ├── video_service.py     # Video processing utilities
 │   └── main.py              # FastAPI app
 ├── docs/                    # Detailed documentation
-│   ├── api.md              # API reference
-│   ├── database_schema.md  # Database schema
-│   ├── profile-configuration.md  # Profile-based configuration
-│   ├── cloud-database-setup.md   # PostgreSQL setup guide
-│   ├── cloud-storage-setup.md    # Cloud storage setup
-│   ├── background-tasks.md       # Background task system overview
-│   └── background-tasks-rq.md    # Background tasks with Redis Queue (RQ)
+│   ├── README.md           # Docs index (keep it small)
+│   ├── serve-mvp.md        # MVP scope + workflow
+│   ├── config.md           # PROFILE-based config
+│   ├── background-jobs.md  # RQ background jobs
+│   ├── deploy-flyio.md     # (Optional) Fly.io deploy notes
+│   └── demo-videos.md      # (Optional) demo video workflow
 ├── alembic/                 # Database migrations
 ├── tests/                   # Test files
 ├── pyproject.toml           # Project configuration
 └── README.md               # This file
 ```
 
-## Features
+## Features (Serve MVP)
 
-- **User Authentication**: Secure authentication with Supabase Auth
-- **User-based Data Isolation**: Videos and players are scoped to individual users
-- **Player Management**: Create and manage players with hand preference and backhand style
-- **Video Upload & Management**: Secure file upload with validation and metadata extraction
-- **Computer Vision Analysis**: YOLO ball detection + MediaPipe pose estimation
-- **Client-Side Overlays**: Real-time pose skeleton overlays rendered in the browser
-- **Ball Contact System**: Manual and automated ball contact detection with configurable tolerance
-- **Contact Management**: Create, edit, and delete ball contact markers with stroke classification
-- **RESTful API**: FastAPI with automatic OpenAPI documentation and versioning
-- **Database Integration**: SQLite with SQLAlchemy ORM
-- **Code Quality**: Ruff linting and formatting
-- **Comprehensive Testing**: Unit and integration tests with schema validation
-- **Standardized Error Handling**: Consistent error responses across all endpoints
-- **API Versioning**: Versioned endpoints for future compatibility
-- **Request Monitoring**: Processing time and request ID tracking
+- **Serve-focused workflow**: tag serve attempts, compute a small set of metrics
+- **Pose detection**: MediaPipe pose estimation (background job)
+- **Serve metrics**: derived values written onto `serve_attempts`
+- **User Authentication**: Supabase-backed auth (disabled in `PROFILE=local`)
+- **User-based Data Isolation**: videos/players/serve attempts are scoped per user
+- **REST API**: FastAPI + OpenAPI (`/docs`)
+- **Background jobs**: RQ + Redis
+- **DB**: SQLite locally, Postgres in production
+- **Code quality**: Ruff + tests
 
-## Computer Vision Features
+## Documentation
 
-### Ball Detection
-
-- **Model**: YOLOv8n (nano)
-- **Features**: Real-time ball tracking, trajectory analysis
-- **Output**: Bounding boxes, confidence scores, detection metrics
-
-### Pose Estimation
-
-- **Model**: MediaPipe Pose
-- **Features**: 11 tennis-relevant keypoints (shoulders, elbows, wrists, hips, knees, ankles)
-- **Output**: Skeleton overlays, pose detection metrics
-
-### Client-Side Overlays
-
-- **Rendering**: Canvas-based overlay rendering in the browser
-- **Data Source**: Overlay data API endpoint (`GET /v0/videos/{id}/overlay-data`)
-- **Features**: Real-time pose skeleton overlays synchronized with video playback
-- **Styling**: Neon green skeleton with black outline
-- **Performance**: Efficient client-side rendering without server-side video encoding
-
-### Ball Contact System
-
-- **Manual Marking**: Users can add ball contact markers directly on video timeline
-- **Automated Detection**: AI-powered contact detection with configurable tolerance
-- **Stroke Classification**: Support for ground_stroke, serve, volley, overhead
-- **Hand Detection**: Track left/right hand usage
-- **Source Attribution**: Distinguish between automated and manual detections
-- **Duplicate Prevention**: Configurable timestamp tolerance (default: 0.1 seconds)
-- **Database Storage**: Dedicated ball_contacts table with proper relationships
+Start here: **[`docs/README.md`](docs/README.md)**.
 
 ## Troubleshooting
 
@@ -468,15 +422,13 @@ export DEBUG=True
 uvicorn app.main:app --reload --log-level debug
 ```
 
-## Documentation
+Key docs:
 
-- **[API Reference](docs/api.md)** - Complete API documentation
-- **[Database Schema](docs/database_schema.md)** - Database models and relationships
-- **[Profile Configuration](docs/profile-configuration.md)** - Profile-based configuration system
-- **[Cloud Database Setup](docs/cloud-database-setup.md)** - PostgreSQL/Supabase database setup
-- **[Cloud Storage Setup](docs/cloud-storage-setup.md)** - Supabase storage configuration
-- **[Background Tasks](docs/background-tasks.md)** - Background task system overview
-- **[Background Tasks with RQ](docs/background-tasks-rq.md)** - Background task system using Redis Queue (RQ)
+- **[Serve MVP](docs/serve-mvp.md)**
+- **[Config](docs/config.md)**
+- **[Background jobs](docs/background-jobs.md)**
+- **[(Optional) Deploy](docs/deploy-flyio.md)**
+- **[(Optional) Demo videos](docs/demo-videos.md)**
 
 ## Contributing
 

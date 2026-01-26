@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  BallDetectionIcon,
   FrameExtractionIcon,
   PoseDetectionIcon,
   ProcessingIcon,
@@ -29,10 +28,6 @@ const StageProgress: React.FC<StageProgressProps> = ({
         return <ProcessingIcon size={20} className="stage-icon" />;
       case 'frame_extraction':
         return <FrameExtractionIcon size={20} className="stage-icon" />;
-      case 'ball_detection':
-        return <BallDetectionIcon size={20} className="stage-icon" />;
-      case 'racket_detection':
-        return <BallDetectionIcon size={20} className="stage-icon" />; // Using ball icon for now
       case 'pose_detection':
         return <PoseDetectionIcon size={20} className="stage-icon" />;
       case 'video_annotation':
@@ -72,10 +67,6 @@ const StageProgress: React.FC<StageProgressProps> = ({
         return 'processing';
       case 'frame_extraction':
         return 'info';
-      case 'ball_detection':
-        return 'primary';
-      case 'racket_detection':
-        return 'warning';
       case 'pose_detection':
         return 'secondary';
       case 'video_annotation':

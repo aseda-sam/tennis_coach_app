@@ -18,7 +18,26 @@ createAuthInterceptor(analysisApi, 'Analysis API');
 analysisApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Errors are handled by calling code through error callbacks
+    // Normalize FastAPI error responses to always have string detail
+    // FastAPI validation errors return detail as array: [{type, loc, msg, input}]
+    if (
+      error.response?.data?.detail &&
+      Array.isArray(error.response.data.detail)
+    ) {
+      const messages = error.response.data.detail
+        .map((err: { type?: string; loc?: unknown[]; msg?: string }) => {
+          if (typeof err === 'object' && err !== null && 'msg' in err) {
+            const loc = Array.isArray(err.loc)
+              ? err.loc.slice(1).join('.')
+              : '';
+            return loc ? `${loc}: ${err.msg}` : err.msg;
+          }
+          return String(err);
+        })
+        .filter(Boolean);
+      error.response.data.detail =
+        messages.length > 0 ? messages.join('; ') : 'Validation error';
+    }
     return Promise.reject(error);
   }
 );
@@ -27,7 +46,6 @@ analysisApi.interceptors.response.use(
 export interface AnalysisRequest {
   analysis_type:
     | 'pose_only'
-    | 'ball_only'
     | 'video_annotation_only'
     | 'pose_with_annotation'
     | 'contact_metrics';
@@ -49,7 +67,6 @@ export interface TaskStatus {
   video_id: number;
   analysis_type:
     | 'pose_only'
-    | 'ball_only'
     | 'video_annotation_only'
     | 'pose_with_annotation'
     | 'contact_metrics';
@@ -116,9 +133,8 @@ class UnifiedAnalysisApi {
    * Get background task system statistics
    */
   async getTaskStats(): Promise<TaskStatsResponse> {
-    const response = await analysisApi.get<TaskStatsResponse>(
-      '/analysis/tasks/stats'
-    );
+    const response =
+      await analysisApi.get<TaskStatsResponse>('/analysis/stats');
     return response.data;
   }
 
@@ -141,19 +157,6 @@ class UnifiedAnalysisApi {
   ): Promise<AnalysisResponse> {
     return this.startAnalysis(videoId, {
       analysis_type: 'pose_only',
-      confidence_threshold: confidenceThreshold,
-    });
-  }
-
-  /**
-   * Start ball-only analysis
-   */
-  async startBallAnalysis(
-    videoId: number,
-    confidenceThreshold: number = 0.5
-  ): Promise<AnalysisResponse> {
-    return this.startAnalysis(videoId, {
-      analysis_type: 'ball_only',
       confidence_threshold: confidenceThreshold,
     });
   }

@@ -1,7 +1,7 @@
 """Unified analysis API routes with RQ background task support."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -22,11 +22,7 @@ from app.core.redis_config import analysis_queue, redis_conn
 from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.rq_monitoring import get_queue_stats
-from app.services.rq_tasks import (
-    analyze_ball_detection_rq,
-    analyze_contact_metrics_rq,
-    analyze_pose_detection_rq,
-)
+from app.services.rq_tasks import analyze_pose_detection_rq
 from app.utils.authorization import require_video_access, require_video_not_demo
 
 logger = logging.getLogger(__name__)
@@ -46,7 +42,6 @@ async def start_analysis(
 
     This endpoint provides a unified interface for starting different types of analysis:
     - pose_only: Extract player pose keypoints using MediaPipe
-    - ball_only: Detect tennis balls using YOLO
 
     Args:
         video_id: ID of the video to analyze
@@ -73,8 +68,6 @@ async def start_analysis(
         # Select RQ task function based on analysis type
         task_function_map = {
             "pose_only": analyze_pose_detection_rq,
-            "ball_only": analyze_ball_detection_rq,
-            "contact_metrics": analyze_contact_metrics_rq,
         }
 
         task_function = task_function_map.get(request.analysis_type)
@@ -87,21 +80,12 @@ async def start_analysis(
         # Configure retry based on analysis type
         retry_config = {
             "pose_only": Retry(max=2, interval=60),
-            "ball_only": Retry(max=2, interval=60),
-            "contact_metrics": Retry(max=1, interval=30),
         }
 
         # Configure timeout based on analysis type
         timeout_config = {
             "pose_only": 300,  # 5 minutes
-            "ball_only": 300,  # 5 minutes
-            "contact_metrics": 60,  # 1 minute (should be fast)
         }
-
-        # Extract force_reanalysis for contact_metrics
-        force_reanalysis = (
-            request.force_reanalysis if hasattr(request, "force_reanalysis") else False
-        )
 
         try:
             logger.info(
@@ -116,26 +100,15 @@ async def start_analysis(
             # Enqueue RQ job
             logger.info(f"Enqueueing {request.analysis_type} job to Redis queue...")
             try:
-                # Build job arguments based on analysis type
-                if request.analysis_type == "contact_metrics":
-                    job = analysis_queue.enqueue(
-                        task_function,
-                        video_id=video_id,
-                        force_reanalysis=force_reanalysis,
-                        retry=retry_config[request.analysis_type],
-                        job_timeout=timeout_config[request.analysis_type],
-                        result_ttl=3600,  # Keep results for 1 hour
-                    )
-                else:
-                    job = analysis_queue.enqueue(
-                        task_function,
-                        video_id=video_id,
-                        video_path=video.file_path,
-                        confidence_threshold=request.confidence_threshold,
-                        retry=retry_config[request.analysis_type],
-                        job_timeout=timeout_config[request.analysis_type],
-                        result_ttl=3600,  # Keep results for 1 hour
-                    )
+                job = analysis_queue.enqueue(
+                    task_function,
+                    video_id=video_id,
+                    video_path=video.file_path,
+                    confidence_threshold=request.confidence_threshold,
+                    retry=retry_config[request.analysis_type],
+                    job_timeout=timeout_config[request.analysis_type],
+                    result_ttl=3600,  # Keep results for 1 hour
+                )
                 logger.info(
                     f"Successfully enqueued {request.analysis_type} analysis job {job.id} "
                     f"for video {video_id} to queue '{analysis_queue.name}'"
@@ -419,26 +392,6 @@ async def get_task_stats(
         ) from e
 
 
-@router.get("/queue-stats")
-async def get_queue_stats_endpoint(
-    current_user: dict = Depends(get_current_user),
-) -> Dict[str, Any]:
-    """
-    Get detailed queue statistics (RQ).
-
-    Returns:
-        Detailed queue and worker statistics
-    """
-    try:
-        return get_queue_stats()
-    except Exception as e:
-        logger.exception("Error getting queue stats")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get queue stats. Please try again later.",
-        ) from e
-
-
 @router.delete("/tasks/{job_id}")
 async def cancel_task(
     job_id: str,
@@ -586,10 +539,6 @@ def _get_analysis_type_from_job(job: Job) -> str:
 
     if "analyze_pose_detection_rq" in func_name:
         return "pose_only"
-    elif "analyze_ball_detection_rq" in func_name:
-        return "ball_only"
-    elif "analyze_contact_metrics_rq" in func_name:
-        return "contact_metrics"
     else:
         return "pose_only"  # Default fallback
 
@@ -598,7 +547,5 @@ def _get_estimated_duration(analysis_type: str) -> float:
     """Get estimated duration for different analysis types."""
     estimates = {
         "pose_only": 120.0,  # 2 minutes
-        "ball_only": 180.0,  # 3 minutes
-        "contact_metrics": 30.0,  # 30 seconds (should be fast)
     }
-    return estimates.get(analysis_type, 180.0)
+    return estimates.get(analysis_type, 120.0)

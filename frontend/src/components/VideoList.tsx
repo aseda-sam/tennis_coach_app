@@ -1,23 +1,15 @@
-import React, { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import React, { useCallback, useState } from 'react';
+import { AnalysisState, useAnalysisStatus } from '../hooks/useAnalysisStatus';
 import {
-  useAnalysisStatus,
-  AnalysisState,
-} from '../hooks/useAnalysisStatus';
-import {
-  useVideos,
-  useVideoAnalysisStatuses,
   useDeleteVideo,
+  useVideoAnalysisStatuses,
+  useVideos,
 } from '../hooks/useVideos';
 import { VideoMetadata } from '../types/video';
-import {
-  CloseIcon,
-  DeleteIcon,
-  UploadIcon,
-  VideoIcon,
-} from './Icons';
-import VideoUpload from './VideoUpload';
+import { CloseIcon, DeleteIcon, UploadIcon, VideoIcon } from './Icons';
 import './VideoList.css';
+import VideoUpload from './VideoUpload';
 
 interface VideoListProps {
   onVideoDeleted?: () => void;
@@ -40,10 +32,8 @@ const VideoList: React.FC<VideoListProps> = ({
   } = useVideos();
 
   const videoIds = videos.map((v: VideoMetadata) => v.id);
-  const {
-    data: analysisStatusesMap = {},
-    isLoading: statusesLoading,
-  } = useVideoAnalysisStatuses(videoIds);
+  const { data: analysisStatusesMap = {}, isLoading: statusesLoading } =
+    useVideoAnalysisStatuses(videoIds);
 
   const deleteVideoMutation = useDeleteVideo();
 
@@ -53,9 +43,7 @@ const VideoList: React.FC<VideoListProps> = ({
   >(new Map());
 
   const loading = videosLoading || statusesLoading;
-  const error = videosError
-    ? 'Failed to load videos. Please try again.'
-    : null;
+  const error = videosError ? 'Failed to load videos. Please try again.' : null;
 
   // Use the unified analysis status system (callbacks kept for future analyze functionality)
   useAnalysisStatus({
@@ -110,11 +98,14 @@ const VideoList: React.FC<VideoListProps> = ({
     }
   };
 
-  const handleUploadSuccess = useCallback((video: VideoMetadata) => {
-    // Invalidate videos cache to refetch the list with the new video
-    queryClient.invalidateQueries({ queryKey: ['videos'] });
-    setIsUploadModalOpen(false);
-  }, [queryClient]);
+  const handleUploadSuccess = useCallback(
+    (video: VideoMetadata) => {
+      // Invalidate videos cache to refetch the list with the new video
+      queryClient.invalidateQueries({ queryKey: ['videos'] });
+      setIsUploadModalOpen(false);
+    },
+    [queryClient]
+  );
 
   // Removed handleCancelAnalysis - we now only use pose detection
 
@@ -142,13 +133,15 @@ const VideoList: React.FC<VideoListProps> = ({
     } else if (diffDays < 7) {
       return `${diffDays} days ago`;
     } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
     }
   };
 
   // Removed getStatusTag - not used in card layout
-
-
 
   if (loading) {
     return (
@@ -180,7 +173,9 @@ const VideoList: React.FC<VideoListProps> = ({
       <div className="video-list-header">
         <div className="header-left">
           <h2 className="page-title">Video Library</h2>
-          <p className="video-count">{videos.length} of {videos.length} sessions</p>
+          <p className="video-count">
+            {videos.length} of {videos.length} sessions
+          </p>
         </div>
         <div className="header-right">
           <button
@@ -219,7 +214,10 @@ const VideoList: React.FC<VideoListProps> = ({
                   }
                 }}
                 style={{
-                  cursor: analysisStatus?.has_analysis || !isCurrentlyAnalyzing ? 'pointer' : 'default',
+                  cursor:
+                    analysisStatus?.has_analysis || !isCurrentlyAnalyzing
+                      ? 'pointer'
+                      : 'default',
                 }}
               >
                 {/* Thumbnail Area */}
@@ -232,18 +230,36 @@ const VideoList: React.FC<VideoListProps> = ({
                 {/* Metadata Section */}
                 <div className="video-card-content">
                   <h3 className="video-card-filename">{video.filename}</h3>
-                  
+
                   <div className="video-card-meta">
                     <div className="video-card-user-date">
                       <span className="user-info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="user-icon">
-                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          className="user-icon"
+                        >
+                          <path
+                            d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                            fill="currentColor"
+                          />
                         </svg>
                         Myself
                       </span>
                       <span className="date-info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="calendar-icon">
-                          <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" fill="currentColor"/>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          className="calendar-icon"
+                        >
+                          <path
+                            d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"
+                            fill="currentColor"
+                          />
                         </svg>
                         {formatDate(video.created_at)}
                       </span>
@@ -275,11 +291,18 @@ const VideoList: React.FC<VideoListProps> = ({
 
       {/* Upload Modal */}
       {isUploadModalOpen && (
-        <div className="upload-modal-overlay" onClick={() => setIsUploadModalOpen(false)}>
+        <div
+          className="upload-modal-overlay"
+          onClick={() => setIsUploadModalOpen(false)}
+        >
           <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Upload Video</h2>
-              <button className="close-btn" onClick={() => setIsUploadModalOpen(false)} aria-label="Close">
+              <button
+                className="close-btn"
+                onClick={() => setIsUploadModalOpen(false)}
+                aria-label="Close"
+              >
                 <CloseIcon size={18} />
               </button>
             </div>

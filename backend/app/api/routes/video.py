@@ -2,9 +2,9 @@
 
 import logging
 import tempfile
-import time
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import cv2
 from fastapi import (
@@ -28,14 +28,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.schemas.common import PaginationParams
+from app.api.schemas.serve_attempt import ServeAnalysisSummary
 from app.api.schemas.video import (
     VideoDeleteResponse,
     VideoInfo,
     VideoListItem,
     VideoMetadata,
-    VideoMetrics,
-    VideoQualityAssessmentResponse,
-    VideoQualityMetrics,
     VideoSignedUrlResponse,
     VideoUploadResponse,
 )
@@ -44,13 +42,13 @@ from app.core.database import get_db
 from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.storage_service import storage_service
-from app.services.video_quality import VideoQualityService
 from app.utils.authorization import (
     is_admin,
     is_demo_editor,
     require_upload_limit,
     require_video_access,
     require_video_deletable,
+    require_video_not_demo,
 )
 from app.utils.error_handling import (
     handle_file_error,
@@ -97,7 +95,7 @@ logger = logging.getLogger(__name__)
 
 def _create_temp_file_for_processing(file_content: bytes, filename: str) -> Path:
     """
-    Create a temporary file for video processing (metadata extraction, quality assessment).
+    Create a temporary file for video processing (metadata extraction).
 
     Args:
         file_content: File content as bytes
@@ -313,12 +311,12 @@ async def stream_video(
                     },
                 )
         else:
-            # For local storage, use FileResponse
-            file_path = Path(db_video.file_path)
-            validate_file_exists(file_path, db_video.filename)
+            # For local storage, resolve the storage path to actual file system path
+            resolved_path = storage_service.get_local_file_path(db_video.file_path)
+            validate_file_exists(resolved_path, db_video.filename)
 
             return FileResponse(
-                path=str(file_path),
+                path=str(resolved_path),
                 media_type=db_video.content_type or "video/mp4",
                 filename=get_safe_filename(db_video.filename),
             )
@@ -451,17 +449,6 @@ async def get_video_analysis_status(
             has_analysis = True
             analysis_types.append("pose_detection")
 
-        # Check for ball detection
-        from app.models.ball_detection import BallDetection
-
-        ball_detection = (
-            db.query(BallDetection).filter(BallDetection.video_id == video_id).first()
-        )
-        if ball_detection and ball_detection.status == "completed":
-            has_analysis = True
-            if "ball_detection" not in analysis_types:
-                analysis_types.append("ball_detection")
-
         return VideoAnalysisStatus(
             video_id=video_id,
             has_analysis=has_analysis,
@@ -491,7 +478,6 @@ async def get_bulk_analysis_status(
         Analysis status for each requested video
     """
     try:
-        from app.models.ball_detection import BallDetection
         from app.models.pose_detection import PoseDetection
         from app.models.video import Video
         from app.utils.authorization import is_admin
@@ -523,19 +509,8 @@ async def get_bulk_analysis_status(
             .all()
         )
 
-        # Fetch all ball detections in one query
-        ball_detections = (
-            db.query(BallDetection)
-            .filter(
-                BallDetection.video_id.in_(video_ids),
-                BallDetection.status == "completed",
-            )
-            .all()
-        )
-
         # Build lookup maps for O(1) access
         pose_map: Dict[int, PoseDetection] = {pd.video_id: pd for pd in pose_detections}
-        ball_map: Dict[int, BallDetection] = {bd.video_id: bd for bd in ball_detections}
 
         # Build response for each video
         statuses = []
@@ -546,11 +521,6 @@ async def get_bulk_analysis_status(
             if video_id in pose_map:
                 has_analysis = True
                 analysis_types.append("pose_detection")
-
-            if video_id in ball_map:
-                has_analysis = True
-                if "ball_detection" not in analysis_types:
-                    analysis_types.append("ball_detection")
 
             statuses.append(
                 VideoAnalysisStatus(
@@ -568,60 +538,6 @@ async def get_bulk_analysis_status(
         log_and_raise_error(
             e, "get_bulk_analysis_status", {"video_ids": request.video_ids}
         )
-
-
-@router.get("/{video_id}/metrics", response_model=VideoMetrics)
-async def get_video_metrics(
-    video_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> VideoMetrics:
-    """
-    Get aggregated performance metrics for a video.
-
-    Calculates metrics from ball contacts including serve count,
-    average elbow angle, and other performance indicators.
-
-    Args:
-        video_id: Unique video identifier
-
-    Returns:
-        VideoMetrics with aggregated performance data
-    """
-    try:
-        from app.services.ball_contact_service import get_ball_contacts_by_video_id
-
-        # Verify video exists and check authorization
-        db_video = video_service.get_video_by_id(db, video_id)
-        if not db_video:
-            raise handle_not_found_error("video", str(video_id))
-
-        require_video_access(db_video, current_user)
-
-        # Get all ball contacts for the video
-        contacts = get_ball_contacts_by_video_id(db, video_id)
-
-        # Filter serves
-        serves = [c for c in contacts if c.stroke_type == "serve"]
-        serve_count = len(serves)
-
-        # Calculate average elbow angle from serves
-        elbow_angles = [s.elbow_angle for s in serves if s.elbow_angle is not None]
-        avg_elbow = (
-            round(sum(elbow_angles) / len(elbow_angles)) if elbow_angles else None
-        )
-
-        return VideoMetrics(
-            video_id=video_id,
-            serve_count=serve_count,
-            avg_elbow_angle=avg_elbow,
-            total_contacts=len(contacts),
-            toss_height=None,  # Placeholder for future implementation
-            contact_height=None,  # Placeholder for future implementation
-        )
-
-    except (OSError, ValueError) as e:
-        log_and_raise_error(e, "get_video_metrics", {"video_id": video_id})
 
 
 @router.delete("/{video_id}", response_model=VideoDeleteResponse)
@@ -672,6 +588,15 @@ async def delete_video(
 async def upload_video(
     file: UploadFile = File(...),
     is_demo: bool = Query(False, description="Upload as demo video"),
+    session_type: Optional[str] = Query(
+        None, description="Session type: 'serve_drill', 'match', 'practice', 'other'"
+    ),
+    camera_angle: Optional[str] = Query(
+        None, description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'"
+    ),
+    recorded_at: Optional[datetime] = Query(
+        None, description="When video was recorded (UTC; optional override)"
+    ),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VideoUploadResponse:
@@ -681,6 +606,9 @@ async def upload_video(
     Args:
         file: Video file to upload
         is_demo: If True, upload as demo video (requires authorization)
+        session_type: Session type for serve-focused workflow
+        camera_angle: Camera angle for serve analysis
+        recorded_at: When video was recorded (for trends)
 
     Returns:
         Upload confirmation with video information
@@ -776,8 +704,8 @@ async def upload_video(
             finally:
                 tmp_path.unlink()
         else:
-            # For local storage, use the actual file path
-            file_path = Path(storage_path)
+            # For local storage, resolve the storage path to actual file system path
+            file_path = storage_service.get_local_file_path(storage_path)
             metadata = extract_video_metadata(file_path)
 
         # Validate video metadata
@@ -805,61 +733,10 @@ async def upload_video(
             height=metadata.height,
             frame_count=metadata.frame_count,
             is_demo=is_demo,
+            session_type=session_type,
+            camera_angle=camera_angle,
+            recorded_at=recorded_at,
         )
-
-        # Perform quick quality assessment
-        # Reuse file_content already in memory (no need to download from Supabase)
-        quality_metrics = None
-        try:
-            logger.info(f"Starting quality assessment for {unique_filename}")
-            quality_service = VideoQualityService()
-
-            if settings.STORAGE_TYPE == "supabase":
-                # Reuse file_content already in memory (no download needed)
-                tmp_path = _create_temp_file_for_processing(
-                    file_content, unique_filename
-                )
-                try:
-                    quality_metrics = quality_service.quick_assess(tmp_path)
-                finally:
-                    tmp_path.unlink()
-            else:
-                quality_metrics = quality_service.quick_assess(Path(storage_path))
-
-            # Update video record with quality metrics
-            video_service.update_video_quality(
-                db=db,
-                video_id=db_video.id,
-                quality_score=quality_metrics["quality_score"],
-                blur_score=quality_metrics["blur_score"],
-                lighting_score=quality_metrics["lighting_score"],
-                resolution_score=quality_metrics["resolution_score"],
-                quality_level=quality_metrics["quality_level"],
-            )
-
-            logger.info(
-                f"Quality assessment completed: "
-                f"{quality_metrics['quality_level']} quality"
-            )
-
-        except (OSError, RuntimeError, ValueError) as e:
-            logger.warning(f"Quality assessment failed for {unique_filename}: {e}")
-            # Continue with upload even if quality assessment fails
-
-        # Create quality metrics response if available
-        quality_metrics_response = None
-        if quality_metrics:
-            quality_metrics_response = VideoQualityMetrics(
-                quality_score=quality_metrics["quality_score"],
-                blur_score=quality_metrics["blur_score"],
-                lighting_score=quality_metrics["lighting_score"],
-                resolution_score=quality_metrics["resolution_score"],
-                quality_level=quality_metrics["quality_level"],
-                recommended_confidence_threshold=quality_metrics[
-                    "recommended_confidence_threshold"
-                ],
-                frame_count_analyzed=quality_metrics["frame_count_analyzed"],
-            )
 
         return VideoUploadResponse(
             video_id=db_video.id,
@@ -868,7 +745,7 @@ async def upload_video(
             status="uploaded",
             message="Video uploaded successfully",
             metadata=metadata,
-            quality_metrics=quality_metrics_response,
+            quality_metrics=None,  # Video quality assessment removed for MVP
         )
     except (OSError, ValueError) as e:
         log_and_raise_error(
@@ -876,80 +753,83 @@ async def upload_video(
         )
 
 
-@router.post("/{video_id}/quality-check", response_model=VideoQualityAssessmentResponse)
-async def assess_video_quality(
+@router.post("/{video_id}/analyze-serves", response_model=ServeAnalysisSummary)
+async def analyze_serve_attempts(
     video_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> VideoQualityAssessmentResponse:
+) -> ServeAnalysisSummary:
     """
-    Perform quick quality assessment on a video.
-
-    Args:
-        video_id: ID of the video to assess
-        db: Database session
-
-    Returns:
-        Quality assessment results with metrics and recommendations
+    Batch analyze all serve attempts for a video.
+    Calculates elbow angles synchronously (no RQ).
     """
     try:
-        # Get video from database
-        db_video = video_service.get_video_by_id(db, video_id)
-        if not db_video:
-            raise HTTPException(status_code=404, detail=f"Video {video_id} not found")
+        from app.models.serve_attempt import ServeAttempt
+        from app.services.serve_analysis_service import ServeAnalysisService
 
-        # Check authorization
-        require_video_access(db_video, current_user)
-
-        # Check if video file exists
-        video_path = Path(db_video.file_path)
-        if not video_path.exists():
+        # Get video to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
             raise HTTPException(
-                status_code=404, detail=f"Video file not found: {db_video.filename}"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Video with ID {video_id} not found",
             )
 
-        # Perform quality assessment
-        assessment_start = time.time()
-        quality_service = VideoQualityService()
-        quality_metrics = quality_service.quick_assess(video_path)
-        assessment_time = time.time() - assessment_start
+        # Check authorization
+        require_video_access(video, current_user)
 
-        # Update video record with quality metrics
-        video_service.update_video_quality(
-            db=db,
-            video_id=video_id,
-            quality_score=quality_metrics["quality_score"],
-            blur_score=quality_metrics["blur_score"],
-            lighting_score=quality_metrics["lighting_score"],
-            resolution_score=quality_metrics["resolution_score"],
-            quality_level=quality_metrics["quality_level"],
+        # Prevent modification of demo videos
+        require_video_not_demo(video, current_user)
+
+        # Check if there are serve attempts to analyze
+        serve_attempts = (
+            db.query(ServeAttempt).filter(ServeAttempt.video_id == video_id).all()
         )
 
-        # Create response
-        quality_metrics_response = VideoQualityMetrics(
-            quality_score=quality_metrics["quality_score"],
-            blur_score=quality_metrics["blur_score"],
-            lighting_score=quality_metrics["lighting_score"],
-            resolution_score=quality_metrics["resolution_score"],
-            quality_level=quality_metrics["quality_level"],
-            recommended_confidence_threshold=quality_metrics[
-                "recommended_confidence_threshold"
-            ],
-            frame_count_analyzed=quality_metrics["frame_count_analyzed"],
+        if not serve_attempts:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No serve attempts found for this video. Please tag serve attempts first.",
+            )
+
+        # Count serves with contact
+        serves_with_contact = sum(
+            1 for sa in serve_attempts if sa.contact_timestamp is not None
         )
 
-        return VideoQualityAssessmentResponse(
+        # Run analysis inline (fast: uses already-computed pose detections)
+        analysis_service = ServeAnalysisService()
+        results = analysis_service.analyze_serve_attempts(
+            db=db, video_id=video_id, serve_attempts=serve_attempts
+        )
+
+        avg_elbow_angle = results.get("avg_elbow_angle")
+        if avg_elbow_angle is not None and not (0.0 <= avg_elbow_angle <= 180.0):
+            logger.warning(
+                "Serve analysis returned invalid avg_elbow_angle=%s for video_id=%s",
+                avg_elbow_angle,
+                video_id,
+            )
+            avg_elbow_angle = None
+
+        return ServeAnalysisSummary(
             video_id=video_id,
-            filename=db_video.filename,
-            quality_metrics=quality_metrics_response,
-            assessment_time=assessment_time,
-            message=(
-                f"Quality assessment completed: "
-                f"{quality_metrics['quality_level']} quality"
-            ),
+            total_serves=len(serve_attempts),
+            serves_with_contact=serves_with_contact,
+            avg_elbow_angle=avg_elbow_angle,
         )
 
     except HTTPException:
         raise
-    except (OSError, ValueError) as e:
-        log_and_raise_error(e, "assess_video_quality", {"video_id": video_id})
+    except ValueError as e:
+        # Common expected error cases (e.g., missing pose detection)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        logger.exception("Error starting serve analysis")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to start serve analysis. Please try again later.",
+        ) from e

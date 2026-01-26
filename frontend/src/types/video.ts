@@ -1,13 +1,3 @@
-export interface VideoQualityMetrics {
-  quality_score: number;
-  blur_score: number;
-  lighting_score: number;
-  resolution_score: number;
-  quality_level: string;
-  recommended_confidence_threshold: number;
-  frame_count_analyzed: number;
-}
-
 export interface VideoMetadata {
   id: number; // NEW: video ID
   filename: string;
@@ -23,13 +13,6 @@ export interface VideoMetadata {
   updated_at?: string; // NEW: update timestamp
   status: string; // NEW: processing status
   error_message?: string; // NEW: error message if processing failed
-  // Quality metrics (assessed once on upload)
-  quality_score?: number;
-  blur_score?: number;
-  lighting_score?: number;
-  resolution_score?: number;
-  quality_level?: string;
-  quality_assessed_at?: string;
 }
 
 export interface VideoUploadResponse {
@@ -46,7 +29,6 @@ export interface VideoUploadResponse {
     height?: number;
     frame_count?: number;
   };
-  quality_metrics?: VideoQualityMetrics; // NEW: quality assessment results
 }
 
 export interface VideoListResponse {
@@ -79,11 +61,3 @@ export interface OverlayData {
   frames: PoseFrame[];
 }
 
-export interface VideoMetrics {
-  video_id: number;
-  serve_count: number;
-  avg_elbow_angle: number | null;
-  total_contacts: number;
-  toss_height: number | null;
-  contact_height: number | null;
-}

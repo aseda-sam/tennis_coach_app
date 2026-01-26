@@ -130,7 +130,10 @@ function App() {
                     }
                   } catch (e) {
                     // Silently fail if URL parsing fails (e.g., relative URL)
-                    console.debug('Failed to parse demo video URL for preconnect:', e);
+                    console.debug(
+                      'Failed to parse demo video URL for preconnect:',
+                      e
+                    );
                   }
                 }
               })
@@ -222,8 +225,8 @@ function App() {
 
           <div className="app-header-right">
             {user ? (
-              <button 
-                className="logout-btn" 
+              <button
+                className="logout-btn"
                 onClick={async () => {
                   try {
                     await signOut();
@@ -237,10 +240,7 @@ function App() {
                 Logout
               </button>
             ) : (
-              <button 
-                className="get-started-btn" 
-                onClick={handleGetStarted}
-              >
+              <button className="get-started-btn" onClick={handleGetStarted}>
                 Get Started
               </button>
             )}
@@ -314,16 +314,19 @@ function App() {
     <div className="App">
       {renderHeader()}
       {renderCurrentView()}
-      
+
       {/* Upload Modal - Shared across all views */}
       {isUploadModalOpen && (
-        <div className="upload-modal-overlay" onClick={() => setIsUploadModalOpen(false)}>
+        <div
+          className="upload-modal-overlay"
+          onClick={() => setIsUploadModalOpen(false)}
+        >
           <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Upload Video</h2>
-              <button 
-                className="close-btn" 
-                onClick={() => setIsUploadModalOpen(false)} 
+              <button
+                className="close-btn"
+                onClick={() => setIsUploadModalOpen(false)}
                 aria-label="Close"
               >
                 <CloseIcon size={18} />

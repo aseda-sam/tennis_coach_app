@@ -8,10 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.rq_tasks import (
-    analyze_ball_detection_rq,
-    analyze_pose_detection_rq,
-)
+from app.services.rq_tasks import analyze_pose_detection_rq
 
 
 @pytest.fixture
@@ -113,46 +110,3 @@ class TestAnalyzePoseDetectionRq:
             analyze_pose_detection_rq(
                 video_id=1, video_path="/test/path/video.mp4", confidence_threshold=0.7
             )
-
-
-class TestAnalyzeBallDetectionRq:
-    """Tests for analyze_ball_detection_rq."""
-
-    @patch("app.services.rq_tasks.video_service.get_video_by_id")
-    @patch("app.services.rq_tasks.storage_service.get_local_file_path")
-    @patch("app.services.ball_detection.BallDetectionService")
-    def test_success(
-        self,
-        mock_ball_service_class: MagicMock,
-        mock_get_path: MagicMock,
-        mock_get_video: MagicMock,
-        mock_db_session: MagicMock,
-        mock_video: MagicMock,
-    ) -> None:
-        """Test successful ball detection."""
-        mock_get_video.return_value = mock_video
-        mock_get_path.return_value = Path("/local/path/video.mp4")
-        mock_ball_service = MagicMock()
-        mock_ball_service_class.return_value = mock_ball_service
-
-        # Mock ball detection results
-        mock_ball_service.analyze_video_file.return_value = {
-            "processing_time_seconds": 180.0,
-            "total_frames": 1000,
-            "frames_with_balls": 600,
-            "detection_rate": 0.6,
-        }
-
-        # Mock ball detection model
-        mock_ball_detection = MagicMock()
-        mock_ball_detection.id = 456
-        mock_ball_service.save_detection_results.return_value = mock_ball_detection
-
-        result = analyze_ball_detection_rq(
-            video_id=1, video_path="/test/path/video.mp4", confidence_threshold=0.7
-        )
-
-        assert result["status"] == "completed"
-        assert result["ball_detection_id"] == 456
-        assert result["analysis_type"] == "ball_only"
-        mock_ball_service.analyze_video_file.assert_called_once()

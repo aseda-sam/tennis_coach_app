@@ -34,16 +34,6 @@ class Video(Base):
     )  # uploaded, processing, completed, failed
     error_message = Column(Text, nullable=True)
 
-    # Quality metrics (assessed once on upload)
-    quality_score = Column(Float, nullable=True)
-    blur_score = Column(Float, nullable=True)
-    lighting_score = Column(Float, nullable=True)
-    resolution_score = Column(Float, nullable=True)
-    quality_level = Column(
-        String(20), nullable=True
-    )  # 'excellent', 'good', 'fair', 'poor'
-    quality_assessed_at = Column(DateTime(timezone=True), nullable=True)
-
     # Authentication - user who owns this video
     user_id = Column(String(36), nullable=False, index=True)  # UUID as string
 
@@ -56,25 +46,21 @@ class Video(Base):
     # Original user_id before promotion to demo (for unpromote/restore)
     original_user_id = Column(String(36), nullable=True)
 
+    # Session metadata (serve-focused)
+    session_type = Column(
+        String(20), nullable=True
+    )  # 'serve_drill', 'match', 'practice', 'other'
+    camera_angle = Column(
+        String(20), nullable=True
+    )  # 'behind', 'profile', 'diagonal', 'unknown'
+    recorded_at = Column(
+        DateTime(timezone=True), nullable=True
+    )  # When video was recorded (for trends)
+
     # New granular analysis relationships
-    ball_detections = relationship(
-        "BallDetection", back_populates="video", cascade="all, delete-orphan"
-    )
     pose_detections = relationship(
         "PoseDetection", back_populates="video", cascade="all, delete-orphan"
     )
-    ball_contacts = relationship(
-        "BallContact", back_populates="video", cascade="all, delete-orphan"
+    serve_attempts = relationship(
+        "ServeAttempt", back_populates="video", cascade="all, delete-orphan"
     )
-    video_annotations = relationship(
-        "VideoAnnotation", back_populates="video", cascade="all, delete-orphan"
-    )
-    video_players = relationship(
-        "VideoPlayer", back_populates="video", cascade="all, delete-orphan"
-    )
-
-    # Convenience property to get just the players
-    @property
-    def players(self) -> list:
-        """Get list of players associated with this video."""
-        return [vp.player for vp in self.video_players]

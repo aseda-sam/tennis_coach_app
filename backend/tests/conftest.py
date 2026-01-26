@@ -1,11 +1,16 @@
 """
 Test configuration and shared fixtures.
+
+TDD Principle: Tests use PROFILE-based configuration (public API), not internal fields.
+This ensures tests define contracts that remain stable when internals change.
 """
 
+import os
 import shutil
 import tempfile
 from pathlib import Path
 from typing import Generator
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -22,6 +27,56 @@ def skip_if_supabase_storage() -> None:
     """Skip test if using Supabase storage (requires local file access)."""
     if settings.STORAGE_TYPE == "supabase":
         pytest.skip("Test requires local storage - skipped for Supabase")
+
+
+@pytest.fixture(autouse=True)
+def ensure_local_profile() -> Generator[None, None, None]:
+    """
+    Ensure tests run with PROFILE=local by default.
+
+    This fixture runs automatically for all tests to ensure consistent test environment.
+    Tests that need production profile should explicitly patch PROFILE.
+    """
+    # Save original PROFILE
+    original_profile = os.environ.get("PROFILE")
+
+    # Set PROFILE=local for tests (unless already set)
+    if "PROFILE" not in os.environ:
+        os.environ["PROFILE"] = "local"
+
+    # Reload settings to pick up PROFILE change
+    # Note: Settings are loaded at module import, so we patch the instance
+    with patch.object(settings, "PROFILE", "local"):
+        yield
+
+    # Restore original PROFILE
+    if original_profile is not None:
+        os.environ["PROFILE"] = original_profile
+    elif "PROFILE" in os.environ:
+        del os.environ["PROFILE"]
+
+
+@pytest.fixture
+def local_profile() -> Generator[None, None, None]:
+    """
+    Explicitly set PROFILE=local for a test.
+
+    Use this when you need to ensure local profile in a specific test.
+    """
+    with patch.object(settings, "PROFILE", "local"):
+        yield
+
+
+@pytest.fixture
+def production_profile() -> Generator[None, None, None]:
+    """
+    Set PROFILE=production for a test (requires Supabase config).
+
+    Use this when testing production-specific behavior.
+    Note: You'll need to patch SUPABASE_* settings as well.
+    """
+    with patch.object(settings, "PROFILE", "production"):
+        yield
 
 
 # Test database configuration
@@ -61,7 +116,14 @@ def test_user_id() -> str:
 
 @pytest.fixture
 def client(db_session: Generator) -> Generator[TestClient, None, None]:
-    """Create test client with database override and mock auth."""
+    """
+    Create test client with database override and mock auth.
+
+    TDD Contract: This fixture provides a TestClient that:
+    - Uses test database (isolated per test)
+    - Has mock authentication (test_user_id)
+    - Runs with PROFILE=local (via ensure_local_profile fixture)
+    """
 
     def override_get_db() -> Generator:
         try:
@@ -70,7 +132,7 @@ def client(db_session: Generator) -> Generator[TestClient, None, None]:
             pass
 
     async def mock_get_current_user() -> dict:
-        """Mock authentication for tests."""
+        """Mock authentication for tests - returns test_user_id."""
         return {
             "id": "00000000-0000-0000-0000-000000000000",
             "email": "test@example.com",
@@ -79,8 +141,11 @@ def client(db_session: Generator) -> Generator[TestClient, None, None]:
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = mock_get_current_user
-    with TestClient(app) as test_client:
+
+    # Ensure PROFILE=local for this test client
+    with patch.object(settings, "PROFILE", "local"), TestClient(app) as test_client:
         yield test_client
+
     app.dependency_overrides.clear()
 
 

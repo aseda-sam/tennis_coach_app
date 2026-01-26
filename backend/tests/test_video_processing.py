@@ -90,11 +90,6 @@ class TestVideoProcessing:
         assert response.status_code == 200
         assert response.headers["content-type"] == "video/mp4"
 
-        # Test annotated video stream (will return 400/404 if no annotated video exists)
-        response = client.get(f"/v0/videos/{video_id}/annotated/stream")
-        # This will return 400/404 if no annotated video exists (which is expected)
-        assert response.status_code in [200, 400, 404]
-
         # Clean up
         response = client.delete(f"/v0/videos/{video_id}")
         assert response.status_code == 200

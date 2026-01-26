@@ -10,12 +10,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.main import app
 from app.models.pose_detection import PoseDetection
 from app.models.video import Video
 from app.services.pose_detection import PoseDetectionService
-
-client = TestClient(app)
 
 
 class TestPoseDetectionService:
@@ -171,60 +168,46 @@ class TestPoseDetectionService:
 class TestPoseDetectionAPI:
     """Test pose detection API endpoints."""
 
-    def test_analyze_pose_detection_video_not_found(self) -> None:
+    def test_analyze_pose_detection_video_not_found(self, client: TestClient) -> None:
         """Test pose detection analysis with non-existent video."""
-        response = client.post("/v0/pose-detection/analyze/999")
+        response = client.post(
+            "/v0/analysis/videos/999", json={"analysis_type": "pose_only"}
+        )
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-    def test_get_pose_detection_video_not_found(self) -> None:
-        """Test getting pose detection for non-existent video."""
-        response = client.get("/v0/pose-detection/999")
+    def test_get_analysis_status_not_found(self, client: TestClient) -> None:
+        """Test getting analysis status for missing job."""
+        response = client.get("/v0/analysis/status/missing-job")
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-    def test_analyze_pose_detection_request_validation(self) -> None:
+    def test_analyze_pose_detection_request_validation(
+        self, client: TestClient
+    ) -> None:
         """Test pose detection request validation."""
         # Test with invalid confidence threshold
         response = client.post(
-            "/v0/pose-detection/analyze/1",
-            json={"confidence_threshold": 2.0},  # Invalid: > 1.0
+            "/v0/analysis/videos/1",
+            json={"analysis_type": "pose_only", "confidence_threshold": 2.0},
         )
 
         assert response.status_code == 422  # Validation error
 
-    @patch(
-        "app.services.pose_detection.detection_service.PoseDetectionService.analyze_video_file"
-    )
-    @patch("app.api.routes.pose_detection.PoseDetectionService")
-    @patch("pathlib.Path.exists")
+    @patch("app.api.routes.analysis.analysis_queue.enqueue")
     def test_analyze_pose_detection_success(
         self,
-        mock_exists: Mock,
-        mock_service_class: Mock,
-        mock_analyze: Mock,
+        mock_enqueue: Mock,
         client: TestClient,
         db_session: Session,
         test_user_id: str,
     ) -> None:
         """Test successful pose detection analysis."""
-        # Setup mocks
-        mock_exists.return_value = True
-        mock_analyze.return_value = {
-            "total_frames": 50,
-            "frames_with_poses": 30,
-            "total_pose_detections": 30,
-            "detection_rate": 0.6,
-            "processing_time_seconds": 10.0,
-        }
-
-        # Mock service instance
-        mock_service_instance = Mock()
-        mock_service_instance.get_detection_by_video_id.return_value = None
-        mock_service_instance.analyze_video_file = mock_analyze
-        mock_service_class.return_value = mock_service_instance
+        mock_job = Mock()
+        mock_job.id = "job-123"
+        mock_enqueue.return_value = mock_job
 
         # Create test video with unique filename
         video = Video(
@@ -238,14 +221,15 @@ class TestPoseDetectionAPI:
 
         # Test endpoint
         response = client.post(
-            f"/v0/pose-detection/analyze/{video.id}", json={"confidence_threshold": 0.5}
+            f"/v0/analysis/videos/{video.id}",
+            json={"analysis_type": "pose_only", "confidence_threshold": 0.5},
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "processing"
-        assert "task_id" in data
-        assert data["video_filename"] == "test_analyze_pose_video.mp4"
+        assert data["status"] == "queued"
+        assert data["job_id"] == "job-123"
+        assert data["analysis_type"] == "pose_only"
 
 
 # Integration test helper

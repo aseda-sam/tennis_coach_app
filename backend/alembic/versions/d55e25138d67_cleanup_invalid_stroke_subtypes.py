@@ -12,10 +12,6 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 
 from alembic import op
-from app.core.shot_types import (
-    is_valid_subtype_for_type,
-    map_legacy_subtype_to_canonical,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -29,82 +25,29 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Migrate legacy stroke subtypes to canonical subtypes.
 
-    This migration maps legacy free-text subtypes (e.g., "forehand", "backhand")
-    to canonical subtypes based on stroke_type. If a mapping exists, the subtype
-    is updated. If no mapping is possible, the subtype is set to NULL.
+    NOTE: This migration is now a no-op because:
+    1. The ball_contacts table was dropped in migration 3f2a1c9d7b10
+    2. The shot_types functions it depended on were removed in favor of serve-only MVP
+    3. This migration likely already ran before the table was dropped
 
-    Examples:
-        - "forehand" + "ground_stroke" → "forehand_flat"
-        - "forehand" + "return" → "forehand" (already valid, no change)
-        - "forehand" + "volley" → "forehand" (already valid, no change)
-        - "topspin" + "ground_stroke" → NULL (can't determine forehand vs backhand)
+    If the ball_contacts table exists, this migration will skip (table already dropped).
     """
     bind = op.get_bind()
+    inspector = sa.inspect(bind)
 
-    # Query all contacts with non-null subtypes
-    result = bind.execute(
-        sa.text("""
-            SELECT id, stroke_type, stroke_subtype
-            FROM ball_contacts
-            WHERE stroke_subtype IS NOT NULL AND stroke_subtype != ''
-        """)
-    )
-
-    contacts = result.fetchall()
-    mapped_count = 0
-    cleared_count = 0
-
-    for contact_id, stroke_type, stroke_subtype in contacts:
-        # Check if subtype is already valid (no change needed)
-        if is_valid_subtype_for_type(stroke_type, stroke_subtype):
-            continue
-
-        # Try to map legacy subtype to canonical
-        canonical_subtype = map_legacy_subtype_to_canonical(stroke_type, stroke_subtype)
-
-        if canonical_subtype:
-            # Update to mapped canonical subtype
-            bind.execute(
-                sa.text("""
-                    UPDATE ball_contacts
-                    SET stroke_subtype = :canonical_subtype
-                    WHERE id = :contact_id
-                """),
-                {
-                    "canonical_subtype": canonical_subtype,
-                    "contact_id": contact_id,
-                },
-            )
-            mapped_count += 1
-            logger.info(
-                f"Mapped subtype '{stroke_subtype}' → '{canonical_subtype}' "
-                f"for stroke_type '{stroke_type}' in ball_contact {contact_id}"
-            )
-        else:
-            # No mapping possible, set to NULL
-            bind.execute(
-                sa.text("""
-                    UPDATE ball_contacts
-                    SET stroke_subtype = NULL
-                    WHERE id = :contact_id
-                """),
-                {"contact_id": contact_id},
-            )
-            cleared_count += 1
-            logger.info(
-                f"Cleared unmappable subtype '{stroke_subtype}' "
-                f"for stroke_type '{stroke_type}' in ball_contact {contact_id}"
-            )
-
-    if mapped_count > 0 or cleared_count > 0:
+    # Check if ball_contacts table exists (it shouldn't after migration 3f2a1c9d7b10)
+    if "ball_contacts" not in inspector.get_table_names():
         logger.info(
-            f"Migration completed: mapped {mapped_count} subtypes, "
-            f"cleared {cleared_count} unmappable subtypes"
+            "Migration d55e25138d67 skipped: ball_contacts table does not exist "
+            "(table was dropped in migration 3f2a1c9d7b10)"
         )
-    else:
-        logger.info("Migration completed: no invalid stroke subtypes found")
+        return
 
-    bind.commit()
+    # If table exists (shouldn't happen), log warning but don't fail
+    logger.warning(
+        "ball_contacts table still exists but migration dependencies removed. "
+        "Skipping subtype cleanup."
+    )
 
 
 def downgrade() -> None:

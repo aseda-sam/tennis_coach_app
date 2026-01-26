@@ -26,6 +26,9 @@ def create_video_record(
     height: Optional[int] = None,
     frame_count: Optional[int] = None,
     is_demo: bool = False,
+    session_type: Optional[str] = None,
+    camera_angle: Optional[str] = None,
+    recorded_at: Optional[datetime] = None,
 ) -> Video:
     """Create a new video record in the database.
 
@@ -42,6 +45,9 @@ def create_video_record(
         height: Video height in pixels
         frame_count: Total number of frames
         is_demo: Whether this is a demo video
+        session_type: Session type ('serve_drill', 'match', 'practice', 'other')
+        camera_angle: Camera angle ('behind', 'profile', 'diagonal', 'unknown')
+        recorded_at: When video was recorded (for trends)
     """
     db_video = Video(
         filename=filename,
@@ -56,6 +62,9 @@ def create_video_record(
         status="uploaded",
         user_id=user_id,
         is_demo=is_demo,
+        session_type=session_type,
+        camera_angle=camera_angle,
+        recorded_at=recorded_at,
     )
     db.add(db_video)
     db.commit()
@@ -118,46 +127,7 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
     filename = video.filename
 
     try:
-        # Delete video annotations
-        from app.models.video_annotation import VideoAnnotation
         from app.services.storage_service import storage_service
-
-        video_annotations = (
-            db.query(VideoAnnotation).filter(VideoAnnotation.video_id == video_id).all()
-        )
-        for annotation in video_annotations:
-            # Delete annotated video files using storage service
-            if annotation.annotated_video_path:
-                try:
-                    # Use storage service to delete (handles both local and Supabase)
-                    storage_service.delete_file(annotation.annotated_video_path)
-                    logger.info(
-                        f"Deleted video annotation file: {annotation.annotated_video_path}"
-                    )
-                except (ValueError, RuntimeError, OSError) as e:
-                    logger.warning(
-                        f"Failed to delete video annotation file {annotation.annotated_video_path}: {e}"
-                    )
-
-        # Delete pose detection annotated video files
-        from app.models.pose_detection import PoseDetection
-
-        pose_detections = (
-            db.query(PoseDetection).filter(PoseDetection.video_id == video_id).all()
-        )
-        for pose_detection in pose_detections:
-            # Delete annotated video files using storage service
-            if pose_detection.annotated_video_path:
-                try:
-                    # Use storage service to delete (handles both local and Supabase)
-                    storage_service.delete_file(pose_detection.annotated_video_path)
-                    logger.info(
-                        f"Deleted pose detection annotated video: {pose_detection.annotated_video_path}"
-                    )
-                except (ValueError, RuntimeError, OSError) as e:
-                    logger.warning(
-                        f"Failed to delete pose detection annotated video {pose_detection.annotated_video_path}: {e}"
-                    )
 
         # Delete original video file from storage (local or Supabase)
 
@@ -176,10 +146,7 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
 
         # Delete from database (this will cascade delete all related records)
         # The cascade relationships will automatically delete:
-        # - BallDetection records
         # - PoseDetection records
-        # - BallContact records
-        # - VideoAnnotation records
         if not delete_video_record(db, video_id):
             logger.error(f"Database deletion failed for video {video_id}")
             return False, filename, video_id
@@ -200,30 +167,6 @@ def update_video_status(
         video.status = status
         if error_message:
             video.error_message = error_message
-        db.commit()
-        db.refresh(video)
-        return video
-    return None
-
-
-def update_video_quality(
-    db: Session,
-    video_id: int,
-    quality_score: float,
-    blur_score: float,
-    lighting_score: float,
-    resolution_score: float,
-    quality_level: str,
-) -> Optional[Video]:
-    """Update video quality metrics."""
-    video = db.query(Video).filter(Video.id == video_id).first()
-    if video:
-        video.quality_score = quality_score
-        video.blur_score = blur_score
-        video.lighting_score = lighting_score
-        video.resolution_score = resolution_score
-        video.quality_level = quality_level
-        video.quality_assessed_at = datetime.utcnow()
         db.commit()
         db.refresh(video)
         return video

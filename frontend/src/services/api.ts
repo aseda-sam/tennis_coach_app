@@ -3,11 +3,10 @@ import {
   OverlayData,
   VideoListResponse,
   VideoMetadata,
-  VideoMetrics,
   VideoUploadResponse,
 } from '../types/video';
-import { supabase } from './supabaseClient';
 import { createAuthInterceptor } from '../utils/authInterceptor';
+import { supabase } from './supabaseClient';
 
 // API configuration
 const API_BASE_URL =
@@ -27,6 +26,33 @@ const api = axios.create({
 
 // Add auth interceptor to analysisApiInstance (used by analysisApi.startAnalysis)
 createAuthInterceptor(analysisApiInstance, 'Analysis API Instance');
+
+// Normalize errors for analysisApiInstance too
+analysisApiInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Normalize FastAPI error responses to always have string detail
+    if (
+      error.response?.data?.detail &&
+      Array.isArray(error.response.data.detail)
+    ) {
+      const messages = error.response.data.detail
+        .map((err: { type?: string; loc?: unknown[]; msg?: string }) => {
+          if (typeof err === 'object' && err !== null && 'msg' in err) {
+            const loc = Array.isArray(err.loc)
+              ? err.loc.slice(1).join('.')
+              : '';
+            return loc ? `${loc}: ${err.msg}` : err.msg;
+          }
+          return String(err);
+        })
+        .filter(Boolean);
+      error.response.data.detail =
+        messages.length > 0 ? messages.join('; ') : 'Validation error';
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Add request/response interceptors
 api.interceptors.request.use(async (config) => {
@@ -49,44 +75,57 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Errors are handled by calling code through error callbacks
-    // No need to log here - let the application handle errors appropriately
+    // Normalize FastAPI error responses to always have string detail
+    // FastAPI validation errors return detail as array: [{type, loc, msg, input}]
+    if (
+      error.response?.data?.detail &&
+      Array.isArray(error.response.data.detail)
+    ) {
+      const messages = error.response.data.detail
+        .map((err: { type?: string; loc?: unknown[]; msg?: string }) => {
+          if (typeof err === 'object' && err !== null && 'msg' in err) {
+            const loc = Array.isArray(err.loc)
+              ? err.loc.slice(1).join('.')
+              : '';
+            return loc ? `${loc}: ${err.msg}` : err.msg;
+          }
+          return String(err);
+        })
+        .filter(Boolean);
+      error.response.data.detail =
+        messages.length > 0 ? messages.join('; ') : 'Validation error';
+    }
     return Promise.reject(error);
   }
 );
 
-// Normalize analysis data to ensure arrays are always returned
-const normalizeAnalysis = (data: unknown): AnalysisData => {
-  const analysisData = data as Record<string, unknown>;
-  return {
-    ...analysisData,
-    ball_detections:
-      typeof analysisData.ball_detections === 'string'
-        ? JSON.parse(analysisData.ball_detections || '[]')
-        : (analysisData.ball_detections ?? []),
-    pose_detections:
-      typeof analysisData.pose_detections === 'string'
-        ? JSON.parse(analysisData.pose_detections || '[]')
-        : (analysisData.pose_detections ?? []),
-    contact_timestamps:
-      typeof analysisData.contact_timestamps === 'string'
-        ? JSON.parse(analysisData.contact_timestamps as string || '[]')
-        : (analysisData.contact_timestamps ?? []),
-    contact_detections:
-      typeof analysisData.contact_detections === 'string'
-        ? JSON.parse(analysisData.contact_detections as string || '[]')
-        : (analysisData.contact_detections ?? []),
-  } as AnalysisData;
-};
-
 export const videoApi = {
   // Upload a video file
-  uploadVideo: async (file: File, isDemo: boolean = false): Promise<VideoUploadResponse> => {
+  uploadVideo: async (
+    file: File,
+    isDemo: boolean = false,
+    metadata?: {
+      session_type?: string;
+      camera_angle?: string;
+    }
+  ): Promise<VideoUploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
 
+    const params = new URLSearchParams();
+    if (isDemo) {
+      params.append('is_demo', 'true');
+    }
+    if (metadata?.session_type) {
+      params.append('session_type', metadata.session_type);
+    }
+    if (metadata?.camera_angle) {
+      params.append('camera_angle', metadata.camera_angle);
+    }
+
+    const queryString = params.toString();
     const response = await api.post<VideoUploadResponse>(
-      `/videos/upload?is_demo=${isDemo}`,
+      `/videos/upload${queryString ? `?${queryString}` : ''}`,
       formData,
       {
         headers: {
@@ -129,7 +168,10 @@ export const videoApi = {
   },
 
   // Get signed URL for video (preferred - avoids redirect race conditions)
-  getVideoUrl: async (videoId: number, expiresIn: number = 3600): Promise<string> => {
+  getVideoUrl: async (
+    videoId: number,
+    expiresIn: number = 3600
+  ): Promise<string> => {
     const response = await api.get<{ url: string; expires_in: number }>(
       `/videos/${videoId}/url?expires_in=${expiresIn}`
     );
@@ -151,11 +193,13 @@ export const videoApi = {
   // Bulk check video analysis statuses (optimized)
   getBulkVideoAnalysisStatus: async (
     videoIds: number[]
-  ): Promise<{
-    video_id: number;
-    has_analysis: boolean;
-    analysis_types: string[];
-  }[]> => {
+  ): Promise<
+    {
+      video_id: number;
+      has_analysis: boolean;
+      analysis_types: string[];
+    }[]
+  > => {
     const response = await api.post<{
       statuses: {
         video_id: number;
@@ -166,12 +210,6 @@ export const videoApi = {
     return response.data.statuses;
   },
 
-  // Get video performance metrics
-  getVideoMetrics: async (videoId: number): Promise<VideoMetrics> => {
-    const response = await api.get<VideoMetrics>(`/videos/${videoId}/metrics`);
-    return response.data;
-  },
-
   // Get overlay data for client-side rendering
   getOverlayData: async (videoId: number): Promise<OverlayData> => {
     try {
@@ -180,7 +218,9 @@ export const videoApi = {
       );
       return response.data;
     } catch (error: unknown) {
-      const axiosError = error as { response?: { status?: number; data?: { detail?: string } } };
+      const axiosError = error as {
+        response?: { status?: number; data?: { detail?: string } };
+      };
       if (axiosError.response?.status === 404) {
         throw new Error(
           'Pose data not found for this video. Please run pose detection analysis first.'
@@ -218,27 +258,18 @@ export interface AnalysisData {
   video_filename: string;
   analysis_type: string;
   total_frames: number;
-  frames_with_balls: number;
-  total_ball_detections: number;
-  average_detections_per_frame: number;
-  detection_rate: number;
   processing_time: number;
   model_used?: string;
   confidence_threshold?: number;
   include_pose_detection?: boolean;
   frames_with_pose?: number;
   pose_detection_rate?: number;
-  contact_frames?: number;
-  contact_timestamps?: number[];
-  contact_detections?: unknown[];
-  ball_detections: unknown[];
   pose_detections: unknown[];
   created_at: string;
   updated_at?: string;
   // New timing information
   timing?: {
     frame_extraction?: number;
-    ball_detection?: number;
     pose_detection?: number;
     frame_annotation?: number;
     video_creation?: number;
@@ -290,30 +321,7 @@ export const analysisApi = {
     return response.data;
   },
 
-  // Get analysis results by analysis ID
-  getAnalysis: async (analysisId: number): Promise<AnalysisData> => {
-    const response = await api.get<AnalysisData>(`/analysis/${analysisId}`);
-    return normalizeAnalysis(response.data);
-  },
-
-  // Get analysis results by video ID
-  getAnalysisByVideo: async (videoId: number): Promise<AnalysisData> => {
-    const response = await api.get<AnalysisData>(`/analysis/videos/${videoId}`);
-    return normalizeAnalysis(response.data);
-  },
-
-  // Get all analyses
-  getAllAnalyses: async (): Promise<AnalysisData[]> => {
-    const response = await api.get<AnalysisData[]>('/analysis/');
-    return response.data.map(normalizeAnalysis);
-  },
-
-  // Delete analysis by analysis ID
-  deleteAnalysis: async (analysisId: number): Promise<void> => {
-    await api.delete(`/analysis/${analysisId}`);
-  },
-
-  // New methods for task status tracking
+  // Task status tracking methods
   // Get job status by job ID (RQ)
   getTaskStatus: async (jobId: string): Promise<TaskStatus> => {
     const response = await api.get<TaskStatus>(`/analysis/status/${jobId}`);
@@ -328,7 +336,7 @@ export const analysisApi = {
 
   // Get task statistics
   getTaskStats: async (): Promise<TaskStatsResponse> => {
-    const response = await api.get<TaskStatsResponse>('/analysis/tasks/stats');
+    const response = await api.get<TaskStatsResponse>('/analysis/stats');
     return response.data;
   },
 

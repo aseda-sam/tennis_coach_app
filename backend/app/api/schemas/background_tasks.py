@@ -11,13 +11,9 @@ class TaskStatus(BaseModel):
 
     job_id: str = Field(description="Unique job identifier (UUID string)")
     video_id: int = Field(description="Video ID being analyzed")
-    analysis_type: Literal[
-        "pose_only",
-        "ball_only",
-        "video_annotation_only",
-        "pose_with_annotation",
-        "contact_metrics",
-    ] = Field(description="Type of analysis being performed")
+    analysis_type: Literal["pose_only",] = Field(
+        description="Type of analysis being performed"
+    )
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
         description="Current task status (mapped from RQ statuses)"
     )
@@ -37,25 +33,6 @@ class TaskStatus(BaseModel):
     completed_at: Optional[datetime] = Field(
         default=None, description="Task completion timestamp"
     )
-    estimated_duration: Optional[float] = Field(
-        default=None, description="Estimated completion time in seconds"
-    )
-
-
-class TaskStartResponse(BaseModel):
-    """Response model for starting a background task (deprecated, use AnalysisResponse)."""
-
-    task_id: int = Field(description="Unique task identifier (deprecated, use job_id)")
-    video_id: int = Field(description="Video ID being analyzed")
-    analysis_type: Literal[
-        "pose_only",
-        "ball_only",
-        "video_annotation_only",
-        "pose_with_annotation",
-        "contact_metrics",
-    ] = Field(description="Type of analysis being performed")
-    status: Literal["queued"] = Field(description="Initial task status")
-    message: str = Field(description="Confirmation message")
     estimated_duration: Optional[float] = Field(
         default=None, description="Estimated completion time in seconds"
     )
@@ -84,22 +61,14 @@ class TaskStatsResponse(BaseModel):
 class AnalysisRequest(BaseModel):
     """Request model for starting analysis."""
 
-    analysis_type: Literal[
-        "pose_only",
-        "ball_only",
-        "video_annotation_only",
-        "pose_with_annotation",
-        "contact_metrics",
-    ] = Field(description="Type of analysis to perform")
+    analysis_type: Literal["pose_only"] = Field(
+        description="Type of analysis to perform"
+    )
     confidence_threshold: float = Field(
         default=0.7,
         ge=0.0,
         le=1.0,
-        description="YOLO confidence threshold (not used for contact_metrics)",
-    )
-    force_reanalysis: bool = Field(
-        default=False,
-        description="Force reanalysis even if already analyzed (for contact_metrics)",
+        description="Pose detection confidence threshold",
     )
 
 
@@ -108,13 +77,9 @@ class AnalysisResponse(BaseModel):
 
     job_id: str = Field(description="Background job identifier (UUID string)")
     video_id: int = Field(description="Video ID being analyzed")
-    analysis_type: Literal[
-        "pose_only",
-        "ball_only",
-        "video_annotation_only",
-        "pose_with_annotation",
-        "contact_metrics",
-    ] = Field(description="Type of analysis being performed")
+    analysis_type: Literal["pose_only",] = Field(
+        description="Type of analysis being performed"
+    )
     status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
         description="Current task status (mapped from RQ statuses)"
     )

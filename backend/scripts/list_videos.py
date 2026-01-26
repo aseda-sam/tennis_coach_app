@@ -37,11 +37,8 @@ def list_videos() -> None:
                 f"{video.id:<6} {video.filename[:38]:<40} {video.status:<12} {demo_status:<10} {user_id_short:<40}"
             )
 
-        print("\nTo promote a video to demo, use:")
-        print("  python scripts/promote_video_to_demo.py --video-id <ID>")
-        print(
-            "\nTo check if migration was run, look for 'is_demo' column in the output above."
-        )
+        print("\nTo set the active demo video, use:")
+        print("  python scripts/set_active_demo.py --video-id <ID>")
 
     finally:
         db.close()

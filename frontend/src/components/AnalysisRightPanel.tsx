@@ -1,10 +1,5 @@
-import React, { useMemo } from 'react';
-import {
-    STROKE_SUBTYPE_LABELS,
-    STROKE_TYPE_LABELS,
-} from '../constants/shotTypes';
-import { useBallContacts } from '../hooks/useBallContacts';
-import { formatTime } from '../utils/validation';
+import React from 'react';
+import ServeAttemptsPanel from './ServeAttemptsPanel';
 import './AnalysisRightPanel.css';
 
 interface AnalysisRightPanelProps {
@@ -13,7 +8,7 @@ interface AnalysisRightPanelProps {
   analysisStatus?: {
     has_analysis?: boolean;
   };
-  onContactClick?: (contactId: number) => void; // Callback when contact is clicked
+  onContactClick?: (serveAttemptId: number) => void; // Callback when serve attempt is clicked
   isDemo?: boolean; // If true, indicates demo mode (for future use)
 }
 
@@ -24,78 +19,14 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
   onContactClick,
   isDemo = false,
 }) => {
-  const { contacts: ballContacts } = useBallContacts({
-    videoId,
-    autoRefresh: true,
-  });
-
-  const contactsWithMetrics = useMemo(() => {
-    return ballContacts
-      .filter((contact) => contact.elbow_angle != null)
-      .sort((a, b) => a.video_timestamp - b.video_timestamp);
-  }, [ballContacts]);
-
   return (
     <div className="analysis-right-panel">
-      {/* Elbow Angle Metrics Card */}
       {analysisStatus?.has_analysis && (
-        <div className="analysis-right-panel__card">
-          <div className="analysis-right-panel__trajectory-header">
-            <div className="analysis-right-panel__trajectory-title-group">
-              <h3 className="analysis-right-panel__card-title">
-                Shot Analysis
-              </h3>
-            </div>
-          </div>
-          <div className="analysis-right-panel__metrics-list">
-            {contactsWithMetrics.length > 0 ? (
-              contactsWithMetrics.map((contact) => {
-                const angle = contact.elbow_angle;
-                const displayLabel = contact.stroke_subtype
-                  ? STROKE_SUBTYPE_LABELS[contact.stroke_subtype] ||
-                    contact.stroke_subtype
-                  : contact.stroke_type
-                    ? STROKE_TYPE_LABELS[contact.stroke_type] ||
-                      contact.stroke_type
-                    : 'Unknown';
-
-                return (
-                  <div
-                    key={contact.id}
-                    className="analysis-right-panel__metric-item"
-                    onClick={() => onContactClick?.(contact.id)}
-                    style={{ cursor: onContactClick ? 'pointer' : 'default' }}
-                  >
-                    <div className="analysis-right-panel__metric-header">
-                      <div className="analysis-right-panel__metric-dot" />
-                      <div className="analysis-right-panel__metric-time">
-                        {formatTime(contact.video_timestamp)}
-                      </div>
-                      <div className="analysis-right-panel__metric-stroke">
-                        {displayLabel}
-                      </div>
-                    </div>
-                    <div className="analysis-right-panel__metric-angle">
-                      <span className="analysis-right-panel__angle-value">
-                        {Math.round(angle as number)}°
-                      </span>
-                      <span className="analysis-right-panel__angle-label">
-                        Elbow Angle
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="analysis-right-panel__metrics-empty">
-                <p>No contact metrics available</p>
-                <p className="analysis-right-panel__metrics-hint">
-                  Manually add contacts and run pose analysis to see metrics
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+        <ServeAttemptsPanel
+          videoId={videoId}
+          onServeAttemptClick={onContactClick}
+          isDemo={isDemo}
+        />
       )}
 
       {/* Ball Toss Trajectory Card */}
