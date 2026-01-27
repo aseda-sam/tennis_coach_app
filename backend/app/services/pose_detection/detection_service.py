@@ -148,7 +148,6 @@ class PoseDetectionService:
             logger.error(f"Error in pose detection: {e}")
             return None
 
-
     def analyze_video_file(
         self,
         video_path: Path,
@@ -224,16 +223,25 @@ class PoseDetectionService:
                 "total_frames": total_frames,
                 "frames_with_poses": frames_with_poses,
                 "total_pose_detections": frames_with_poses,
-                "detection_rate": frames_with_poses / total_frames if total_frames else 0.0,
+                "detection_rate": frames_with_poses / total_frames
+                if total_frames
+                else 0.0,
                 "processing_time_seconds": processing_time,
-                "frame_processing_rate": total_frames / processing_time if processing_time > 0 else 0,
+                "frame_processing_rate": total_frames / processing_time
+                if processing_time > 0
+                else 0,
                 "confidence_scores": confidence_scores,
                 "average_confidence": (
                     sum(non_zero_confidences) / len(non_zero_confidences)
-                    if non_zero_confidences else None
+                    if non_zero_confidences
+                    else None
                 ),
-                "min_confidence": min(non_zero_confidences) if non_zero_confidences else None,
-                "max_confidence": max(non_zero_confidences) if non_zero_confidences else None,
+                "min_confidence": min(non_zero_confidences)
+                if non_zero_confidences
+                else None,
+                "max_confidence": max(non_zero_confidences)
+                if non_zero_confidences
+                else None,
                 "confidence_threshold": confidence_threshold or 0.5,
                 "detection_threshold": detection_threshold or 0.5,
                 "video_path": str(video_path),
@@ -438,7 +446,7 @@ class PoseDetectionService:
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error extracting frames from {video_path}: {e}")
         finally:
-            if 'cap' in locals():
+            if "cap" in locals():
                 cap.release()
 
     def _extract_keypoints(
