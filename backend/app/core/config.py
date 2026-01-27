@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     REDIS_URL: Optional[str] = None
     SERVICE_TYPE: Optional[str] = None  # 'api' or 'worker'
 
+    # Background job behavior
+    AUTO_ENQUEUE_ON_UPLOAD: bool = False
+
     # ML Models
     ML_MODELS_DIR: str = "ml_models"
 

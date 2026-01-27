@@ -107,7 +107,7 @@ class VideoJobResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def model_validate(cls, obj):
+    def model_validate(cls, obj: object) -> "VideoJobResponse":
         """Override to convert UUID to string."""
         if hasattr(obj, "id") and hasattr(obj.id, "__str__"):
             # Create a dict with id as string
@@ -851,19 +851,33 @@ async def upload_video(
             recorded_at=recorded_at,
         )
 
-        # Auto-enqueue pose detection analysis (silently fail if Redis unavailable)
-        # This allows uploads to succeed even if Redis is down, user can manually trigger analysis later
-        # enqueue_pose_analysis catches exceptions internally, but we also wrap in try/except
-        # to handle edge cases (e.g., if function signature changes or unexpected errors occur)
-        try:
-            enqueue_pose_analysis(
-                video_id=db_video.id,
-                video_path=db_video.file_path,
-                confidence_threshold=0.7,  # Default threshold from AnalysisRequest schema
+        # Auto-enqueue pose detection analysis (opt-in via setting)
+        # Disabled by default to prevent unintended background jobs during tests
+        # or in environments where Redis should not be used.
+        # When enabled, ALL uploads (regular and demo) are auto-enqueued.
+        # Pytest tests are unaffected because they mock enqueue_pose_analysis.
+        if settings.AUTO_ENQUEUE_ON_UPLOAD:
+            # Auto-enqueue pose detection analysis (silently fail if Redis unavailable)
+            # This allows uploads to succeed even if Redis is down, user can manually trigger analysis later
+            try:
+                enqueue_pose_analysis(
+                    video_id=db_video.id,
+                    video_path=db_video.file_path,
+                    confidence_threshold=0.7,  # Default threshold from AnalysisRequest schema
+                )
+                logger.info(
+                    "Auto-enqueued pose analysis for video %d (is_demo=%s)",
+                    db_video.id,
+                    is_demo,
+                )
+            except Exception:  # noqa: BLE001 - Intentionally catch all to ensure upload succeeds
+                # enqueue_pose_analysis already logs errors internally, just ensure upload doesn't fail
+                logger.debug("Failed to enqueue pose analysis, but upload succeeded")
+        else:
+            logger.debug(
+                "Auto-enqueue disabled (AUTO_ENQUEUE_ON_UPLOAD=False). "
+                "Set AUTO_ENQUEUE_ON_UPLOAD=True in .env to enable."
             )
-        except Exception:  # noqa: BLE001 - Intentionally catch all to ensure upload succeeds
-            # enqueue_pose_analysis already logs errors internally, just ensure upload doesn't fail
-            logger.debug("Failed to enqueue pose analysis, but upload succeeded")
 
         return VideoUploadResponse(
             video_id=db_video.id,
