@@ -102,13 +102,13 @@ export const useAnalysisManager = ({
     const checkForActiveJobs = async () => {
       try {
         // Get all active tasks
-        const tasksResponse = await unifiedAnalysisApi.listTasks();
+        const jobs = await unifiedAnalysisApi.getVideoJobs('queued,processing');
 
         // Find active job for this video
-        const activeJob = Object.values(tasksResponse.tasks).find(
-          (task) =>
-            task.video_id === videoId &&
-            (task.status === 'queued' || task.status === 'processing')
+        const activeJob = jobs.find(
+          (job) =>
+            job.video_id === videoId &&
+            (job.status === 'queued' || job.status === 'processing')
         );
 
         if (activeJob && isMounted) {
@@ -118,12 +118,12 @@ export const useAnalysisManager = ({
             // Only resume if still in idle state (avoid race conditions)
             if (prev.status === 'idle' && !prev.jobId) {
               // Store job_id in ref to start polling outside setState callback
-              shouldStartPollingRef.current = activeJob.job_id;
+              shouldStartPollingRef.current = activeJob.id;
               return {
                 ...prev,
                 status: 'processing',
-                jobId: activeJob.job_id,
-                progress: activeJob.progress || 0,
+                jobId: activeJob.id,
+                progress: 0,
                 error: null,
               };
             }

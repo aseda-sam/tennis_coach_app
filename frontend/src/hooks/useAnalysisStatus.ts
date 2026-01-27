@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import unifiedAnalysisApi, { TaskStatus } from '../services/unifiedAnalysisApi';
+import unifiedAnalysisApi, { VideoJob } from '../services/unifiedAnalysisApi';
 import { AnalysisData } from '../services/api';
 
 /**
@@ -61,46 +61,41 @@ export function useAnalysisStatus(
   const currentJobIdRef = useRef<string | null>(null);
   const isVisibleRef = useRef(true);
 
-  // Convert TaskStatus to AnalysisState discriminated union
-  const taskStatusToState = useCallback(
-    (taskStatus: TaskStatus): AnalysisState => {
-      switch (taskStatus.status) {
-        case 'queued':
-          return {
-            status: 'queued',
-            jobId: taskStatus.job_id,
-            startedAt: taskStatus.started_at || new Date().toISOString(),
-          };
-        case 'processing':
-          return {
-            status: 'processing',
-            jobId: taskStatus.job_id,
-            startedAt: taskStatus.started_at || new Date().toISOString(),
-          };
-        case 'completed':
-          return {
-            status: 'completed',
-            jobId: taskStatus.job_id,
-            result: taskStatus.result ?? null,
-            completedAt: taskStatus.completed_at || new Date().toISOString(),
-          };
-        case 'failed':
-        case 'cancelled':
-          return {
-            status: 'failed',
-            jobId: taskStatus.job_id,
-            error: taskStatus.error || `Task ${taskStatus.status}`,
-            startedAt: taskStatus.started_at || new Date().toISOString(),
-          };
-        default:
-          return { status: 'idle' };
-      }
-    },
-    []
-  );
+  const jobToState = useCallback((job: VideoJob): AnalysisState => {
+    switch (job.status) {
+      case 'queued':
+        return {
+          status: 'queued',
+          jobId: job.id,
+          startedAt: job.started_at || new Date().toISOString(),
+        };
+      case 'processing':
+        return {
+          status: 'processing',
+          jobId: job.id,
+          startedAt: job.started_at || new Date().toISOString(),
+        };
+      case 'completed':
+        return {
+          status: 'completed',
+          jobId: job.id,
+          result: null,
+          completedAt: job.finished_at || new Date().toISOString(),
+        };
+      case 'failed':
+        return {
+          status: 'failed',
+          jobId: job.id,
+          error: job.error || 'Job failed',
+          startedAt: job.started_at || new Date().toISOString(),
+        };
+      default:
+        return { status: 'idle' };
+    }
+  }, []);
 
-  // Fetch task status
-  const fetchTaskStatus = useCallback(
+  // Fetch job status (DB-backed)
+  const fetchJobStatus = useCallback(
     async (jobId: string) => {
       if (!jobId) return;
 
@@ -114,8 +109,27 @@ export function useAnalysisStatus(
         }
         abortControllerRef.current = new AbortController();
 
-        const taskStatus = await unifiedAnalysisApi.getTaskStatus(jobId);
-        const newState = taskStatusToState(taskStatus);
+        const job = await unifiedAnalysisApi.getVideoJob(jobId);
+        if (!job) {
+          const completedState: AnalysisState = {
+            status: 'completed',
+            jobId,
+            result: null,
+            completedAt: new Date().toISOString(),
+          };
+          setState(completedState);
+          onStateChange?.(completedState);
+          setIsPolling(false);
+          setIsLoading(false);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+          onComplete?.(completedState);
+          return;
+        }
+
+        const newState = jobToState(job);
 
         setState(newState);
         onStateChange?.(newState);
@@ -143,31 +157,12 @@ export function useAnalysisStatus(
           return;
         }
       } catch (err: unknown) {
-        // If job not found (404), treat as completed
         const axiosError = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
-        if (axiosError?.response?.status === 404) {
-          const completedState: AnalysisState = {
-            status: 'completed',
-            jobId,
-            result: null,
-            completedAt: new Date().toISOString(),
-          };
-          setState(completedState);
-          onStateChange?.(completedState);
-          setIsPolling(false);
-          setIsLoading(false);
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-          onComplete?.(completedState);
-          return;
-        }
 
         const errorMessage =
           axiosError?.response?.data?.detail ||
           axiosError?.message ||
-          'Failed to fetch task status';
+          'Failed to fetch job status';
         setError(errorMessage);
         setIsLoading(false);
         // Don't stop polling on transient errors - let it retry
@@ -175,15 +170,15 @@ export function useAnalysisStatus(
         setIsLoading(false);
       }
     },
-    [taskStatusToState, onComplete, onError, onStateChange]
+    [jobToState, onComplete, onError, onStateChange]
   );
 
   // Poll function that respects visibility
   const poll = useCallback(() => {
     const jobId = currentJobIdRef.current;
     if (!jobId || !isVisibleRef.current) return;
-    fetchTaskStatus(jobId);
-  }, [fetchTaskStatus]);
+    fetchJobStatus(jobId);
+  }, [fetchJobStatus]);
 
   // Start polling
   const startPolling = useCallback(
@@ -199,7 +194,7 @@ export function useAnalysisStatus(
       setError(null);
 
       // Fetch immediately
-      fetchTaskStatus(jobId);
+      fetchJobStatus(jobId);
 
       // Set up interval for continued polling (only when visible)
       intervalRef.current = setInterval(() => {
@@ -208,7 +203,7 @@ export function useAnalysisStatus(
         }
       }, pollInterval);
     },
-    [fetchTaskStatus, pollInterval, poll]
+    [fetchJobStatus, pollInterval, poll]
   );
 
   // Stop polling
@@ -232,9 +227,9 @@ export function useAnalysisStatus(
   const refetch = useCallback(async () => {
     const jobId = currentJobIdRef.current;
     if (jobId) {
-      await fetchTaskStatus(jobId);
+      await fetchJobStatus(jobId);
     }
-  }, [fetchTaskStatus]);
+  }, [fetchJobStatus]);
 
   // Visibility API: pause polling when tab hidden, resume on focus
   useEffect(() => {
@@ -243,7 +238,7 @@ export function useAnalysisStatus(
 
       if (!document.hidden && currentJobIdRef.current && isPolling) {
         // Tab became visible - fetch immediately
-        fetchTaskStatus(currentJobIdRef.current);
+        fetchJobStatus(currentJobIdRef.current);
       }
     };
 
@@ -252,7 +247,7 @@ export function useAnalysisStatus(
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isPolling, fetchTaskStatus]);
+  }, [isPolling, fetchJobStatus]);
 
   // Cleanup on unmount
   useEffect(() => {

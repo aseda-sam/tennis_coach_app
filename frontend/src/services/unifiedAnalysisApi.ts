@@ -91,6 +91,17 @@ export interface TaskStatsResponse {
   max_workers?: number;
 }
 
+export interface VideoJob {
+  id: string;
+  video_id: number;
+  job_type: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  error?: string;
+  created_at: string;
+  started_at?: string;
+  finished_at?: string;
+}
+
 export interface CancellationResponse {
   message: string;
   job_id: string;
@@ -119,6 +130,24 @@ class UnifiedAnalysisApi {
       `/analysis/status/${jobId}`
     );
     return response.data;
+  }
+
+  /**
+   * List video jobs (DB-backed)
+   */
+  async getVideoJobs(status?: string): Promise<VideoJob[]> {
+    const response = await analysisApi.get<VideoJob[]>('/videos/jobs', {
+      params: status ? { status } : undefined,
+    });
+    return response.data;
+  }
+
+  /**
+   * Get a single VideoJob by ID (DB-backed)
+   */
+  async getVideoJob(jobId: string): Promise<VideoJob | null> {
+    const jobs = await this.getVideoJobs();
+    return jobs.find((job) => job.id === jobId) ?? null;
   }
 
   /**
