@@ -105,8 +105,16 @@ class UnifiedAnalysisApi {
    * Get a single VideoJob by ID (DB-backed)
    */
   async getVideoJob(jobId: string): Promise<VideoJob | null> {
-    const jobs = await this.getVideoJobs();
-    return jobs.find((job) => job.id === jobId) ?? null;
+    try {
+      const response = await analysisApi.get<VideoJob>(`/videos/jobs/${jobId}`);
+      return response.data;
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**

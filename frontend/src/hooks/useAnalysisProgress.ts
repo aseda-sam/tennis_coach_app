@@ -86,18 +86,21 @@ export function useAnalysisProgress(
 
         const job = await unifiedAnalysisApi.getVideoJob(jobId);
         if (!job) {
+          const errorMessage = 'Job not found';
           const progressData: AnalysisProgress = {
             jobId,
             videoId: 0,
             analysisType: 'pose_only',
-            status: 'completed',
-            progress: 100,
+            status: 'failed',
+            progress: 0,
+            error: errorMessage,
             result: null,
             completedAt: new Date().toISOString(),
             elapsedTime: 0,
           };
           setProgress(progressData);
-          onComplete?.(progressData);
+          setError(errorMessage);
+          onError?.(errorMessage);
           setIsPolling(false);
           setIsLoading(false);
           if (intervalRef.current) {

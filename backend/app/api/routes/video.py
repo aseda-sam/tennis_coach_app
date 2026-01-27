@@ -212,6 +212,50 @@ async def get_video_jobs(
         log_and_raise_error(e, "get_video_jobs", {"user_id": current_user["id"]})
 
 
+@router.get("/jobs/{job_id}", response_model=VideoJobResponse)
+async def get_video_job(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VideoJobResponse:
+    """
+    Get a single video job by ID (DB-backed).
+
+    Args:
+        job_id: VideoJob UUID
+
+    Returns:
+        Video job for the authenticated user
+    """
+    try:
+        from uuid import UUID
+
+        from app.utils.authorization import is_admin
+
+        job_uuid = UUID(job_id)
+        query = db.query(VideoJob).filter(VideoJob.id == job_uuid)
+        if not is_admin(current_user):
+            query = query.filter(VideoJob.user_id == current_user["id"])
+
+        job = query.first()
+        if not job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Job {job_id} not found",
+            )
+
+        return VideoJobResponse.model_validate(job)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} not found",
+        ) from None
+    except HTTPException:
+        raise
+    except (OSError, RuntimeError) as e:
+        log_and_raise_error(e, "get_video_job", {"job_id": job_id})
+
+
 @router.get("/", response_model=List[VideoListItem])
 async def list_videos(
     pagination: PaginationParams = Depends(),
@@ -859,19 +903,45 @@ async def upload_video(
         if settings.AUTO_ENQUEUE_ON_UPLOAD:
             # Auto-enqueue pose detection analysis (silently fail if Redis unavailable)
             # This allows uploads to succeed even if Redis is down, user can manually trigger analysis later
+            video_job = VideoJob(
+                video_id=db_video.id,
+                user_id=current_user["id"],
+                job_type="pose_only",
+                status="queued",
+            )
+            db.add(video_job)
+            db.commit()
+            db.refresh(video_job)
+
             try:
-                enqueue_pose_analysis(
+                job = enqueue_pose_analysis(
                     video_id=db_video.id,
                     video_path=db_video.file_path,
                     confidence_threshold=0.7,  # Default threshold from AnalysisRequest schema
+                    video_job_id=str(video_job.id),
                 )
-                logger.info(
-                    "Auto-enqueued pose analysis for video %d (is_demo=%s)",
-                    db_video.id,
-                    is_demo,
-                )
+                if not job:
+                    video_job.status = "failed"
+                    video_job.error = "Failed to enqueue job to Redis"
+                    db.commit()
+                    logger.debug(
+                        "Auto-enqueue failed for video %d (is_demo=%s)",
+                        db_video.id,
+                        is_demo,
+                    )
+                else:
+                    video_job.rq_job_id = job.id
+                    db.commit()
+                    logger.info(
+                        "Auto-enqueued pose analysis for video %d (is_demo=%s)",
+                        db_video.id,
+                        is_demo,
+                    )
             except Exception:  # noqa: BLE001 - Intentionally catch all to ensure upload succeeds
                 # enqueue_pose_analysis already logs errors internally, just ensure upload doesn't fail
+                video_job.status = "failed"
+                video_job.error = "Failed to enqueue job to Redis"
+                db.commit()
                 logger.debug("Failed to enqueue pose analysis, but upload succeeded")
         else:
             logger.debug(

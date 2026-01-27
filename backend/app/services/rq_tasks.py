@@ -15,6 +15,7 @@ from typing import Any, Dict, Optional
 
 from rq import Retry
 from rq.job import Job
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.database import SessionLocal
 from app.core.redis_config import analysis_queue
@@ -160,7 +161,7 @@ def analyze_pose_detection_rq(
                         video_job.status = "processing"
                         video_job.started_at = datetime.utcnow()
                         db.commit()
-                except (ValueError, TypeError) as e:
+                except (ValueError, TypeError, SQLAlchemyError) as e:
                     logger.warning(
                         f"Invalid video_job_id {video_job_id}: {e}. Continuing without status update."
                     )
@@ -233,7 +234,7 @@ def analyze_pose_detection_rq(
                         video_job.error = str(e)[:500]  # Truncate error message
                         video_job.finished_at = datetime.utcnow()
                         db.commit()
-            except (ValueError, TypeError) as e2:
+            except (ValueError, TypeError, SQLAlchemyError) as e2:
                 logger.warning(
                     f"Failed to update VideoJob status: {e2}. Original error: {e}"
                 )

@@ -195,3 +195,41 @@ class TestVideoJobsAPI:
             "queued",
             "failed",
         ]  # queued if created, failed if RQ unavailable
+
+    def test_get_job_by_id_returns_job(
+        self, client: TestClient, db_session: Session, test_user_id: str
+    ) -> None:
+        """Contract: GET /v0/videos/jobs/{job_id} returns a single job."""
+        video = Video(
+            filename="test_single_job_video.mp4",
+            file_path="/path/to/test_single_job_video.mp4",
+            file_size=1000,
+            user_id=test_user_id,
+        )
+        db_session.add(video)
+        db_session.commit()
+
+        job = VideoJob(
+            video_id=video.id,
+            user_id=test_user_id,
+            job_type="pose_only",
+            status="queued",
+        )
+        db_session.add(job)
+        db_session.commit()
+
+        response = client.get(f"/v0/videos/jobs/{job.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(job.id)
+        assert data["video_id"] == video.id
+        assert data["status"] == "queued"
+
+    def test_get_job_by_id_returns_404_for_missing_job(
+        self, client: TestClient
+    ) -> None:
+        """Contract: GET /v0/videos/jobs/{job_id} returns 404 when missing."""
+        response = client.get("/v0/videos/jobs/00000000-0000-0000-0000-000000000999")
+
+        assert response.status_code == 404

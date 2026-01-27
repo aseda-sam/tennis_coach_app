@@ -111,21 +111,21 @@ export function useAnalysisStatus(
 
         const job = await unifiedAnalysisApi.getVideoJob(jobId);
         if (!job) {
-          const completedState: AnalysisState = {
-            status: 'completed',
+          const failedState: AnalysisState = {
+            status: 'failed',
             jobId,
-            result: null,
-            completedAt: new Date().toISOString(),
+            error: 'Job not found',
+            startedAt: new Date().toISOString(),
           };
-          setState(completedState);
-          onStateChange?.(completedState);
+          setState(failedState);
+          onStateChange?.(failedState);
           setIsPolling(false);
           setIsLoading(false);
           if (intervalRef.current) {
             clearInterval(intervalRef.current);
             intervalRef.current = null;
           }
-          onComplete?.(completedState);
+          onError?.(failedState);
           return;
         }
 
