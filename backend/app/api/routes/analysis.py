@@ -1,6 +1,8 @@
 """Unified analysis API routes with RQ background task support."""
 
 import logging
+import uuid
+from datetime import datetime
 from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -163,8 +165,6 @@ async def cancel_task(
         Cancellation confirmation
     """
     try:
-        import uuid
-
         # Try to interpret as VideoJob UUID first (new system)
         video_job = None
         rq_job_id = None
@@ -232,8 +232,6 @@ async def cancel_task(
             if video_job:
                 video_job.status = "failed"
                 video_job.error = "Cancelled by user"
-                from datetime import datetime
-
                 video_job.finished_at = datetime.utcnow()
                 db.commit()
 

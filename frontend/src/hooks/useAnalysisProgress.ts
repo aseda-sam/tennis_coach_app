@@ -55,14 +55,15 @@ export function useAnalysisProgress(
     const now = Date.now();
     const elapsed = startedAt ? now - startedAt : 0;
 
+    // Progress is now indeterminate - always return 0 for processing states
+    // Only show 100% for completed, 0% for failed
     let progress = 0;
     if (job.status === 'completed') {
       progress = 100;
     } else if (job.status === 'failed') {
       progress = 0;
-    } else if (startedAt) {
-      progress = Math.min(95, Math.round(elapsed / 1000));
     }
+    // For 'queued' and 'processing', progress remains 0 (indeterminate)
 
     return {
       jobId: job.id,

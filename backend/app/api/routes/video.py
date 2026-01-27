@@ -5,6 +5,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
+from uuid import UUID
 
 import cv2
 from fastapi import (
@@ -24,7 +25,7 @@ from fastapi.responses import (
     Response,
     StreamingResponse,
 )
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy.orm import Session
 
 from app.api.schemas.common import PaginationParams
@@ -95,7 +96,7 @@ class BulkAnalysisStatusResponse(BaseModel):
 class VideoJobResponse(BaseModel):
     """Response schema for video job status."""
 
-    id: str
+    id: UUID
     video_id: int
     job_type: str
     status: str
@@ -106,23 +107,10 @@ class VideoJobResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
-    @classmethod
-    def model_validate(cls, obj: object) -> "VideoJobResponse":
-        """Override to convert UUID to string."""
-        if hasattr(obj, "id") and hasattr(obj.id, "__str__"):
-            # Create a dict with id as string
-            data = {
-                "id": str(obj.id),
-                "video_id": obj.video_id,
-                "job_type": obj.job_type,
-                "status": obj.status,
-                "error": obj.error,
-                "created_at": obj.created_at,
-                "started_at": obj.started_at,
-                "finished_at": obj.finished_at,
-            }
-            return cls(**data)
-        return super().model_validate(obj)
+    @field_serializer("id")
+    def serialize_id(self, id: UUID) -> str:
+        """Convert UUID to string for JSON serialization."""
+        return str(id)
 
 
 router = APIRouter()

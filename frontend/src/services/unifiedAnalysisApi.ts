@@ -127,58 +127,6 @@ class UnifiedAnalysisApi {
     return response.data;
   }
 
-  /**
-   * Start pose-only analysis (fastest option)
-   */
-  async startPoseAnalysis(
-    videoId: number,
-    confidenceThreshold: number = 0.5
-  ): Promise<AnalysisResponse> {
-    return this.startAnalysis(videoId, {
-      analysis_type: 'pose_only',
-      confidence_threshold: confidenceThreshold,
-    });
-  }
-
-  /**
-   * Start video annotation analysis
-   */
-  async startVideoAnnotation(
-    videoId: number,
-    confidenceThreshold: number = 0.5
-  ): Promise<AnalysisResponse> {
-    return this.startAnalysis(videoId, {
-      analysis_type: 'video_annotation_only',
-      confidence_threshold: confidenceThreshold,
-    });
-  }
-
-  /**
-   * Start pose detection with video annotation (recommended for pose analysis)
-   */
-  async startPoseWithAnnotation(
-    videoId: number,
-    confidenceThreshold: number = 0.5
-  ): Promise<AnalysisResponse> {
-    return this.startAnalysis(videoId, {
-      analysis_type: 'pose_with_annotation',
-      confidence_threshold: confidenceThreshold,
-    });
-  }
-
-  /**
-   * Recompute contact metrics (elbow angles, etc.) using existing pose data
-   */
-  async startContactMetricsAnalysis(
-    videoId: number,
-    forceReanalysis: boolean = false
-  ): Promise<AnalysisResponse> {
-    return this.startAnalysis(videoId, {
-      analysis_type: 'contact_metrics',
-      force_reanalysis: forceReanalysis,
-    });
-  }
-
 }
 
 const unifiedAnalysisApi = new UnifiedAnalysisApi();

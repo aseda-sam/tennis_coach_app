@@ -15,7 +15,6 @@ interface AnalysisState {
     | 'completed'
     | 'failed'
     | 'cancelled';
-  progress: number;
   error: string | null;
 }
 
@@ -44,7 +43,6 @@ export const useAnalysisManager = ({
     videoId,
     jobId: null,
     status: 'idle',
-    progress: 0,
     error: null,
   });
   const [isLoading] = useState(false);
@@ -56,7 +54,6 @@ export const useAnalysisManager = ({
       setAnalysisState((prev) => ({
         ...prev,
         status: 'completed',
-        progress: 100,
         jobId: null,
         error: null,
       }));
@@ -71,7 +68,6 @@ export const useAnalysisManager = ({
         ...prev,
         status: 'failed',
         error,
-        progress: 0,
         jobId: null,
       }));
       onAnalysisError?.(error);
@@ -83,7 +79,6 @@ export const useAnalysisManager = ({
     setAnalysisState((prev) => ({
       ...prev,
       status: progress.status as AnalysisState['status'],
-      progress: progress.progress,
       error: null,
     }));
   }, []);
@@ -123,7 +118,6 @@ export const useAnalysisManager = ({
                 ...prev,
                 status: 'processing',
                 jobId: activeJob.id,
-                progress: 0,
                 error: null,
               };
             }
@@ -161,7 +155,6 @@ export const useAnalysisManager = ({
         setAnalysisState((prev) => ({
           ...prev,
           status: 'starting',
-          progress: 0,
           error: null,
         }));
 
@@ -173,7 +166,6 @@ export const useAnalysisManager = ({
         setAnalysisState((prev) => ({
           ...prev,
           status: 'processing',
-          progress: 0,
           jobId: response.job_id,
         }));
 
@@ -202,7 +194,6 @@ export const useAnalysisManager = ({
           ...prev,
           status: 'failed',
           error: errorMessage,
-          progress: 0,
           jobId: null,
         }));
 
@@ -224,7 +215,6 @@ export const useAnalysisManager = ({
       setAnalysisState((prev) => ({
         ...prev,
         status: 'cancelled',
-        progress: 0,
         jobId: null,
       }));
     } catch (err: unknown) {
@@ -250,7 +240,6 @@ export const useAnalysisManager = ({
     setAnalysisState((prev) => ({
       ...prev,
       status: 'idle',
-      progress: 0,
       error: null,
       jobId: null,
     }));
