@@ -1,7 +1,5 @@
 import axios from 'axios';
 import { createAuthInterceptor } from '../utils/authInterceptor';
-import { AnalysisData } from './api';
-
 // API configuration
 const API_BASE_URL =
   process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
@@ -62,35 +60,6 @@ export interface AnalysisResponse {
   estimated_duration?: number;
 }
 
-export interface TaskStatus {
-  job_id: string;
-  video_id: number;
-  analysis_type:
-    | 'pose_only'
-    | 'video_annotation_only'
-    | 'pose_with_annotation'
-    | 'contact_metrics';
-  status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
-  progress: number;
-  error?: string;
-  result?: AnalysisData | null;
-  started_at?: string;
-  completed_at?: string;
-  estimated_duration?: number;
-}
-
-export interface TaskListResponse {
-  tasks: Record<string, TaskStatus>;
-  total_tasks: number;
-}
-
-export interface TaskStatsResponse {
-  total_tasks: number;
-  status_counts: Record<string, number>;
-  active_workers?: number;
-  max_workers?: number;
-}
-
 export interface VideoJob {
   id: string;
   video_id: number;
@@ -123,16 +92,6 @@ class UnifiedAnalysisApi {
   }
 
   /**
-   * Get the status of a background analysis job
-   */
-  async getTaskStatus(jobId: string): Promise<TaskStatus> {
-    const response = await analysisApi.get<TaskStatus>(
-      `/analysis/status/${jobId}`
-    );
-    return response.data;
-  }
-
-  /**
    * List video jobs (DB-backed)
    */
   async getVideoJobs(status?: string): Promise<VideoJob[]> {
@@ -148,23 +107,6 @@ class UnifiedAnalysisApi {
   async getVideoJob(jobId: string): Promise<VideoJob | null> {
     const jobs = await this.getVideoJobs();
     return jobs.find((job) => job.id === jobId) ?? null;
-  }
-
-  /**
-   * List all active background tasks
-   */
-  async listTasks(): Promise<TaskListResponse> {
-    const response = await analysisApi.get<TaskListResponse>('/analysis/tasks');
-    return response.data;
-  }
-
-  /**
-   * Get background task system statistics
-   */
-  async getTaskStats(): Promise<TaskStatsResponse> {
-    const response =
-      await analysisApi.get<TaskStatsResponse>('/analysis/stats');
-    return response.data;
   }
 
   /**
@@ -229,56 +171,6 @@ class UnifiedAnalysisApi {
     });
   }
 
-  /**
-   * Poll job status until completion or failure
-   */
-  async waitForTaskCompletion(
-    jobId: string,
-    pollInterval: number = 2000,
-    maxWaitTime: number = 300000 // 5 minutes
-  ): Promise<TaskStatus> {
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < maxWaitTime) {
-      const status = await this.getTaskStatus(jobId);
-
-      if (
-        status.status === 'completed' ||
-        status.status === 'failed' ||
-        status.status === 'cancelled'
-      ) {
-        return status;
-      }
-
-      // Wait before next poll
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
-    }
-
-    throw new Error(`Job ${jobId} did not complete within ${maxWaitTime}ms`);
-  }
-
-  /**
-   * Get job progress with real-time updates
-   */
-  async *getTaskProgress(
-    jobId: string
-  ): AsyncGenerator<TaskStatus, void, unknown> {
-    while (true) {
-      const status = await this.getTaskStatus(jobId);
-      yield status;
-
-      if (
-        status.status === 'completed' ||
-        status.status === 'failed' ||
-        status.status === 'cancelled'
-      ) {
-        break;
-      }
-
-      // Wait before next update
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
 }
 
 const unifiedAnalysisApi = new UnifiedAnalysisApi();

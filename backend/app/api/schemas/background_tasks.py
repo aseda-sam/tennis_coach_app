@@ -1,61 +1,8 @@
 """Background task API schemas."""
 
-from datetime import datetime
 from typing import Any, Dict, Literal, Optional
 
 from pydantic import BaseModel, Field
-
-
-class TaskStatus(BaseModel):
-    """Base task status response model (RQ-compatible)."""
-
-    job_id: str = Field(description="Unique job identifier (UUID string)")
-    video_id: int = Field(description="Video ID being analyzed")
-    analysis_type: Literal["pose_only",] = Field(
-        description="Type of analysis being performed"
-    )
-    status: Literal["queued", "processing", "completed", "failed", "cancelled"] = Field(
-        description="Current task status (mapped from RQ statuses)"
-    )
-    progress: int = Field(
-        default=0,
-        ge=0,
-        le=100,
-        description="Overall progress percentage (0-100, calculated client-side from elapsed time)",
-    )
-    error: Optional[str] = Field(default=None, description="Error message if failed")
-    result: Optional[Dict[str, Any]] = Field(
-        default=None, description="Task results when completed"
-    )
-    started_at: Optional[datetime] = Field(
-        default=None, description="Task start timestamp"
-    )
-    completed_at: Optional[datetime] = Field(
-        default=None, description="Task completion timestamp"
-    )
-    estimated_duration: Optional[float] = Field(
-        default=None, description="Estimated completion time in seconds"
-    )
-
-
-class TaskListResponse(BaseModel):
-    """Response model for listing all tasks."""
-
-    tasks: Dict[str, TaskStatus] = Field(
-        description="Dictionary of job_id (string) to task status"
-    )
-    total_tasks: int = Field(description="Total number of active tasks")
-    status_counts: Dict[str, int] = Field(description="Count of tasks by status")
-
-
-class TaskStatsResponse(BaseModel):
-    """Response model for task statistics."""
-
-    total_tasks: int = Field(description="Total number of tasks")
-    status_counts: Dict[str, int] = Field(description="Count of tasks by status")
-    active_workers: int = Field(description="Number of active worker threads")
-    max_workers: int = Field(description="Maximum number of worker threads")
-    queue_size: int = Field(description="Number of queued tasks")
 
 
 class AnalysisRequest(BaseModel):

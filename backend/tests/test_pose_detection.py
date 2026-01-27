@@ -182,13 +182,6 @@ class TestPoseDetectionAPI:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-    def test_get_analysis_status_not_found(self, client: TestClient) -> None:
-        """Test getting analysis status for missing job."""
-        response = client.get("/v0/analysis/status/missing-job")
-
-        assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
-
     def test_analyze_pose_detection_request_validation(
         self, client: TestClient
     ) -> None:
