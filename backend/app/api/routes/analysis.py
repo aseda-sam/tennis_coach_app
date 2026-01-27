@@ -163,8 +163,11 @@ async def get_task_status(
     """
     Get the status of a background analysis job (RQ).
 
+    **DEPRECATED**: This endpoint is deprecated. Use `/v0/videos/jobs` instead.
+    This endpoint only works with legacy RQ job IDs, not VideoJob UUIDs.
+
     Args:
-        job_id: UUID string identifier of the job to check
+        job_id: RQ job ID string (legacy) - Note: New jobs return VideoJob UUIDs
 
     Returns:
         Current job status with progress information
@@ -257,6 +260,9 @@ async def list_tasks(
 ) -> TaskListResponse:
     """
     List all active background jobs (RQ) for the current user.
+
+    **DEPRECATED**: This endpoint is deprecated. Use `/v0/videos/jobs` instead.
+    This endpoint only shows jobs from Redis queue, not DB-backed VideoJobs.
 
     Returns:
         Dictionary of all active jobs with their status
@@ -399,58 +405,97 @@ async def cancel_task(
     db: Session = Depends(get_db),
 ) -> Dict[str, str]:
     """
-    Cancel a running background job (RQ).
+    Cancel a running background job.
+
+    Supports both VideoJob UUIDs (new) and RQ job IDs (legacy).
 
     Args:
-        job_id: UUID string identifier of the job to cancel
+        job_id: VideoJob UUID (new) or RQ job ID (legacy)
 
     Returns:
         Cancellation confirmation
     """
     try:
-        # Fetch job from Redis
+        import uuid
+
+        # Try to interpret as VideoJob UUID first (new system)
+        video_job = None
+        rq_job_id = None
+
         try:
-            job = Job.fetch(job_id, connection=redis_conn)
+            job_uuid = uuid.UUID(job_id)
+            video_job = db.query(VideoJob).filter(VideoJob.id == job_uuid).first()
+            if video_job:
+                # Check authorization via video access
+                video = video_service.get_video_by_id(db, video_job.video_id)
+                if not video:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Video {video_job.video_id} not found",
+                    )
+                require_video_access(video, current_user)
+
+                # Get RQ job ID from VideoJob
+                if video_job.rq_job_id:
+                    rq_job_id = video_job.rq_job_id
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Job {job_id} has no associated RQ job to cancel",
+                    )
+        except (ValueError, TypeError):
+            # Not a UUID, treat as legacy RQ job ID
+            rq_job_id = job_id
+
+        # Fetch RQ job
+        if not rq_job_id:
+            rq_job_id = job_id
+
+        try:
+            job = Job.fetch(rq_job_id, connection=redis_conn)
         except Exception as e:
-            logger.warning(f"Job {job_id} not found in Redis: {e}")
+            logger.warning(f"RQ job {rq_job_id} not found in Redis: {e}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Job {job_id} not found",
             ) from e
 
-        # Extract video_id from job arguments for authorization
-        video_id = _extract_video_id_from_job(job)
-
-        # Require video_id for authorization (fail secure)
-        if not video_id:
-            logger.warning(
-                f"Unable to extract video_id from job {job_id} for authorization check"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Unable to determine video ownership for authorization",
-            )
-
-        # Check authorization via video access
-        video = video_service.get_video_by_id(db, video_id)
-        if not video:
-            logger.warning(f"Job {job_id} references non-existent video {video_id}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Video {video_id} not found",
-            )
-
-        require_video_access(video, current_user)
+        # For legacy RQ job IDs, check authorization via job arguments
+        if not video_job:
+            video_id = _extract_video_id_from_job(job)
+            if not video_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Unable to determine video ownership for authorization",
+                )
+            video = video_service.get_video_by_id(db, video_id)
+            if not video:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Video {video_id} not found",
+                )
+            require_video_access(video, current_user)
 
         # Cancel job (only if queued or started)
-        if job.get_status() in ["queued", "started"]:
+        job_status = job.get_status()
+        if job_status in ["queued", "started"]:
             job.cancel()
-            logger.info(f"Cancelled job {job_id}")
+
+            # Update VideoJob status if it exists
+            if video_job:
+                video_job.status = "failed"
+                video_job.error = "Cancelled by user"
+                from datetime import datetime
+
+                video_job.finished_at = datetime.utcnow()
+                db.commit()
+
+            logger.info(f"Cancelled job {job_id} (RQ: {rq_job_id})")
             return {"message": f"Job {job_id} cancelled successfully"}
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Job {job_id} cannot be cancelled (status: {job.get_status()})",
+                detail=f"Job {job_id} cannot be cancelled (status: {job_status})",
             )
 
     except HTTPException:
