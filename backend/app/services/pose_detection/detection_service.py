@@ -175,7 +175,14 @@ class PoseDetectionService:
         if not self.pose_detector:
             return {
                 "error": "Pose detector not initialized",
+                "pose_detections": [],
+                "total_frames": 0,
+                "frames_with_poses": 0,
+                "total_pose_detections": 0,
+                "detection_rate": 0.0,
                 "processing_time_seconds": time.time() - start_time,
+                "frame_processing_rate": 0.0,
+                "confidence_scores": [],
             }
 
         # Accumulators for results (lightweight: keypoints only, not raw frames)
@@ -211,7 +218,14 @@ class PoseDetectionService:
             if total_frames == 0:
                 return {
                     "error": "No frames could be extracted from video",
+                    "pose_detections": [],
+                    "total_frames": 0,
+                    "frames_with_poses": 0,
+                    "total_pose_detections": 0,
+                    "detection_rate": 0.0,
                     "processing_time_seconds": time.time() - start_time,
+                    "frame_processing_rate": 0.0,
+                    "confidence_scores": [],
                 }
 
             # Calculate metrics
@@ -257,7 +271,14 @@ class PoseDetectionService:
             logger.error(f"Error in pose detection: {e}")
             return {
                 "error": str(e),
+                "pose_detections": [],
+                "total_frames": total_frames,
+                "frames_with_poses": frames_with_poses,
+                "total_pose_detections": frames_with_poses,
+                "detection_rate": 0.0,
                 "processing_time_seconds": time.time() - start_time,
+                "frame_processing_rate": 0.0,
+                "confidence_scores": confidence_scores,
             }
 
     def save_detection_results(
