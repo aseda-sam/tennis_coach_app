@@ -239,17 +239,11 @@ async def get_video_job(
 
         job = query.first()
         if not job:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Job {job_id} not found",
-            )
+            raise handle_not_found_error("job", job_id)
 
         return VideoJobResponse.model_validate(job)
     except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job {job_id} not found",
-        ) from None
+        raise handle_not_found_error("job", job_id) from None
     except HTTPException:
         raise
     except (OSError, RuntimeError) as e:
