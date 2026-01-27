@@ -41,6 +41,7 @@ from app.api.schemas.video import (
 from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
+from app.models.video_job import VideoJob
 from app.services import video_service
 from app.services.rq_tasks import enqueue_pose_analysis
 from app.services.storage_service import storage_service
@@ -89,6 +90,39 @@ class BulkAnalysisStatusResponse(BaseModel):
     statuses: List[VideoAnalysisStatus] = Field(
         description="Analysis status for each requested video"
     )
+
+
+class VideoJobResponse(BaseModel):
+    """Response schema for video job status."""
+
+    id: str
+    video_id: int
+    job_type: str
+    status: str
+    error: Optional[str] = None
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+    @classmethod
+    def model_validate(cls, obj):
+        """Override to convert UUID to string."""
+        if hasattr(obj, "id") and hasattr(obj.id, "__str__"):
+            # Create a dict with id as string
+            data = {
+                "id": str(obj.id),
+                "video_id": obj.video_id,
+                "job_type": obj.job_type,
+                "status": obj.status,
+                "error": obj.error,
+                "created_at": obj.created_at,
+                "started_at": obj.started_at,
+                "finished_at": obj.finished_at,
+            }
+            return cls(**data)
+        return super().model_validate(obj)
 
 
 router = APIRouter()
@@ -142,6 +176,40 @@ def extract_video_metadata(video_path: Path) -> VideoMetadata:
     except (cv2.error, OSError, ValueError):
         # Return empty metadata if extraction fails
         return VideoMetadata()
+
+
+@router.get("/jobs", response_model=List[VideoJobResponse])
+async def get_video_jobs(
+    current_user: dict = Depends(get_current_user),
+    job_status: Optional[str] = Query(
+        default=None,
+        description="Filter by status (comma-separated, e.g., 'queued,processing')",
+        alias="status",
+    ),
+    db: Session = Depends(get_db),
+) -> List[VideoJobResponse]:
+    """
+    Get jobs for user's videos. UI polls this every 30s.
+
+    Args:
+        status: Optional filter - comma-separated list (e.g., "queued,processing")
+
+    Returns:
+        List of video jobs for the authenticated user
+    """
+    try:
+        query = db.query(VideoJob).filter(VideoJob.user_id == current_user["id"])
+
+        if job_status:
+            status_list = [s.strip() for s in job_status.split(",")]
+            query = query.filter(VideoJob.status.in_(status_list))
+
+        jobs = query.order_by(VideoJob.created_at.desc()).limit(50).all()
+
+        return [VideoJobResponse.model_validate(job) for job in jobs]
+
+    except (ValueError, RuntimeError) as e:
+        log_and_raise_error(e, "get_video_jobs", {"user_id": current_user["id"]})
 
 
 @router.get("/", response_model=List[VideoListItem])

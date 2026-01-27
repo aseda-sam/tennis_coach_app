@@ -233,7 +233,10 @@ class TestPoseDetectionAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "queued"
-        assert data["job_id"] == "job-123"
+        # job_id is now VideoJob UUID, not RQ job ID
+        assert "job_id" in data
+        assert isinstance(data["job_id"], str)
+        assert len(data["job_id"]) == 36  # UUID format
         assert data["analysis_type"] == "pose_only"
 
 

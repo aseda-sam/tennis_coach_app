@@ -19,6 +19,7 @@ from app.api.schemas.background_tasks import (
 from app.core.database import get_db
 from app.core.redis_config import analysis_queue, redis_conn
 from app.dependencies.auth import get_current_user
+from app.models.video_job import VideoJob
 from app.services import video_service
 from app.services.rq_monitoring import get_queue_stats
 from app.services.rq_tasks import enqueue_pose_analysis
@@ -81,6 +82,17 @@ async def start_analysis(
             # Redis connection is already checked in redis_config.py on module load
             # If Redis is unavailable, the connection will fail when enqueueing, which is handled below
 
+            # Create VideoJob record BEFORE enqueuing (status='queued')
+            video_job = VideoJob(
+                video_id=video_id,
+                user_id=current_user["id"],
+                job_type=request.analysis_type,
+                status="queued",
+            )
+            db.add(video_job)
+            db.commit()
+            db.refresh(video_job)
+
             # Enqueue RQ job using shared helper
             logger.info(f"Enqueueing {request.analysis_type} job to Redis queue...")
             try:
@@ -88,13 +100,25 @@ async def start_analysis(
                     video_id=video_id,
                     video_path=video.file_path,
                     confidence_threshold=request.confidence_threshold,
+                    video_job_id=str(
+                        video_job.id
+                    ),  # Pass VideoJob ID for status updates
                 )
                 if not job:
                     # Helper returned None (Redis unavailable)
+                    # Update VideoJob status to failed
+                    video_job.status = "failed"
+                    video_job.error = "Failed to enqueue job to Redis"
+                    db.commit()
                     raise HTTPException(
                         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                         detail="Failed to enqueue job to Redis. Please check Redis connection.",
                     )
+
+                # Store RQ job ID for debugging correlation
+                video_job.rq_job_id = job.id
+                db.commit()
+
                 logger.info(
                     f"Successfully enqueued {request.analysis_type} analysis job {job.id} "
                     f"for video {video_id} to queue '{analysis_queue.name}'"
@@ -103,7 +127,7 @@ async def start_analysis(
                 raise
 
             return AnalysisResponse(
-                job_id=job.id,
+                job_id=str(video_job.id),  # Return VideoJob ID, not RQ job ID
                 video_id=video_id,
                 analysis_type=request.analysis_type,
                 status="queued",

@@ -9,6 +9,7 @@ These functions are executed by RQ workers and must be:
 """
 
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -17,6 +18,7 @@ from rq.job import Job
 
 from app.core.database import SessionLocal
 from app.core.redis_config import analysis_queue
+from app.models.video_job import VideoJob
 from app.services import video_service
 from app.services.storage_service import storage_service
 
@@ -57,6 +59,7 @@ def enqueue_pose_analysis(
     video_id: int,
     video_path: str,
     confidence_threshold: float = 0.7,
+    video_job_id: Optional[str] = None,
 ) -> Optional[Job]:
     """
     Enqueue a pose detection analysis job.
@@ -90,6 +93,7 @@ def enqueue_pose_analysis(
             video_id=video_id,
             video_path=video_path,
             confidence_threshold=confidence_threshold,
+            video_job_id=video_job_id,  # Pass VideoJob ID for status updates
             retry=Retry(max=2, interval=60),
             job_timeout=900,  # 15 minutes (increased from 5 min to handle longer videos)
             result_ttl=3600,  # Keep results for 1 hour
@@ -115,6 +119,7 @@ def analyze_pose_detection_rq(
     video_id: int,
     video_path: str,
     confidence_threshold: float = 0.7,
+    video_job_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     RQ task for pose detection analysis.
@@ -140,6 +145,26 @@ def analyze_pose_detection_rq(
 
         # Create database session
         with SessionLocal() as db:
+            # Update VideoJob status to processing if video_job_id provided
+            video_job = None
+            if video_job_id:
+                try:
+                    import uuid
+
+                    video_job = (
+                        db.query(VideoJob)
+                        .filter(VideoJob.id == uuid.UUID(video_job_id))
+                        .first()
+                    )
+                    if video_job:
+                        video_job.status = "processing"
+                        video_job.started_at = datetime.utcnow()
+                        db.commit()
+                except (ValueError, TypeError) as e:
+                    logger.warning(
+                        f"Invalid video_job_id {video_job_id}: {e}. Continuing without status update."
+                    )
+
             # Verify video exists
             video = video_service.get_video_by_id(db, video_id)
             if not video:
@@ -166,6 +191,12 @@ def analyze_pose_detection_rq(
                 db=db, video_id=video_id, detection_results=pose_results
             )
 
+            # Update VideoJob status to completed if video_job_id provided
+            if video_job:
+                video_job.status = "completed"
+                video_job.finished_at = datetime.utcnow()
+                db.commit()
+
             logger.info(
                 f"RQ task: Pose detection completed for video {video_id}, "
                 f"detection_id={pose_detection.id}"
@@ -185,6 +216,28 @@ def analyze_pose_detection_rq(
 
     except Exception as e:
         logger.error(f"RQ task failed for video {video_id}: {e}", exc_info=True)
+
+        # Update VideoJob status to failed if video_job_id provided
+        if video_job_id:
+            try:
+                import uuid
+
+                with SessionLocal() as db:
+                    video_job = (
+                        db.query(VideoJob)
+                        .filter(VideoJob.id == uuid.UUID(video_job_id))
+                        .first()
+                    )
+                    if video_job:
+                        video_job.status = "failed"
+                        video_job.error = str(e)[:500]  # Truncate error message
+                        video_job.finished_at = datetime.utcnow()
+                        db.commit()
+            except (ValueError, TypeError) as e2:
+                logger.warning(
+                    f"Failed to update VideoJob status: {e2}. Original error: {e}"
+                )
+
         raise
 
     finally:
