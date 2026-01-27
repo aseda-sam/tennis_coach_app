@@ -48,13 +48,13 @@ class TestPoseDetectionService:
         # assert pose_service.pose_detector is not None
 
     @patch("app.services.pose_detection.detection_service.cv2.VideoCapture")
-    def test_extract_frames(
+    def test_iter_frames(
         self,
         mock_video_capture: Mock,
         pose_service: PoseDetectionService,
         mock_video_file: Path,
     ) -> None:
-        """Test frame extraction from video."""
+        """Test frame iteration from video."""
         # Mock video capture
         mock_cap = Mock()
         mock_video_capture.return_value = mock_cap
@@ -65,24 +65,29 @@ class TestPoseDetectionService:
             (False, None),  # End of video
         ]
 
-        frames = pose_service._extract_frames(mock_video_file, max_frames=2)
+        frames = list(pose_service._iter_frames(mock_video_file, max_frames=2))
 
         assert len(frames) == 2
+        assert frames[0][0] == 0  # First frame index
+        assert frames[1][0] == 1  # Second frame index
         mock_cap.release.assert_called_once()
 
-    def test_detect_poses_in_frames_no_detector(
-        self, pose_service: PoseDetectionService
+    @patch("app.services.pose_detection.detection_service.cv2.VideoCapture")
+    def test_analyze_video_file_no_detector(
+        self,
+        mock_video_capture: Mock,
+        pose_service: PoseDetectionService,
+        mock_video_file: Path,
     ) -> None:
         """Test pose detection when detector is not available."""
         pose_service.pose_detector = None
 
-        frames = [Mock(), Mock()]
-        results = pose_service.detect_poses_in_frames(frames)
+        results = pose_service.analyze_video_file(mock_video_file)
 
         assert results["frames_with_poses"] == 0
         assert results["total_pose_detections"] == 0
-        assert results["detection_rate"] == 0.0
         assert "error" in results
+        assert "Pose detector not initialized" in results["error"]
 
     def test_save_detection_results(
         self, pose_service: PoseDetectionService, db_session: Session, test_user_id: str
