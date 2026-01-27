@@ -172,13 +172,15 @@ export const getAnalysis = async (analysisId: number): Promise<Analysis> => {
 };
 ```
 
-#### Get Analysis Status
+#### Get Video Jobs (DB-backed)
 
 ```typescript
-export const getAnalysisStatus = async (
-  analysisId: number
-): Promise<AnalysisStatus> => {
-  return api.request<AnalysisStatus>(`/v0/analysis/status/${analysisId}`);
+export const getVideoJobs = async (
+  status?: string
+): Promise<VideoJob[]> => {
+  return api.request<VideoJob[]>('/v0/videos/jobs', {
+    params: status ? { status } : undefined,
+  });
 };
 ```
 

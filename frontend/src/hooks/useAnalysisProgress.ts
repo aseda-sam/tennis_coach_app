@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnalysisData } from '../services/api';
-import unifiedAnalysisApi, { TaskStatus } from '../services/unifiedAnalysisApi';
+import unifiedAnalysisApi, { VideoJob } from '../services/unifiedAnalysisApi';
 
 export interface AnalysisProgress {
   jobId: string;
@@ -10,13 +10,12 @@ export interface AnalysisProgress {
     | 'video_annotation_only'
     | 'pose_with_annotation'
     | 'contact_metrics';
-  status: TaskStatus['status'];
+  status: 'queued' | 'processing' | 'completed' | 'failed';
   progress: number;
   error?: string;
   result?: AnalysisData | null;
   startedAt?: string;
   completedAt?: string;
-  estimatedDuration?: number;
   elapsedTime?: number;
 }
 
@@ -51,63 +50,74 @@ export function useAnalysisProgress(
   const currentJobIdRef = useRef<string | null>(null);
   const isVisibleRef = useRef(true);
 
-  const convertTaskStatusToProgress = useCallback(
-    (taskStatus: TaskStatus): AnalysisProgress => {
-      // Calculate elapsed time
-      const startedAt = taskStatus.started_at
-        ? new Date(taskStatus.started_at).getTime()
-        : null;
-      const now = Date.now();
-      const elapsed = startedAt ? now - startedAt : 0;
+  const convertJobToProgress = useCallback((job: VideoJob): AnalysisProgress => {
+    const startedAt = job.started_at ? new Date(job.started_at).getTime() : null;
+    const now = Date.now();
+    const elapsed = startedAt ? now - startedAt : 0;
 
-      // Calculate time-based progress
-      let progress = 0;
-      if (taskStatus.status === 'completed') {
-        progress = 100;
-      } else if (
-        taskStatus.status === 'failed' ||
-        taskStatus.status === 'cancelled'
-      ) {
-        progress = taskStatus.progress || 0;
-      } else if (taskStatus.estimated_duration && startedAt) {
-        const estimated = taskStatus.estimated_duration * 1000; // convert to ms
-        progress =
-          estimated > 0
-            ? Math.min(95, Math.round((elapsed / estimated) * 100))
-            : 0;
-      }
+    // Progress is now indeterminate - always return 0 for processing states
+    // Only show 100% for completed, 0% for failed
+    let progress = 0;
+    if (job.status === 'completed') {
+      progress = 100;
+    } else if (job.status === 'failed') {
+      progress = 0;
+    }
+    // For 'queued' and 'processing', progress remains 0 (indeterminate)
 
-      return {
-        jobId: taskStatus.job_id,
-        videoId: taskStatus.video_id,
-        analysisType: taskStatus.analysis_type,
-        status: taskStatus.status,
-        progress,
-        error: taskStatus.error || undefined,
-        result: taskStatus.result,
-        startedAt: taskStatus.started_at || undefined,
-        completedAt: taskStatus.completed_at || undefined,
-        estimatedDuration: taskStatus.estimated_duration,
-        elapsedTime: elapsed,
-      };
-    },
-    []
-  );
+    return {
+      jobId: job.id,
+      videoId: job.video_id,
+      analysisType: 'pose_only',
+      status: job.status,
+      progress,
+      error: job.error || undefined,
+      result: null,
+      startedAt: job.started_at || undefined,
+      completedAt: job.finished_at || undefined,
+      elapsedTime: elapsed,
+    };
+  }, []);
 
-  const pollTaskStatus = useCallback(
+  const pollJobStatus = useCallback(
     async (jobId: string) => {
       try {
         setIsLoading(true);
         setError(null);
 
-        const taskStatus = await unifiedAnalysisApi.getTaskStatus(jobId);
-        const progressData = convertTaskStatusToProgress(taskStatus);
+        const job = await unifiedAnalysisApi.getVideoJob(jobId);
+        if (!job) {
+          const errorMessage = 'Job not found';
+          const progressData: AnalysisProgress = {
+            jobId,
+            videoId: 0,
+            analysisType: 'pose_only',
+            status: 'failed',
+            progress: 0,
+            error: errorMessage,
+            result: null,
+            completedAt: new Date().toISOString(),
+            elapsedTime: 0,
+          };
+          setProgress(progressData);
+          setError(errorMessage);
+          onError?.(errorMessage);
+          setIsPolling(false);
+          setIsLoading(false);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+          return;
+        }
+
+        const progressData = convertJobToProgress(job);
 
         setProgress(progressData);
         onProgress?.(progressData);
 
         // Check if task is complete
-        if (taskStatus.status === 'completed') {
+        if (job.status === 'completed') {
           setIsPolling(false);
           setIsLoading(false);
           // Clear interval to stop polling
@@ -120,10 +130,7 @@ export function useAnalysisProgress(
         }
 
         // Check if task failed
-        if (
-          taskStatus.status === 'failed' ||
-          taskStatus.status === 'cancelled'
-        ) {
+        if (job.status === 'failed') {
           setIsPolling(false);
           setIsLoading(false);
           // Clear interval to stop polling
@@ -131,7 +138,7 @@ export function useAnalysisProgress(
             clearInterval(intervalRef.current);
             intervalRef.current = null;
           }
-          const errorMessage = taskStatus.error || `Job ${taskStatus.status}`;
+          const errorMessage = job.error || 'Job failed';
           setError(errorMessage);
           onError?.(errorMessage);
           return;
@@ -152,7 +159,7 @@ export function useAnalysisProgress(
         onError?.(errorMessage);
       }
     },
-    [convertTaskStatusToProgress, onComplete, onError, onProgress]
+    [convertJobToProgress, onComplete, onError, onProgress]
   );
 
   const startPolling = useCallback(
@@ -167,16 +174,16 @@ export function useAnalysisProgress(
       setError(null);
 
       // Poll immediately
-      pollTaskStatus(jobId);
+      pollJobStatus(jobId);
 
       // Set up interval for continued polling (only when visible)
       intervalRef.current = setInterval(() => {
         if (currentJobIdRef.current === jobId && isVisibleRef.current) {
-          pollTaskStatus(jobId);
+          pollJobStatus(jobId);
         }
       }, pollInterval);
     },
-    [pollTaskStatus, pollInterval]
+    [pollJobStatus, pollInterval]
   );
 
   const stopPolling = useCallback(() => {
@@ -195,7 +202,7 @@ export function useAnalysisProgress(
       isVisibleRef.current = !document.hidden;
 
       if (!document.hidden && currentJobIdRef.current && isPolling) {
-        pollTaskStatus(currentJobIdRef.current);
+        pollJobStatus(currentJobIdRef.current);
       }
     };
 
@@ -204,7 +211,7 @@ export function useAnalysisProgress(
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isPolling, pollTaskStatus]);
+  }, [isPolling, pollJobStatus]);
 
   // Cleanup on unmount
   useEffect(() => {

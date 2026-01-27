@@ -141,6 +141,42 @@
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Indeterminate Progress Bar */
+.progress-bar.indeterminate {
+  overflow: hidden;
+}
+
+.progress-bar.indeterminate .indeterminate-fill {
+  width: 30%;
+  height: 100%;
+  border-radius: 4px;
+  animation: indeterminate-slide 1.5s ease-in-out infinite;
+}
+
+.progress-bar.processing.indeterminate .indeterminate-fill {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.progress-bar.completed.indeterminate .indeterminate-fill {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.progress-bar.error.indeterminate .indeterminate-fill {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+@keyframes indeterminate-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(300%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
 /* Hover Effects */
 .progress-bar:hover {
   transform: translateY(-1px);

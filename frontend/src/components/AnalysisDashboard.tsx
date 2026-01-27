@@ -166,12 +166,12 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 analysisState.status === 'processing') && (
                 <div className="analysis-dashboard__progress-card">
                   <ProgressBar
-                    progress={analysisState.progress}
                     status={analysisState.status}
-                    showPercentage={true}
+                    showPercentage={false}
                     showStatus={true}
                     size="medium"
                     animated={true}
+                    indeterminate={true}
                   />
                 </div>
               )}

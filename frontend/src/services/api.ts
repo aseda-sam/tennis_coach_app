@@ -311,32 +311,6 @@ export interface AnalysisData {
   confidence_threshold_used?: number;
 }
 
-// New interfaces for task status tracking (RQ-compatible)
-export interface TaskStatus {
-  job_id: string;
-  video_id: number;
-  analysis_type: string;
-  status: string;
-  progress: number;
-  error: string | null;
-  result: AnalysisData | null;
-  started_at: string | null;
-  completed_at: string | null;
-  estimated_duration: number | null;
-}
-
-export interface TaskListResponse {
-  tasks: Record<string, TaskStatus>;
-  total_tasks: number;
-}
-
-export interface TaskStatsResponse {
-  total_tasks: number;
-  status_counts: Record<string, number>;
-  active_workers: number;
-  max_workers: number;
-}
-
 export const analysisApi = {
   // Start analysis for a video - now returns AnalysisStartResponse with task_id
   startAnalysis: async (
@@ -351,25 +325,6 @@ export const analysisApi = {
       `/analysis/videos/${videoId}`,
       analysisRequest
     );
-    return response.data;
-  },
-
-  // Task status tracking methods
-  // Get job status by job ID (RQ)
-  getTaskStatus: async (jobId: string): Promise<TaskStatus> => {
-    const response = await api.get<TaskStatus>(`/analysis/status/${jobId}`);
-    return response.data;
-  },
-
-  // Get all active tasks
-  getAllTasks: async (): Promise<TaskListResponse> => {
-    const response = await api.get<TaskListResponse>('/analysis/tasks');
-    return response.data;
-  },
-
-  // Get task statistics
-  getTaskStats: async (): Promise<TaskStatsResponse> => {
-    const response = await api.get<TaskStatsResponse>('/analysis/stats');
     return response.data;
   },
 

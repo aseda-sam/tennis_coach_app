@@ -6,7 +6,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
@@ -148,124 +148,6 @@ class PoseDetectionService:
             logger.error(f"Error in pose detection: {e}")
             return None
 
-    def detect_poses_in_frames(
-        self,
-        frames: List[np.ndarray],
-        confidence_threshold: Optional[float] = None,
-        detection_threshold: Optional[float] = None,
-    ) -> Dict[str, any]:
-        """
-        Detect poses in a batch of frames with detailed metrics.
-
-        Args:
-            frames: List of frame arrays
-            confidence_threshold: Minimum confidence for pose detection
-            detection_threshold: Minimum detection threshold
-
-        Returns:
-            Dictionary containing pose detection results and metrics
-        """
-        start_time = time.time()
-
-        if not self.pose_detector:
-            logger.warning("Pose detector not available")
-            return {
-                "pose_detections": [None] * len(frames),
-                "frames_with_poses": 0,
-                "total_pose_detections": 0,
-                "detection_rate": 0.0,
-                "processing_time_seconds": 0.0,
-                "frame_processing_rate": 0.0,
-                "confidence_scores": [],
-                "error": "Pose detector not initialized",
-            }
-
-        pose_detections = []
-        confidence_scores = []
-        frame_timings = []
-        frames_with_poses = 0
-
-        try:
-            for i, frame in enumerate(frames):
-                frame_start = time.time()
-                pose_keypoints = self.detect_pose_in_frame(frame)
-
-                if pose_keypoints is not None:
-                    frames_with_poses += 1
-                    # Use configurable overall confidence score
-                    confidence_scores.append(settings.POSE_OVERALL_CONFIDENCE)
-                else:
-                    confidence_scores.append(0.0)
-
-                pose_detections.append(pose_keypoints)
-
-                frame_time = time.time() - frame_start
-                frame_timings.append(frame_time)
-
-                # Log every 10th frame for performance monitoring
-                if i % 10 == 0:
-                    frame_shape = frame.shape
-                    logger.debug(
-                        f"Frame {i}: shape={frame_shape}, pose_detected={pose_keypoints is not None}, time={frame_time:.3f}s"
-                    )
-
-            total_poses = frames_with_poses
-            processing_time = time.time() - start_time
-            avg_frame_time = (
-                sum(frame_timings) / len(frame_timings) if frame_timings else 0
-            )
-            frame_processing_rate = (
-                len(frames) / processing_time if processing_time > 0 else 0
-            )
-
-            # Calculate pose quality metrics
-            non_zero_confidences = [c for c in confidence_scores if c > 0]
-            avg_confidence = (
-                sum(non_zero_confidences) / len(non_zero_confidences)
-                if non_zero_confidences
-                else None
-            )
-            min_confidence = min(non_zero_confidences) if non_zero_confidences else None
-            max_confidence = max(non_zero_confidences) if non_zero_confidences else None
-
-            logger.info(
-                f"Pose detection complete: {total_poses} poses detected out of {len(frames)} frames"
-            )
-            logger.info(
-                f"⏱️ Average frame time: {avg_frame_time:.3f}s, Total time: {processing_time:.3f}s"
-            )
-
-            results = {
-                "pose_detections": pose_detections,
-                "frames_with_poses": frames_with_poses,
-                "total_pose_detections": total_poses,
-                "detection_rate": frames_with_poses / len(frames) if frames else 0.0,
-                "processing_time_seconds": processing_time,
-                "frame_processing_rate": frame_processing_rate,
-                "confidence_scores": confidence_scores,
-                "average_confidence": avg_confidence,
-                "min_confidence": min_confidence,
-                "max_confidence": max_confidence,
-                "confidence_threshold": confidence_threshold or 0.5,
-                "detection_threshold": detection_threshold or 0.5,
-            }
-
-        except (RuntimeError, ValueError, OSError) as e:
-            logger.error(f"Error in batch pose detection: {e}")
-            results = {
-                "pose_detections": [None] * len(frames),
-                "frames_with_poses": 0,
-                "total_pose_detections": 0,
-                "detection_rate": 0.0,
-                "processing_time_seconds": time.time() - start_time,
-                "frame_processing_rate": 0.0,
-                "confidence_scores": [0.0] * len(frames),
-                "error": str(e),
-            }
-
-        logger.info(f"Pose detection completed in {time.time() - start_time:.3f}s")
-        return results
-
     def analyze_video_file(
         self,
         video_path: Path,
@@ -274,7 +156,9 @@ class PoseDetectionService:
         max_frames: Optional[int] = None,
     ) -> Dict[str, any]:
         """
-        Analyze a video file for pose detection.
+        Analyze a video file for pose detection with streaming frame processing.
+
+        Memory-efficient: processes one frame at a time, never holds all frames.
 
         Args:
             video_path: Path to video file
@@ -288,30 +172,114 @@ class PoseDetectionService:
         start_time = time.time()
         logger.info(f"Starting pose detection analysis for: {video_path}")
 
-        # Extract frames
-        frames = self._extract_frames(video_path, max_frames)
-        if not frames:
+        if not self.pose_detector:
             return {
-                "error": "No frames could be extracted from video",
+                "error": "Pose detector not initialized",
+                "pose_detections": [],
+                "total_frames": 0,
+                "frames_with_poses": 0,
+                "total_pose_detections": 0,
+                "detection_rate": 0.0,
                 "processing_time_seconds": time.time() - start_time,
+                "frame_processing_rate": 0.0,
+                "confidence_scores": [],
             }
 
-        # Perform pose detection
-        detection_results = self.detect_poses_in_frames(
-            frames, confidence_threshold, detection_threshold
-        )
+        # Accumulators for results (lightweight: keypoints only, not raw frames)
+        pose_detections = []
+        confidence_scores = []
+        frames_with_poses = 0
+        total_frames = 0
 
-        # Add video metadata
-        detection_results.update(
-            {
-                "total_frames": len(frames),
+        try:
+            # Process frames one at a time via generator
+            for frame_index, frame in self._iter_frames(video_path, max_frames):
+                total_frames += 1
+
+                # Detect pose in single frame
+                pose_keypoints = self.detect_pose_in_frame(frame)
+
+                if pose_keypoints is not None:
+                    frames_with_poses += 1
+                    confidence_scores.append(settings.POSE_OVERALL_CONFIDENCE)
+                else:
+                    confidence_scores.append(0.0)
+
+                pose_detections.append(pose_keypoints)
+
+                # Log progress every 100 frames
+                if frame_index % 100 == 0:
+                    logger.debug(
+                        f"Frame {frame_index}: pose_detected={pose_keypoints is not None}"
+                    )
+
+                # Frame is now out of scope and can be garbage collected
+
+            if total_frames == 0:
+                return {
+                    "error": "No frames could be extracted from video",
+                    "pose_detections": [],
+                    "total_frames": 0,
+                    "frames_with_poses": 0,
+                    "total_pose_detections": 0,
+                    "detection_rate": 0.0,
+                    "processing_time_seconds": time.time() - start_time,
+                    "frame_processing_rate": 0.0,
+                    "confidence_scores": [],
+                }
+
+            # Calculate metrics
+            processing_time = time.time() - start_time
+            non_zero_confidences = [c for c in confidence_scores if c > 0]
+
+            results = {
+                "pose_detections": pose_detections,
+                "total_frames": total_frames,
+                "frames_with_poses": frames_with_poses,
+                "total_pose_detections": frames_with_poses,
+                "detection_rate": frames_with_poses / total_frames
+                if total_frames
+                else 0.0,
+                "processing_time_seconds": processing_time,
+                "frame_processing_rate": total_frames / processing_time
+                if processing_time > 0
+                else 0,
+                "confidence_scores": confidence_scores,
+                "average_confidence": (
+                    sum(non_zero_confidences) / len(non_zero_confidences)
+                    if non_zero_confidences
+                    else None
+                ),
+                "min_confidence": min(non_zero_confidences)
+                if non_zero_confidences
+                else None,
+                "max_confidence": max(non_zero_confidences)
+                if non_zero_confidences
+                else None,
+                "confidence_threshold": confidence_threshold or 0.5,
+                "detection_threshold": detection_threshold or 0.5,
                 "video_path": str(video_path),
-                "processing_time_seconds": time.time() - start_time,
             }
-        )
 
-        logger.info(f"Pose detection analysis complete for {video_path}")
-        return detection_results
+            logger.info(
+                f"Pose detection complete: {frames_with_poses}/{total_frames} frames with poses "
+                f"in {processing_time:.2f}s"
+            )
+            return results
+
+        except (RuntimeError, ValueError, OSError) as e:
+            logger.error(f"Error in pose detection: {e}")
+            return {
+                "error": str(e),
+                "pose_detections": [],
+                "total_frames": total_frames,
+                "frames_with_poses": frames_with_poses,
+                "total_pose_detections": frames_with_poses,
+                "detection_rate": 0.0,
+                "processing_time_seconds": time.time() - start_time,
+                "frame_processing_rate": 0.0,
+                "confidence_scores": confidence_scores,
+            }
 
     def save_detection_results(
         self, db: Session, video_id: int, detection_results: Dict[str, any]
@@ -462,47 +430,45 @@ class PoseDetectionService:
             logger.error(f"Failed to deserialize pose data: {e}")
             return None
 
-    def _extract_frames(
+    def _iter_frames(
         self, video_path: Path, max_frames: Optional[int] = None
-    ) -> List[np.ndarray]:
+    ) -> Iterator[Tuple[int, np.ndarray]]:
         """
-        Extract frames from video file.
+        Yield frames one at a time instead of loading all into memory.
 
         Args:
             video_path: Path to video file
             max_frames: Maximum number of frames to extract
 
-        Returns:
-            List of frame arrays
+        Yields:
+            Tuple of (frame_index, frame_array)
         """
-        frames = []
-
         try:
             cap = cv2.VideoCapture(str(video_path))
             if not cap.isOpened():
                 logger.error(f"Could not open video: {video_path}")
-                return frames
+                return
 
-            frame_count = 0
+            frame_index = 0
             while True:
                 ret, frame = cap.read()
                 if not ret:
                     break
 
-                frames.append(frame)
-                frame_count += 1
+                yield frame_index, frame
+                frame_index += 1
 
-                if max_frames and frame_count >= max_frames:
+                if max_frames and frame_index >= max_frames:
                     logger.info(f"Reached max_frames limit: {max_frames}")
                     break
 
-            cap.release()
-            logger.info(f"Extracted {len(frames)} frames from {video_path}")
+            logger.info(f"Yielded {frame_index} frames from {video_path}")
 
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Error extracting frames from {video_path}: {e}")
-
-        return frames
+        finally:
+            if "cap" in locals():
+                cap.release()
 
     def _extract_keypoints(
         self, landmarks: Sequence, frame_shape: Tuple[int, int, int]

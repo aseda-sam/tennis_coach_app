@@ -5,6 +5,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
+from uuid import UUID
 
 import cv2
 from fastapi import (
@@ -24,7 +25,7 @@ from fastapi.responses import (
     Response,
     StreamingResponse,
 )
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy.orm import Session
 
 from app.api.schemas.common import PaginationParams
@@ -41,6 +42,7 @@ from app.api.schemas.video import (
 from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
+from app.models.video_job import VideoJob
 from app.services import video_service
 from app.services.rq_tasks import enqueue_pose_analysis
 from app.services.storage_service import storage_service
@@ -89,6 +91,26 @@ class BulkAnalysisStatusResponse(BaseModel):
     statuses: List[VideoAnalysisStatus] = Field(
         description="Analysis status for each requested video"
     )
+
+
+class VideoJobResponse(BaseModel):
+    """Response schema for video job status."""
+
+    id: UUID
+    video_id: int
+    job_type: str
+    status: str
+    error: Optional[str] = None
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+    @field_serializer("id")
+    def serialize_id(self, id: UUID) -> str:
+        """Convert UUID to string for JSON serialization."""
+        return str(id)
 
 
 router = APIRouter()
@@ -142,6 +164,78 @@ def extract_video_metadata(video_path: Path) -> VideoMetadata:
     except (cv2.error, OSError, ValueError):
         # Return empty metadata if extraction fails
         return VideoMetadata()
+
+
+@router.get("/jobs", response_model=List[VideoJobResponse])
+async def get_video_jobs(
+    current_user: dict = Depends(get_current_user),
+    job_status: Optional[str] = Query(
+        default=None,
+        description="Filter by status (comma-separated, e.g., 'queued,processing')",
+        alias="status",
+    ),
+    db: Session = Depends(get_db),
+) -> List[VideoJobResponse]:
+    """
+    Get jobs for user's videos. UI polls this every 30s.
+
+    Args:
+        status: Optional filter - comma-separated list (e.g., "queued,processing")
+
+    Returns:
+        List of video jobs for the authenticated user
+    """
+    try:
+        query = db.query(VideoJob).filter(VideoJob.user_id == current_user["id"])
+
+        if job_status:
+            status_list = [s.strip() for s in job_status.split(",")]
+            query = query.filter(VideoJob.status.in_(status_list))
+
+        jobs = query.order_by(VideoJob.created_at.desc()).limit(50).all()
+
+        return [VideoJobResponse.model_validate(job) for job in jobs]
+
+    except (ValueError, RuntimeError) as e:
+        log_and_raise_error(e, "get_video_jobs", {"user_id": current_user["id"]})
+
+
+@router.get("/jobs/{job_id}", response_model=VideoJobResponse)
+async def get_video_job(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VideoJobResponse:
+    """
+    Get a single video job by ID (DB-backed).
+
+    Args:
+        job_id: VideoJob UUID
+
+    Returns:
+        Video job for the authenticated user
+    """
+    try:
+        from uuid import UUID
+
+        from app.utils.authorization import is_admin
+
+        job_uuid = UUID(job_id)
+        query = db.query(VideoJob).filter(VideoJob.id == job_uuid)
+        if not is_admin(current_user):
+            query = query.filter(VideoJob.user_id == current_user["id"])
+
+        job = query.first()
+        if not job:
+            raise handle_not_found_error("job", job_id)
+
+        return VideoJobResponse.model_validate(job)
+    except (ValueError, TypeError):
+        raise handle_not_found_error("job", job_id) from None
+    except HTTPException:
+        raise
+    except (OSError, RuntimeError) as e:
+        log_and_raise_error(e, "get_video_job", {"job_id": job_id})
 
 
 @router.get("/", response_model=List[VideoListItem])
@@ -783,19 +877,59 @@ async def upload_video(
             recorded_at=recorded_at,
         )
 
-        # Auto-enqueue pose detection analysis (silently fail if Redis unavailable)
-        # This allows uploads to succeed even if Redis is down, user can manually trigger analysis later
-        # enqueue_pose_analysis catches exceptions internally, but we also wrap in try/except
-        # to handle edge cases (e.g., if function signature changes or unexpected errors occur)
-        try:
-            enqueue_pose_analysis(
+        # Auto-enqueue pose detection analysis (opt-in via setting)
+        # Disabled by default to prevent unintended background jobs during tests
+        # or in environments where Redis should not be used.
+        # When enabled, ALL uploads (regular and demo) are auto-enqueued.
+        # Pytest tests are unaffected because they mock enqueue_pose_analysis.
+        if settings.AUTO_ENQUEUE_ON_UPLOAD:
+            # Auto-enqueue pose detection analysis (silently fail if Redis unavailable)
+            # This allows uploads to succeed even if Redis is down, user can manually trigger analysis later
+            video_job = VideoJob(
                 video_id=db_video.id,
-                video_path=db_video.file_path,
-                confidence_threshold=0.7,  # Default threshold from AnalysisRequest schema
+                user_id=current_user["id"],
+                job_type="pose_only",
+                status="queued",
             )
-        except Exception:  # noqa: BLE001 - Intentionally catch all to ensure upload succeeds
-            # enqueue_pose_analysis already logs errors internally, just ensure upload doesn't fail
-            logger.debug("Failed to enqueue pose analysis, but upload succeeded")
+            db.add(video_job)
+            db.commit()
+            db.refresh(video_job)
+
+            try:
+                job = enqueue_pose_analysis(
+                    video_id=db_video.id,
+                    video_path=db_video.file_path,
+                    confidence_threshold=0.7,  # Default threshold from AnalysisRequest schema
+                    video_job_id=str(video_job.id),
+                )
+                if not job:
+                    video_job.status = "failed"
+                    video_job.error = "Failed to enqueue job to Redis"
+                    db.commit()
+                    logger.debug(
+                        "Auto-enqueue failed for video %d (is_demo=%s)",
+                        db_video.id,
+                        is_demo,
+                    )
+                else:
+                    video_job.rq_job_id = job.id
+                    db.commit()
+                    logger.info(
+                        "Auto-enqueued pose analysis for video %d (is_demo=%s)",
+                        db_video.id,
+                        is_demo,
+                    )
+            except Exception:  # noqa: BLE001 - Intentionally catch all to ensure upload succeeds
+                # enqueue_pose_analysis already logs errors internally, just ensure upload doesn't fail
+                video_job.status = "failed"
+                video_job.error = "Failed to enqueue job to Redis"
+                db.commit()
+                logger.debug("Failed to enqueue pose analysis, but upload succeeded")
+        else:
+            logger.debug(
+                "Auto-enqueue disabled (AUTO_ENQUEUE_ON_UPLOAD=False). "
+                "Set AUTO_ENQUEUE_ON_UPLOAD=True in .env to enable."
+            )
 
         return VideoUploadResponse(
             video_id=db_video.id,

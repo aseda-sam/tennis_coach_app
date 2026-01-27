@@ -2,21 +2,23 @@ import React from 'react';
 import './ProgressBar.css';
 
 interface ProgressBarProps {
-  progress: number; // 0-100
+  progress?: number; // 0-100 (optional, ignored when indeterminate=true)
   status: 'starting' | 'processing' | 'finalizing' | 'completed' | 'failed' | 'cancelled';
   showPercentage?: boolean;
   showStatus?: boolean;
   size?: 'small' | 'medium' | 'large';
   animated?: boolean;
+  indeterminate?: boolean; // When true, shows animated indeterminate progress bar
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({
-  progress,
+  progress = 0,
   status,
   showPercentage = true,
   showStatus = true,
   size = 'medium',
   animated = true,
+  indeterminate = false,
 }) => {
   const getStatusColor = () => {
     switch (status) {
@@ -71,18 +73,27 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         </div>
       )}
       
-      <div className={`progress-bar ${getStatusColor()} ${animated ? 'animated' : ''}`}>
-        <div 
-          className="progress-fill"
-          style={{ width: `${progress}%` }}
-          data-testid="progress-fill"
-        />
-        {status === 'processing' && animated && (
-          <div className="progress-shimmer" />
+      <div className={`progress-bar ${getStatusColor()} ${animated ? 'animated' : ''} ${indeterminate ? 'indeterminate' : ''}`}>
+        {indeterminate ? (
+          <div 
+            className="progress-fill indeterminate-fill"
+            data-testid="progress-fill"
+          />
+        ) : (
+          <>
+            <div 
+              className="progress-fill"
+              style={{ width: `${progress}%` }}
+              data-testid="progress-fill"
+            />
+            {status === 'processing' && animated && (
+              <div className="progress-shimmer" />
+            )}
+          </>
         )}
       </div>
       
-      {showPercentage && (
+      {showPercentage && !indeterminate && (
         <div className="progress-percentage">
           <span className="percentage-text">{getProgressText()}</span>
         </div>

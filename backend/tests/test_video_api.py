@@ -12,6 +12,8 @@ import pytest
 from fastapi.testclient import TestClient
 from redis.exceptions import ConnectionError as RedisConnectionError
 
+from app.core.config import settings
+
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
@@ -84,10 +86,10 @@ class TestVideoAPI:
             tmp_file_path = tmp_file.name
 
         try:
-            # Mock the enqueue function to verify it's called
+            # Mock the enqueue function to verify it's called when enabled
             mock_job = MagicMock()
             mock_job.id = "test-job-id-123"
-            with patch(
+            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch(
                 "app.api.routes.video.enqueue_pose_analysis", return_value=mock_job
             ) as mock_enqueue:
                 with open(tmp_file_path, "rb") as f:
@@ -124,7 +126,7 @@ class TestVideoAPI:
 
         try:
             # Mock enqueue to return None (simulating Redis failure)
-            with patch(
+            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch(
                 "app.api.routes.video.enqueue_pose_analysis", return_value=None
             ) as mock_enqueue:
                 with open(tmp_file_path, "rb") as f:
@@ -155,7 +157,7 @@ class TestVideoAPI:
 
         try:
             # Mock enqueue to raise RedisConnectionError
-            with patch(
+            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch(
                 "app.api.routes.video.enqueue_pose_analysis",
                 side_effect=RedisConnectionError("Redis unavailable"),
             ) as mock_enqueue:

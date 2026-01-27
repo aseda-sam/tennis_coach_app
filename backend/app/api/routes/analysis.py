@@ -1,26 +1,20 @@
 """Unified analysis API routes with RQ background task support."""
 
 import logging
+import uuid
+from datetime import datetime
 from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from redis.exceptions import ConnectionError as RedisConnectionError
-from redis.exceptions import TimeoutError as RedisTimeoutError
-from rq.job import Job, NoSuchJobError
+from rq.job import Job
 from sqlalchemy.orm import Session
 
-from app.api.schemas.background_tasks import (
-    AnalysisRequest,
-    AnalysisResponse,
-    TaskListResponse,
-    TaskStatsResponse,
-    TaskStatus,
-)
+from app.api.schemas.background_tasks import AnalysisRequest, AnalysisResponse
 from app.core.database import get_db
 from app.core.redis_config import analysis_queue, redis_conn
 from app.dependencies.auth import get_current_user
+from app.models.video_job import VideoJob
 from app.services import video_service
-from app.services.rq_monitoring import get_queue_stats
 from app.services.rq_tasks import enqueue_pose_analysis
 from app.utils.authorization import require_video_access, require_video_not_demo
 
@@ -81,6 +75,17 @@ async def start_analysis(
             # Redis connection is already checked in redis_config.py on module load
             # If Redis is unavailable, the connection will fail when enqueueing, which is handled below
 
+            # Create VideoJob record BEFORE enqueuing (status='queued')
+            video_job = VideoJob(
+                video_id=video_id,
+                user_id=current_user["id"],
+                job_type=request.analysis_type,
+                status="queued",
+            )
+            db.add(video_job)
+            db.commit()
+            db.refresh(video_job)
+
             # Enqueue RQ job using shared helper
             logger.info(f"Enqueueing {request.analysis_type} job to Redis queue...")
             try:
@@ -88,13 +93,25 @@ async def start_analysis(
                     video_id=video_id,
                     video_path=video.file_path,
                     confidence_threshold=request.confidence_threshold,
+                    video_job_id=str(
+                        video_job.id
+                    ),  # Pass VideoJob ID for status updates
                 )
                 if not job:
                     # Helper returned None (Redis unavailable)
+                    # Update VideoJob status to failed
+                    video_job.status = "failed"
+                    video_job.error = "Failed to enqueue job to Redis"
+                    db.commit()
                     raise HTTPException(
                         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                         detail="Failed to enqueue job to Redis. Please check Redis connection.",
                     )
+
+                # Store RQ job ID for debugging correlation
+                video_job.rq_job_id = job.id
+                db.commit()
+
                 logger.info(
                     f"Successfully enqueued {request.analysis_type} analysis job {job.id} "
                     f"for video {video_id} to queue '{analysis_queue.name}'"
@@ -103,7 +120,7 @@ async def start_analysis(
                 raise
 
             return AnalysisResponse(
-                job_id=job.id,
+                job_id=str(video_job.id),  # Return VideoJob ID, not RQ job ID
                 video_id=video_id,
                 analysis_type=request.analysis_type,
                 status="queued",
@@ -130,244 +147,6 @@ async def start_analysis(
         ) from e
 
 
-@router.get("/status/{job_id}", response_model=TaskStatus)
-async def get_task_status(
-    job_id: str,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> TaskStatus:
-    """
-    Get the status of a background analysis job (RQ).
-
-    Args:
-        job_id: UUID string identifier of the job to check
-
-    Returns:
-        Current job status with progress information
-    """
-    try:
-        # Fetch job from Redis
-        try:
-            job = Job.fetch(job_id, connection=redis_conn)
-        except Exception as e:
-            logger.warning(f"Job {job_id} not found in Redis: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Job {job_id} not found",
-            ) from e
-
-        # Get job status and map RQ statuses to frontend-friendly values
-        rq_status = job.get_status()
-        mapped_status = _map_rq_status_to_frontend(rq_status)
-
-        # Get job result if available
-        job_result = None
-        if job.is_finished:
-            try:
-                job_result = job.result
-            except (NoSuchJobError, AttributeError, TypeError) as e:
-                # Result may have expired (TTL), job may not exist, or result may be None
-                logger.warning(f"Job {job_id} result expired or unavailable: {e}")
-                job_result = None
-
-        # Extract video_id from job arguments for authorization
-        video_id = _extract_video_id_from_job(job)
-
-        # Require video_id for authorization (fail secure)
-        if not video_id:
-            logger.warning(
-                f"Unable to extract video_id from job {job_id} for authorization check"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Unable to determine video ownership for authorization",
-            )
-
-        # Check authorization via video access
-        video = video_service.get_video_by_id(db, video_id)
-        if not video:
-            logger.warning(f"Job {job_id} references non-existent video {video_id}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Video {video_id} not found",
-            )
-
-        require_video_access(video, current_user)
-
-        # Build response
-        task_status = TaskStatus(
-            job_id=job_id,
-            video_id=video_id or 0,
-            analysis_type=_get_analysis_type_from_job(job),
-            status=mapped_status,
-            progress=0,  # Client calculates from elapsed time
-            error=str(job.exc_info) if job.is_failed else None,
-            result=job_result,
-            started_at=job.started_at
-            if hasattr(job, "started_at") and job.started_at
-            else None,
-            completed_at=job.ended_at
-            if hasattr(job, "ended_at") and job.ended_at
-            else None,
-            estimated_duration=_get_estimated_duration(
-                _get_analysis_type_from_job(job)
-            ),
-        )
-
-        return task_status
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Error getting job status for job %s", job_id)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get job status. Please try again later.",
-        ) from e
-
-
-@router.get("/tasks", response_model=TaskListResponse)
-async def list_tasks(
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> TaskListResponse:
-    """
-    List all active background jobs (RQ) for the current user.
-
-    Returns:
-        Dictionary of all active jobs with their status
-    """
-    try:
-        from rq import Queue
-
-        from app.utils.authorization import is_admin
-
-        # Get all jobs from analysis queue
-        queue = Queue("analysis", connection=redis_conn)
-        job_ids = queue.job_ids
-
-        # Filter jobs by user's videos unless admin
-        user_video_ids = None
-
-        if not is_admin(current_user):
-            from app.models.video import Video
-
-            user_video_ids = {
-                video.id
-                for video in db.query(Video)
-                .filter(Video.user_id == current_user["id"])
-                .all()
-            }
-
-        # Fetch and filter jobs
-        task_statuses = {}
-        status_counts = {}
-
-        for job_id in job_ids:
-            try:
-                job = Job.fetch(job_id, connection=redis_conn)
-                video_id = _extract_video_id_from_job(job)
-
-                # Skip jobs without valid video_id (can't verify ownership)
-                if not video_id:
-                    logger.debug(
-                        f"Skipping job {job_id}: unable to extract video_id for filtering"
-                    )
-                    continue
-
-                # Filter by user's videos unless admin
-                if not is_admin(current_user) and video_id not in user_video_ids:
-                    continue
-
-                # Map RQ status to frontend status
-                rq_status = job.get_status()
-                mapped_status = _map_rq_status_to_frontend(rq_status)
-
-                # Build task status
-                task_status = TaskStatus(
-                    job_id=job_id,
-                    video_id=video_id or 0,
-                    analysis_type=_get_analysis_type_from_job(job),
-                    status=mapped_status,
-                    progress=0,
-                    error=str(job.exc_info) if job.is_failed else None,
-                    result=job.result if job.is_finished else None,
-                    started_at=job.started_at
-                    if hasattr(job, "started_at") and job.started_at
-                    else None,
-                    completed_at=job.ended_at
-                    if hasattr(job, "ended_at") and job.ended_at
-                    else None,
-                    estimated_duration=_get_estimated_duration(
-                        _get_analysis_type_from_job(job)
-                    ),
-                )
-
-                task_statuses[job_id] = task_status
-                status_counts[mapped_status] = status_counts.get(mapped_status, 0) + 1
-
-            except (
-                NoSuchJobError,
-                RedisConnectionError,
-                RedisTimeoutError,
-                AttributeError,
-            ) as e:
-                logger.warning(f"Failed to fetch job {job_id}: {e}")
-                continue
-
-        return TaskListResponse(
-            tasks=task_statuses,
-            total_tasks=len(task_statuses),
-            status_counts=status_counts,
-        )
-
-    except Exception as e:
-        logger.exception("Error listing jobs")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to list jobs. Please try again later.",
-        ) from e
-
-
-@router.get("/stats", response_model=TaskStatsResponse)
-async def get_task_stats(
-    current_user: dict = Depends(get_current_user),
-) -> TaskStatsResponse:
-    """
-    Get background job system statistics (RQ).
-
-    Returns:
-        Job system statistics including worker counts and queue status
-    """
-    try:
-        stats = get_queue_stats()
-
-        # Map RQ statuses to frontend statuses
-        mapped_status_counts = {}
-        for rq_status, count in stats.get("status_counts", {}).items():
-            mapped_status = _map_rq_status_to_frontend(rq_status)
-            mapped_status_counts[mapped_status] = (
-                mapped_status_counts.get(mapped_status, 0) + count
-            )
-
-        response_stats = {
-            "total_tasks": stats.get("total_jobs", 0),
-            "status_counts": mapped_status_counts,
-            "active_workers": stats.get("active_workers", 0),
-            "max_workers": 1,  # Default for free tier
-            "queue_size": stats.get("total_queued", 0),
-        }
-
-        return TaskStatsResponse.model_validate(response_stats)
-
-    except Exception as e:
-        logger.exception("Error getting job stats")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get job stats. Please try again later.",
-        ) from e
-
-
 @router.delete("/tasks/{job_id}")
 async def cancel_task(
     job_id: str,
@@ -375,58 +154,93 @@ async def cancel_task(
     db: Session = Depends(get_db),
 ) -> Dict[str, str]:
     """
-    Cancel a running background job (RQ).
+    Cancel a running background job.
+
+    Supports both VideoJob UUIDs (new) and RQ job IDs (legacy).
 
     Args:
-        job_id: UUID string identifier of the job to cancel
+        job_id: VideoJob UUID (new) or RQ job ID (legacy)
 
     Returns:
         Cancellation confirmation
     """
     try:
-        # Fetch job from Redis
+        # Try to interpret as VideoJob UUID first (new system)
+        video_job = None
+        rq_job_id = None
+
         try:
-            job = Job.fetch(job_id, connection=redis_conn)
+            job_uuid = uuid.UUID(job_id)
+            video_job = db.query(VideoJob).filter(VideoJob.id == job_uuid).first()
+            if video_job:
+                # Check authorization via video access
+                video = video_service.get_video_by_id(db, video_job.video_id)
+                if not video:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Video {video_job.video_id} not found",
+                    )
+                require_video_access(video, current_user)
+
+                # Get RQ job ID from VideoJob
+                if video_job.rq_job_id:
+                    rq_job_id = video_job.rq_job_id
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Job {job_id} has no associated RQ job to cancel",
+                    )
+        except (ValueError, TypeError):
+            # Not a UUID, treat as legacy RQ job ID
+            rq_job_id = job_id
+
+        # Fetch RQ job
+        if not rq_job_id:
+            rq_job_id = job_id
+
+        try:
+            job = Job.fetch(rq_job_id, connection=redis_conn)
         except Exception as e:
-            logger.warning(f"Job {job_id} not found in Redis: {e}")
+            logger.warning(f"RQ job {rq_job_id} not found in Redis: {e}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Job {job_id} not found",
             ) from e
 
-        # Extract video_id from job arguments for authorization
-        video_id = _extract_video_id_from_job(job)
-
-        # Require video_id for authorization (fail secure)
-        if not video_id:
-            logger.warning(
-                f"Unable to extract video_id from job {job_id} for authorization check"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Unable to determine video ownership for authorization",
-            )
-
-        # Check authorization via video access
-        video = video_service.get_video_by_id(db, video_id)
-        if not video:
-            logger.warning(f"Job {job_id} references non-existent video {video_id}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Video {video_id} not found",
-            )
-
-        require_video_access(video, current_user)
+        # For legacy RQ job IDs, check authorization via job arguments
+        if not video_job:
+            video_id = _extract_video_id_from_job(job)
+            if not video_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Unable to determine video ownership for authorization",
+                )
+            video = video_service.get_video_by_id(db, video_id)
+            if not video:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Video {video_id} not found",
+                )
+            require_video_access(video, current_user)
 
         # Cancel job (only if queued or started)
-        if job.get_status() in ["queued", "started"]:
+        job_status = job.get_status()
+        if job_status in ["queued", "started"]:
             job.cancel()
-            logger.info(f"Cancelled job {job_id}")
+
+            # Update VideoJob status if it exists
+            if video_job:
+                video_job.status = "failed"
+                video_job.error = "Cancelled by user"
+                video_job.finished_at = datetime.utcnow()
+                db.commit()
+
+            logger.info(f"Cancelled job {job_id} (RQ: {rq_job_id})")
             return {"message": f"Job {job_id} cancelled successfully"}
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Job {job_id} cannot be cancelled (status: {job.get_status()})",
+                detail=f"Job {job_id} cannot be cancelled (status: {job_status})",
             )
 
     except HTTPException:
@@ -478,45 +292,6 @@ def _extract_video_id_from_job(job: Job) -> Optional[int]:
             return None
 
     return video_id
-
-
-def _map_rq_status_to_frontend(rq_status: str) -> str:
-    """
-    Map RQ job statuses to frontend-friendly status values.
-
-    Args:
-        rq_status: RQ job status ('queued', 'started', 'finished', 'failed')
-
-    Returns:
-        Frontend-friendly status ('queued', 'processing', 'completed', 'failed', 'cancelled')
-    """
-    status_map = {
-        "queued": "queued",
-        "started": "processing",
-        "finished": "completed",
-        "failed": "failed",
-        "deferred": "queued",
-        "scheduled": "queued",
-    }
-    return status_map.get(rq_status, "queued")
-
-
-def _get_analysis_type_from_job(job: Job) -> str:
-    """
-    Extract analysis type from RQ job function name.
-
-    Args:
-        job: RQ Job object
-
-    Returns:
-        Analysis type string
-    """
-    func_name = job.func_name if hasattr(job, "func_name") else str(job.func)
-
-    if "analyze_pose_detection_rq" in func_name:
-        return "pose_only"
-    else:
-        return "pose_only"  # Default fallback
 
 
 def _get_estimated_duration(analysis_type: str) -> float:

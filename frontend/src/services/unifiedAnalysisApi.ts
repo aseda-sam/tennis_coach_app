@@ -1,7 +1,5 @@
 import axios from 'axios';
 import { createAuthInterceptor } from '../utils/authInterceptor';
-import { AnalysisData } from './api';
-
 // API configuration
 const API_BASE_URL =
   process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
@@ -62,33 +60,15 @@ export interface AnalysisResponse {
   estimated_duration?: number;
 }
 
-export interface TaskStatus {
-  job_id: string;
+export interface VideoJob {
+  id: string;
   video_id: number;
-  analysis_type:
-    | 'pose_only'
-    | 'video_annotation_only'
-    | 'pose_with_annotation'
-    | 'contact_metrics';
-  status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
-  progress: number;
+  job_type: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
   error?: string;
-  result?: AnalysisData | null;
+  created_at: string;
   started_at?: string;
-  completed_at?: string;
-  estimated_duration?: number;
-}
-
-export interface TaskListResponse {
-  tasks: Record<string, TaskStatus>;
-  total_tasks: number;
-}
-
-export interface TaskStatsResponse {
-  total_tasks: number;
-  status_counts: Record<string, number>;
-  active_workers?: number;
-  max_workers?: number;
+  finished_at?: string;
 }
 
 export interface CancellationResponse {
@@ -112,30 +92,29 @@ class UnifiedAnalysisApi {
   }
 
   /**
-   * Get the status of a background analysis job
+   * List video jobs (DB-backed)
    */
-  async getTaskStatus(jobId: string): Promise<TaskStatus> {
-    const response = await analysisApi.get<TaskStatus>(
-      `/analysis/status/${jobId}`
-    );
+  async getVideoJobs(status?: string): Promise<VideoJob[]> {
+    const response = await analysisApi.get<VideoJob[]>('/videos/jobs', {
+      params: status ? { status } : undefined,
+    });
     return response.data;
   }
 
   /**
-   * List all active background tasks
+   * Get a single VideoJob by ID (DB-backed)
    */
-  async listTasks(): Promise<TaskListResponse> {
-    const response = await analysisApi.get<TaskListResponse>('/analysis/tasks');
-    return response.data;
-  }
-
-  /**
-   * Get background task system statistics
-   */
-  async getTaskStats(): Promise<TaskStatsResponse> {
-    const response =
-      await analysisApi.get<TaskStatsResponse>('/analysis/stats');
-    return response.data;
+  async getVideoJob(jobId: string): Promise<VideoJob | null> {
+    try {
+      const response = await analysisApi.get<VideoJob>(`/videos/jobs/${jobId}`);
+      return response.data;
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -148,108 +127,6 @@ class UnifiedAnalysisApi {
     return response.data;
   }
 
-  /**
-   * Start pose-only analysis (fastest option)
-   */
-  async startPoseAnalysis(
-    videoId: number,
-    confidenceThreshold: number = 0.5
-  ): Promise<AnalysisResponse> {
-    return this.startAnalysis(videoId, {
-      analysis_type: 'pose_only',
-      confidence_threshold: confidenceThreshold,
-    });
-  }
-
-  /**
-   * Start video annotation analysis
-   */
-  async startVideoAnnotation(
-    videoId: number,
-    confidenceThreshold: number = 0.5
-  ): Promise<AnalysisResponse> {
-    return this.startAnalysis(videoId, {
-      analysis_type: 'video_annotation_only',
-      confidence_threshold: confidenceThreshold,
-    });
-  }
-
-  /**
-   * Start pose detection with video annotation (recommended for pose analysis)
-   */
-  async startPoseWithAnnotation(
-    videoId: number,
-    confidenceThreshold: number = 0.5
-  ): Promise<AnalysisResponse> {
-    return this.startAnalysis(videoId, {
-      analysis_type: 'pose_with_annotation',
-      confidence_threshold: confidenceThreshold,
-    });
-  }
-
-  /**
-   * Recompute contact metrics (elbow angles, etc.) using existing pose data
-   */
-  async startContactMetricsAnalysis(
-    videoId: number,
-    forceReanalysis: boolean = false
-  ): Promise<AnalysisResponse> {
-    return this.startAnalysis(videoId, {
-      analysis_type: 'contact_metrics',
-      force_reanalysis: forceReanalysis,
-    });
-  }
-
-  /**
-   * Poll job status until completion or failure
-   */
-  async waitForTaskCompletion(
-    jobId: string,
-    pollInterval: number = 2000,
-    maxWaitTime: number = 300000 // 5 minutes
-  ): Promise<TaskStatus> {
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < maxWaitTime) {
-      const status = await this.getTaskStatus(jobId);
-
-      if (
-        status.status === 'completed' ||
-        status.status === 'failed' ||
-        status.status === 'cancelled'
-      ) {
-        return status;
-      }
-
-      // Wait before next poll
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
-    }
-
-    throw new Error(`Job ${jobId} did not complete within ${maxWaitTime}ms`);
-  }
-
-  /**
-   * Get job progress with real-time updates
-   */
-  async *getTaskProgress(
-    jobId: string
-  ): AsyncGenerator<TaskStatus, void, unknown> {
-    while (true) {
-      const status = await this.getTaskStatus(jobId);
-      yield status;
-
-      if (
-        status.status === 'completed' ||
-        status.status === 'failed' ||
-        status.status === 'cancelled'
-      ) {
-        break;
-      }
-
-      // Wait before next update
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
 }
 
 const unifiedAnalysisApi = new UnifiedAnalysisApi();
