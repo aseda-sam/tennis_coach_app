@@ -47,6 +47,16 @@
   display: inline-flex;
   align-items: center;
   gap: 12px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.app-brand:hover {
+  opacity: 0.8;
 }
 
 .app-logo {

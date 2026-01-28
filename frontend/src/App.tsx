@@ -174,15 +174,7 @@ function App() {
   // Show auth form only for protected views (list, dashboard) when not logged in
   // Home (demo-landing) and demo-dashboard are accessible without login
   const requiresAuth = ['list', 'dashboard'].includes(currentView);
-  if (profile !== 'local' && !user && requiresAuth) {
-    return (
-      <div className="App">
-        <div className="app-container">
-          <AuthForm />
-        </div>
-      </div>
-    );
-  }
+  const showAuthForm = profile !== 'local' && !user && requiresAuth;
 
   const renderHeader = () => {
     // Header with tabs for all views (including homepage for returning users)
@@ -190,12 +182,16 @@ function App() {
       <div className="app-header">
         <div className="app-header-wrapper">
           <div className="app-header-left">
-            <div className="app-brand">
+            <button
+              className="app-brand"
+              onClick={() => setCurrentView('demo-landing')}
+              aria-label="Go to home"
+            >
               <div className="app-logo">
                 <VideoIcon size={20} color="white" />
               </div>
               <h1 className="app-title">Tennis Coach</h1>
-            </div>
+            </button>
           </div>
 
           <div
@@ -311,7 +307,13 @@ function App() {
   return (
     <div className="App">
       {renderHeader()}
-      {renderCurrentView()}
+      {showAuthForm ? (
+        <div className="app-container">
+          <AuthForm />
+        </div>
+      ) : (
+        renderCurrentView()
+      )}
 
       {/* Upload Modal - Shared across all views */}
       {isUploadModalOpen && (
