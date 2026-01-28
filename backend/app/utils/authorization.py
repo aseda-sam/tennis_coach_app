@@ -245,3 +245,19 @@ def require_video_deletable(video: "Video") -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot delete demo video. Use promotion script with --unpromote flag first.",
         )
+
+
+def require_admin(user: dict) -> None:
+    """Raise exception if user is not admin.
+
+    Args:
+        user: User dict with id, email, user_metadata, etc.
+
+    Raises:
+        HTTPException: 403 if user is not admin
+    """
+    if not is_admin(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
