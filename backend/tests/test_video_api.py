@@ -5,7 +5,7 @@ Basic tests for video API endpoints.
 import os
 import tempfile
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generator, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +13,9 @@ from fastapi.testclient import TestClient
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from app.core.config import settings
+from app.core.database import get_db
+from app.dependencies.auth import get_optional_user
+from app.main import app
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -234,6 +237,119 @@ class TestVideoAPI:
         assert data["is_demo"] is True
         assert data["is_active_demo"] is True
         assert data["filename"] == "demo_video.mp4"
+
+    @pytest.fixture
+    def unauthenticated_client(
+        self, db_session: "Session"
+    ) -> Generator[TestClient, None, None]:
+        """Test client that simulates no authenticated user."""
+
+        def override_get_db() -> Generator:
+            try:
+                yield db_session
+            finally:
+                pass
+
+        async def mock_get_optional_user() -> Optional[dict]:
+            return None
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_optional_user] = mock_get_optional_user
+
+        with TestClient(app) as test_client:
+            yield test_client
+
+        app.dependency_overrides.clear()
+
+    def test_get_demo_video_public_access(
+        self,
+        unauthenticated_client: TestClient,
+        db_session: "Session",
+        test_user_id: str,
+    ) -> None:
+        """Test that demo video metadata is accessible without auth."""
+        from app.models.video import Video
+
+        demo_video = Video(
+            filename="demo_public.mp4",
+            file_path="demo/demo_public.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+            is_demo=True,
+            is_active_demo=True,
+        )
+        db_session.add(demo_video)
+        db_session.commit()
+
+        response = unauthenticated_client.get("/v0/videos/demo")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == demo_video.id
+        assert data["is_demo"] is True
+        assert data["is_active_demo"] is True
+
+    def test_get_demo_video_url_public_access(
+        self,
+        unauthenticated_client: TestClient,
+        db_session: "Session",
+        test_user_id: str,
+    ) -> None:
+        """Test that demo video URLs are accessible without auth."""
+        from app.models.video import Video
+
+        demo_video = Video(
+            filename="demo_public_url.mp4",
+            file_path="demo/demo_public_url.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+            is_demo=True,
+            is_active_demo=True,
+        )
+        db_session.add(demo_video)
+        db_session.commit()
+
+        response = unauthenticated_client.get(f"/v0/videos/{demo_video.id}/url")
+        assert response.status_code == 200
+        data = response.json()
+        assert "url" in data
+
+    def test_get_video_url_requires_auth(
+        self,
+        unauthenticated_client: TestClient,
+        db_session: "Session",
+        test_user_id: str,
+    ) -> None:
+        """Test that non-demo video URLs require auth."""
+        from app.models.video import Video
+
+        video = Video(
+            filename="private_video.mp4",
+            file_path="raw/private_video.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+            is_demo=False,
+            is_active_demo=False,
+        )
+        db_session.add(video)
+        db_session.commit()
+
+        response = unauthenticated_client.get(f"/v0/videos/{video.id}/url")
+        assert response.status_code == 401
 
     def test_upload_demo_video_unauthorized(
         self, client: TestClient, test_user_id: str

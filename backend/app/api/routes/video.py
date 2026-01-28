@@ -41,7 +41,7 @@ from app.api.schemas.video import (
 )
 from app.core.config import settings
 from app.core.database import get_db
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_user, get_optional_user
 from app.models.video_job import VideoJob
 from app.services import video_service
 from app.services.rq_tasks import enqueue_pose_analysis
@@ -274,7 +274,6 @@ async def list_videos(
 
 @router.get("/demo", response_model=VideoInfo)
 async def get_demo_video(
-    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VideoInfo:
     """
@@ -341,7 +340,7 @@ async def get_video(
 @router.get("/{video_id}/stream", response_model=None)
 async def stream_video(
     video_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> Response:
     """
@@ -359,8 +358,14 @@ async def stream_video(
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Check authorization
-        require_video_access(db_video, current_user)
+        # Check authorization (allow public access for demo videos)
+        if current_user is None and not db_video.is_demo:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
+            )
+        if current_user is not None:
+            require_video_access(db_video, current_user)
 
         # Use storage service to get file
         if settings.STORAGE_TYPE == "supabase":
@@ -424,7 +429,7 @@ async def stream_video(
 async def get_video_url(
     video_id: int,
     request: Request,
-    current_user: dict = Depends(get_current_user),
+    current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
     expires_in: int = 3600,
 ) -> VideoSignedUrlResponse:
@@ -447,8 +452,14 @@ async def get_video_url(
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Check authorization
-        require_video_access(db_video, current_user)
+        # Check authorization (allow public access for demo videos)
+        if current_user is None and not db_video.is_demo:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
+            )
+        if current_user is not None:
+            require_video_access(db_video, current_user)
 
         # Validate expires_in (reasonable range: 60 seconds to 24 hours)
         if expires_in < 60 or expires_in > 86400:
