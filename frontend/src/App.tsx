@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import './App.css';
+import { AccountMenu } from './components/AccountMenu';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
 import DemoDashboard from './components/DemoDashboard';
@@ -76,6 +77,16 @@ function App() {
       handleOpenUploadModal();
     } else {
       setCurrentView('list');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      // After logout, stay on home page
+      setCurrentView('demo-landing');
+    } catch (error) {
+      console.error('Logout failed:', error);
     }
   };
 
@@ -225,23 +236,10 @@ function App() {
 
           <div className="app-header-right">
             {user ? (
-              <button
-                className="logout-btn"
-                onClick={async () => {
-                  try {
-                    await signOut();
-                    // After logout, stay on home page
-                    setCurrentView('demo-landing');
-                  } catch (error) {
-                    console.error('Logout failed:', error);
-                  }
-                }}
-              >
-                Logout
-              </button>
+              <AccountMenu onLogout={handleLogout} />
             ) : (
-              <button className="get-started-btn" onClick={handleGetStarted}>
-                Get Started
+              <button className="sign-in-btn" onClick={handleGetStarted}>
+                Sign In
               </button>
             )}
           </div>

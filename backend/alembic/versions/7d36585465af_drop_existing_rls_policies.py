@@ -26,7 +26,7 @@ APPLICATION_TABLES = [
     "video_jobs",
     # Legacy tables (may still exist in some environments)
     "ball_detections",
-    "video_players",
+    # Note: video_players will be dropped in a later migration (fb60e79c5043)
 ]
 
 
