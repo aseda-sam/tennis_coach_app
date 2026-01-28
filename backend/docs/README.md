@@ -12,4 +12,4 @@ This folder is for **single-topic** docs that are easy to keep accurate.
 - `background-jobs.md`: RQ worker + queues (pose + serve analysis).
 - `deploy-flyio.md`: Fly.io deploy notes (optional, only if you deploy).
 - `demo-videos.md`: Demo video setup/rotation (optional).
-
+- `magic_link_email_template.md`: Magic link email template (optional).

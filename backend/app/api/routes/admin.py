@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -28,21 +28,6 @@ class CleanupResponse(BaseModel):
     errors: list[str]
     dry_run: bool
     message: str
-
-
-class InviteUserRequest(BaseModel):
-    """Request model for inviting a user."""
-
-    email: EmailStr
-    display_name: Optional[str] = None
-
-
-class InviteUserResponse(BaseModel):
-    """Response model for user invitation."""
-
-    message: str
-    user_id: Optional[str] = None
-    email: str
 
 
 @router.post("/cleanup/orphaned-data", response_model=CleanupResponse)

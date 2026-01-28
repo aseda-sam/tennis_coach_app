@@ -122,6 +122,20 @@ export function useAuth() {
     return { data, error };
   };
 
+  const signInWithMagicLink = async (email: string) => {
+    if (!supabase) {
+      return { data: null, error: null };
+    }
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
+    });
+    return { data, error };
+  };
+
   const signOut = async () => {
     if (!supabase) {
       // In local mode, just clear the mock user state
@@ -170,6 +184,7 @@ export function useAuth() {
     loading,
     signUp,
     signIn,
+    signInWithMagicLink,
     signOut,
     resendConfirmationEmail,
     updateUserMetadata,

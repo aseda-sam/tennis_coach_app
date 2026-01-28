@@ -127,6 +127,12 @@
   cursor: not-allowed;
 }
 
+.auth-form-help {
+  margin: var(--spacing-sm) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 .auth-form .error {
   padding: var(--spacing-md);
   background-color: var(--color-error-light);

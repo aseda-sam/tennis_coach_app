@@ -7,6 +7,7 @@ export function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [useMagicLink, setUseMagicLink] = useState(false);
   const [playerName, setPlayerName] = useState('');
   const [dominantHand, setDominantHand] = useState('right');
   const [backhandStyle, setBackhandStyle] = useState('');
@@ -14,7 +15,8 @@ export function AuthForm() {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showResendLink, setShowResendLink] = useState(false);
-  const { signIn, signUp, resendConfirmationEmail } = useAuth();
+  const { signIn, signInWithMagicLink, signUp, resendConfirmationEmail } =
+    useAuth();
   const pendingProfileKey = 'pendingPlayerProfile';
 
   const upsertPlayerProfile = async () => {
@@ -75,15 +77,25 @@ export function AuthForm() {
     setLoading(true);
 
     if (isLogin) {
-      const { error: authError } = await signIn(email, password);
-      setLoading(false);
-      if (authError) {
-        setError(authError.message);
+      if (useMagicLink) {
+        const { error: authError } = await signInWithMagicLink(email);
+        setLoading(false);
+        if (authError) {
+          setError(authError.message);
+        } else {
+          setSuccess('Magic link sent. Check your email to sign in.');
+        }
       } else {
-        try {
-          await upsertPendingProfileIfNeeded();
-        } catch (err) {
-          console.warn('Failed to upsert player profile after login:', err);
+        const { error: authError } = await signIn(email, password);
+        setLoading(false);
+        if (authError) {
+          setError(authError.message);
+        } else {
+          try {
+            await upsertPendingProfileIfNeeded();
+          } catch (err) {
+            console.warn('Failed to upsert player profile after login:', err);
+          }
         }
       }
     } else {
@@ -174,17 +186,19 @@ export function AuthForm() {
             disabled={loading}
           />
         </div>
-        <div className="auth-form-field">
-          <input
-            type="password"
-            className="input"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={loading}
-          />
-        </div>
+        {isLogin && useMagicLink ? null : (
+          <div className="auth-form-field">
+            <input
+              type="password"
+              className="input"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+            />
+          </div>
+        )}
         {!isLogin && (
           <>
             <div className="auth-form-field">
@@ -226,7 +240,13 @@ export function AuthForm() {
         {error && <div className="error">{error}</div>}
         {success && <div className="success">{success}</div>}
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Loading...' : isLogin ? 'Sign in' : 'Create account'}
+          {loading
+            ? 'Loading...'
+            : isLogin
+              ? useMagicLink
+                ? 'Send magic link'
+                : 'Sign in'
+              : 'Create account'}
         </button>
       </form>
       {showResendLink && !isLogin && (
@@ -241,6 +261,27 @@ export function AuthForm() {
           </button>
         </div>
       )}
+      {isLogin && (
+        <div className="auth-form-footer">
+          <button
+            onClick={() => {
+              setUseMagicLink(!useMagicLink);
+              setError(null);
+              setSuccess(null);
+            }}
+            disabled={loading}
+            type="button"
+            className="auth-form-link"
+          >
+            {useMagicLink ? 'Use password instead' : 'Use magic link instead'}
+          </button>
+          {useMagicLink && (
+            <p className="auth-form-help">
+              We will email you a one time sign in link.
+            </p>
+          )}
+        </div>
+      )}
       <div className="auth-form-footer">
         <button
           onClick={() => {
@@ -248,6 +289,7 @@ export function AuthForm() {
             setShowResendLink(false);
             setError(null);
             setSuccess(null);
+            setUseMagicLink(false);
           }}
           disabled={loading}
           type="button"
