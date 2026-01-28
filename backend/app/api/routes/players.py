@@ -139,12 +139,19 @@ def upsert_my_player(
         }
 
         # Get or create default player, passing provided data for initial creation
+        # If name is not provided, use display_name from user metadata
+        player_name = update_data.get("name")
+        if not player_name:
+            user_metadata = current_user.get("user_metadata", {})
+            player_name = user_metadata.get("display_name")
+
         default_player = get_or_create_default_player(
             db,
             current_user["id"],
-            name=update_data.get("name"),
+            name=player_name,
             dominant_hand=update_data.get("dominant_hand"),
             backhand_style=update_data.get("backhand_style"),
+            user_metadata=current_user.get("user_metadata"),
         )
 
         # If player already existed, update it with any new data

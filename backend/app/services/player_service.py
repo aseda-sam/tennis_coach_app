@@ -238,6 +238,7 @@ def get_or_create_default_player(
     name: Optional[str] = None,
     dominant_hand: Optional[Literal["left", "right"]] = None,
     backhand_style: Optional[Literal["one_handed", "two_handed"]] = None,
+    user_metadata: Optional[dict] = None,
 ) -> Player:
     """
     Get or create the default player for a user.
@@ -284,6 +285,9 @@ def get_or_create_default_player(
         return default_player
 
     # Create new default player with provided data or defaults
+    # Priority: provided name > display_name from metadata > "Me"
+    if not name and user_metadata:
+        name = user_metadata.get("display_name")
     player_name = name or "Me"
     player_dominant_hand = dominant_hand or "right"
     logger.info(

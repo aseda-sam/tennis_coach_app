@@ -7,6 +7,7 @@ import { AuthForm } from './components/AuthForm';
 import DemoDashboard from './components/DemoDashboard';
 import DemoLanding from './components/DemoLanding';
 import { CloseIcon, VideoIcon } from './components/Icons';
+import { QuickSetup } from './components/QuickSetup';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
 import { useAuth } from './hooks/useAuth';
@@ -24,6 +25,21 @@ function App() {
     null
   );
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [showQuickSetup, setShowQuickSetup] = useState(false);
+
+  // Check if user needs setup (invited user without display_name)
+  useEffect(() => {
+    if (profile !== 'local' && user && !loading) {
+      const needsSetup = sessionStorage.getItem('needsSetup') === 'true';
+      const hasDisplayName = user.user_metadata?.display_name;
+
+      // Show setup if user was just invited (needsSetup flag) and doesn't have display_name
+      // This ensures invited users get prompted to set their name
+      if (needsSetup && !hasDisplayName) {
+        setShowQuickSetup(true);
+      }
+    }
+  }, [user, loading, profile]);
 
   const handleVideoUploaded = (video: VideoMetadata) => {
     // Invalidate videos cache to refetch the list with the new video
@@ -304,6 +320,12 @@ function App() {
     }
   };
 
+  const handleQuickSetupComplete = () => {
+    setShowQuickSetup(false);
+    // Refresh user data to get updated metadata
+    window.location.reload();
+  };
+
   return (
     <div className="App">
       {renderHeader()}
@@ -314,6 +336,9 @@ function App() {
       ) : (
         renderCurrentView()
       )}
+
+      {/* Quick Setup Modal - Shows for invited users */}
+      {showQuickSetup && <QuickSetup onComplete={handleQuickSetupComplete} />}
 
       {/* Upload Modal - Shared across all views */}
       {isUploadModalOpen && (

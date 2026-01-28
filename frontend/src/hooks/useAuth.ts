@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
+import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 
 // Mock user for local profile
@@ -38,7 +38,7 @@ export function useAuth() {
       const refreshToken = hashParams.get('refresh_token');
       const type = hashParams.get('type');
 
-      if (type === 'recovery' || type === 'signup') {
+      if (type === 'recovery' || type === 'signup' || type === 'invite') {
         // Exchange tokens for session
         if (accessToken && refreshToken) {
           const { data, error } = await supabaseClient.auth.setSession({
@@ -50,6 +50,15 @@ export function useAuth() {
             // Error handling is done by the auth system
           } else if (data.session) {
             // Successfully confirmed and logged in
+            // If this is an invitation, mark that setup is needed
+            if (type === 'invite') {
+              // Check if user has display_name in metadata
+              const displayName = data.session.user.user_metadata?.display_name;
+              if (!displayName) {
+                // Mark that user needs setup
+                sessionStorage.setItem('needsSetup', 'true');
+              }
+            }
             // Clean up the URL hash
             window.history.replaceState(null, '', window.location.pathname);
           }
@@ -145,6 +154,16 @@ export function useAuth() {
     return { data, error };
   };
 
+  const updateUserMetadata = async (metadata: Record<string, any>) => {
+    if (!supabase) {
+      return { data: null, error: null };
+    }
+    const { data, error } = await supabase.auth.updateUser({
+      data: metadata,
+    });
+    return { data, error };
+  };
+
   return {
     user,
     session,
@@ -153,5 +172,6 @@ export function useAuth() {
     signIn,
     signOut,
     resendConfirmationEmail,
+    updateUserMetadata,
   };
 }

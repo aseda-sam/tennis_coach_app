@@ -38,8 +38,12 @@ export function AccountMenu({ onLogout }: AccountMenuProps) {
   }, [isOpen]);
 
   // Get user display name and initial
+  // Priority: player profile name > user metadata display_name > email prefix > 'User'
   const displayName =
-    playerProfile?.name || user?.email?.split('@')[0] || 'User';
+    playerProfile?.name ||
+    user?.user_metadata?.display_name ||
+    user?.email?.split('@')[0] ||
+    'User';
   const initial = displayName.charAt(0).toUpperCase();
 
   const handleLogout = async () => {

@@ -1,0 +1,126 @@
+.quick-setup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.quick-setup-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.quick-setup-header {
+  padding: 32px 32px 24px;
+  text-align: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.quick-setup-title {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.quick-setup-subtitle {
+  margin: 0;
+  font-size: 15px;
+  color: #64748b;
+}
+
+.quick-setup-form {
+  padding: 24px 32px 32px;
+}
+
+.quick-setup-field {
+  margin-bottom: 20px;
+}
+
+.quick-setup-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+}
+
+.quick-setup-label .optional {
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+.quick-setup-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background-color: white;
+  color: #1e293b;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.quick-setup-input:focus {
+  outline: none;
+  border-color: #00bc7d;
+  box-shadow: 0 0 0 3px rgba(0, 188, 125, 0.1);
+}
+
+.quick-setup-input:disabled {
+  background-color: #f1f5f9;
+  cursor: not-allowed;
+}
+
+.quick-setup-error {
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  font-size: 14px;
+}
+
+.quick-setup-button {
+  width: 100%;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #00bc7d 0%, #00a066 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    opacity 0.2s,
+    transform 0.1s;
+}
+
+.quick-setup-button:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.quick-setup-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.quick-setup-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
