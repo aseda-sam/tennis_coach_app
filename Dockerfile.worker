@@ -75,7 +75,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN adduser --disabled-password --gecos '' appuser
 
 # Copy Python dependencies from builder to system location
-# This is cleaner than --user approach and matches Render's Dockerfile
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 

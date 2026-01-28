@@ -47,6 +47,16 @@
   display: inline-flex;
   align-items: center;
   gap: 12px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.app-brand:hover {
+  opacity: 0.8;
 }
 
 .app-logo {
@@ -139,7 +149,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
-.get-started-btn {
+.sign-in-btn {
   padding: var(--spacing-sm) var(--spacing-lg);
   background: linear-gradient(
     135deg,
@@ -156,14 +166,14 @@
   box-shadow: 0 4px 12px rgba(0, 188, 125, 0.25);
 }
 
-.get-started-btn:hover {
+.sign-in-btn:hover {
   background: linear-gradient(
     135deg,
     var(--color-primary-dark) 0%,
     var(--color-primary-darker) 100%
   );
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0, 188, 125, 0.30);
+  box-shadow: 0 6px 16px rgba(0, 188, 125, 0.3);
 }
 
 /* Upload Section */
@@ -236,7 +246,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-2xl) var(--spacing-2xl) var(--spacing-lg) var(--spacing-2xl);
+  padding: var(--spacing-2xl) var(--spacing-2xl) var(--spacing-lg)
+    var(--spacing-2xl);
   border-bottom: 2px solid var(--color-border-light);
 }
 
@@ -277,7 +288,8 @@
   }
 
   .upload-modal .modal-header {
-    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md) var(--spacing-lg);
+    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md)
+      var(--spacing-lg);
   }
 
   .upload-modal .modal-content {

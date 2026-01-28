@@ -166,16 +166,23 @@ def update_player(db: Session, player_id: int, **updates: str | float | None) ->
             f"Invalid fields for update: {invalid_fields}. Allowed fields: {ALLOWED_PLAYER_FIELDS}"
         )
 
-    # Check for name conflicts if name is being updated
+    # Check for name conflicts if name is being updated (per-user, not global)
     if "name" in updates and updates["name"] != player.name:
         existing_player = (
-            db.query(Player).filter(Player.name == updates["name"]).first()
+            db.query(Player)
+            .filter(
+                Player.name == updates["name"],
+                Player.user_id == player.user_id,  # Only check within same user
+            )
+            .first()
         )
         if existing_player:
             logger.warning(
-                f"Player update failed: name conflict - player with name '{updates['name']}' already exists (ID: {existing_player.id})"
+                f"Player update failed: name conflict - player with name '{updates['name']}' already exists for user {player.user_id} (ID: {existing_player.id})"
             )
-            raise ValueError(f"Player with name '{updates['name']}' already exists")
+            raise ValueError(
+                f"Player with name '{updates['name']}' already exists for this user"
+            )
 
     # Safely update only validated fields
     updated_fields = []
@@ -225,45 +232,77 @@ def delete_player(db: Session, player_id: int) -> None:
     logger.info(f"✅ Successfully deleted player ID={player_id} (name='{player.name}')")
 
 
-def get_or_create_default_player(db: Session, user_id: str) -> Player:
+def get_or_create_default_player(
+    db: Session,
+    user_id: str,
+    name: Optional[str] = None,
+    dominant_hand: Optional[Literal["left", "right"]] = None,
+    backhand_style: Optional[Literal["one_handed", "two_handed"]] = None,
+    user_metadata: Optional[dict] = None,
+) -> Player:
     """
-    Get or create the default "Me" player for a user.
+    Get or create the default player for a user.
 
-    Creates a player named "Me" (or user's name if available) owned by user_id.
+    If a default player doesn't exist, creates one with the provided data.
+    If name is not provided, uses "Me" as fallback.
     This becomes the default selection for serve attempt tagging.
 
     Args:
         db: Database session
         user_id: User ID (UUID string)
+        name: Optional player name (defaults to "Me" if not provided)
+        dominant_hand: Optional dominant hand (defaults to "right" if not provided)
+        backhand_style: Optional backhand style
 
     Returns:
         Player: The default player for this user
     """
-    # Check for existing default player
+    # Check for existing default player (look for any player owned by this user)
+    # In practice, users should only have one default player, but we check by user_id
     default_player = (
         db.query(Player)
-        .filter(
-            Player.user_id == user_id,
-            Player.name.in_(["Me", "Default"]),  # Flexible naming
-        )
+        .filter(Player.user_id == user_id)
+        .order_by(Player.created_at.asc())  # Get the first created player
         .first()
     )
 
     if default_player:
         logger.debug(
-            f"Found existing default player for user {user_id}: ID={default_player.id}"
+            f"Found existing default player for user {user_id}: ID={default_player.id}, name='{default_player.name}'"
         )
+        # Update it if new data provided
+        if name and name != default_player.name:
+            logger.info(
+                f"Updating default player name from '{default_player.name}' to '{name}'"
+            )
+            default_player.name = name
+        if dominant_hand and dominant_hand != default_player.dominant_hand:
+            default_player.dominant_hand = dominant_hand
+        if backhand_style is not None:
+            default_player.backhand_style = backhand_style
+        db.commit()
+        db.refresh(default_player)
         return default_player
 
-    # Create new default player
-    logger.info(f"Creating default player 'Me' for user {user_id}")
+    # Create new default player with provided data or defaults
+    # Priority: provided name > display_name from metadata > "Me"
+    if not name and user_metadata:
+        name = user_metadata.get("display_name")
+    player_name = name or "Me"
+    player_dominant_hand = dominant_hand or "right"
+    logger.info(
+        f"Creating default player '{player_name}' for user {user_id} (dominant_hand={player_dominant_hand})"
+    )
     default_player = Player(
-        name="Me",
-        dominant_hand="right",  # Default, user can update later
+        name=player_name,
+        dominant_hand=player_dominant_hand,
+        backhand_style=backhand_style,
         user_id=user_id,
     )
     db.add(default_player)
     db.commit()
     db.refresh(default_player)
-    logger.info(f"✅ Created default player for user {user_id}: ID={default_player.id}")
+    logger.info(
+        f"✅ Created default player for user {user_id}: ID={default_player.id}, name='{player_name}'"
+    )
     return default_player

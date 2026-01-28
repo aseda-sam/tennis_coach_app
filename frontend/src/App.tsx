@@ -1,11 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import './App.css';
+import { AccountMenu } from './components/AccountMenu';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
 import DemoDashboard from './components/DemoDashboard';
 import DemoLanding from './components/DemoLanding';
 import { CloseIcon, VideoIcon } from './components/Icons';
+import { QuickSetup } from './components/QuickSetup';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
 import { useAuth } from './hooks/useAuth';
@@ -23,6 +25,21 @@ function App() {
     null
   );
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [showQuickSetup, setShowQuickSetup] = useState(false);
+
+  // Check if user needs setup (invited user without display_name)
+  useEffect(() => {
+    if (profile !== 'local' && user && !loading) {
+      const needsSetup = sessionStorage.getItem('needsSetup') === 'true';
+      const hasDisplayName = user.user_metadata?.display_name;
+
+      // Show setup if user was just invited (needsSetup flag) and doesn't have display_name
+      // This ensures invited users get prompted to set their name
+      if (needsSetup && !hasDisplayName) {
+        setShowQuickSetup(true);
+      }
+    }
+  }, [user, loading, profile]);
 
   const handleVideoUploaded = (video: VideoMetadata) => {
     // Invalidate videos cache to refetch the list with the new video
@@ -76,6 +93,16 @@ function App() {
       handleOpenUploadModal();
     } else {
       setCurrentView('list');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      // After logout, stay on home page
+      setCurrentView('demo-landing');
+    } catch (error) {
+      console.error('Logout failed:', error);
     }
   };
 
@@ -163,15 +190,7 @@ function App() {
   // Show auth form only for protected views (list, dashboard) when not logged in
   // Home (demo-landing) and demo-dashboard are accessible without login
   const requiresAuth = ['list', 'dashboard'].includes(currentView);
-  if (profile !== 'local' && !user && requiresAuth) {
-    return (
-      <div className="App">
-        <div className="app-container">
-          <AuthForm />
-        </div>
-      </div>
-    );
-  }
+  const showAuthForm = profile !== 'local' && !user && requiresAuth;
 
   const renderHeader = () => {
     // Header with tabs for all views (including homepage for returning users)
@@ -179,12 +198,16 @@ function App() {
       <div className="app-header">
         <div className="app-header-wrapper">
           <div className="app-header-left">
-            <div className="app-brand">
+            <button
+              className="app-brand"
+              onClick={() => setCurrentView('demo-landing')}
+              aria-label="Go to home"
+            >
               <div className="app-logo">
                 <VideoIcon size={20} color="white" />
               </div>
               <h1 className="app-title">Tennis Coach</h1>
-            </div>
+            </button>
           </div>
 
           <div
@@ -225,23 +248,10 @@ function App() {
 
           <div className="app-header-right">
             {user ? (
-              <button
-                className="logout-btn"
-                onClick={async () => {
-                  try {
-                    await signOut();
-                    // After logout, stay on home page
-                    setCurrentView('demo-landing');
-                  } catch (error) {
-                    console.error('Logout failed:', error);
-                  }
-                }}
-              >
-                Logout
-              </button>
+              <AccountMenu onLogout={handleLogout} />
             ) : (
-              <button className="get-started-btn" onClick={handleGetStarted}>
-                Get Started
+              <button className="sign-in-btn" onClick={handleGetStarted}>
+                Sign In
               </button>
             )}
           </div>
@@ -310,10 +320,25 @@ function App() {
     }
   };
 
+  const handleQuickSetupComplete = () => {
+    setShowQuickSetup(false);
+    // Refresh user data to get updated metadata
+    window.location.reload();
+  };
+
   return (
     <div className="App">
       {renderHeader()}
-      {renderCurrentView()}
+      {showAuthForm ? (
+        <div className="app-container">
+          <AuthForm />
+        </div>
+      ) : (
+        renderCurrentView()
+      )}
+
+      {/* Quick Setup Modal - Shows for invited users */}
+      {showQuickSetup && <QuickSetup onComplete={handleQuickSetupComplete} />}
 
       {/* Upload Modal - Shared across all views */}
       {isUploadModalOpen && (

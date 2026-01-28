@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response
 
 from app.api.routes import (
+    admin,
     analysis,
     overlay_data,
     players,
@@ -291,6 +292,17 @@ app.include_router(
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"},
+    },
+)
+
+app.include_router(
+    admin.router,
+    prefix="/v0/admin",
+    tags=["admin"],
+    responses={
+        400: {"description": "Bad Request"},
+        403: {"description": "Forbidden - Admin access required"},
         500: {"description": "Internal Server Error"},
     },
 )
