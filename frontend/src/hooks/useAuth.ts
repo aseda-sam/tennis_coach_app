@@ -52,12 +52,7 @@ export function useAuth() {
             // Successfully confirmed and logged in
             // If this is an invitation, mark that setup is needed
             if (type === 'invite') {
-              // Check if user has display_name in metadata
-              const displayName = data.session.user.user_metadata?.display_name;
-              if (!displayName) {
-                // Mark that user needs setup
-                sessionStorage.setItem('needsSetup', 'true');
-              }
+              sessionStorage.setItem('needsSetup', 'true');
             }
             // Clean up the URL hash
             window.history.replaceState(null, '', window.location.pathname);
@@ -164,6 +159,16 @@ export function useAuth() {
     return { data, error };
   };
 
+  const updateUserPassword = async (password: string) => {
+    if (!supabase) {
+      return { data: null, error: null };
+    }
+    const { data, error } = await supabase.auth.updateUser({
+      password,
+    });
+    return { data, error };
+  };
+
   return {
     user,
     session,
@@ -173,5 +178,6 @@ export function useAuth() {
     signOut,
     resendConfirmationEmail,
     updateUserMetadata,
+    updateUserPassword,
   };
 }

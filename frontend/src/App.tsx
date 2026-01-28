@@ -27,15 +27,11 @@ function App() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [showQuickSetup, setShowQuickSetup] = useState(false);
 
-  // Check if user needs setup (invited user without display_name)
+  // Check if user needs setup (invited user)
   useEffect(() => {
     if (profile !== 'local' && user && !loading) {
       const needsSetup = sessionStorage.getItem('needsSetup') === 'true';
-      const hasDisplayName = user.user_metadata?.display_name;
-
-      // Show setup if user was just invited (needsSetup flag) and doesn't have display_name
-      // This ensures invited users get prompted to set their name
-      if (needsSetup && !hasDisplayName) {
+      if (needsSetup) {
         setShowQuickSetup(true);
       }
     }
