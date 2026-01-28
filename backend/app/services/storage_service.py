@@ -184,6 +184,8 @@ class StorageService:
         """
         self._validate_file_path(file_path)
         if self.storage_type == "supabase":
+            if file_path.startswith("demo/") and settings.SUPABASE_DEMO_BUCKET:
+                return self.get_demo_public_url(file_path)
             return self._get_supabase_url(file_path)
         return file_path  # Local storage - API route handles serving
 
@@ -204,6 +206,8 @@ class StorageService:
         """
         self._validate_file_path(file_path)
         if self.storage_type == "supabase":
+            if file_path.startswith("demo/") and settings.SUPABASE_DEMO_BUCKET:
+                return self.get_demo_public_url(file_path)
             return self._create_supabase_signed_url(file_path, expires_in)
         return file_path  # Local storage - API route handles serving
 
