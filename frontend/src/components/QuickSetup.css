@@ -4,118 +4,115 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--color-overlay-dark);
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: var(--z-modal-backdrop);
-  padding: var(--spacing-xl);
+  z-index: 1000;
+  padding: 20px;
 }
 
 .quick-setup-modal {
-  background: var(--color-surface);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-xl);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
   max-width: 480px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  z-index: var(--z-modal);
 }
 
 .quick-setup-header {
-  padding: var(--spacing-4xl) var(--spacing-4xl) var(--spacing-2xl);
+  padding: 32px 32px 24px;
   text-align: center;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .quick-setup-title {
-  margin: 0 0 var(--spacing-sm);
-  font-size: var(--font-size-5xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 .quick-setup-subtitle {
   margin: 0;
-  font-size: var(--font-size-lg);
-  color: var(--color-text-muted);
+  font-size: 15px;
+  color: #64748b;
 }
 
 .quick-setup-form {
-  padding: var(--spacing-2xl) var(--spacing-4xl) var(--spacing-4xl);
+  padding: 24px 32px 32px;
 }
 
 .quick-setup-field {
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: 20px;
 }
 
 .quick-setup-label {
   display: block;
-  margin-bottom: var(--spacing-sm);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
 }
 
 .quick-setup-label .optional {
-  font-weight: var(--font-weight-normal);
-  color: var(--color-text-disabled);
+  font-weight: 400;
+  color: #94a3b8;
 }
 
 .quick-setup-input {
   width: 100%;
-  padding: var(--input-padding);
-  font-size: var(--font-size-lg);
-  border: var(--input-border-width) solid var(--color-border-dark);
-  border-radius: var(--input-border-radius);
-  background-color: var(--color-surface);
-  color: var(--color-text);
-  transition: var(--transition-normal);
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background-color: white;
+  color: #1e293b;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .quick-setup-input:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 var(--focus-outline-width)
-    color-mix(in srgb, var(--color-primary) 18%, transparent);
+  border-color: #00bc7d;
+  box-shadow: 0 0 0 3px rgba(0, 188, 125, 0.1);
 }
 
 .quick-setup-input:disabled {
-  background-color: var(--color-surface-tertiary);
+  background-color: #f1f5f9;
   cursor: not-allowed;
 }
 
 .quick-setup-error {
-  margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-md);
-  background-color: var(--color-error-light);
-  border: 1px solid var(--color-error-soft);
-  border-radius: var(--radius-md);
-  color: var(--color-error-dark);
-  font-size: var(--font-size-base);
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  font-size: 14px;
 }
 
 .quick-setup-button {
   width: 100%;
-  padding: var(--button-padding-md);
-  font-size: var(--font-size-xl);
-  font-weight: var(--button-font-weight);
-  color: var(--color-surface);
-  background: linear-gradient(
-    135deg,
-    var(--color-primary) 0%,
-    var(--color-primary-dark) 100%
-  );
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #00bc7d 0%, #00a066 100%);
   border: none;
-  border-radius: var(--button-border-radius);
+  border-radius: 8px;
   cursor: pointer;
-  transition: var(--transition-normal);
-  box-shadow: var(--shadow-primary-md);
+  transition:
+    opacity 0.2s,
+    transform 0.1s;
 }
 
 .quick-setup-button:hover:not(:disabled) {
-  opacity: 0.92;
+  opacity: 0.9;
   transform: translateY(-1px);
 }
 

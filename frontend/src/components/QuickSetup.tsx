@@ -9,15 +9,12 @@ interface QuickSetupProps {
 }
 
 export function QuickSetup({ onComplete }: QuickSetupProps) {
-  const { user, updateUserMetadata, updateUserPassword } = useAuth();
+  const { user, updateUserMetadata } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [dominantHand, setDominantHand] = useState('right');
   const [backhandStyle, setBackhandStyle] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const passwordMinLength = 8;
 
   // Check if user already has a player profile
   const { data: existingProfile } = useQuery({
@@ -50,31 +47,12 @@ export function QuickSetup({ onComplete }: QuickSetupProps) {
       return;
     }
 
-    if (password.length < passwordMinLength) {
-      setError(`Password must be at least ${passwordMinLength} characters`);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
     setLoading(true);
 
     try {
-      const { error: passwordError } = await updateUserPassword(password);
-      if (passwordError) {
-        setError(passwordError.message || 'Failed to set password');
-        setLoading(false);
-        return;
-      }
-
       // Update Supabase user metadata with display_name
       const { error: metadataError } = await updateUserMetadata({
         display_name: trimmedName,
-        setup_complete: true,
-        password_set: true,
       });
 
       if (metadataError) {
@@ -159,38 +137,6 @@ export function QuickSetup({ onComplete }: QuickSetupProps) {
               <option value="one_handed">One-handed</option>
               <option value="two_handed">Two-handed</option>
             </select>
-          </div>
-
-          <div className="quick-setup-field">
-            <label htmlFor="password" className="quick-setup-label">
-              Set a password
-            </label>
-            <input
-              id="password"
-              type="password"
-              className="quick-setup-input"
-              placeholder="At least 8 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <div className="quick-setup-field">
-            <label htmlFor="confirmPassword" className="quick-setup-label">
-              Confirm password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              className="quick-setup-input"
-              placeholder="Re-enter your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              disabled={loading}
-            />
           </div>
 
           {error && <div className="quick-setup-error">{error}</div>}
