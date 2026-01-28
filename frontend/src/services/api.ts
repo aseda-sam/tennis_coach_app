@@ -241,6 +241,49 @@ export const videoApi = {
     }
   },
 
+  // Check if user is demo editor
+  checkDemoEditorStatus: async (): Promise<{ is_demo_editor: boolean }> => {
+    const response = await api.get<{ is_demo_editor: boolean }>(
+      '/videos/admin/demo-editor-status'
+    );
+    return response.data;
+  },
+
+  // List all demo videos (admin only)
+  listDemoVideos: async (): Promise<
+    {
+      id: number;
+      filename: string;
+      file_path: string;
+      is_active_demo: boolean;
+      has_pose_analysis: boolean;
+      serve_attempt_count: number;
+      created_at: string;
+    }[]
+  > => {
+    const response = await api.get('/videos/admin/demos');
+    return response.data;
+  },
+
+  // Set active demo (admin only)
+  setActiveDemo: async (videoId: number): Promise<VideoMetadata> => {
+    const response = await api.post<VideoMetadata>(
+      `/videos/admin/demos/${videoId}/set-active`
+    );
+    return response.data;
+  },
+
+  // Trigger pose analysis for demo video (admin only)
+  analyzeDemoPose: async (
+    videoId: number,
+    confidenceThreshold: number = 0.7
+  ): Promise<AnalysisStartResponse> => {
+    const response = await api.post<AnalysisStartResponse>(
+      `/videos/admin/demos/${videoId}/analyze-pose?confidence_threshold=${confidenceThreshold}`
+    );
+    return response.data;
+  },
+
   // Update video metadata (session_type and camera_angle)
   updateVideoMetadata: async (
     videoId: number,

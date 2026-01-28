@@ -506,15 +506,65 @@ class StorageService:
         if content_type:
             file_options["content-type"] = content_type
 
-        try:
-            self._supabase_client.storage.from_(settings.SUPABASE_DEMO_BUCKET).upload(
-                file_path, file_content, file_options=file_options
-            )
-            logger.info(f"File uploaded to demo bucket: {file_path}")
-            return file_path
-        except (ValueError, RuntimeError, AttributeError) as e:
-            logger.error(f"Failed to upload to demo bucket {file_path}: {e}")
-            raise RuntimeError(f"Failed to upload to demo bucket: {e}") from e
+        # Extract directory and filename components for counter-based naming
+        path_obj = Path(file_path)
+        directory = str(path_obj.parent) if path_obj.parent != Path(".") else ""
+        base_name = path_obj.stem
+        extension = path_obj.suffix
+
+        current_path = file_path
+        counter = 0
+        max_attempts = 1000
+
+        while counter < max_attempts:
+            try:
+                self._supabase_client.storage.from_(
+                    settings.SUPABASE_DEMO_BUCKET
+                ).upload(current_path, file_content, file_options=file_options)
+                if counter > 0:
+                    logger.debug(
+                        "Demo file %s already existed, uploaded as %s",
+                        file_path,
+                        current_path,
+                    )
+                logger.info("File uploaded to demo bucket: %s", current_path)
+                return current_path
+            except (ValueError, RuntimeError, AttributeError) as e:
+                logger.error("Failed to upload to demo bucket %s: %s", current_path, e)
+                raise RuntimeError(f"Failed to upload to demo bucket: {e}") from e
+            except Exception as e:
+                error_msg = str(e).lower()
+                error_type = type(e).__name__.lower()
+                is_duplicate = (
+                    "duplicate" in error_msg
+                    or "409" in error_msg
+                    or "already exists" in error_msg
+                    or "resource already exists" in error_msg
+                    or "storageapi" in error_type
+                )
+
+                if is_duplicate and counter < max_attempts - 1:
+                    counter += 1
+                    if directory:
+                        current_path = f"{directory}/{base_name}_{counter}{extension}"
+                    else:
+                        current_path = f"{base_name}_{counter}{extension}"
+                    logger.debug(
+                        "Demo file %s exists, trying %s", file_path, current_path
+                    )
+                else:
+                    if counter >= max_attempts - 1:
+                        logger.error(
+                            "Could not generate unique demo filename for %s after %s attempts",
+                            file_path,
+                            max_attempts,
+                        )
+                        raise RuntimeError(
+                            f"Could not generate unique filename for {file_path} "
+                            f"after {max_attempts} attempts"
+                        ) from e
+                    logger.error("Upload failed for %s: %s", current_path, e)
+                    raise RuntimeError(f"Failed to upload to demo bucket: {e}") from e
 
     # Local storage methods
 

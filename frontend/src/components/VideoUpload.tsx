@@ -1,17 +1,27 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { useDemoEditor } from '../hooks/useDemoEditor';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import { UploadIcon } from './Icons';
-import { useAuth } from '../hooks/useAuth';
 import './VideoUpload.css';
 
 interface VideoUploadProps {
   onUploadSuccess: (video: VideoMetadata) => void;
+  defaultIsDemo?: boolean;
+  forceDemo?: boolean;
+  hideDemoToggle?: boolean;
+  demoNoticeText?: string;
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 
-const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
+const VideoUpload: React.FC<VideoUploadProps> = ({
+  onUploadSuccess,
+  defaultIsDemo = false,
+  forceDemo = false,
+  hideDemoToggle = false,
+  demoNoticeText,
+}) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -20,16 +30,12 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isDemo, setIsDemo] = useState(false);
+  const [isDemo, setIsDemo] = useState(defaultIsDemo);
   const [sessionType, setSessionType] = useState<string>('');
   const [cameraAngle, setCameraAngle] = useState<string>('');
   const [isUpdatingMetadata, setIsUpdatingMetadata] = useState(false);
-  const { user } = useAuth();
-
-  // Check if user can upload demo videos
-  const profile = process.env.REACT_APP_PROFILE || 'local';
-  const DEMO_UPLOAD_USER_ID = 'ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f';
-  const canUploadDemo = profile === 'local' || user?.id === DEMO_UPLOAD_USER_ID;
+  const { isDemoEditor: canUploadDemo } = useDemoEditor();
+  const resolvedIsDemo = forceDemo ? true : isDemo;
 
   const handleFileSelect = useCallback(
     async (file: File) => {
@@ -60,7 +66,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
 
       try {
         // Upload file immediately without metadata
-        const response = await videoApi.uploadVideo(file, isDemo, {});
+        const response = await videoApi.uploadVideo(file, resolvedIsDemo, {});
 
         setUploadedVideoId(response.video_id);
         setUploadProgress(100);
@@ -81,7 +87,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
         setUploadStatus('error');
       }
     },
-    [isDemo]
+    [resolvedIsDemo]
   );
 
   const handleFinishUpload = useCallback(async () => {
@@ -116,7 +122,9 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
         ...(updatedVideo.fps && { fps: updatedVideo.fps }),
         ...(updatedVideo.width && { width: updatedVideo.width }),
         ...(updatedVideo.height && { height: updatedVideo.height }),
-        ...(updatedVideo.frame_count && { frame_count: updatedVideo.frame_count }),
+        ...(updatedVideo.frame_count && {
+          frame_count: updatedVideo.frame_count,
+        }),
       };
 
       onUploadSuccess(video);
@@ -130,7 +138,8 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
         axiosError.response?.data?.detail ||
         axiosError.response?.data?.error?.message;
 
-      const errorMessage = detail || 'Failed to update video details. Please try again.';
+      const errorMessage =
+        detail || 'Failed to update video details. Please try again.';
       setError(errorMessage);
     } finally {
       setIsUpdatingMetadata(false);
@@ -213,7 +222,9 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
     <div className="video-upload">
       {/* Step Indicator */}
       <div className="upload-steps">
-        <div className={`step-indicator ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
+        <div
+          className={`step-indicator ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}
+        >
           <span className="step-number">1</span>
           <span className="step-label">Upload</span>
         </div>
@@ -247,7 +258,9 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
                 <div className="upload-icon" aria-hidden="true">
                   <UploadIcon size={48} color="#22c55e" />
                 </div>
-                <p className="upload-main-text">Uploaded: {selectedFile?.name}</p>
+                <p className="upload-main-text">
+                  Uploaded: {selectedFile?.name}
+                </p>
                 <button
                   type="button"
                   onClick={handleReplaceFile}
@@ -282,7 +295,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
             )}
           </div>
 
-          {canUploadDemo && (
+          {canUploadDemo && !hideDemoToggle && !forceDemo && (
             <div className="demo-upload-option">
               <label>
                 <input
@@ -291,8 +304,18 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadSuccess }) => {
                   onChange={(e) => setIsDemo(e.target.checked)}
                   disabled={uploadStatus === 'uploading'}
                 />
-                <span>Upload as demo video (public, accessible to all users)</span>
+                <span>
+                  Upload as demo video (public, accessible to all users)
+                </span>
               </label>
+            </div>
+          )}
+          {canUploadDemo && forceDemo && (
+            <div className="demo-upload-option demo-upload-option--locked">
+              <span>
+                {demoNoticeText ||
+                  'This upload will be saved as a public demo video.'}
+              </span>
             </div>
           )}
         </>
