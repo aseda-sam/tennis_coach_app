@@ -18,20 +18,18 @@ export function AuthForm() {
   const pendingProfileKey = 'pendingPlayerProfile';
 
   const upsertPlayerProfile = async () => {
-    const profile = {
-      name: playerName?.trim() || undefined,
-      dominant_hand: dominantHand || undefined,
-      backhand_style: backhandStyle?.trim() || undefined,
-    };
-
-    const hasProfileData =
-      Boolean(profile.name) ||
-      Boolean(profile.dominant_hand) ||
-      Boolean(profile.backhand_style);
-
-    if (!hasProfileData) {
+    // Name is required, so ensure it's always sent
+    const trimmedName = playerName?.trim();
+    if (!trimmedName) {
+      setError('Player name is required');
       return;
     }
+
+    const profile = {
+      name: trimmedName,
+      dominant_hand: dominantHand || 'right', // Default to right if not selected
+      backhand_style: backhandStyle?.trim() || undefined,
+    };
 
     await playerApi.upsertMe(profile);
   };
@@ -46,8 +44,15 @@ export function AuthForm() {
         dominant_hand?: string;
         backhand_style?: string;
       };
-      await playerApi.upsertMe(profile);
-      localStorage.removeItem(pendingProfileKey);
+      // Ensure name is provided before upserting
+      if (profile.name?.trim()) {
+        await playerApi.upsertMe({
+          name: profile.name.trim(),
+          dominant_hand: profile.dominant_hand || 'right',
+          backhand_style: profile.backhand_style || undefined,
+        });
+        localStorage.removeItem(pendingProfileKey);
+      }
     } catch (err) {
       console.warn('Failed to apply pending player profile:', err);
     }
@@ -108,15 +113,19 @@ export function AuthForm() {
             'Please check your email to confirm your account before logging in.'
           );
           setShowResendLink(true);
-          const pendingProfile = {
-            name: playerName?.trim() || undefined,
-            dominant_hand: dominantHand || undefined,
-            backhand_style: backhandStyle?.trim() || undefined,
-          };
-          localStorage.setItem(
-            pendingProfileKey,
-            JSON.stringify(pendingProfile)
-          );
+          // Store pending profile only if name is provided
+          const trimmedName = playerName?.trim();
+          if (trimmedName) {
+            const pendingProfile = {
+              name: trimmedName,
+              dominant_hand: dominantHand || 'right',
+              backhand_style: backhandStyle?.trim() || undefined,
+            };
+            localStorage.setItem(
+              pendingProfileKey,
+              JSON.stringify(pendingProfile)
+            );
+          }
         }
       }
     }
@@ -185,6 +194,7 @@ export function AuthForm() {
                 placeholder="Player name (e.g., Alex)"
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
+                required
                 disabled={loading}
               />
             </div>

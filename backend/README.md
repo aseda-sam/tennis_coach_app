@@ -47,7 +47,7 @@ FastAPI backend for a **serve-focused** tennis coaching MVP:
    ```bash
    # Using Docker Compose (recommended)
    docker compose up -d postgres
-   
+
    # Or use your own PostgreSQL instance
    # Make sure it's running and accessible
    ```
@@ -187,6 +187,17 @@ The following endpoints require authentication:
 - Player creation and management
 - Analysis requests
 
+### Default Player Profile
+
+Each user has a default player profile that is automatically created or retrieved:
+
+- **GET `/v0/players/me`**: Fetch the current user's default player profile
+- **PUT `/v0/players/me`**: Create or update the default player profile
+
+When a user signs up, they provide their name, dominant hand, and backhand style. This creates their default player profile. The profile can be updated later using the `/me` endpoint.
+
+**Note:** The default player is used for serve attempt tagging when no specific player is selected. Users can create additional players via `POST /v0/players/` if needed.
+
 ### Authorization
 
 The application enforces user-based data isolation:
@@ -194,6 +205,7 @@ The application enforces user-based data isolation:
 - Users can only access their own videos and players
 - Video owners control access to their video data
 - Admin users (configured via Supabase metadata) can access all data
+- Player name conflicts are checked per-user (different users can have players with the same name)
 
 For endpoint details, use the OpenAPI docs at `http://localhost:8000/docs`.
 
@@ -307,6 +319,7 @@ Demo videos are served from a public Supabase bucket (when configured) and are a
    - Set it to **public** (important: demo videos need public access)
 
 2. **Configure environment variable**:
+
    ```bash
    SUPABASE_DEMO_BUCKET=demo-videos
    ```
@@ -328,6 +341,7 @@ python backend/scripts/set_active_demo.py --video-id <id>
 ```
 
 The script will:
+
 - Verify the video is eligible (marked as demo, file_path starts with `demo/`)
 - Copy the video to demo bucket if it doesn't exist (from private bucket)
 - Set the video as active (automatically unsetting any previous active demo)

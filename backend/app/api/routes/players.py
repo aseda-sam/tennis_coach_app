@@ -109,6 +109,22 @@ def get_players(
         raise handle_processing_error("get_players", str(e)) from e
 
 
+@router.get("/me", response_model=PlayerInfo)
+def get_my_player(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PlayerInfo:
+    """Get the default player profile for the current user."""
+    try:
+        default_player = get_or_create_default_player(db, current_user["id"])
+        return _create_player_info(db, default_player)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+
+
 @router.put("/me", response_model=PlayerInfo)
 def upsert_my_player(
     player_update: PlayerUpdate,
@@ -117,12 +133,21 @@ def upsert_my_player(
 ) -> PlayerInfo:
     """Create or update the default player profile for the current user."""
     try:
-        default_player = get_or_create_default_player(db, current_user["id"])
-
+        # Extract update data, filtering out None values
         update_data = {
             k: v for k, v in player_update.model_dump().items() if v is not None
         }
 
+        # Get or create default player, passing provided data for initial creation
+        default_player = get_or_create_default_player(
+            db,
+            current_user["id"],
+            name=update_data.get("name"),
+            dominant_hand=update_data.get("dominant_hand"),
+            backhand_style=update_data.get("backhand_style"),
+        )
+
+        # If player already existed, update it with any new data
         if update_data:
             default_player = update_player_service(db, default_player.id, **update_data)
 

@@ -45,6 +45,7 @@ REACT_APP_DEBUG=true
 ## Available Scripts
 
 ### Development
+
 ```bash
 # Start development server
 npm start
@@ -63,6 +64,7 @@ npm run eject
 ```
 
 ### Code Quality
+
 ```bash
 # Lint code
 npm run lint
@@ -78,6 +80,7 @@ npm run format
 ```
 
 ### Testing
+
 ```bash
 # Run tests in watch mode
 npm test
@@ -132,6 +135,7 @@ frontend/
 
 - **User Authentication**: Login and registration with Supabase Auth
 - **User Sessions**: Secure session management and token handling
+- **Player Profile**: Default player profile created during signup (name, dominant hand, backhand style)
 - **Video Upload**: Drag-and-drop file upload with validation
 - **Video Library**: Browse and manage your uploaded videos
 - **Video Playback**: HTML5 video player with controls and fullscreen
@@ -143,12 +147,14 @@ frontend/
 ## Components Overview
 
 ### VideoUpload
+
 - Drag-and-drop file upload interface
 - File validation (size, format)
 - Upload progress and error handling
 - Supports MP4, MOV, AVI formats
 
 ### VideoList
+
 - Displays uploaded videos in a grid
 - Shows video metadata (size, duration, resolution)
 - Delete functionality with confirmation
@@ -156,24 +162,28 @@ frontend/
 - Upload button opens floating modal (not full page navigation)
 
 ### VideoPlayer
+
 - HTML5 video player with custom controls
 - Play/pause, seek, volume, fullscreen
 - Automatic annotated video selection
 - Error handling for playback issues
 
 ### AnalysisDashboard
+
 - Combined video player and analysis results
 - Analysis trigger button
 - Loading states during processing
 - Collapsible video details
 
 ### AnalysisResults
+
 - Displays ball detection metrics
 - Shows pose estimation statistics
 - Processing time and model information
 - Collapsible sections for organization
 
 ### Tour
+
 - Custom guided tour component for onboarding
 - React 19 compatible (built due to react-joyride incompatibility)
 - Supports multi-step tours with tooltips and highlights
@@ -190,6 +200,7 @@ The app uses view-based routing managed in `App.tsx`:
 - **Demo** (`demo-dashboard`): Demo mode analysis dashboard (no auth required)
 
 **Navigation Features**:
+
 - Navigation tabs (Home, Library, Demo) visible on all pages
 - Auth-aware header actions: "Get Started" when logged out, "Logout" when logged in
 - Upload is gated behind login - opens modal when logged in, redirects to Library/auth when not
@@ -198,14 +209,17 @@ The app uses view-based routing managed in `App.tsx`:
 ## API Integration
 
 ### Base Configuration
+
 The frontend communicates with the backend API through the `api.ts` service layer:
 
 ```typescript
 // Default API configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
 ```
 
 ### Key Endpoints
+
 - `POST /v0/videos/upload` - Upload video files
 - `GET /v0/videos/` - List all videos
 - `GET /v0/videos/{video_id}/stream` - Stream original video
@@ -213,8 +227,11 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/v0'
 - `GET /v0/videos/{video_id}/analysis-status` - Get analysis status
 - `POST /v0/analysis/videos/{video_id}` - Start analysis
 - `GET /v0/analysis/{analysis_id}` - Get analysis results
+- `GET /v0/players/me` - Get current user's default player profile
+- `PUT /v0/players/me` - Create or update default player profile (used during signup)
 
 ### Error Handling
+
 - Network errors with retry logic
 - File upload validation
 - Video playback error recovery
@@ -223,21 +240,23 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/v0'
 ## Development Guidelines
 
 ### Code Style
+
 - Use TypeScript for all new code
 - Follow ESLint configuration
 - Use Prettier for formatting
 - Add JSDoc comments for complex functions
 
 ### Component Patterns
+
 ```typescript
 // Functional components with hooks
 const MyComponent: React.FC<MyComponentProps> = ({ prop1, prop2 }) => {
   const [state, setState] = useState<StateType>(initialState);
-  
+
   useEffect(() => {
     // Side effects
   }, [dependencies]);
-  
+
   return (
     <div className="my-component">
       {/* JSX content */}
@@ -247,12 +266,14 @@ const MyComponent: React.FC<MyComponentProps> = ({ prop1, prop2 }) => {
 ```
 
 ### State Management
+
 - Use React hooks (useState, useEffect, useCallback)
 - Keep state as local as possible
 - Lift state up when needed for sharing
 - Consider Context API for global state
 
 ### Testing Patterns
+
 ```typescript
 // Component test example
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -261,10 +282,10 @@ import { VideoPlayer } from './VideoPlayer';
 describe('VideoPlayer', () => {
   it('should play video when play button is clicked', () => {
     render(<VideoPlayer src="test.mp4" />);
-    
+
     const playButton = screen.getByRole('button', { name: /play/i });
     fireEvent.click(playButton);
-    
+
     expect(screen.getByRole('video')).toHaveAttribute('src', 'test.mp4');
   });
 });
@@ -273,12 +294,14 @@ describe('VideoPlayer', () => {
 ## Testing
 
 ### Test Structure
+
 - Unit tests for individual components
 - Integration tests for component interactions
 - API service tests with mocked responses
 - User interaction tests with React Testing Library
 
 ### Running Tests
+
 ```bash
 # Run all tests
 npm test
@@ -294,6 +317,7 @@ npm run test:ci
 ```
 
 ### Coverage Requirements
+
 - Minimum 70% coverage for new code
 - 100% coverage for critical components
 - Focus on user interactions and business logic
@@ -301,11 +325,13 @@ npm run test:ci
 ## Build and Deployment
 
 ### Development Build
+
 ```bash
 npm start
 ```
 
 ### Production Build
+
 ```bash
 npm run build
 ```
@@ -313,6 +339,7 @@ npm run build
 The build output will be in the `build/` directory.
 
 ### Environment-Specific Builds
+
 ```bash
 # Development
 REACT_APP_API_URL=http://localhost:8000 npm run build
@@ -324,11 +351,13 @@ REACT_APP_API_URL=https://api.tennis-coach.com npm run build
 ### Deployment Options
 
 #### GitHub Pages (Current)
+
 - Automatic deployment via GitHub Actions
 - Builds on main branch pushes
 - Served from GitHub Pages CDN
 
 #### Docker Deployment
+
 ```bash
 # Build Docker image
 docker build -t tennis-frontend .
@@ -338,6 +367,7 @@ docker run -p 80:80 tennis-frontend
 ```
 
 #### Static Hosting
+
 - Upload `build/` contents to any static hosting service
 - Configure environment variables for API URL
 - Ensure CORS is properly configured on backend
@@ -347,18 +377,21 @@ docker run -p 80:80 tennis-frontend
 ### Common Issues
 
 #### API Connection Errors
+
 - Verify backend server is running
 - Check `REACT_APP_API_URL` environment variable
 - Ensure CORS is configured on backend
 - Check network connectivity
 
 #### Video Playback Issues
+
 - Verify video format is supported (MP4, MOV, AVI)
 - Check video file integrity
 - Ensure proper CORS headers for video streaming
 - Test with different browsers
 
 #### Build Errors
+
 ```bash
 # Clear cache and reinstall dependencies
 rm -rf node_modules package-lock.json
@@ -369,6 +402,7 @@ npm run build -- --reset-cache
 ```
 
 #### Test Failures
+
 ```bash
 # Clear test cache
 npm test -- --clearCache
@@ -378,6 +412,7 @@ npm test -- --verbose
 ```
 
 ### Debug Mode
+
 ```bash
 # Enable debug logging
 REACT_APP_DEBUG=true npm start
@@ -389,18 +424,21 @@ REACT_APP_DEBUG=true npm start
 ## Performance Optimization
 
 ### Bundle Size
+
 - Use dynamic imports for large components
 - Implement code splitting with React.lazy
 - Optimize images and assets
 - Monitor bundle size with webpack-bundle-analyzer
 
 ### Runtime Performance
+
 - Use React.memo for expensive components
 - Implement proper dependency arrays in useEffect
 - Avoid unnecessary re-renders
 - Use React DevTools Profiler for analysis
 
 ### Video Performance
+
 - Implement lazy loading for video thumbnails
 - Use appropriate video quality settings
 - Consider video compression for storage
