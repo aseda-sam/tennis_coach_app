@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     DEMO_USER_ID: str = "00000000-0000-0000-0000-000000000001"
     DEMO_EDITOR_USER_IDS: list[str] = [
         "00000000-0000-0000-0000-000000000000",  # Local dev mock
+        "ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f",  # Production demo editor
     ]
 
     model_config = SettingsConfigDict(

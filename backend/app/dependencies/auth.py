@@ -76,3 +76,39 @@ async def get_current_user(
 
     logger.debug(f"Authentication successful for user: {user.get('email', 'unknown')}")
     return user
+
+
+async def get_optional_user(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> Optional[dict]:
+    """Optional authentication dependency for public endpoints.
+
+    Returns user dict if authenticated, None if not authenticated.
+    Does not raise exceptions for missing credentials.
+
+    Args:
+        request: FastAPI request object
+        credentials: HTTP Bearer token from request header (optional)
+
+    Returns:
+        User dict if authenticated, None if not authenticated
+    """
+    # Skip auth when PROFILE=local - return mock user
+    if settings.PROFILE == "local":
+        return {
+            "id": "00000000-0000-0000-0000-000000000000",
+            "email": "dev@localhost",
+            "user_metadata": {},
+        }
+
+    # No credentials provided - return None (public access allowed)
+    if not credentials:
+        return None
+
+    # Try to verify token
+    token = credentials.credentials
+    user = verify_supabase_token(token)
+
+    # Return None if token invalid (allows public access)
+    return user

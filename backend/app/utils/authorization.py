@@ -31,14 +31,14 @@ def is_admin(user: dict) -> bool:
 def is_demo_editor(user: dict) -> bool:
     """Check if user can manage demo content.
 
+    Uses allowlist-based authorization only (DEMO_EDITOR_USER_IDS).
+
     Args:
         user: User dict with id, email, user_metadata, etc.
 
     Returns:
         True if user can manage demo content, False otherwise
     """
-    if is_admin(user):
-        return True
     return user.get("id") in settings.DEMO_EDITOR_USER_IDS
 
 
@@ -79,6 +79,33 @@ def require_video_access(video: "Video", user: dict) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to access this video",
         )
+
+
+def require_video_access_or_public_demo(
+    video: "Video", current_user: Optional[dict]
+) -> None:
+    """Raise exception if user can't access video, allowing public demo access.
+
+    Allows unauthenticated access to demo videos. For non-demo videos or
+    authenticated users, requires proper video access.
+
+    Args:
+        video: Video model instance
+        current_user: User dict (may be None for unauthenticated requests)
+
+    Raises:
+        HTTPException: 401 if unauthenticated and video is not demo
+        HTTPException: 403 if user can't access video
+    """
+    # Allow public access for demo videos
+    if current_user is None and not video.is_demo:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+    # For authenticated users, check normal access permissions
+    if current_user is not None:
+        require_video_access(video, current_user)
 
 
 def can_manage_player(player: "Player", user: dict) -> bool:

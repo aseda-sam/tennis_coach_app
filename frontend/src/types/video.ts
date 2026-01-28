@@ -17,6 +17,16 @@ export interface VideoMetadata {
   camera_angle?: string; // Camera angle: 'behind', 'profile', 'diagonal', 'unknown'
 }
 
+export interface DemoVideoListItem {
+  id: number;
+  filename: string;
+  file_path: string;
+  is_active_demo: boolean;
+  has_pose_analysis: boolean;
+  serve_attempt_count: number;
+  created_at: string;
+}
+
 export interface VideoUploadResponse {
   video_id: number; // CHANGED: from video object to video_id
   filename: string;
@@ -62,4 +72,3 @@ export interface OverlayData {
   height: number;
   frames: PoseFrame[];
 }
-

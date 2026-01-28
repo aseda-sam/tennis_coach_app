@@ -1,5 +1,6 @@
 import axios from 'axios';
 import {
+  DemoVideoListItem,
   OverlayData,
   VideoListResponse,
   VideoMetadata,
@@ -239,6 +240,39 @@ export const videoApi = {
       }
       throw error;
     }
+  },
+
+  // Check if user is demo editor
+  checkDemoEditorStatus: async (): Promise<{ is_demo_editor: boolean }> => {
+    const response = await api.get<{ is_demo_editor: boolean }>(
+      '/videos/admin/demo-editor-status'
+    );
+    return response.data;
+  },
+
+  // List all demo videos (admin only)
+  listDemoVideos: async (): Promise<DemoVideoListItem[]> => {
+    const response = await api.get('/videos/admin/demos');
+    return response.data;
+  },
+
+  // Set active demo (admin only)
+  setActiveDemo: async (videoId: number): Promise<VideoMetadata> => {
+    const response = await api.post<VideoMetadata>(
+      `/videos/admin/demos/${videoId}/set-active`
+    );
+    return response.data;
+  },
+
+  // Trigger pose analysis for demo video (admin only)
+  analyzeDemoPose: async (
+    videoId: number,
+    confidenceThreshold: number = 0.7
+  ): Promise<AnalysisStartResponse> => {
+    const response = await api.post<AnalysisStartResponse>(
+      `/videos/admin/demos/${videoId}/analyze-pose?confidence_threshold=${confidenceThreshold}`
+    );
+    return response.data;
   },
 
   // Update video metadata (session_type and camera_angle)

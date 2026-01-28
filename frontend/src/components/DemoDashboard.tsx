@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useDemoEditor } from '../hooks/useDemoEditor';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { videoApi } from '../services/api';
+import { serveAttemptApi } from '../services/serveAttemptApi';
 import { VideoMetadata } from '../types/video';
 import AnalysisRightPanel from './AnalysisRightPanel';
 import './DemoDashboard.css';
@@ -20,18 +21,8 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   onClose,
   onExitToUpload,
 }) => {
-  const { user } = useAuth();
-
-  const canEditDemo = useMemo(() => {
-    if (!user) {
-      return false;
-    }
-    if (user.user_metadata?.is_admin) {
-      return true;
-    }
-    return user.id === 'ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f';
-  }, [user]);
-  const isDemoReadOnly = !canEditDemo;
+  const { isDemoEditor } = useDemoEditor();
+  const isDemoReadOnly = !isDemoEditor;
 
   // Fetch demo video
   const {
@@ -47,9 +38,23 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   });
 
   // Use React Query hook for analysis status
-  const { data: analysisStatus } = useVideoAnalysisStatus(
-    demoVideo?.id || 0
-  );
+  const { data: analysisStatus } = useVideoAnalysisStatus(demoVideo?.id || 0);
+
+  // Fetch serve attempts count
+  const { data: serveAttempts } = useQuery({
+    queryKey: ['serve-attempts', { video_id: demoVideo?.id }],
+    queryFn: async () => {
+      if (!demoVideo?.id) return [];
+      return await serveAttemptApi.list({ video_id: demoVideo.id });
+    },
+    enabled: !!demoVideo?.id,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+
+  const hasPoseAnalysis = analysisStatus?.has_analysis || false;
+  const hasServeAttempts = (serveAttempts?.length || 0) > 0;
+  const showStatusWarning =
+    isDemoEditor && (!hasPoseAnalysis || !hasServeAttempts);
 
   const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
     ((serveAttemptId: number) => void) | null
@@ -68,8 +73,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
       {
         target: 'serve-attempt-ranges',
         title: 'Serves',
-        content:
-          'Jump to key moments using the serves on the timeline.',
+        content: 'Jump to key moments using the serves on the timeline.',
         placement: 'top',
       },
       {
@@ -143,6 +147,28 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
 
   return (
     <div className="demo-dashboard">
+      {/* Status Warning for Admins */}
+      {showStatusWarning && (
+        <div className="demo-dashboard__status-warning">
+          <div className="demo-dashboard__status-warning-content">
+            <strong>Demo Status:</strong>
+            {!hasPoseAnalysis && (
+              <span className="demo-dashboard__status-item warning">
+                ⚠ Missing pose analysis
+              </span>
+            )}
+            {!hasServeAttempts && (
+              <span className="demo-dashboard__status-item warning">
+                ⚠ No serve attempts
+              </span>
+            )}
+            <span className="demo-dashboard__status-hint">
+              Use the Admin tab to manage demo videos.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="demo-dashboard__content">
         {/* Left Column - Video Player */}
@@ -166,16 +192,14 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
         {/* Right Column - Upload CTA & Analysis Panel */}
         <div className="demo-dashboard__analysis-column">
           {/* Friendly Upload CTA */}
-          <div
-            className="demo-dashboard__upload-cta"
-            data-tour="upload-cta"
-          >
+          <div className="demo-dashboard__upload-cta" data-tour="upload-cta">
             <div className="demo-dashboard__upload-cta-content">
               <h3 className="demo-dashboard__upload-cta-title">
                 Ready to analyze your own video?
               </h3>
               <p className="demo-dashboard__upload-cta-description">
-                Now that you've seen how it works, upload your tennis video and get personalized feedback on your technique.
+                Now that you've seen how it works, upload your tennis video and
+                get personalized feedback on your technique.
               </p>
               <button
                 className="demo-dashboard__upload-cta-button"

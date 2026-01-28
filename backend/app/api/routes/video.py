@@ -28,6 +28,7 @@ from fastapi.responses import (
 from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy.orm import Session
 
+from app.api.schemas.background_tasks import AnalysisResponse
 from app.api.schemas.common import PaginationParams
 from app.api.schemas.serve_attempt import ServeAnalysisSummary
 from app.api.schemas.video import (
@@ -41,7 +42,7 @@ from app.api.schemas.video import (
 )
 from app.core.config import settings
 from app.core.database import get_db
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_user, get_optional_user
 from app.models.video_job import VideoJob
 from app.services import video_service
 from app.services.rq_tasks import enqueue_pose_analysis
@@ -51,6 +52,7 @@ from app.utils.authorization import (
     is_demo_editor,
     require_upload_limit,
     require_video_access,
+    require_video_access_or_public_demo,
     require_video_deletable,
     require_video_not_demo,
 )
@@ -166,6 +168,20 @@ def extract_video_metadata(video_path: Path) -> VideoMetadata:
         return VideoMetadata()
 
 
+def _ensure_unique_db_filename(db: Session, filename: str) -> str:
+    """Ensure filename is unique in the database."""
+    base_name = Path(filename).stem
+    extension = Path(filename).suffix
+    candidate = filename
+    counter = 0
+
+    while video_service.get_video_by_filename(db, candidate) is not None:
+        counter += 1
+        candidate = f"{base_name}_{counter}{extension}"
+
+    return candidate
+
+
 @router.get("/jobs", response_model=List[VideoJobResponse])
 async def get_video_jobs(
     current_user: dict = Depends(get_current_user),
@@ -274,7 +290,6 @@ async def list_videos(
 
 @router.get("/demo", response_model=VideoInfo)
 async def get_demo_video(
-    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VideoInfo:
     """
@@ -310,6 +325,288 @@ async def get_demo_video(
         log_and_raise_error(e, "get_demo_video")
 
 
+class DemoEditorStatusResponse(BaseModel):
+    """Response model for demo editor status check."""
+
+    is_demo_editor: bool
+
+
+class DemoVideoListItem(BaseModel):
+    """Demo video list item with status information."""
+
+    id: int
+    filename: str
+    file_path: str
+    is_active_demo: bool
+    has_pose_analysis: bool
+    serve_attempt_count: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/admin/demo-editor-status", response_model=DemoEditorStatusResponse)
+async def check_demo_editor_status(
+    current_user: dict = Depends(get_current_user),
+) -> DemoEditorStatusResponse:
+    """
+    Check if current user is a demo editor.
+
+    Returns:
+        Demo editor status
+    """
+    return DemoEditorStatusResponse(is_demo_editor=is_demo_editor(current_user))
+
+
+@router.get("/admin/demos", response_model=List[DemoVideoListItem])
+async def list_demo_videos(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> List[DemoVideoListItem]:
+    """
+    List all demo videos (admin only).
+
+    Returns:
+        List of demo videos with status information
+    """
+    if not is_demo_editor(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demo editor access required",
+        )
+
+    try:
+        from app.models.pose_detection import PoseDetection
+        from app.models.serve_attempt import ServeAttempt
+        from app.models.video import Video
+
+        demo_videos = (
+            db.query(Video).filter(Video.is_demo).order_by(Video.id.desc()).all()
+        )
+
+        result = []
+        for video in demo_videos:
+            # Check for pose analysis
+            pose_detection = (
+                db.query(PoseDetection.id)
+                .filter(
+                    PoseDetection.video_id == video.id,
+                    PoseDetection.status == "completed",
+                )
+                .first()
+            )
+            has_pose_analysis = pose_detection is not None
+
+            # Count serve attempts
+            serve_count = (
+                db.query(ServeAttempt).filter(ServeAttempt.video_id == video.id).count()
+            )
+
+            result.append(
+                DemoVideoListItem(
+                    id=video.id,
+                    filename=video.filename,
+                    file_path=video.file_path,
+                    is_active_demo=video.is_active_demo,
+                    has_pose_analysis=has_pose_analysis,
+                    serve_attempt_count=serve_count,
+                    created_at=video.created_at,
+                )
+            )
+
+        return result
+    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
+        log_and_raise_error(e, "list_demo_videos")
+
+
+@router.post("/admin/demos/{video_id}/set-active", response_model=VideoInfo)
+async def set_active_demo(
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VideoInfo:
+    """
+    Set a demo video as the active demo (admin only).
+
+    Args:
+        video_id: ID of the demo video to set as active
+
+    Returns:
+        Updated video information
+    """
+    if not is_demo_editor(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demo editor access required",
+        )
+
+    try:
+        from app.models.video import Video
+
+        # Get video and validate
+        video = db.query(Video).filter(Video.id == video_id).first()
+        if not video:
+            raise handle_not_found_error("video", str(video_id))
+
+        if not video.is_demo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Video {video_id} is not a demo video",
+            )
+
+        if not video.file_path.startswith("demo/"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Video {video_id} is not eligible to be active demo. "
+                f"File path must start with 'demo/'",
+            )
+
+        # Ensure file exists in demo bucket (if using Supabase)
+        if settings.STORAGE_TYPE == "supabase" and settings.SUPABASE_DEMO_BUCKET:
+            demo_path = video.file_path
+            if not storage_service.demo_object_exists(demo_path):
+                # Try to copy from private bucket
+                try:
+                    file_content = storage_service.download_private_file(
+                        video.file_path
+                    )
+                    storage_service.upload_demo_object(
+                        demo_path, file_content, video.content_type
+                    )
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Failed to copy video to demo bucket: {e}",
+                    ) from e
+
+        # Unset any existing active demo
+        old_active = db.query(Video).filter(Video.is_active_demo).first()
+        if old_active and old_active.id != video_id:
+            old_active.is_active_demo = False
+
+        # Set new active demo
+        video.is_active_demo = True
+        db.commit()
+        db.refresh(video)
+
+        return VideoInfo.model_validate(video)
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
+        log_and_raise_error(e, "set_active_demo", {"video_id": video_id})
+
+
+@router.post("/admin/demos/{video_id}/analyze-pose", response_model=AnalysisResponse)
+async def analyze_demo_pose(
+    video_id: int,
+    confidence_threshold: float = Query(0.7, ge=0.0, le=1.0),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AnalysisResponse:
+    """
+    Trigger pose analysis for a demo video (admin only).
+
+    Args:
+        video_id: ID of the demo video to analyze
+        confidence_threshold: Confidence threshold for pose detection
+
+    Returns:
+        Analysis response with task ID
+    """
+    if not is_demo_editor(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demo editor access required",
+        )
+
+    try:
+        # Get video and validate
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise handle_not_found_error("video", str(video_id))
+
+        if not video.is_demo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Video {video_id} is not a demo video",
+            )
+
+        # Check if already analyzed
+        from app.models.pose_detection import PoseDetection
+
+        existing_detection = (
+            db.query(PoseDetection.id)
+            .filter(
+                PoseDetection.video_id == video_id,
+                PoseDetection.status == "completed",
+            )
+            .first()
+        )
+        if existing_detection:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Video {video_id} already has completed pose analysis",
+            )
+
+        # Create VideoJob record
+        video_job = VideoJob(
+            video_id=video_id,
+            user_id=current_user["id"],
+            job_type="pose_only",
+            status="queued",
+        )
+        db.add(video_job)
+        db.commit()
+        db.refresh(video_job)
+
+        # Enqueue RQ job
+        try:
+            job = enqueue_pose_analysis(
+                video_id=video_id,
+                video_path=video.file_path,
+                confidence_threshold=confidence_threshold,
+                video_job_id=str(video_job.id),
+            )
+            if not job:
+                video_job.status = "failed"
+                video_job.error = "Failed to enqueue job to Redis"
+                db.commit()
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Failed to enqueue job to Redis. Please check Redis connection.",
+                )
+
+            video_job.rq_job_id = job.id
+            db.commit()
+
+            return AnalysisResponse(
+                job_id=str(video_job.id),
+                video_id=video_id,
+                analysis_type="pose_only",
+                status="queued",
+                message="Pose analysis started successfully",
+                estimated_duration=120.0,
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception(
+                "Failed to enqueue pose analysis for demo video %s", video_id
+            )
+            video_job.status = "failed"
+            video_job.error = f"Failed to enqueue job: {e}"
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to start analysis. Please try again later.",
+            ) from e
+
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
+        log_and_raise_error(e, "analyze_demo_pose", {"video_id": video_id})
+
+
 @router.get("/{video_id}", response_model=VideoInfo)
 async def get_video(
     video_id: int,
@@ -341,7 +638,7 @@ async def get_video(
 @router.get("/{video_id}/stream", response_model=None)
 async def stream_video(
     video_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> Response:
     """
@@ -359,8 +656,8 @@ async def stream_video(
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Check authorization
-        require_video_access(db_video, current_user)
+        # Check authorization (allow public access for demo videos)
+        require_video_access_or_public_demo(db_video, current_user)
 
         # Use storage service to get file
         if settings.STORAGE_TYPE == "supabase":
@@ -424,7 +721,7 @@ async def stream_video(
 async def get_video_url(
     video_id: int,
     request: Request,
-    current_user: dict = Depends(get_current_user),
+    current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
     expires_in: int = 3600,
 ) -> VideoSignedUrlResponse:
@@ -447,8 +744,8 @@ async def get_video_url(
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Check authorization
-        require_video_access(db_video, current_user)
+        # Check authorization (allow public access for demo videos)
+        require_video_access_or_public_demo(db_video, current_user)
 
         # Validate expires_in (reasonable range: 60 seconds to 24 hours)
         if expires_in < 60 or expires_in > 86400:
@@ -799,7 +1096,7 @@ async def upload_video(
                 Path(path_prefix.rstrip("/")) / unique_filename
             )  # raw/video.mp4 or demo/video.mp4
         else:
-            unique_filename = safe_filename
+            unique_filename = _ensure_unique_db_filename(db, safe_filename)
             # For Supabase, add prefix to match directory structure
             # Storage service will automatically append counter if file exists
             storage_file_path = f"{path_prefix}{unique_filename}"

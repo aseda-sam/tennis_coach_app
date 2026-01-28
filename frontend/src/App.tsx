@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import './App.css';
 import { AccountMenu } from './components/AccountMenu';
+import AdminDemoManagement from './components/AdminDemoManagement';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
 import DemoDashboard from './components/DemoDashboard';
@@ -11,15 +12,17 @@ import { QuickSetup } from './components/QuickSetup';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
 import { useAuth } from './hooks/useAuth';
+import { useDemoEditor } from './hooks/useDemoEditor';
 import { videoApi } from './services/api';
 import { VideoMetadata } from './types/video';
 
 function App() {
   const profile = process.env.REACT_APP_PROFILE || 'local';
   const { user, loading, signOut } = useAuth();
+  const { isDemoEditor } = useDemoEditor();
   const queryClient = useQueryClient();
   const [currentView, setCurrentView] = useState<
-    'list' | 'dashboard' | 'demo-landing' | 'demo-dashboard'
+    'list' | 'dashboard' | 'demo-landing' | 'demo-dashboard' | 'admin-demo'
   >('demo-landing');
   const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(
     null
@@ -243,6 +246,17 @@ function App() {
               >
                 Demo
               </button>
+              {isDemoEditor && (
+                <button
+                  type="button"
+                  role="tab"
+                  className={`view-toggle-btn ${currentView === 'admin-demo' ? 'active' : ''}`}
+                  onClick={() => setCurrentView('admin-demo')}
+                  aria-selected={currentView === 'admin-demo'}
+                >
+                  Admin
+                </button>
+              )}
             </div>
           </div>
 
@@ -282,6 +296,28 @@ function App() {
             }}
             onExitToUpload={handleExitDemoToUpload}
           />
+        );
+
+      case 'admin-demo':
+        if (!isDemoEditor) {
+          return (
+            <div className="app-container">
+              <div className="error-message">
+                <p>Access denied. Demo editor privileges required.</p>
+                <button onClick={() => setCurrentView('demo-landing')}>
+                  Go Home
+                </button>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div className="app-container">
+            <AdminDemoManagement
+              onOpenVideo={handleViewAnalysis}
+              onNavigateToDemo={() => setCurrentView('demo-dashboard')}
+            />
+          </div>
         );
 
       case 'list':
