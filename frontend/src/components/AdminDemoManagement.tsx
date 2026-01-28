@@ -1,19 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { videoApi } from '../services/api';
-import { VideoMetadata } from '../types/video';
+import { DemoVideoListItem, VideoMetadata } from '../types/video';
 import './AdminDemoManagement.css';
 import VideoUpload from './VideoUpload';
-
-interface DemoVideo {
-  id: number;
-  filename: string;
-  file_path: string;
-  is_active_demo: boolean;
-  has_pose_analysis: boolean;
-  serve_attempt_count: number;
-  created_at: string;
-}
 
 interface AdminDemoManagementProps {
   onOpenVideo: (video: VideoMetadata) => void;
@@ -33,7 +23,7 @@ const AdminDemoManagement: React.FC<AdminDemoManagementProps> = ({
     data: demoVideos,
     isLoading,
     error,
-  } = useQuery<DemoVideo[]>({
+  } = useQuery<DemoVideoListItem[]>({
     queryKey: ['admin-demo-videos'],
     queryFn: () => videoApi.listDemoVideos(),
     refetchInterval: 30000, // Refresh every 30 seconds

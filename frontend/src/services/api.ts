@@ -1,5 +1,6 @@
 import axios from 'axios';
 import {
+  DemoVideoListItem,
   OverlayData,
   VideoListResponse,
   VideoMetadata,
@@ -250,17 +251,7 @@ export const videoApi = {
   },
 
   // List all demo videos (admin only)
-  listDemoVideos: async (): Promise<
-    {
-      id: number;
-      filename: string;
-      file_path: string;
-      is_active_demo: boolean;
-      has_pose_analysis: boolean;
-      serve_attempt_count: number;
-      created_at: string;
-    }[]
-  > => {
+  listDemoVideos: async (): Promise<DemoVideoListItem[]> => {
     const response = await api.get('/videos/admin/demos');
     return response.data;
   },

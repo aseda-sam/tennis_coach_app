@@ -159,6 +159,13 @@ class StorageService:
             return self._download_from_supabase(file_path)
         return self._download_from_local(file_path)
 
+    def download_private_file(self, file_path: str) -> bytes:
+        """Download a file from the primary storage bucket (Supabase) or local storage."""
+        self._validate_file_path(file_path)
+        if self.storage_type == "supabase":
+            return self._download_from_supabase(file_path)
+        return self._download_from_local(file_path)
+
     def delete_file(self, file_path: str) -> None:
         """
         Delete a file from storage.

@@ -62,11 +62,6 @@ function App() {
     setCurrentView('dashboard');
   };
 
-  const handleAdminOpenVideo = (video: VideoMetadata) => {
-    setSelectedVideo(video);
-    setCurrentView('dashboard');
-  };
-
   const handleBackToList = () => {
     setCurrentView('list');
     setSelectedVideo(null);
@@ -319,7 +314,7 @@ function App() {
         return (
           <div className="app-container">
             <AdminDemoManagement
-              onOpenVideo={handleAdminOpenVideo}
+              onOpenVideo={handleViewAnalysis}
               onNavigateToDemo={() => setCurrentView('demo-dashboard')}
             />
           </div>

@@ -467,7 +467,9 @@ async def set_active_demo(
             if not storage_service.demo_object_exists(demo_path):
                 # Try to copy from private bucket
                 try:
-                    file_content = storage_service.download_file(video.file_path)
+                    file_content = storage_service.download_private_file(
+                        video.file_path
+                    )
                     storage_service.upload_demo_object(
                         demo_path, file_content, video.content_type
                     )
@@ -481,7 +483,6 @@ async def set_active_demo(
         old_active = db.query(Video).filter(Video.is_active_demo).first()
         if old_active and old_active.id != video_id:
             old_active.is_active_demo = False
-            db.commit()
 
         # Set new active demo
         video.is_active_demo = True
@@ -592,6 +593,9 @@ async def analyze_demo_pose(
             logger.exception(
                 "Failed to enqueue pose analysis for demo video %s", video_id
             )
+            video_job.status = "failed"
+            video_job.error = f"Failed to enqueue job: {e}"
+            db.commit()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to start analysis. Please try again later.",
