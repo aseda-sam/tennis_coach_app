@@ -103,7 +103,8 @@ export function AuthForm() {
           // The auth state change will automatically update the UI
         } else {
           // Email confirmation required
-          setError(
+          setError(null);
+          setSuccess(
             'Please check your email to confirm your account before logging in.'
           );
           setShowResendLink(true);
@@ -142,89 +143,109 @@ export function AuthForm() {
 
   return (
     <div className="auth-form">
-      <h2>{isLogin ? 'Login' : 'Register'}</h2>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          disabled={loading}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          disabled={loading}
-        />
+      <div className="auth-form-header">
+        <h2 className="auth-form-title">
+          {isLogin ? 'Welcome back' : 'Create your account'}
+        </h2>
+        <p className="auth-form-subtitle">
+          {isLogin
+            ? 'Sign in to continue to Tennis Coach App'
+            : 'Join Tennis Coach App to analyze your serve'}
+        </p>
+      </div>
+      <form onSubmit={handleSubmit} className="auth-form-form">
+        <div className="auth-form-field">
+          <input
+            type="email"
+            className="input"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={loading}
+          />
+        </div>
+        <div className="auth-form-field">
+          <input
+            type="password"
+            className="input"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
+          />
+        </div>
         {!isLogin && (
           <>
-            <input
-              type="text"
-              placeholder="Player name (e.g., Alex)"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              disabled={loading}
-            />
-            <select
-              value={dominantHand}
-              onChange={(e) => setDominantHand(e.target.value)}
-              disabled={loading}
-            >
-              <option value="right">Right-handed</option>
-              <option value="left">Left-handed</option>
-            </select>
-            <select
-              value={backhandStyle}
-              onChange={(e) => setBackhandStyle(e.target.value)}
-              disabled={loading}
-            >
-              <option value="">Backhand style (optional)</option>
-              <option value="one_handed">One-handed</option>
-              <option value="two_handed">Two-handed</option>
-            </select>
+            <div className="auth-form-field">
+              <input
+                type="text"
+                className="input"
+                placeholder="Player name (e.g., Alex)"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            <div className="auth-form-field">
+              <select
+                className="input"
+                value={dominantHand}
+                onChange={(e) => setDominantHand(e.target.value)}
+                disabled={loading}
+              >
+                <option value="right">Right-handed</option>
+                <option value="left">Left-handed</option>
+              </select>
+            </div>
+            <div className="auth-form-field">
+              <select
+                className="input"
+                value={backhandStyle}
+                onChange={(e) => setBackhandStyle(e.target.value)}
+                disabled={loading}
+              >
+                <option value="">Backhand style (optional)</option>
+                <option value="one_handed">One-handed</option>
+                <option value="two_handed">Two-handed</option>
+              </select>
+            </div>
           </>
         )}
         {error && <div className="error">{error}</div>}
         {success && <div className="success">{success}</div>}
-        <button type="submit" disabled={loading}>
-          {loading ? 'Loading...' : isLogin ? 'Login' : 'Register'}
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Loading...' : isLogin ? 'Sign in' : 'Create account'}
         </button>
       </form>
       {showResendLink && !isLogin && (
-        <div style={{ marginTop: '10px', textAlign: 'center' }}>
+        <div className="auth-form-footer">
           <button
             onClick={handleResendConfirmation}
             disabled={loading}
             type="button"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#3b82f6',
-              cursor: 'pointer',
-              fontSize: '14px',
-              textDecoration: 'underline',
-            }}
+            className="auth-form-link"
           >
             Resend confirmation email
           </button>
         </div>
       )}
-      <button
-        onClick={() => {
-          setIsLogin(!isLogin);
-          setShowResendLink(false);
-          setError(null);
-          setSuccess(null);
-        }}
-        disabled={loading}
-        type="button"
-      >
-        {isLogin ? 'Need an account? Register' : 'Have an account? Login'}
-      </button>
+      <div className="auth-form-footer">
+        <button
+          onClick={() => {
+            setIsLogin(!isLogin);
+            setShowResendLink(false);
+            setError(null);
+            setSuccess(null);
+          }}
+          disabled={loading}
+          type="button"
+          className="auth-form-link"
+        >
+          {isLogin ? 'Need an account? Register' : 'Have an account? Sign in'}
+        </button>
+      </div>
     </div>
   );
 }
