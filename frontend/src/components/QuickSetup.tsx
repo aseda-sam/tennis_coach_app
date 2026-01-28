@@ -12,7 +12,6 @@ export function QuickSetup({ onComplete }: QuickSetupProps) {
   const { user, updateUserMetadata } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [dominantHand, setDominantHand] = useState('right');
-  const [backhandStyle, setBackhandStyle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -29,9 +28,6 @@ export function QuickSetup({ onComplete }: QuickSetupProps) {
     if (existingProfile?.name) {
       setDisplayName(existingProfile.name);
       setDominantHand(existingProfile.dominant_hand || 'right');
-      if (existingProfile.backhand_style) {
-        setBackhandStyle(existingProfile.backhand_style);
-      }
     } else if (user?.user_metadata?.display_name) {
       setDisplayName(user.user_metadata.display_name);
     }
@@ -64,7 +60,6 @@ export function QuickSetup({ onComplete }: QuickSetupProps) {
       await playerApi.upsertMe({
         name: trimmedName,
         dominant_hand: dominantHand || 'right',
-        backhand_style: backhandStyle?.trim() || undefined,
       });
 
       // Clear the needsSetup flag
@@ -119,23 +114,6 @@ export function QuickSetup({ onComplete }: QuickSetupProps) {
             >
               <option value="right">Right-handed</option>
               <option value="left">Left-handed</option>
-            </select>
-          </div>
-
-          <div className="quick-setup-field">
-            <label htmlFor="backhandStyle" className="quick-setup-label">
-              Backhand style <span className="optional">(optional)</span>
-            </label>
-            <select
-              id="backhandStyle"
-              className="quick-setup-input"
-              value={backhandStyle}
-              onChange={(e) => setBackhandStyle(e.target.value)}
-              disabled={loading}
-            >
-              <option value="">Select backhand style</option>
-              <option value="one_handed">One-handed</option>
-              <option value="two_handed">Two-handed</option>
             </select>
           </div>
 
