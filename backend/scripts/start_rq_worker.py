@@ -6,6 +6,7 @@ import multiprocessing
 import os
 import socket
 import sys
+import time
 from pathlib import Path
 
 # CRITICAL: Set this BEFORE any other imports on macOS
@@ -23,6 +24,7 @@ if sys.platform == "darwin":  # macOS
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from redis.exceptions import ResponseError as RedisResponseError
 from rq import Worker
 
 from app.core.redis_config import (
@@ -65,6 +67,9 @@ def cleanup_stale_workers() -> None:
                             pass  # Ignore cleanup failures - worker may already be cleaned up
         else:
             print("No existing workers found in Redis")
+    except RedisResponseError as e:
+        print(f"Warning: Could not check for stale workers: {e}")
+        print("Proceeding anyway...")
     except Exception as e:  # noqa: BLE001
         print(f"Warning: Could not check for stale workers: {e}")
         print("Proceeding anyway...")
@@ -97,6 +102,16 @@ if __name__ == "__main__":
     info = get_worker_info()
     recommended = info["recommended_workers"]
 
+    # Configure polling interval (dequeue timeout)
+    # RQ derives dequeue_timeout from worker_ttl: max(1, worker_ttl - 15).
+    # Use RQ_DEQUEUE_TIMEOUT to control polling frequency, and map it to worker_ttl.
+    try:
+        desired_dequeue_timeout = int(os.getenv("RQ_DEQUEUE_TIMEOUT", "60"))
+    except ValueError:
+        desired_dequeue_timeout = 60
+
+    worker_ttl = max(30, desired_dequeue_timeout + 15)
+
     # Generate unique worker name
     worker_name = generate_worker_name()
 
@@ -110,6 +125,8 @@ if __name__ == "__main__":
     print(f"Platform: {sys.platform}")
     print(f"Multiprocessing start method: {multiprocessing.get_start_method()}")
     print(f"Worker Name: {worker_name}")
+    print(f"Worker TTL: {worker_ttl}s")
+    print(f"Dequeue Timeout: {max(1, worker_ttl - 15)}s")
     print("=" * 60)
     print(f"\nStarting 1 worker (start {recommended - 1} more in separate terminals)")
     print("Listening on queues: default, analysis")
@@ -125,6 +142,7 @@ if __name__ == "__main__":
                 [default_queue, analysis_queue],
                 connection=redis_conn,
                 name=worker_name,
+                worker_ttl=worker_ttl,
             )
             # Important: enable scheduler so delayed jobs / retries move from
             # "scheduled" back to the queue automatically.
@@ -150,6 +168,24 @@ if __name__ == "__main__":
 
                 traceback.print_exc()
                 sys.exit(1)
+        except RedisResponseError as e:
+            error_msg = str(e).lower()
+            if "max requests limit exceeded" in error_msg:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    print(
+                        "\n\nRedis quota exceeded repeatedly. "
+                        "Max retries reached, exiting."
+                    )
+                    sys.exit(1)
+                print("\n\nRedis quota exceeded. Worker will sleep and retry in 60s...")
+                time.sleep(60)
+                continue
+            print(f"\n\nError: {e}")
+            import traceback
+
+            traceback.print_exc()
+            sys.exit(1)
         except KeyboardInterrupt:
             print("\n\nWorker stopped by user")
             break
