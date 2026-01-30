@@ -50,6 +50,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 # This allows the module to load even if Redis isn't available (e.g., in CI tests)
 # Increased timeouts for production stability (was 1s, now 5s connect, 10s socket)
 
+
 class InstrumentedRedis(Redis):
     """Redis client with lightweight command metrics logging."""
 
