@@ -61,7 +61,9 @@ class InstrumentedRedis(Redis):
             "true",
             "yes",
         )
-        self._log_every = _safe_int(os.getenv("REDIS_COMMAND_LOG_EVERY", "100"), 100)
+        self._log_every = max(
+            1, _safe_int(os.getenv("REDIS_COMMAND_LOG_EVERY", "100"), 100)
+        )
         self._log_interval = _safe_int(
             os.getenv("REDIS_COMMAND_LOG_INTERVAL", "60"), 60
         )

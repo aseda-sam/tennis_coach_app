@@ -171,6 +171,13 @@ if __name__ == "__main__":
         except RedisResponseError as e:
             error_msg = str(e).lower()
             if "max requests limit exceeded" in error_msg:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    print(
+                        "\n\nRedis quota exceeded repeatedly. "
+                        "Max retries reached, exiting."
+                    )
+                    sys.exit(1)
                 print("\n\nRedis quota exceeded. Worker will sleep and retry in 60s...")
                 time.sleep(60)
                 continue
