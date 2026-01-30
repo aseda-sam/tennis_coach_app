@@ -9,6 +9,7 @@ from urllib.parse import urlparse, urlunparse
 
 from redis import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import ResponseError as RedisResponseError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 from rq import Queue
 
@@ -65,6 +66,13 @@ except (RedisConnectionError, RedisTimeoutError, OSError) as e:
         "Some features (background tasks) will not work until Redis is available."
     )
     # Don't raise - allow module to load for testing
+except RedisResponseError as e:
+    # Catch Redis response errors (e.g., quota exceeded on Upstash free tier)
+    logger.warning(
+        f"Redis error at {_mask_redis_url(REDIS_URL)}: {e}. "
+        "Some features (background tasks) may not work."
+    )
+    # Don't raise - allow module to load
 
 # Create default queue
 default_queue = Queue("default", connection=redis_conn)

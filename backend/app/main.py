@@ -74,6 +74,7 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
     """
     try:
         from redis.exceptions import ConnectionError as RedisConnectionError
+        from redis.exceptions import ResponseError as RedisResponseError
         from redis.exceptions import TimeoutError as RedisTimeoutError
         from rq import Worker
 
@@ -91,10 +92,15 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
             return None
         else:
             logger.info("No existing workers found in Redis")
-    except (RedisConnectionError, RedisTimeoutError, AttributeError) as e:
+    except (
+        RedisConnectionError,
+        RedisTimeoutError,
+        RedisResponseError,
+        AttributeError,
+    ) as e:
         logger.warning(
             f"Could not check for existing workers: {e}. "
-            "This might mean Redis is not available or connection failed. "
+            "This might mean Redis is unavailable, quota exceeded, or connection failed. "
             "Worker startup will be skipped to avoid duplicates."
         )
         # Don't start worker if we can't check - safer to skip than risk duplicates
