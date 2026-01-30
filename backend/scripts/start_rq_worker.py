@@ -6,6 +6,7 @@ import multiprocessing
 import os
 import socket
 import sys
+import time
 from pathlib import Path
 
 # CRITICAL: Set this BEFORE any other imports on macOS
@@ -23,6 +24,7 @@ if sys.platform == "darwin":  # macOS
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from redis.exceptions import ResponseError as RedisResponseError
 from rq import Worker
 
 from app.core.redis_config import (
@@ -65,6 +67,9 @@ def cleanup_stale_workers() -> None:
                             pass  # Ignore cleanup failures - worker may already be cleaned up
         else:
             print("No existing workers found in Redis")
+    except RedisResponseError as e:
+        print(f"Warning: Could not check for stale workers: {e}")
+        print("Proceeding anyway...")
     except Exception as e:  # noqa: BLE001
         print(f"Warning: Could not check for stale workers: {e}")
         print("Proceeding anyway...")
@@ -150,6 +155,17 @@ if __name__ == "__main__":
 
                 traceback.print_exc()
                 sys.exit(1)
+        except RedisResponseError as e:
+            error_msg = str(e).lower()
+            if "max requests limit exceeded" in error_msg:
+                print("\n\nRedis quota exceeded. Worker will sleep and retry in 60s...")
+                time.sleep(60)
+                continue
+            print(f"\n\nError: {e}")
+            import traceback
+
+            traceback.print_exc()
+            sys.exit(1)
         except KeyboardInterrupt:
             print("\n\nWorker stopped by user")
             break
