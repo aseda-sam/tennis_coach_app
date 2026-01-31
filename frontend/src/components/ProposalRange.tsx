@@ -22,6 +22,7 @@ const ProposalRange: React.FC<ProposalRangeProps> = ({
   onEdit,
 }) => {
   const [showActions, setShowActions] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   if (duration === 0) return null;
 
@@ -34,13 +35,51 @@ const ProposalRange: React.FC<ProposalRangeProps> = ({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowActions(!showActions);
-    onClick?.();
+    if (!isProcessing) {
+      setShowActions(!showActions);
+      onClick?.();
+    }
+  };
+
+  const handleAccept = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      await onAccept?.();
+    } finally {
+      setIsProcessing(false);
+      setShowActions(false);
+    }
+  };
+
+  const handleReject = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      await onReject?.();
+    } finally {
+      setIsProcessing(false);
+      setShowActions(false);
+    }
+  };
+
+  const handleEdit = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      await onEdit?.();
+    } finally {
+      setIsProcessing(false);
+      setShowActions(false);
+    }
   };
 
   return (
     <div
-      className={`proposal-range ${isSelected ? 'selected' : ''}`}
+      className={`proposal-range ${isSelected ? 'selected' : ''} ${showActions ? 'actions-visible' : ''}`}
       style={{
         left: `${startPercent}%`,
         width: `${width}%`,
@@ -53,7 +92,7 @@ const ProposalRange: React.FC<ProposalRangeProps> = ({
         className="proposal-range__band"
         style={{
           borderColor: confidenceColor,
-          opacity: isSelected ? 0.6 : 0.4,
+          opacity: isSelected || showActions ? 0.6 : 0.4,
         }}
       />
 
@@ -68,64 +107,57 @@ const ProposalRange: React.FC<ProposalRangeProps> = ({
         {Math.round(proposal.confidence * 100)}%
       </div>
 
-      {/* Actions menu */}
+      {/* Actions menu - shown when clicked */}
       {showActions && (
         <div className="proposal-range__actions" onClick={(e) => e.stopPropagation()}>
           <button
             className="proposal-range__action-btn proposal-range__action-btn--accept"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowActions(false);
-              onAccept?.();
-            }}
+            onClick={handleAccept}
+            disabled={isProcessing}
           >
-            Accept
+            {isProcessing ? '...' : 'Accept'}
           </button>
           <button
             className="proposal-range__action-btn proposal-range__action-btn--edit"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowActions(false);
-              onEdit?.();
-            }}
+            onClick={handleEdit}
+            disabled={isProcessing}
           >
             Edit
           </button>
           <button
             className="proposal-range__action-btn proposal-range__action-btn--reject"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowActions(false);
-              onReject?.();
-            }}
+            onClick={handleReject}
+            disabled={isProcessing}
           >
             Reject
           </button>
         </div>
       )}
 
-      {/* Tooltip on hover */}
-      <div className="proposal-range__tooltip">
-        <div className="tooltip-content">
-          <div className="tooltip-header">
-            <span>Proposal ({proposal.model_version})</span>
-            <span>{Math.round(proposal.confidence * 100)}%</span>
-          </div>
-          <div className="tooltip-details">
-            <div>{proposal.start_timestamp.toFixed(2)}s - {proposal.end_timestamp.toFixed(2)}s</div>
-            {proposal.detection_features && (
-              <>
-                {proposal.detection_features.peak_wrist_height !== undefined && (
-                  <div>Peak Height: {proposal.detection_features.peak_wrist_height.toFixed(2)}</div>
-                )}
-                {proposal.detection_features.peak_wrist_velocity !== undefined && (
-                  <div>Peak Velocity: {Math.round(proposal.detection_features.peak_wrist_velocity)} px/s</div>
-                )}
-              </>
-            )}
+      {/* Tooltip on hover - HIDDEN when actions are visible */}
+      {!showActions && (
+        <div className="proposal-range__tooltip">
+          <div className="tooltip-content">
+            <div className="tooltip-header">
+              <span>Proposal ({proposal.model_version})</span>
+              <span>{Math.round(proposal.confidence * 100)}%</span>
+            </div>
+            <div className="tooltip-details">
+              <div>{proposal.start_timestamp.toFixed(2)}s - {proposal.end_timestamp.toFixed(2)}s</div>
+              {proposal.detection_features && (
+                <>
+                  {proposal.detection_features.peak_wrist_height !== undefined && (
+                    <div>Peak Height: {proposal.detection_features.peak_wrist_height.toFixed(2)}</div>
+                  )}
+                  {proposal.detection_features.peak_wrist_velocity !== undefined && (
+                    <div>Peak Velocity: {Math.round(proposal.detection_features.peak_wrist_velocity)} px/s</div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -116,6 +116,7 @@
   background-color: #dc2626; /* red-600 */
 }
 
+/* Tooltip - only visible on hover when actions are NOT visible */
 .proposal-range__tooltip {
   position: absolute;
   bottom: 100%;
@@ -125,11 +126,20 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
-  z-index: 20;
+  z-index: 15; /* Lower than actions (z-index: 20) */
 }
 
-.proposal-range:hover .proposal-range__tooltip {
+.proposal-range:hover:not(.actions-visible) .proposal-range__tooltip {
   opacity: 1;
+}
+
+/* When actions are visible, keep z-index high and ensure clickability */
+.proposal-range.actions-visible {
+  z-index: 25;
+}
+
+.proposal-range.actions-visible .proposal-range__actions {
+  pointer-events: auto;
 }
 
 .proposal-range .tooltip-content {

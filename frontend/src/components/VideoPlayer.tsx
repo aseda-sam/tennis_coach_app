@@ -71,7 +71,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [selectedServeAttemptId, setSelectedServeAttemptId] = useState<
     number | undefined
   >();
-  const [showOverlay, setShowOverlay] = useState(true);
+  // View mode: 'video' = no overlay, 'skeleton' = video + overlay, 'stickfigure' = stick figure only
+  type ViewMode = 'video' | 'skeleton' | 'stickfigure';
+  const [viewMode, setViewMode] = useState<ViewMode>('video');
   const containerRef = useRef<HTMLDivElement>(null);
   const scrubberTrackRef = useRef<HTMLDivElement>(null);
   const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(null);
@@ -698,15 +700,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {/* Controls row (kept minimal) - only show when controlsBelow is false */}
         {hasPoseData && !controlsBelow && (
           <div className="overlay-toggle-container">
-            <label className="overlay-toggle-label">
-              <input
-                type="checkbox"
-                checked={showOverlay}
-                onChange={(e) => setShowOverlay(e.target.checked)}
-                className="overlay-toggle-checkbox"
-              />
-              <span className="overlay-toggle-text">Pose overlay</span>
-            </label>
+            <div className="view-mode-selector">
+              <label className="view-mode-label">View:</label>
+              <select
+                value={viewMode}
+                onChange={(e) => setViewMode(e.target.value as ViewMode)}
+                className="view-mode-select"
+              >
+                <option value="video">Video Only</option>
+                <option value="skeleton">Video + Skeleton</option>
+                <option value="stickfigure">Stick Figure</option>
+              </select>
+            </div>
             {hasPoseDataForDetection && (
               <div className="auto-detect-wrap">
                 <button
@@ -739,7 +744,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 ref={videoRef}
                 src={resolvedVideoUrl}
                 className={`video-element video-element-${aspectRatioMode} ${
-                  showOverlay && hasPoseData ? 'video-element--hidden' : ''
+                  viewMode === 'stickfigure' && hasPoseData ? 'video-element--hidden' : ''
                 }`}
                 preload="metadata"
                 crossOrigin="anonymous"
@@ -747,8 +752,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               />
             )}
 
-            {/* Stick Figure Mode - replaces video when annotation is on */}
-            {videoId && showOverlay && hasPoseData && (
+            {/* Stick Figure Mode - shown when viewMode is 'stickfigure' */}
+            {videoId && viewMode === 'stickfigure' && hasPoseData && (
               <StickFigureCanvas
                 videoId={videoId}
                 currentTime={currentTime}
@@ -757,12 +762,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               />
             )}
 
-            {/* Video Overlay - legacy mode, hidden when stick figure is active */}
-            {videoId && showOverlay && !hasPoseData && (
+            {/* Video Overlay - shown when viewMode is 'skeleton' */}
+            {videoId && viewMode === 'skeleton' && hasPoseData && (
               <VideoOverlay
                 videoId={videoId}
                 videoElement={videoRef.current}
-                showOverlay={showOverlay}
+                showOverlay={true}
                 hasPoseData={hasPoseData}
                 currentTime={currentTime}
               />
@@ -1270,18 +1275,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
             {hasPoseData && (
               <div className="video-controls-below__right-controls">
-                <label className="video-controls-below__annotation-toggle">
-                  <input
-                    type="checkbox"
-                    checked={showOverlay}
-                    onChange={(e) => setShowOverlay(e.target.checked)}
-                    className="video-controls-below__toggle-input"
-                  />
-                  <span className="video-controls-below__toggle-slider"></span>
-                  <span className="video-controls-below__toggle-label">
-                    {showOverlay ? 'Stick Figure' : 'Show Annotation'}
-                  </span>
-                </label>
+                <div className="video-controls-below__view-mode">
+                  <select
+                    value={viewMode}
+                    onChange={(e) => setViewMode(e.target.value as ViewMode)}
+                    className="video-controls-below__view-mode-select"
+                  >
+                    <option value="video">Video Only</option>
+                    <option value="skeleton">Video + Skeleton</option>
+                    <option value="stickfigure">Stick Figure</option>
+                  </select>
+                </div>
                 {hasPoseDataForDetection && (
                   <div className="video-controls-below__auto-detect-wrap">
                     <button
