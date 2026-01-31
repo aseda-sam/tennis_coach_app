@@ -113,21 +113,7 @@ def extract_frame_features(
     hip_center = midpoint(left_hip, right_hip)
 
     # 1. Arm height (normalized) - key for trophy/contact detection
-    # Higher = more likely in serve motion
-    # Y increases downward, so subtract from hip_center Y
-    left_wrist_height = (
-        (hip_center[1] - left_wrist[1]) / distance(hip_center, left_shoulder)
-        if distance(hip_center, left_shoulder) > 0
-        else 0.0
-    )
-    right_wrist_height = (
-        (hip_center[1] - right_wrist[1]) / distance(hip_center, right_shoulder)
-        if distance(hip_center, right_shoulder) > 0
-        else 0.0
-    )
-    max_wrist_height = max(left_wrist_height, right_wrist_height)
-
-    # Use normalized coordinates for more accurate height calculation
+    # Use normalized coordinates for accurate height (Y negative above hips)
     # Note: After normalization, hip center is at origin [0, 0]
     norm_left_wrist = normalized.get("left_wrist", [0, 0])
     norm_right_wrist = normalized.get("right_wrist", [0, 0])

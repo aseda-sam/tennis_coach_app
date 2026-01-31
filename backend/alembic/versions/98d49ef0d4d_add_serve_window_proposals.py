@@ -21,6 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
+    assert (revision, down_revision, branch_labels, depends_on)  # noqa: F631 - read by Alembic
     # Create serve_window_proposals table
     op.create_table(
         "serve_window_proposals",

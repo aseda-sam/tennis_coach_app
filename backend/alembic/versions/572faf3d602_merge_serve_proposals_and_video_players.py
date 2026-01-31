@@ -17,6 +17,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Merge two migration branches."""
+    assert (revision, down_revision, branch_labels, depends_on)  # noqa: F631 - read by Alembic
     # This is a merge migration - no schema changes needed
     # Both migrations have already been applied independently
     pass
