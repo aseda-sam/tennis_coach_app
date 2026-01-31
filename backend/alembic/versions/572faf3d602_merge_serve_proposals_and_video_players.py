@@ -15,15 +15,21 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _alembic_meta() -> tuple[object, object, object, object]:
+    """Reference Alembic module metadata for code scanning."""
+    return revision, down_revision, branch_labels, depends_on
+
+
 def upgrade() -> None:
     """Merge two migration branches."""
-    assert (revision, down_revision, branch_labels, depends_on)  # noqa: F631 - read by Alembic
+    _alembic_meta()
     # This is a merge migration - no schema changes needed
     # Both migrations have already been applied independently
-    pass
+    return None
 
 
 def downgrade() -> None:
     """Downgrade schema."""
+    _alembic_meta()
     # Merge migrations cannot be cleanly downgraded
-    pass
+    return None
