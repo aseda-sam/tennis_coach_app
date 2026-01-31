@@ -11,9 +11,6 @@ import { useVideoMetadata } from '../hooks/useVideos';
 import { useVideoUrl } from '../hooks/useVideoUrl';
 import { ServeAttempt, ServeAttemptCreate } from '../services/serveAttemptApi';
 import AddServeAttemptButton from './AddServeAttemptButton';
-import ProposalRange from './ProposalRange';
-import ServeAttemptRange from './ServeAttemptRange';
-import ServeAttemptModal from './ServeAttemptModal';
 import {
   ArrowBackIcon,
   CloseIcon,
@@ -24,8 +21,11 @@ import {
   VolumeOffIcon,
   WarningIcon,
 } from './Icons';
-import VideoOverlay from './VideoOverlay';
+import ProposalRange from './ProposalRange';
+import ServeAttemptModal from './ServeAttemptModal';
+import ServeAttemptRange from './ServeAttemptRange';
 import StickFigureCanvas from './StickFigureCanvas';
+import VideoOverlay from './VideoOverlay';
 import './VideoPlayer.css';
 
 interface VideoPlayerProps {
@@ -66,9 +66,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
-  const [selectedServeAttempt, setSelectedServeAttempt] = useState<ServeAttempt | null>(
-    null
-  );
+  const [selectedServeAttempt, setSelectedServeAttempt] =
+    useState<ServeAttempt | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedServeAttemptId, setSelectedServeAttemptId] = useState<
     number | undefined
@@ -76,20 +75,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // View mode: 'video' = no overlay, 'skeleton' = video + overlay, 'stickfigure' = stick figure only
   type ViewMode = 'video' | 'skeleton' | 'stickfigure';
   const [viewMode, setViewMode] = useState<ViewMode>('video');
-  
+
   // Show scroll hint on first hover
   const [showScrollHint, setShowScrollHint] = useState(false);
   const scrollHintShownRef = useRef(false);
   const naturalScrollRef = useRef(naturalScrollProp);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrubberTrackRef = useRef<HTMLDivElement>(null);
-  const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(null);
+  const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(
+    null
+  );
   const wasPlayingRef = useRef<boolean>(false);
   const toastTimeoutRef = useRef<number | null>(null);
   const [openRequestId, setOpenRequestId] = useState(0);
-  const [openRange, setOpenRange] = useState<{ start: number; end: number } | null>(
-    null
-  );
+  const [openRange, setOpenRange] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
   const [rangeInTime, setRangeInTime] = useState<number | null>(null);
   const [rangeOutTime, setRangeOutTime] = useState<number | null>(null);
   const isAddServeAttemptVisible = !!videoId && !error && duration > 0;
@@ -136,10 +138,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, []);
 
   // Determine auto-detect button state
-  const hasExistingDetections = detectionStatus && (
-    detectionStatus.pending_proposals > 0 ||
-    detectionStatus.serve_attempts > 0
-  );
+  const hasExistingDetections =
+    detectionStatus &&
+    (detectionStatus.pending_proposals > 0 ||
+      detectionStatus.serve_attempts > 0);
 
   // Handle auto-detect
   const handleAutoDetect = useCallback(async () => {
@@ -161,14 +163,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       message += parts.join(' and ') + '. ';
 
       if (hasServeAttempts) {
-        message += 'Running detection again will only add new proposals. Delete existing serve attempts first if you want to start fresh.';
+        message +=
+          'Running detection again will only add new proposals. Delete existing serve attempts first if you want to start fresh.';
         showDetectionMessage(message);
         return;
       }
 
       if (hasPendingProposals) {
         const confirmed = window.confirm(
-          message + 'Do you want to clear existing proposals and re-run detection?'
+          message +
+            'Do you want to clear existing proposals and re-run detection?'
         );
         if (!confirmed) return;
       }
@@ -178,10 +182,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setDetectionMessage(null);
     try {
       // Use force=true if there are pending proposals (we confirmed above)
-      const force = detectionStatus?.pending_proposals ? detectionStatus.pending_proposals > 0 : false;
+      const force = detectionStatus?.pending_proposals
+        ? detectionStatus.pending_proposals > 0
+        : false;
       const response = await runDetection(force);
       if (response.count === 0) {
-        showDetectionMessage("No serve windows detected.");
+        showDetectionMessage('No serve windows detected.');
       } else {
         showDetectionMessage(`Found ${response.count} proposals.`);
       }
@@ -198,7 +204,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     } finally {
       setIsRunningDetection(false);
     }
-  }, [videoId, isRunningDetection, runDetection, showDetectionMessage, hasExistingDetections, detectionStatus]);
+  }, [
+    videoId,
+    isRunningDetection,
+    runDetection,
+    showDetectionMessage,
+    hasExistingDetections,
+    detectionStatus,
+  ]);
 
   // Handle clearing proposals
   const handleClearProposals = useCallback(async () => {
@@ -227,11 +240,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, []);
 
   // Use React Query hook for video URL resolution
-  const { resolvedUrl: resolvedVideoUrl, isLoading: isLoadingUrl } = useVideoUrl({
-    videoId,
-    videoUrl,
-    expiresIn: 3600,
-  });
+  const { resolvedUrl: resolvedVideoUrl, isLoading: isLoadingUrl } =
+    useVideoUrl({
+      videoId,
+      videoUrl,
+      expiresIn: 3600,
+    });
 
   // Use React Query hook for video metadata
   const { data: videoMetadata } = useVideoMetadata(videoId);
@@ -524,10 +538,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       // Update state first to ensure overlay gets the new time immediately
       setCurrentTime(targetTime);
       setSelectedServeAttemptId(serveAttempt.id);
-      
+
       // Then seek video (this will trigger seeked event which overlay listens to)
       video.currentTime = targetTime;
-      
+
       onContactNavigate?.(serveAttempt.id);
     },
     [serveAttempts, isPlaying, onContactNavigate]
@@ -594,28 +608,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Find the serve attempt that contains the current time
   const currentServeAttempt = useMemo(() => {
     return sortedServeAttempts.find((sa) => {
-      return currentTime >= sa.start_timestamp && currentTime <= sa.end_timestamp;
+      return (
+        currentTime >= sa.start_timestamp && currentTime <= sa.end_timestamp
+      );
     });
   }, [sortedServeAttempts, currentTime]);
 
   // Check if current serve attempt has a contact point
   const hasContactPoint = useMemo(() => {
-    return currentServeAttempt?.contact_timestamp !== null && currentServeAttempt?.contact_timestamp !== undefined;
+    return (
+      currentServeAttempt?.contact_timestamp !== null &&
+      currentServeAttempt?.contact_timestamp !== undefined
+    );
   }, [currentServeAttempt]);
 
   // Navigate to a specific timestamp (for moments within serve attempts)
-  const navigateToTimestamp = useCallback((timestamp: number) => {
-    const video = videoRef.current;
-    if (!video) return;
+  const navigateToTimestamp = useCallback(
+    (timestamp: number) => {
+      const video = videoRef.current;
+      if (!video) return;
 
-    // Pause if playing
-    if (isPlaying) {
-      video.pause();
-    }
+      // Pause if playing
+      if (isPlaying) {
+        video.pause();
+      }
 
-    setCurrentTime(timestamp);
-    video.currentTime = timestamp;
-  }, [isPlaying]);
+      setCurrentTime(timestamp);
+      video.currentTime = timestamp;
+    },
+    [isPlaying]
+  );
 
   // Navigate to contact point in current serve attempt
   const navigateToContact = useCallback(() => {
@@ -629,9 +651,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     navigateRef.current = navigateToServeAttemptById;
   }, [navigateToServeAttemptById]);
 
-  const stableNavigateToServeAttemptById = useCallback((serveAttemptId: number) => {
-    navigateRef.current(serveAttemptId);
-  }, []);
+  const stableNavigateToServeAttemptById = useCallback(
+    (serveAttemptId: number) => {
+      navigateRef.current(serveAttemptId);
+    },
+    []
+  );
 
   // Expose navigate function to parent
   useEffect(() => {
@@ -733,7 +758,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       // Traditional: scroll down (deltaY > 0) = forward/next frame
       // Natural: scroll down (deltaY > 0) = backward/previous frame
       const scrollingDown = event.deltaY > 0;
-      const goForward = naturalScrollRef.current ? !scrollingDown : scrollingDown;
+      const goForward = naturalScrollRef.current
+        ? !scrollingDown
+        : scrollingDown;
 
       if (goForward) {
         navigateToNextFrame();
@@ -780,7 +807,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       togglePlay();
     }
   };
-
 
   const toggleFullscreen = () => {
     const video = videoRef.current;
@@ -837,9 +863,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   className={`auto-detect-btn ${hasExistingDetections ? 'auto-detect-btn--has-detections' : ''}`}
                   onClick={handleAutoDetect}
                   disabled={isRunningDetection}
-                  title={hasExistingDetections
-                    ? 'Detection already run - click to re-detect'
-                    : 'Auto-detect serve windows'
+                  title={
+                    hasExistingDetections
+                      ? 'Detection already run - click to re-detect'
+                      : 'Auto-detect serve windows'
                   }
                 >
                   {isRunningDetection ? 'Detecting...' : 'Auto-detect serves'}
@@ -859,9 +886,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
         )}
 
-        <div
-          className="video-player-main"
-        >
+        <div className="video-player-main">
           {/* Video Container */}
           <div
             ref={containerRef}
@@ -876,7 +901,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 ref={videoRef}
                 src={resolvedVideoUrl}
                 className={`video-element video-element-${aspectRatioMode} ${
-                  viewMode === 'stickfigure' && hasPoseData ? 'video-element--hidden' : ''
+                  viewMode === 'stickfigure' && hasPoseData
+                    ? 'video-element--hidden'
+                    : ''
                 }`}
                 preload="metadata"
                 crossOrigin="anonymous"
@@ -1000,89 +1027,99 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       }}
                       step={frameStep}
                     />
-              {/* Proposal ranges (shown before serve attempts) */}
-              {proposals.length > 0 && duration > 0 && (
-                <div className="proposal-ranges">
-                  {proposals.map((proposal) => (
-                    <ProposalRange
-                      key={proposal.id}
-                      proposal={proposal}
-                      duration={duration}
-                      onClick={() => {
-                        // Seek to proposal start
-                        seekToTime(proposal.start_timestamp);
-                      }}
-                      onAccept={async () => {
-                        try {
-                          await acceptProposal(proposal.id);
-                        } catch (err) {
-                          console.error('Failed to accept proposal:', err);
-                          alert('Failed to accept proposal');
-                        }
-                      }}
-                      onReject={async () => {
-                        try {
-                          await rejectProposal(proposal.id);
-                        } catch (err) {
-                          console.error('Failed to reject proposal:', err);
-                          alert('Failed to reject proposal');
-                        }
-                      }}
-                      onEdit={async () => {
-                        // For now, just accept with current timestamps
-                        // In future, could open a modal to edit timestamps
-                        try {
-                          await editProposal(proposal.id, {
-                            start_timestamp: proposal.start_timestamp,
-                            end_timestamp: proposal.end_timestamp,
-                          });
-                        } catch (err) {
-                          console.error('Failed to edit proposal:', err);
-                          alert('Failed to edit proposal');
-                        }
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-              {/* Serve attempt ranges */}
-              {serveAttempts.length > 0 && duration > 0 && (
-                <div className="serve-attempt-ranges" data-tour="serve-attempt-ranges">
-                  {serveAttempts.map((serveAttempt) => {
-                    const isSelected = selectedServeAttemptId === serveAttempt.id;
+                    {/* Proposal ranges (shown before serve attempts) */}
+                    {proposals.length > 0 && duration > 0 && (
+                      <div className="proposal-ranges">
+                        {proposals.map((proposal) => (
+                          <ProposalRange
+                            key={proposal.id}
+                            proposal={proposal}
+                            duration={duration}
+                            onClick={() => {
+                              // Seek to proposal start
+                              seekToTime(proposal.start_timestamp);
+                            }}
+                            onAccept={async () => {
+                              try {
+                                await acceptProposal(proposal.id);
+                              } catch (err) {
+                                console.error(
+                                  'Failed to accept proposal:',
+                                  err
+                                );
+                                alert('Failed to accept proposal');
+                              }
+                            }}
+                            onReject={async () => {
+                              try {
+                                await rejectProposal(proposal.id);
+                              } catch (err) {
+                                console.error(
+                                  'Failed to reject proposal:',
+                                  err
+                                );
+                                alert('Failed to reject proposal');
+                              }
+                            }}
+                            onEdit={async () => {
+                              // For now, just accept with current timestamps
+                              // In future, could open a modal to edit timestamps
+                              try {
+                                await editProposal(proposal.id, {
+                                  start_timestamp: proposal.start_timestamp,
+                                  end_timestamp: proposal.end_timestamp,
+                                });
+                              } catch (err) {
+                                console.error('Failed to edit proposal:', err);
+                                alert('Failed to edit proposal');
+                              }
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {/* Serve attempt ranges */}
+                    {serveAttempts.length > 0 && duration > 0 && (
+                      <div
+                        className="serve-attempt-ranges"
+                        data-tour="serve-attempt-ranges"
+                      >
+                        {serveAttempts.map((serveAttempt) => {
+                          const isSelected =
+                            selectedServeAttemptId === serveAttempt.id;
 
-                    return (
-                      <ServeAttemptRange
-                        key={serveAttempt.id}
-                        serveAttempt={serveAttempt}
-                        duration={duration}
-                        currentTime={currentTime}
-                        isSelected={isSelected}
-                        isDemo={isDemo}
-                        onClick={() => {
-                          setSelectedServeAttempt(serveAttempt);
-                          setSelectedServeAttemptId(serveAttempt.id);
-                          setIsModalOpen(true);
-                        }}
-                        onContactClick={() => {
-                          if (serveAttempt.contact_timestamp) {
-                            seekToTime(serveAttempt.contact_timestamp);
-                          }
-                        }}
-                        onMarkContact={async (timestamp) => {
-                          try {
-                            await updateServeAttempt(serveAttempt.id, {
-                              contact_timestamp: timestamp,
-                            });
-                          } catch (err) {
-                            console.error('Failed to mark contact:', err);
-                          }
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              )}
+                          return (
+                            <ServeAttemptRange
+                              key={serveAttempt.id}
+                              serveAttempt={serveAttempt}
+                              duration={duration}
+                              currentTime={currentTime}
+                              isSelected={isSelected}
+                              isDemo={isDemo}
+                              onClick={() => {
+                                setSelectedServeAttempt(serveAttempt);
+                                setSelectedServeAttemptId(serveAttempt.id);
+                                setIsModalOpen(true);
+                              }}
+                              onContactClick={() => {
+                                if (serveAttempt.contact_timestamp) {
+                                  seekToTime(serveAttempt.contact_timestamp);
+                                }
+                              }}
+                              onMarkContact={async (timestamp) => {
+                                try {
+                                  await updateServeAttempt(serveAttempt.id, {
+                                    contact_timestamp: timestamp,
+                                  });
+                                } catch (err) {
+                                  console.error('Failed to mark contact:', err);
+                                }
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
                     {rangeInTime !== null && duration > 0 && (
                       <div
                         className="range-mark-marker range-mark-marker--start"
@@ -1308,7 +1345,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   data-tour="serve-attempt-ranges"
                 >
                   {serveAttempts.map((serveAttempt) => {
-                    const isSelected = selectedServeAttemptId === serveAttempt.id;
+                    const isSelected =
+                      selectedServeAttemptId === serveAttempt.id;
 
                     return (
                       <ServeAttemptRange
@@ -1412,7 +1450,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               className="video-controls-below__nav-btn"
               disabled={!hasPreviousServeAttempt}
               onClick={navigateToPreviousServeAttempt}
-              title={hasPreviousServeAttempt ? 'Go to previous serve' : 'No previous serve'}
+              title={
+                hasPreviousServeAttempt
+                  ? 'Go to previous serve'
+                  : 'No previous serve'
+              }
             >
               <ArrowBackIcon size={18} />
               <span>Previous Serve</span>
@@ -1443,19 +1485,45 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 <span>Go to Contact</span>
               </button>
             )}
-            {/* View mode selector - subtle placement */}
+            {/* View mode – how the video is displayed (with or without pose overlay) */}
             {hasPoseData && (
-              <div className="video-controls-below__view-mode">
-                <select
-                  value={viewMode}
-                  onChange={(e) => setViewMode(e.target.value as ViewMode)}
-                  className="video-controls-below__view-select"
-                  title="Change video overlay"
+              <div
+                className="video-controls-below__view-mode"
+                role="group"
+                aria-label="Video view"
+              >
+                <span className="video-controls-below__view-label">View</span>
+                <div
+                  className="video-controls-below__view-segmented"
+                  role="radiogroup"
+                  aria-label="Overlay mode"
                 >
-                  <option value="video">Video Only</option>
-                  <option value="skeleton">+ Skeleton</option>
-                  <option value="stickfigure">Stick Figure</option>
-                </select>
+                  {(
+                    [
+                      { value: 'video' as ViewMode, label: 'Video' },
+                      { value: 'skeleton' as ViewMode, label: 'Skeleton' },
+                      { value: 'stickfigure' as ViewMode, label: 'Stick' },
+                    ] as const
+                  ).map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={viewMode === value}
+                      title={
+                        value === 'video'
+                          ? 'Video only'
+                          : value === 'skeleton'
+                            ? 'Video with skeleton overlay'
+                            : 'Video with stick figure'
+                      }
+                      className={`video-controls-below__view-option ${viewMode === value ? 'video-controls-below__view-option--active' : ''}`}
+                      onClick={() => setViewMode(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

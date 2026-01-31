@@ -14,15 +14,8 @@
 
 /* Header - Compact */
 .analysis-dashboard__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: var(--spacing-md);
   padding: var(--spacing-xs) 0;
-}
-
-.analysis-dashboard__header-content {
-  flex: 1;
 }
 
 .analysis-dashboard__title {
@@ -33,39 +26,51 @@
   line-height: 1.3;
 }
 
-.analysis-dashboard__shortcuts-btn {
-  display: flex;
+/* Keyboard shortcuts trigger - below video, contextual to controls */
+.analysis-dashboard__shortcuts-hint {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  gap: 6px;
+  margin-top: var(--spacing-sm);
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
   color: var(--color-text-muted);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease;
 }
 
-.analysis-dashboard__shortcuts-btn:hover {
-  background: var(--color-surface-secondary);
-  border-color: var(--color-border-dark);
+.analysis-dashboard__shortcuts-hint:hover {
   color: var(--color-text);
+}
+
+.analysis-dashboard__shortcuts-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  font-family: inherit;
 }
 
 /* Action Buttons Area */
 .analysis-dashboard__actions {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   margin-bottom: var(--spacing-md);
 }
 
 .analysis-dashboard__action-row {
   display: flex;
   gap: var(--spacing-sm);
+  align-items: center;
 }
 
 .analysis-dashboard__action-btn {
@@ -596,10 +601,7 @@
   }
 
   .analysis-dashboard__header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-md);
-    padding: var(--spacing-lg);
+    padding: var(--spacing-sm) 0;
   }
 
   .analysis-dashboard__title {

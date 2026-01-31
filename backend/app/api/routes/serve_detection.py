@@ -57,8 +57,7 @@ async def get_detection_status(
         )
 
         can_run = (
-            status_data["pending_proposals"] == 0
-            and status_data["serve_attempts"] == 0
+            status_data["pending_proposals"] == 0 and status_data["serve_attempts"] == 0
         )
 
         return DetectionStatusResponse(

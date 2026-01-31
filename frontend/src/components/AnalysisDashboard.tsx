@@ -69,7 +69,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [naturalScroll, setNaturalScroll] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [isFindingServes, setIsFindingServes] = useState(false);
-  const [findServesMessage, setFindServesMessage] = useState<string | null>(null);
+  const [findServesMessage, setFindServesMessage] = useState<string | null>(
+    null
+  );
 
   // Get serve attempts for this video
   const { serveAttempts } = useServeAttempts({
@@ -79,15 +81,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   });
 
   // Get serve proposals for detection functionality
-  const {
-    proposals,
-    detectionStatus,
-    runDetection,
-    clearProposals,
-  } = useServeProposals({
-    videoId,
-    autoRefresh: true,
-  });
+  const { proposals, detectionStatus, runDetection, clearProposals } =
+    useServeProposals({
+      videoId,
+      autoRefresh: true,
+    });
 
   // Keyboard shortcut listener for ?
   useEffect(() => {
@@ -121,14 +119,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     }
 
     // Check for existing detections
-    const hasExisting = detectionStatus && (
-      detectionStatus.pending_proposals > 0 ||
-      detectionStatus.serve_attempts > 0
-    );
+    const hasExisting =
+      detectionStatus &&
+      (detectionStatus.pending_proposals > 0 ||
+        detectionStatus.serve_attempts > 0);
 
     if (hasExisting && detectionStatus) {
-      if (detectionStatus.serve_attempts > 0 && detectionStatus.pending_proposals === 0) {
-        setFindServesMessage('Serves already tagged. Delete them to re-detect.');
+      if (
+        detectionStatus.serve_attempts > 0 &&
+        detectionStatus.pending_proposals === 0
+      ) {
+        setFindServesMessage(
+          'Serves already tagged. Delete them to re-detect.'
+        );
         setTimeout(() => setFindServesMessage(null), 4000);
         return;
       }
@@ -143,12 +146,16 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     setIsFindingServes(true);
     setFindServesMessage(null);
     try {
-      const force = detectionStatus?.pending_proposals ? detectionStatus.pending_proposals > 0 : false;
+      const force = detectionStatus?.pending_proposals
+        ? detectionStatus.pending_proposals > 0
+        : false;
       const response = await runDetection(force);
       if (response.count === 0) {
         setFindServesMessage('No serves found in this video.');
       } else {
-        setFindServesMessage(`Found ${response.count} serve${response.count > 1 ? 's' : ''}!`);
+        setFindServesMessage(
+          `Found ${response.count} serve${response.count > 1 ? 's' : ''}!`
+        );
       }
       setTimeout(() => setFindServesMessage(null), 4000);
     } catch (err) {
@@ -229,18 +236,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   return (
     <div className="analysis-dashboard">
-      {/* Header - Compact title bar with keyboard shortcut hint */}
+      {/* Header - Compact title bar */}
       <div className="analysis-dashboard__header">
-        <div className="analysis-dashboard__header-content">
-          <h1 className="analysis-dashboard__title">{videoFilename}</h1>
-        </div>
-        <button
-          className="analysis-dashboard__shortcuts-btn"
-          onClick={() => setShowKeyboardShortcuts(true)}
-          title="Keyboard shortcuts (?)"
-        >
-          <span>?</span>
-        </button>
+        <h1 className="analysis-dashboard__title">{videoFilename}</h1>
       </div>
 
       {/* Main Content */}
@@ -259,6 +257,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             isDemo={false}
             naturalScroll={naturalScroll}
           />
+          <button
+            className="analysis-dashboard__shortcuts-hint"
+            onClick={() => setShowKeyboardShortcuts(true)}
+            type="button"
+            title="Keyboard shortcuts"
+          >
+            <kbd>?</kbd> Keyboard shortcuts
+          </button>
         </div>
 
         {/* Right Column - Analysis Panel */}
@@ -292,7 +298,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 {analysisState.status === 'failed' && (
                   <div className="analysis-dashboard__error-card">
                     <p className="analysis-dashboard__error-message">
-                      {analysisState.error || 'Analysis failed. Please try again.'}
+                      {analysisState.error ||
+                        'Analysis failed. Please try again.'}
                     </p>
                     <button
                       className="analysis-dashboard__action-btn analysis-dashboard__action-btn--primary"
@@ -310,19 +317,16 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               <div className="analysis-dashboard__action-row">
                 <button
                   className={`analysis-dashboard__action-btn ${
-                    detectionStatus?.serve_attempts && detectionStatus.serve_attempts > 0
+                    detectionStatus?.serve_attempts &&
+                    detectionStatus.serve_attempts > 0
                       ? 'analysis-dashboard__action-btn--secondary'
                       : 'analysis-dashboard__action-btn--find'
                   }`}
                   onClick={handleFindServes}
                   disabled={isFindingServes}
-                  title="Automatically detect serve positions in the video"
+                  title="Detect serve windows in the video"
                 >
-                  {isFindingServes
-                    ? 'Finding...'
-                    : detectionStatus?.serve_attempts && detectionStatus.serve_attempts > 0
-                      ? 'Re-find Serves'
-                      : 'Find Serves'}
+                  {isFindingServes ? 'Finding…' : 'Find Serve Windows'}
                 </button>
                 {proposals.length > 0 && (
                   <button
@@ -343,7 +347,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 disabled={isAnalyzingServes}
               >
                 {isAnalyzingServes
-                  ? 'Analyzing...'
+                  ? 'Analyzing…'
                   : serveAttempts.some(
                         (sa) =>
                           sa.elbow_angle_at_contact !== null &&
