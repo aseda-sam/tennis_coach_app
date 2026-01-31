@@ -1313,6 +1313,23 @@
   color: var(--color-text-muted);
 }
 
+/* Serve Detail Panel Container */
+.video-controls-below__serve-panel {
+  margin-top: var(--spacing-md);
+  animation: servePanelSlideDown 0.25s ease-out;
+}
+
+@keyframes servePanelSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .video-controls-below__toggle-input {
   position: absolute;
   opacity: 0;

@@ -18,6 +18,8 @@ interface ServeAttemptModalProps {
   onDelete: (serveAttemptId: number) => Promise<void>;
   onSeek?: (time: number) => void;
   isDemo?: boolean;
+  /** Use panel mode to show as side panel instead of blocking overlay */
+  mode?: 'overlay' | 'panel';
 }
 
 const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
@@ -30,6 +32,7 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
   onDelete,
   onSeek,
   isDemo = false,
+  mode = 'overlay',
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -182,6 +185,248 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
     }
   };
 
+  // Panel mode renders without the blocking overlay
+  if (mode === 'panel') {
+    return (
+      <div className="serve-detail-panel">
+        <div className="serve-detail-panel__header">
+          <h3>Serve Details</h3>
+          <button className="serve-detail-panel__close-btn" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <div className="serve-detail-panel__content">
+          {isEditing ? (
+            <div className="serve-detail-panel__form">
+              <div className="serve-detail-panel__form-group">
+                <label>Serve Window & Contact:</label>
+                <TimelineMarkers
+                  startTime={formData.start_timestamp}
+                  endTime={formData.end_timestamp}
+                  contactTime={formData.contact_timestamp}
+                  videoDuration={videoDuration}
+                  currentTime={currentTime}
+                  onStartChange={(time) =>
+                    setFormData({ ...formData, start_timestamp: time })
+                  }
+                  onEndChange={(time) =>
+                    setFormData({ ...formData, end_timestamp: time })
+                  }
+                  onContactChange={(time) =>
+                    setFormData({ ...formData, contact_timestamp: time })
+                  }
+                  onSeek={onSeek}
+                />
+                {formData.contact_timestamp !== null && (
+                  <div className="serve-detail-panel__contact-row">
+                    <span>Contact: {formatTime(formData.contact_timestamp)}</span>
+                    <button
+                      type="button"
+                      className="serve-detail-panel__clear-btn"
+                      onClick={() =>
+                        setFormData({ ...formData, contact_timestamp: null })
+                      }
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="serve-detail-panel__form-row">
+                <div className="serve-detail-panel__form-group serve-detail-panel__form-group--half">
+                  <label>Court Side</label>
+                  <select
+                    value={formData.court_side || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        court_side: e.target.value || null,
+                      })
+                    }
+                  >
+                    <option value="">Optional</option>
+                    <option value="deuce">Deuce</option>
+                    <option value="ad">Ad</option>
+                  </select>
+                </div>
+
+                <div className="serve-detail-panel__form-group serve-detail-panel__form-group--half">
+                  <label>Serve #</label>
+                  <select
+                    value={formData.serve_number || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        serve_number: e.target.value
+                          ? parseInt(e.target.value)
+                          : null,
+                      })
+                    }
+                  >
+                    <option value="">Optional</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="serve-detail-panel__form-row">
+                <div className="serve-detail-panel__form-group serve-detail-panel__form-group--half">
+                  <label>Type</label>
+                  <select
+                    value={formData.serve_subtype || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        serve_subtype: e.target.value || null,
+                      })
+                    }
+                  >
+                    <option value="">Optional</option>
+                    <option value="flat">Flat</option>
+                    <option value="slice">Slice</option>
+                    <option value="kick">Kick</option>
+                  </select>
+                </div>
+
+                <div className="serve-detail-panel__form-group serve-detail-panel__form-group--half">
+                  <label>In/Out</label>
+                  <select
+                    value={formData.in_out || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        in_out: e.target.value || null,
+                      })
+                    }
+                  >
+                    <option value="">Optional</option>
+                    <option value="in">In</option>
+                    <option value="out_long">Out (Long)</option>
+                    <option value="out_wide">Out (Wide)</option>
+                    <option value="net">Net</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+              </div>
+
+              {validationError && (
+                <div className="serve-detail-panel__error">{validationError}</div>
+              )}
+            </div>
+          ) : (
+            <div className="serve-detail-panel__details">
+              <div className="serve-detail-panel__detail-row">
+                <span className="serve-detail-panel__detail-label">Range:</span>
+                <span className="serve-detail-panel__detail-value">
+                  {formatTime(serveAttempt.start_timestamp)} - {formatTime(serveAttempt.end_timestamp)}
+                </span>
+              </div>
+
+              {serveAttempt.contact_timestamp !== null && (
+                <div className="serve-detail-panel__detail-row">
+                  <span className="serve-detail-panel__detail-label">Contact:</span>
+                  <span className="serve-detail-panel__detail-value">
+                    {formatTime(serveAttempt.contact_timestamp)}
+                  </span>
+                </div>
+              )}
+
+              {serveAttempt.elbow_angle_at_contact !== null && (
+                <div className="serve-detail-panel__detail-row">
+                  <span className="serve-detail-panel__detail-label">Elbow Angle:</span>
+                  <span className="serve-detail-panel__detail-value">
+                    {Math.round(serveAttempt.elbow_angle_at_contact)}°
+                  </span>
+                </div>
+              )}
+
+              {serveAttempt.court_side && (
+                <div className="serve-detail-panel__detail-row">
+                  <span className="serve-detail-panel__detail-label">Court:</span>
+                  <span className="serve-detail-panel__detail-value">
+                    {serveAttempt.court_side.charAt(0).toUpperCase() + serveAttempt.court_side.slice(1)}
+                  </span>
+                </div>
+              )}
+
+              {serveAttempt.serve_subtype && (
+                <div className="serve-detail-panel__detail-row">
+                  <span className="serve-detail-panel__detail-label">Type:</span>
+                  <span className="serve-detail-panel__detail-value">
+                    {serveAttempt.serve_subtype.charAt(0).toUpperCase() + serveAttempt.serve_subtype.slice(1)}
+                  </span>
+                </div>
+              )}
+
+              {serveAttempt.in_out && (
+                <div className="serve-detail-panel__detail-row">
+                  <span className="serve-detail-panel__detail-label">Result:</span>
+                  <span className="serve-detail-panel__detail-value">
+                    {serveAttempt.in_out.replace('_', ' ')}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {!isDemo && (
+          <div className="serve-detail-panel__actions">
+            {isEditing ? (
+              <>
+                <button
+                  className="serve-detail-panel__btn serve-detail-panel__btn--secondary"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setValidationError(null);
+                  }}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="serve-detail-panel__btn serve-detail-panel__btn--primary"
+                  onClick={handleSave}
+                  disabled={isLoading || !!validationError}
+                >
+                  {isLoading ? 'Saving...' : 'Save'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="serve-detail-panel__btn serve-detail-panel__btn--danger"
+                  onClick={handleDelete}
+                  disabled={isLoading}
+                >
+                  Delete
+                </button>
+                <button
+                  className="serve-detail-panel__btn serve-detail-panel__btn--primary"
+                  onClick={handleEdit}
+                  disabled={isLoading}
+                >
+                  Edit
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {isDemo && (
+          <div className="serve-detail-panel__actions">
+            <div className="serve-detail-panel__demo-notice">
+              Demo mode: Editing disabled
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Overlay mode (original behavior)
   return (
     <div className="ball-contact-modal-overlay" onClick={onClose}>
       <div className="ball-contact-modal" onClick={(e) => e.stopPropagation()}>

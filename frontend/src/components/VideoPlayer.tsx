@@ -1486,29 +1486,58 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
             )}
           </div>
+
+          {/* Serve Detail Panel (inline, non-blocking) */}
+          {isModalOpen && selectedServeAttempt && (
+            <div className="video-controls-below__serve-panel">
+              <ServeAttemptModal
+                serveAttempt={selectedServeAttempt}
+                isOpen={isModalOpen}
+                videoDuration={duration}
+                currentTime={currentTime}
+                isDemo={isDemo}
+                mode="panel"
+                onClose={() => {
+                  setIsModalOpen(false);
+                  setSelectedServeAttempt(null);
+                  setSelectedServeAttemptId(undefined);
+                }}
+                onUpdate={async (serveAttemptId, updates) => {
+                  await updateServeAttempt(serveAttemptId, updates);
+                }}
+                onDelete={async (serveAttemptId) => {
+                  await deleteServeAttempt(serveAttemptId);
+                }}
+                onSeek={seekToTime}
+              />
+            </div>
+          )}
         </div>
       )}
 
-      {/* Serve Attempt Management Modal */}
-      <ServeAttemptModal
-        serveAttempt={selectedServeAttempt}
-        isOpen={isModalOpen}
-        videoDuration={duration}
-        currentTime={currentTime}
-        isDemo={isDemo}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedServeAttempt(null);
-          setSelectedServeAttemptId(undefined);
-        }}
-        onUpdate={async (serveAttemptId, updates) => {
-          await updateServeAttempt(serveAttemptId, updates);
-        }}
-        onDelete={async (serveAttemptId) => {
-          await deleteServeAttempt(serveAttemptId);
-        }}
-        onSeek={seekToTime}
-      />
+      {/* Serve Attempt Management Modal (overlay mode for non-controlsBelow) */}
+      {!controlsBelow && (
+        <ServeAttemptModal
+          serveAttempt={selectedServeAttempt}
+          isOpen={isModalOpen}
+          videoDuration={duration}
+          currentTime={currentTime}
+          isDemo={isDemo}
+          mode="overlay"
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedServeAttempt(null);
+            setSelectedServeAttemptId(undefined);
+          }}
+          onUpdate={async (serveAttemptId, updates) => {
+            await updateServeAttempt(serveAttemptId, updates);
+          }}
+          onDelete={async (serveAttemptId) => {
+            await deleteServeAttempt(serveAttemptId);
+          }}
+          onSeek={seekToTime}
+        />
+      )}
     </div>
   );
 };
