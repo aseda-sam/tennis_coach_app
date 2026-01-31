@@ -20,8 +20,79 @@ logger = logging.getLogger(__name__)
 MODEL_VERSION = "heuristic-v1"
 
 
-def generate_proposals(
+def check_existing_proposals_or_attempts(
     db: Session, video_id: int, user_id: str
+) -> Dict:
+    """
+    Check if there are existing proposals or serve attempts for a video.
+
+    Returns:
+        Dict with counts of pending_proposals, reviewed_proposals, and serve_attempts
+    """
+    pending_proposals = (
+        db.query(ServeWindowProposal)
+        .filter(
+            ServeWindowProposal.video_id == video_id,
+            ServeWindowProposal.user_id == user_id,
+            ServeWindowProposal.status == "pending",
+        )
+        .count()
+    )
+
+    reviewed_proposals = (
+        db.query(ServeWindowProposal)
+        .filter(
+            ServeWindowProposal.video_id == video_id,
+            ServeWindowProposal.user_id == user_id,
+            ServeWindowProposal.status.in_(["accepted", "rejected", "edited"]),
+        )
+        .count()
+    )
+
+    serve_attempts = (
+        db.query(ServeAttempt)
+        .filter(
+            ServeAttempt.video_id == video_id,
+            ServeAttempt.user_id == user_id,
+        )
+        .count()
+    )
+
+    return {
+        "pending_proposals": pending_proposals,
+        "reviewed_proposals": reviewed_proposals,
+        "serve_attempts": serve_attempts,
+    }
+
+
+def clear_pending_proposals(db: Session, video_id: int, user_id: str) -> int:
+    """
+    Clear all pending proposals for a video.
+
+    Args:
+        db: Database session
+        video_id: Video ID
+        user_id: User ID (for tenancy)
+
+    Returns:
+        Number of proposals deleted
+    """
+    deleted_count = (
+        db.query(ServeWindowProposal)
+        .filter(
+            ServeWindowProposal.video_id == video_id,
+            ServeWindowProposal.user_id == user_id,
+            ServeWindowProposal.status == "pending",
+        )
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    logger.info(f"Cleared {deleted_count} pending proposals for video {video_id}")
+    return deleted_count
+
+
+def generate_proposals(
+    db: Session, video_id: int, user_id: str, force: bool = False
 ) -> List[ServeWindowProposal]:
     """
     Generate serve window proposals for a video using heuristic detection.
@@ -30,13 +101,32 @@ def generate_proposals(
         db: Database session
         video_id: Video ID
         user_id: User ID (for tenancy)
+        force: If True, clear existing pending proposals before generating new ones
 
     Returns:
         List of created ServeWindowProposal records
 
     Raises:
-        ValueError: If video not found or pose data not available
+        ValueError: If video not found, pose data not available, or proposals already exist
     """
+    # Check for existing proposals/attempts
+    existing = check_existing_proposals_or_attempts(db, video_id, user_id)
+
+    if existing["pending_proposals"] > 0:
+        if force:
+            clear_pending_proposals(db, video_id, user_id)
+        else:
+            raise ValueError(
+                f"Video already has {existing['pending_proposals']} pending proposal(s). "
+                "Review or clear them before running detection again."
+            )
+
+    if existing["serve_attempts"] > 0 and not force:
+        raise ValueError(
+            f"Video already has {existing['serve_attempts']} serve attempt(s). "
+            "Clear proposals and serve attempts if you want to re-run detection."
+        )
+
     # Load video
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
@@ -87,7 +177,7 @@ def generate_proposals(
     try:
         raw_pose_data = json.loads(pose_detection.pose_data)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to parse pose data: {e}")
+        raise ValueError(f"Failed to parse pose data: {e}") from e
 
     if not raw_pose_data:
         raise ValueError("Pose data is empty")

@@ -3,12 +3,14 @@
 import logging
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas.serve_attempt import ServeAttemptInfo
 from app.api.schemas.serve_detection import (
     AcceptProposalRequest,
+    ClearProposalsResponse,
+    DetectionStatusResponse,
     EditProposalRequest,
     ProposeResponse,
     ServeWindowProposalInfo,
@@ -26,6 +28,51 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["serve-detection"])
 
 
+@router.get(
+    "/videos/{video_id}/serve-detection/status",
+    response_model=DetectionStatusResponse,
+)
+async def get_detection_status(
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DetectionStatusResponse:
+    """
+    Get serve detection status for a video.
+
+    Returns counts of existing proposals and serve attempts.
+    """
+    try:
+        # Get video to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Check authorization
+        require_video_access(video, current_user)
+
+        # Get status
+        status_data = proposal_service.check_existing_proposals_or_attempts(
+            db, video_id, current_user["id"]
+        )
+
+        can_run = (
+            status_data["pending_proposals"] == 0
+            and status_data["serve_attempts"] == 0
+        )
+
+        return DetectionStatusResponse(
+            video_id=video_id,
+            pending_proposals=status_data["pending_proposals"],
+            reviewed_proposals=status_data["reviewed_proposals"],
+            serve_attempts=status_data["serve_attempts"],
+            can_run_detection=can_run,
+        )
+
+    except Exception as e:
+        log_and_raise_error(e, "get_detection_status", {"video_id": video_id})
+
+
 @router.post(
     "/videos/{video_id}/serve-detection/propose",
     response_model=ProposeResponse,
@@ -33,6 +80,10 @@ router = APIRouter(tags=["serve-detection"])
 )
 async def propose_serve_windows(
     video_id: int,
+    force: bool = Query(
+        default=False,
+        description="Force detection even if proposals exist (clears pending proposals)",
+    ),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ProposeResponse:
@@ -40,6 +91,8 @@ async def propose_serve_windows(
     Run serve detection on a video and generate proposals.
 
     Requires pose detection to be completed first.
+    Will fail if pending proposals or serve attempts already exist,
+    unless force=true is specified (which clears pending proposals first).
     """
     try:
         # Get video to check authorization
@@ -53,7 +106,7 @@ async def propose_serve_windows(
 
         # Generate proposals
         proposals = proposal_service.generate_proposals(
-            db, video_id, current_user["id"]
+            db, video_id, current_user["id"], force=force
         )
 
         return ProposeResponse(
@@ -66,6 +119,44 @@ async def propose_serve_windows(
         log_and_raise_error(e, "propose_serve_windows", {"video_id": video_id})
     except Exception as e:
         log_and_raise_error(e, "propose_serve_windows", {"video_id": video_id})
+
+
+@router.delete(
+    "/videos/{video_id}/serve-detection/proposals",
+    response_model=ClearProposalsResponse,
+)
+async def clear_proposals(
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ClearProposalsResponse:
+    """
+    Clear all pending proposals for a video.
+
+    Only clears pending proposals, not accepted/rejected ones.
+    """
+    try:
+        # Get video to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Check authorization
+        require_video_access(video, current_user)
+        require_video_not_demo(video, current_user)
+
+        # Clear proposals
+        cleared_count = proposal_service.clear_pending_proposals(
+            db, video_id, current_user["id"]
+        )
+
+        return ClearProposalsResponse(
+            video_id=video_id,
+            cleared_count=cleared_count,
+        )
+
+    except Exception as e:
+        log_and_raise_error(e, "clear_proposals", {"video_id": video_id})
 
 
 @router.get(

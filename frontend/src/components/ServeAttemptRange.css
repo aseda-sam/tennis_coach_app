@@ -124,3 +124,40 @@
   font-size: 11px;
   opacity: 0.9;
 }
+
+/* Mark Contact Button */
+.serve-attempt-range__mark-contact-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 4px 8px;
+  background-color: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 15;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  animation: fadeIn 0.2s ease;
+}
+
+.serve-attempt-range__mark-contact-btn:hover {
+  background-color: #d97706;
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

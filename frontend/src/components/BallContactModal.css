@@ -259,6 +259,28 @@
   font-weight: 500;
 }
 
+/* Contact Clear Row */
+.contact-clear-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+.contact-value {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
 /* Responsive Design */
 @media (max-width: 640px) {
   .ball-contact-modal-overlay {

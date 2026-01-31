@@ -74,3 +74,22 @@ class EditProposalRequest(BaseModel):
     player_id: Optional[int] = Field(
         default=None, description="Player ID (defaults to user's default player)"
     )
+
+
+class DetectionStatusResponse(BaseModel):
+    """Response with detection status for a video."""
+
+    video_id: int = Field(description="Video ID")
+    pending_proposals: int = Field(description="Number of pending proposals")
+    reviewed_proposals: int = Field(description="Number of reviewed proposals")
+    serve_attempts: int = Field(description="Number of serve attempts")
+    can_run_detection: bool = Field(
+        description="Whether detection can be run without force flag"
+    )
+
+
+class ClearProposalsResponse(BaseModel):
+    """Response after clearing proposals."""
+
+    video_id: int = Field(description="Video ID")
+    cleared_count: int = Field(description="Number of proposals cleared")

@@ -5,15 +5,18 @@ import {
   validateContactTimestamp,
   validateTimestamp,
 } from '../utils/validation';
+import TimelineMarkers from './TimelineMarkers';
 import './BallContactModal.css'; // Reuse styles
 
 interface ServeAttemptModalProps {
   serveAttempt: ServeAttempt | null;
   isOpen: boolean;
   videoDuration: number;
+  currentTime?: number;
   onClose: () => void;
   onUpdate: (serveAttemptId: number, updates: ServeAttemptUpdate) => Promise<void>;
   onDelete: (serveAttemptId: number) => Promise<void>;
+  onSeek?: (time: number) => void;
   isDemo?: boolean;
 }
 
@@ -21,9 +24,11 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
   serveAttempt,
   isOpen,
   videoDuration,
+  currentTime = 0,
   onClose,
   onUpdate,
   onDelete,
+  onSeek,
   isDemo = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -191,60 +196,40 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
           {isEditing ? (
             <div className="edit-form">
               <div className="form-group">
-                <label>Start Timestamp (seconds):</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  min="0"
-                  max={videoDuration > 0 ? videoDuration : undefined}
-                  value={formData.start_timestamp || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      start_timestamp: parseFloat(e.target.value) || 0,
-                    })
+                <label>Serve Window & Contact:</label>
+                <TimelineMarkers
+                  startTime={formData.start_timestamp}
+                  endTime={formData.end_timestamp}
+                  contactTime={formData.contact_timestamp}
+                  videoDuration={videoDuration}
+                  currentTime={currentTime}
+                  onStartChange={(time) =>
+                    setFormData({ ...formData, start_timestamp: time })
                   }
-                  className={validationError ? 'error' : ''}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>End Timestamp (seconds):</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  min="0"
-                  max={videoDuration > 0 ? videoDuration : undefined}
-                  value={formData.end_timestamp || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      end_timestamp: parseFloat(e.target.value) || 0,
-                    })
+                  onEndChange={(time) =>
+                    setFormData({ ...formData, end_timestamp: time })
                   }
-                  className={validationError ? 'error' : ''}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Contact Timestamp (seconds, optional):</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  min="0"
-                  max={videoDuration > 0 ? videoDuration : undefined}
-                  value={formData.contact_timestamp ?? ''}
-                  placeholder="Leave blank"
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      contact_timestamp: e.target.value
-                        ? parseFloat(e.target.value)
-                        : null,
-                    })
+                  onContactChange={(time) =>
+                    setFormData({ ...formData, contact_timestamp: time })
                   }
-                  className={validationError ? 'error' : ''}
+                  onSeek={onSeek}
                 />
+                {formData.contact_timestamp !== null && (
+                  <div className="contact-clear-row">
+                    <span className="contact-value">
+                      Contact: {formatTime(formData.contact_timestamp)}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-small btn-secondary"
+                      onClick={() =>
+                        setFormData({ ...formData, contact_timestamp: null })
+                      }
+                    >
+                      Clear Contact
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="form-group">

@@ -34,11 +34,42 @@ export interface EditProposalRequest {
   player_id?: number | null;
 }
 
+export interface DetectionStatusResponse {
+  video_id: number;
+  pending_proposals: number;
+  reviewed_proposals: number;
+  serve_attempts: number;
+  can_run_detection: boolean;
+}
+
+export interface ClearProposalsResponse {
+  video_id: number;
+  cleared_count: number;
+}
+
 export const serveProposalApi = {
+  // Get detection status for a video
+  getStatus: async (videoId: number): Promise<DetectionStatusResponse> => {
+    const response = await api.get<DetectionStatusResponse>(
+      `/videos/${videoId}/serve-detection/status`
+    );
+    return response.data;
+  },
+
   // Run detection and generate proposals
-  propose: async (videoId: number): Promise<ProposeResponse> => {
+  propose: async (videoId: number, force: boolean = false): Promise<ProposeResponse> => {
     const response = await api.post<ProposeResponse>(
-      `/videos/${videoId}/serve-detection/propose`
+      `/videos/${videoId}/serve-detection/propose`,
+      null,
+      { params: { force } }
+    );
+    return response.data;
+  },
+
+  // Clear all pending proposals
+  clearProposals: async (videoId: number): Promise<ClearProposalsResponse> => {
+    const response = await api.delete<ClearProposalsResponse>(
+      `/videos/${videoId}/serve-detection/proposals`
     );
     return response.data;
   },

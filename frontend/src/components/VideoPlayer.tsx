@@ -111,7 +111,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Use serve proposals hook if videoId is provided
   const {
     proposals,
+    detectionStatus,
     runDetection,
+    clearProposals,
     acceptProposal,
     rejectProposal,
     editProposal,
@@ -133,13 +135,51 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }, 4000);
   }, []);
 
+  // Determine auto-detect button state
+  const hasExistingDetections = detectionStatus && (
+    detectionStatus.pending_proposals > 0 ||
+    detectionStatus.serve_attempts > 0
+  );
+
   // Handle auto-detect
   const handleAutoDetect = useCallback(async () => {
     if (!videoId || isRunningDetection) return;
+
+    // If there are existing proposals or serve attempts, ask for confirmation
+    if (hasExistingDetections && detectionStatus) {
+      const hasServeAttempts = detectionStatus.serve_attempts > 0;
+      const hasPendingProposals = detectionStatus.pending_proposals > 0;
+
+      let message = 'This video already has ';
+      const parts: string[] = [];
+      if (hasServeAttempts) {
+        parts.push(`${detectionStatus.serve_attempts} serve attempt(s)`);
+      }
+      if (hasPendingProposals) {
+        parts.push(`${detectionStatus.pending_proposals} pending proposal(s)`);
+      }
+      message += parts.join(' and ') + '. ';
+
+      if (hasServeAttempts) {
+        message += 'Running detection again will only add new proposals. Delete existing serve attempts first if you want to start fresh.';
+        showDetectionMessage(message);
+        return;
+      }
+
+      if (hasPendingProposals) {
+        const confirmed = window.confirm(
+          message + 'Do you want to clear existing proposals and re-run detection?'
+        );
+        if (!confirmed) return;
+      }
+    }
+
     setIsRunningDetection(true);
     setDetectionMessage(null);
     try {
-      const response = await runDetection();
+      // Use force=true if there are pending proposals (we confirmed above)
+      const force = detectionStatus?.pending_proposals ? detectionStatus.pending_proposals > 0 : false;
+      const response = await runDetection(force);
       if (response.count === 0) {
         showDetectionMessage("No serve windows detected.");
       } else {
@@ -147,13 +187,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       }
     } catch (err) {
       console.error('Failed to run detection:', err);
-      showDetectionMessage(
-        'Serve detection failed. Please ensure pose detection is completed.'
-      );
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      if (errorMessage.includes('already has')) {
+        showDetectionMessage(errorMessage);
+      } else {
+        showDetectionMessage(
+          'Serve detection failed. Please ensure pose detection is completed.'
+        );
+      }
     } finally {
       setIsRunningDetection(false);
     }
-  }, [videoId, isRunningDetection, runDetection, showDetectionMessage]);
+  }, [videoId, isRunningDetection, runDetection, showDetectionMessage, hasExistingDetections, detectionStatus]);
+
+  // Handle clearing proposals
+  const handleClearProposals = useCallback(async () => {
+    if (!videoId) return;
+
+    const confirmed = window.confirm(
+      'Are you sure you want to clear all pending proposals? This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await clearProposals();
+      showDetectionMessage(`Cleared ${response.cleared_count} proposal(s).`);
+    } catch (err) {
+      console.error('Failed to clear proposals:', err);
+      showDetectionMessage('Failed to clear proposals.');
+    }
+  }, [videoId, clearProposals, showDetectionMessage]);
 
   useEffect(() => {
     return () => {
@@ -771,13 +834,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {hasPoseDataForDetection && (
               <div className="auto-detect-wrap">
                 <button
-                  className="auto-detect-btn"
+                  className={`auto-detect-btn ${hasExistingDetections ? 'auto-detect-btn--has-detections' : ''}`}
                   onClick={handleAutoDetect}
                   disabled={isRunningDetection}
-                  title="Auto-detect serve windows"
+                  title={hasExistingDetections
+                    ? 'Detection already run - click to re-detect'
+                    : 'Auto-detect serve windows'
+                  }
                 >
                   {isRunningDetection ? 'Detecting...' : 'Auto-detect serves'}
                 </button>
+                {proposals.length > 0 && (
+                  <button
+                    className="auto-detect-clear-btn"
+                    onClick={handleClearProposals}
+                    disabled={isRunningDetection}
+                    title="Clear all pending proposals"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -980,11 +1056,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         key={serveAttempt.id}
                         serveAttempt={serveAttempt}
                         duration={duration}
+                        currentTime={currentTime}
                         isSelected={isSelected}
+                        isDemo={isDemo}
                         onClick={() => {
                           setSelectedServeAttempt(serveAttempt);
                           setSelectedServeAttemptId(serveAttempt.id);
                           setIsModalOpen(true);
+                        }}
+                        onContactClick={() => {
+                          if (serveAttempt.contact_timestamp) {
+                            seekToTime(serveAttempt.contact_timestamp);
+                          }
+                        }}
+                        onMarkContact={async (timestamp) => {
+                          try {
+                            await updateServeAttempt(serveAttempt.id, {
+                              contact_timestamp: timestamp,
+                            });
+                          } catch (err) {
+                            console.error('Failed to mark contact:', err);
+                          }
                         }}
                       />
                     );
@@ -1223,11 +1315,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         key={serveAttempt.id}
                         serveAttempt={serveAttempt}
                         duration={duration}
+                        currentTime={currentTime}
                         isSelected={isSelected}
+                        isDemo={isDemo}
                         onClick={() => {
                           setSelectedServeAttempt(serveAttempt);
                           setSelectedServeAttemptId(serveAttempt.id);
                           setIsModalOpen(true);
+                        }}
+                        onContactClick={() => {
+                          if (serveAttempt.contact_timestamp) {
+                            seekToTime(serveAttempt.contact_timestamp);
+                          }
+                        }}
+                        onMarkContact={async (timestamp) => {
+                          try {
+                            await updateServeAttempt(serveAttempt.id, {
+                              contact_timestamp: timestamp,
+                            });
+                          } catch (err) {
+                            console.error('Failed to mark contact:', err);
+                          }
                         }}
                       />
                     );
@@ -1353,13 +1461,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 {hasPoseDataForDetection && (
                   <div className="video-controls-below__auto-detect-wrap">
                     <button
-                      className="video-controls-below__auto-detect-btn"
+                      className={`video-controls-below__auto-detect-btn ${hasExistingDetections ? 'video-controls-below__auto-detect-btn--has-detections' : ''}`}
                       onClick={handleAutoDetect}
                       disabled={isRunningDetection}
-                      title="Auto-detect serve windows"
+                      title={hasExistingDetections
+                        ? 'Detection already run - click to re-detect'
+                        : 'Auto-detect serve windows'
+                      }
                     >
                       {isRunningDetection ? 'Detecting...' : 'Auto-detect serves'}
                     </button>
+                    {proposals.length > 0 && (
+                      <button
+                        className="video-controls-below__auto-detect-clear-btn"
+                        onClick={handleClearProposals}
+                        disabled={isRunningDetection}
+                        title="Clear all pending proposals"
+                      >
+                        Clear
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1373,6 +1494,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         serveAttempt={selectedServeAttempt}
         isOpen={isModalOpen}
         videoDuration={duration}
+        currentTime={currentTime}
         isDemo={isDemo}
         onClose={() => {
           setIsModalOpen(false);
@@ -1385,6 +1507,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         onDelete={async (serveAttemptId) => {
           await deleteServeAttempt(serveAttemptId);
         }}
+        onSeek={seekToTime}
       />
     </div>
   );
