@@ -68,7 +68,7 @@ async def get_detection_status(
             can_run_detection=can_run,
         )
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(e, "get_detection_status", {"video_id": video_id})
 
 
@@ -116,7 +116,7 @@ async def propose_serve_windows(
 
     except ValueError as e:
         log_and_raise_error(e, "propose_serve_windows", {"video_id": video_id})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(e, "propose_serve_windows", {"video_id": video_id})
 
 
@@ -154,7 +154,7 @@ async def clear_proposals(
             cleared_count=cleared_count,
         )
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(e, "clear_proposals", {"video_id": video_id})
 
 
@@ -193,7 +193,7 @@ async def get_proposals(
 
         return [ServeWindowProposalInfo.model_validate(p) for p in proposals]
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(e, "get_proposals", {"video_id": video_id})
 
 
@@ -219,7 +219,7 @@ async def accept_proposal(
 
     except ValueError as e:
         log_and_raise_error(e, "accept_proposal", {"proposal_id": proposal_id})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(e, "accept_proposal", {"proposal_id": proposal_id})
 
 
@@ -241,7 +241,7 @@ async def reject_proposal(
 
     except ValueError as e:
         log_and_raise_error(e, "reject_proposal", {"proposal_id": proposal_id})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(e, "reject_proposal", {"proposal_id": proposal_id})
 
 
@@ -281,5 +281,5 @@ async def edit_proposal(
         log_and_raise_error(e, "edit_proposal", {"proposal_id": proposal_id})
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(e, "edit_proposal", {"proposal_id": proposal_id})

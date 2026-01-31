@@ -34,7 +34,7 @@ class ServeWindowProposalInfo(BaseModel):
 
     @field_validator("detection_features", mode="before")
     @classmethod
-    def parse_detection_features(cls, v: Any) -> Optional[Dict[str, Any]]:
+    def parse_detection_features(cls, v: object) -> Optional[Dict[str, Any]]:
         """Parse detection_features from JSON string if needed."""
         if v is None:
             return None
