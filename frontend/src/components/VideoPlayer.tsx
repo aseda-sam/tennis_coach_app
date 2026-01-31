@@ -25,6 +25,7 @@ import {
   WarningIcon,
 } from './Icons';
 import VideoOverlay from './VideoOverlay';
+import StickFigureCanvas from './StickFigureCanvas';
 import './VideoPlayer.css';
 
 interface VideoPlayerProps {
@@ -737,15 +738,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <video
                 ref={videoRef}
                 src={resolvedVideoUrl}
-                className={`video-element video-element-${aspectRatioMode}`}
+                className={`video-element video-element-${aspectRatioMode} ${
+                  showOverlay && hasPoseData ? 'video-element--hidden' : ''
+                }`}
                 preload="metadata"
                 crossOrigin="anonymous"
                 data-testid="video-element"
               />
             )}
 
-            {/* Video Overlay */}
-            {videoId && showOverlay && (
+            {/* Stick Figure Mode - replaces video when annotation is on */}
+            {videoId && showOverlay && hasPoseData && (
+              <StickFigureCanvas
+                videoId={videoId}
+                currentTime={currentTime}
+                fps={videoMetadata?.fps}
+                isPlaying={isPlaying}
+              />
+            )}
+
+            {/* Video Overlay - legacy mode, hidden when stick figure is active */}
+            {videoId && showOverlay && !hasPoseData && (
               <VideoOverlay
                 videoId={videoId}
                 videoElement={videoRef.current}
@@ -1266,7 +1279,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   />
                   <span className="video-controls-below__toggle-slider"></span>
                   <span className="video-controls-below__toggle-label">
-                    Show Annotation
+                    {showOverlay ? 'Stick Figure' : 'Show Annotation'}
                   </span>
                 </label>
                 {hasPoseDataForDetection && (

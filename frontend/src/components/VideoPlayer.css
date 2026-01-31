@@ -247,6 +247,13 @@
   background: #000; /* Black bars */
 }
 
+/* Hidden video when stick figure mode is active */
+/* Video is still in DOM and playing for timeline sync, just not visible */
+.video-element--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Play Overlay */
 .play-overlay {
   position: absolute;
