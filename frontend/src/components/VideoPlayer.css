@@ -1181,25 +1181,32 @@
   flex-shrink: 0;
 }
 
-.video-controls-below__contact-btn:hover {
+.video-controls-below__contact-btn:hover:not(:disabled) {
   background: var(--color-warning, #f59e0b);
   border-color: var(--color-warning-dark, #d97706);
   color: white;
+}
+
+.video-controls-below__contact-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.video-controls-below__contact-btn--next svg {
+  transform: rotate(180deg);
 }
 
 .video-controls-below__contact-icon {
   font-size: 12px;
 }
 
-/* View mode – right-aligned so nav buttons stay centered */
-.video-controls-below__view-mode {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+/* View mode row – above timeline so nav stays uncluttered */
+.video-controls-below__view-row {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  padding-bottom: var(--spacing-sm);
 }
 
 .video-controls-below__view-label {

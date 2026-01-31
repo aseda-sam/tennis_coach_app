@@ -191,6 +191,16 @@ export const videoApi = {
     return response.data;
   },
 
+  // Get ball contact timestamps for a video (backend: ball-contact-timestamps; UI keeps "contact")
+  getContactTimestamps: async (
+    videoId: number
+  ): Promise<{ contact_timestamps: number[] }> => {
+    const response = await api.get<{ ball_contact_timestamps: number[] }>(
+      `/videos/${videoId}/ball-contact-timestamps`
+    );
+    return { contact_timestamps: response.data.ball_contact_timestamps };
+  },
+
   // Bulk check video analysis statuses (optimized)
   getBulkVideoAnalysisStatus: async (
     videoIds: number[]

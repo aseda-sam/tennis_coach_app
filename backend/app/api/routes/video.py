@@ -95,6 +95,15 @@ class BulkAnalysisStatusResponse(BaseModel):
     )
 
 
+class BallContactTimestampsResponse(BaseModel):
+    """Response model for ball contact timestamps in a video (serve contact points)."""
+
+    ball_contact_timestamps: List[float] = Field(
+        default_factory=list,
+        description="Sorted list of ball contact timestamps in seconds (unique, ascending)",
+    )
+
+
 class VideoJobResponse(BaseModel):
     """Response schema for video job status."""
 
@@ -605,6 +614,40 @@ async def analyze_demo_pose(
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
         log_and_raise_error(e, "analyze_demo_pose", {"video_id": video_id})
+
+
+@router.get(
+    "/{video_id}/ball-contact-timestamps",
+    response_model=BallContactTimestampsResponse,
+)
+async def get_video_ball_contact_timestamps(
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BallContactTimestampsResponse:
+    """
+    Get all ball contact timestamps for serves in a video (for prev/next contact navigation).
+
+    Returns sorted, unique ball contact timestamps from serve attempts that have a contact point.
+    """
+    from app.models.serve_attempt import ServeAttempt
+
+    db_video = video_service.get_video_by_id(db, video_id)
+    if not db_video:
+        raise handle_not_found_error("video", str(video_id))
+    require_video_access(db_video, current_user)
+
+    rows = (
+        db.query(ServeAttempt.contact_timestamp)
+        .filter(
+            ServeAttempt.video_id == video_id,
+            ServeAttempt.user_id == current_user["id"],
+            ServeAttempt.contact_timestamp.isnot(None),
+        )
+        .all()
+    )
+    timestamps = sorted({r[0] for r in rows if r[0] is not None})
+    return BallContactTimestampsResponse(ball_contact_timestamps=timestamps)
 
 
 @router.get("/{video_id}", response_model=VideoInfo)

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import React, {
   useCallback,
   useEffect,
@@ -5,6 +6,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import {
+  contactTimestampsQueryKey,
+  useContactTimestamps,
+} from '../hooks/useContactTimestamps';
 import { useServeAttempts } from '../hooks/useServeAttempts';
 import { useServeProposals } from '../hooks/useServeProposals';
 import { useVideoMetadata } from '../hooks/useVideos';
@@ -98,6 +103,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const hasPoseDataForDetection = hasPoseData && !!videoId;
   const [detectionMessage, setDetectionMessage] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
+
   // Use serve attempts hook if videoId is provided
   const {
     serveAttempts,
@@ -109,6 +116,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     filters: videoId ? { video_id: videoId } : undefined,
     autoRefresh: !!videoId,
   });
+
+  // Contact timestamps from backend (for prev/next contact navigation)
+  const { contactTimestamps } = useContactTimestamps(videoId);
 
   // Use serve proposals hook if videoId is provided
   const {
@@ -605,22 +615,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     });
   }, [sortedServeAttempts, currentTime]);
 
-  // Find the serve attempt that contains the current time
-  const currentServeAttempt = useMemo(() => {
-    return sortedServeAttempts.find((sa) => {
-      return (
-        currentTime >= sa.start_timestamp && currentTime <= sa.end_timestamp
-      );
-    });
-  }, [sortedServeAttempts, currentTime]);
+  const hasAnyContact = contactTimestamps.length > 0;
 
-  // Check if current serve attempt has a contact point
-  const hasContactPoint = useMemo(() => {
-    return (
-      currentServeAttempt?.contact_timestamp !== null &&
-      currentServeAttempt?.contact_timestamp !== undefined
-    );
-  }, [currentServeAttempt]);
+  // Previous/next contact relative to current time
+  const previousContactTimestamp = useMemo(() => {
+    const prev = contactTimestamps.filter((t) => t < currentTime);
+    return prev.length > 0 ? prev[prev.length - 1] : undefined;
+  }, [contactTimestamps, currentTime]);
+
+  const nextContactTimestamp = useMemo(() => {
+    return contactTimestamps.find((t) => t > currentTime);
+  }, [contactTimestamps, currentTime]);
+
+  const hasPreviousContact = previousContactTimestamp !== undefined;
+  const hasNextContact = nextContactTimestamp !== undefined;
 
   // Navigate to a specific timestamp (for moments within serve attempts)
   const navigateToTimestamp = useCallback(
@@ -639,11 +647,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     [isPlaying]
   );
 
-  // Navigate to contact point in current serve attempt
-  const navigateToContact = useCallback(() => {
-    if (!currentServeAttempt || !currentServeAttempt.contact_timestamp) return;
-    navigateToTimestamp(currentServeAttempt.contact_timestamp);
-  }, [currentServeAttempt, navigateToTimestamp]);
+  const navigateToPreviousContact = useCallback(() => {
+    if (previousContactTimestamp === undefined) return;
+    navigateToTimestamp(previousContactTimestamp);
+  }, [previousContactTimestamp, navigateToTimestamp]);
+
+  const navigateToNextContact = useCallback(() => {
+    if (nextContactTimestamp === undefined) return;
+    navigateToTimestamp(nextContactTimestamp);
+  }, [nextContactTimestamp, navigateToTimestamp]);
 
   const navigateRef = useRef(navigateToServeAttemptById);
 
@@ -957,6 +969,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 fps={videoMetadata?.fps}
                 onAddServeAttempt={async (serveAttempt: ServeAttemptCreate) => {
                   await createServeAttempt(serveAttempt);
+                  if (videoId) {
+                    queryClient.invalidateQueries({
+                      queryKey: contactTimestampsQueryKey(videoId),
+                    });
+                  }
                   if (openRange) {
                     clearRangeMarks();
                   }
@@ -1111,6 +1128,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                                   await updateServeAttempt(serveAttempt.id, {
                                     contact_timestamp: timestamp,
                                   });
+                                  if (videoId) {
+                                    queryClient.invalidateQueries({
+                                      queryKey:
+                                        contactTimestampsQueryKey(videoId),
+                                    });
+                                  }
                                 } catch (err) {
                                   console.error('Failed to mark contact:', err);
                                 }
@@ -1240,6 +1263,43 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Controls Below Video (when controlsBelow is true) - Outside video wrapper */}
       {showControls && controlsBelow && (
         <div className="video-controls-below">
+          {/* View mode – above timeline so nav row stays uncluttered */}
+          {hasPoseData && (
+            <div className="video-controls-below__view-row">
+              <span className="video-controls-below__view-label">View</span>
+              <div
+                className="video-controls-below__view-segmented"
+                role="radiogroup"
+                aria-label="Overlay mode"
+              >
+                {(
+                  [
+                    { value: 'video' as ViewMode, label: 'Video' },
+                    { value: 'skeleton' as ViewMode, label: 'Skeleton' },
+                    { value: 'stickfigure' as ViewMode, label: 'Stick' },
+                  ] as const
+                ).map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={viewMode === value}
+                    title={
+                      value === 'video'
+                        ? 'Video only'
+                        : value === 'skeleton'
+                          ? 'Video with skeleton overlay'
+                          : 'Video with stick figure'
+                    }
+                    className={`video-controls-below__view-option ${viewMode === value ? 'video-controls-below__view-option--active' : ''}`}
+                    onClick={() => setViewMode(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Video Scrubber */}
           <div className="video-controls-below__scrubber">
             <div
@@ -1253,6 +1313,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 fps={videoMetadata?.fps}
                 onAddServeAttempt={async (serveAttempt: ServeAttemptCreate) => {
                   await createServeAttempt(serveAttempt);
+                  if (videoId) {
+                    queryClient.invalidateQueries({
+                      queryKey: contactTimestampsQueryKey(videoId),
+                    });
+                  }
                   if (openRange) {
                     clearRangeMarks();
                   }
@@ -1371,6 +1436,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                             await updateServeAttempt(serveAttempt.id, {
                               contact_timestamp: timestamp,
                             });
+                            if (videoId) {
+                              queryClient.invalidateQueries({
+                                queryKey: contactTimestampsQueryKey(videoId),
+                              });
+                            }
                           } catch (err) {
                             console.error('Failed to mark contact:', err);
                           }
@@ -1444,8 +1514,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             )}
           </div>
 
-          {/* Navigation Controls */}
+          {/* Navigation: Contact (when any) | Serve | Play | Serve | Contact */}
           <div className="video-controls-below__nav">
+            {hasAnyContact && (
+              <button
+                className="video-controls-below__contact-btn"
+                disabled={!hasPreviousContact}
+                onClick={navigateToPreviousContact}
+                title={
+                  hasPreviousContact
+                    ? 'Go to previous contact'
+                    : 'No previous contact'
+                }
+              >
+                <ArrowBackIcon size={18} />
+                <span className="video-controls-below__contact-icon">◉</span>
+                <span>Previous Contact</span>
+              </button>
+            )}
             <button
               className="video-controls-below__nav-btn"
               disabled={!hasPreviousServeAttempt}
@@ -1475,56 +1561,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <span>Next Serve</span>
               <ArrowBackIcon size={18} />
             </button>
-            {hasContactPoint && (
+            {hasAnyContact && (
               <button
-                className="video-controls-below__contact-btn"
-                onClick={navigateToContact}
-                title="Jump to the ball contact moment"
+                className="video-controls-below__contact-btn video-controls-below__contact-btn--next"
+                disabled={!hasNextContact}
+                onClick={navigateToNextContact}
+                title={
+                  hasNextContact ? 'Go to next contact' : 'No next contact'
+                }
               >
+                <span>Next Contact</span>
                 <span className="video-controls-below__contact-icon">◉</span>
-                <span>Go to Contact</span>
+                <ArrowBackIcon size={18} />
               </button>
-            )}
-            {/* View mode – how the video is displayed (with or without pose overlay) */}
-            {hasPoseData && (
-              <div
-                className="video-controls-below__view-mode"
-                role="group"
-                aria-label="Video view"
-              >
-                <span className="video-controls-below__view-label">View</span>
-                <div
-                  className="video-controls-below__view-segmented"
-                  role="radiogroup"
-                  aria-label="Overlay mode"
-                >
-                  {(
-                    [
-                      { value: 'video' as ViewMode, label: 'Video' },
-                      { value: 'skeleton' as ViewMode, label: 'Skeleton' },
-                      { value: 'stickfigure' as ViewMode, label: 'Stick' },
-                    ] as const
-                  ).map(({ value, label }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      role="radio"
-                      aria-checked={viewMode === value}
-                      title={
-                        value === 'video'
-                          ? 'Video only'
-                          : value === 'skeleton'
-                            ? 'Video with skeleton overlay'
-                            : 'Video with stick figure'
-                      }
-                      className={`video-controls-below__view-option ${viewMode === value ? 'video-controls-below__view-option--active' : ''}`}
-                      onClick={() => setViewMode(value)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
             )}
           </div>
 
@@ -1545,9 +1594,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 }}
                 onUpdate={async (serveAttemptId, updates) => {
                   await updateServeAttempt(serveAttemptId, updates);
+                  if (videoId && updates.contact_timestamp !== undefined) {
+                    queryClient.invalidateQueries({
+                      queryKey: contactTimestampsQueryKey(videoId),
+                    });
+                  }
                 }}
                 onDelete={async (serveAttemptId) => {
                   await deleteServeAttempt(serveAttemptId);
+                  if (videoId) {
+                    queryClient.invalidateQueries({
+                      queryKey: contactTimestampsQueryKey(videoId),
+                    });
+                  }
                 }}
                 onSeek={seekToTime}
               />
@@ -1572,9 +1631,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           }}
           onUpdate={async (serveAttemptId, updates) => {
             await updateServeAttempt(serveAttemptId, updates);
+            if (videoId && updates.contact_timestamp !== undefined) {
+              queryClient.invalidateQueries({
+                queryKey: contactTimestampsQueryKey(videoId),
+              });
+            }
           }}
           onDelete={async (serveAttemptId) => {
             await deleteServeAttempt(serveAttemptId);
+            if (videoId) {
+              queryClient.invalidateQueries({
+                queryKey: contactTimestampsQueryKey(videoId),
+              });
+            }
           }}
           onSeek={seekToTime}
         />
