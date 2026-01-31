@@ -60,6 +60,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
     ((serveAttemptId: number) => void) | null
   >(null);
   const [isTourOpen, setIsTourOpen] = useState(false);
+  const [naturalScroll, setNaturalScroll] = useState(false);
 
   const tourSteps: TourStep[] = useMemo(
     () => [
@@ -184,9 +185,14 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
               controlsBelow={true}
               onNavigateReady={handleNavigateReady}
               isDemo={isDemoReadOnly}
+              naturalScroll={naturalScroll}
             />
           </div>
-          <KeyboardShortcutsBanner isDemo={isDemoReadOnly} />
+          <KeyboardShortcutsBanner
+            isDemo={isDemoReadOnly}
+            naturalScroll={naturalScroll}
+            onNaturalScrollChange={setNaturalScroll}
+          />
         </div>
 
         {/* Right Column - Upload CTA & Analysis Panel */}

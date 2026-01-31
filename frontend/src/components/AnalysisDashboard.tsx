@@ -66,6 +66,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     ((serveAttemptId: number) => void) | null
   >(null);
   const [isAnalyzingServes, setIsAnalyzingServes] = useState(false);
+  const [naturalScroll, setNaturalScroll] = useState(false);
 
   // Get serve attempts for this video
   const { serveAttempts } = useServeAttempts({
@@ -153,9 +154,13 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             controlsBelow={true}
             onNavigateReady={handleNavigateReady}
             isDemo={false}
+            naturalScroll={naturalScroll}
           />
 
-          <KeyboardShortcutsBanner />
+          <KeyboardShortcutsBanner
+            naturalScroll={naturalScroll}
+            onNaturalScrollChange={setNaturalScroll}
+          />
         </div>
 
         {/* Right Column - Analysis Panel */}

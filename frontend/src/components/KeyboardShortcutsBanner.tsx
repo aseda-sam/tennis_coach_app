@@ -3,10 +3,14 @@ import './KeyboardShortcutsBanner.css';
 
 interface KeyboardShortcutsBannerProps {
   isDemo?: boolean;
+  naturalScroll?: boolean;
+  onNaturalScrollChange?: (value: boolean) => void;
 }
 
 const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
   isDemo = false,
+  naturalScroll = false,
+  onNaturalScrollChange,
 }) => {
   const rangeStartTitle = isDemo
     ? 'Range tagging is disabled in Demo Mode!'
@@ -19,7 +23,7 @@ const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
     <div className="keyboard-shortcuts">
       <div className="keyboard-shortcuts__icon">⌨️</div>
       <div className="keyboard-shortcuts__content">
-        <h4 className="keyboard-shortcuts__title">Keyboard Shortcuts</h4>
+        <h4 className="keyboard-shortcuts__title">Keyboard Shortcuts & Mouse Controls</h4>
         <div className="keyboard-shortcuts__list">
           <div className="keyboard-shortcuts__item">
             <kbd className="keyboard-shortcuts__kbd">Space</kbd>
@@ -67,7 +71,23 @@ const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
             <kbd className="keyboard-shortcuts__kbd">C</kbd>
             <span>Mark contact point</span>
           </div>
+          <div className="keyboard-shortcuts__item">
+            <kbd className="keyboard-shortcuts__kbd">⟳</kbd>
+            <span>Scroll wheel: navigate frames</span>
+          </div>
         </div>
+        {onNaturalScrollChange && (
+          <div className="keyboard-shortcuts__scroll-toggle">
+            <label>
+              <input
+                type="checkbox"
+                checked={naturalScroll}
+                onChange={(e) => onNaturalScrollChange(e.target.checked)}
+              />
+              <span>Natural scroll</span>
+            </label>
+          </div>
+        )}
       </div>
     </div>
   );

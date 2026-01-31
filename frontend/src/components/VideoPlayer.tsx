@@ -40,6 +40,7 @@ interface VideoPlayerProps {
   onContactNavigate?: (serveAttemptId: number) => void; // Callback when serve attempt is navigated to
   onNavigateReady?: (navigateFn: (serveAttemptId: number) => void) => void; // Callback to expose navigate function
   isDemo?: boolean; // If true, disable manual range tagging and editing
+  naturalScroll?: boolean; // Scroll direction: false = traditional (scroll down = forward), true = natural (scroll down = backward)
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -54,6 +55,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onContactNavigate,
   onNavigateReady,
   isDemo = false,
+  naturalScroll: naturalScrollProp = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -74,6 +76,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // View mode: 'video' = no overlay, 'skeleton' = video + overlay, 'stickfigure' = stick figure only
   type ViewMode = 'video' | 'skeleton' | 'stickfigure';
   const [viewMode, setViewMode] = useState<ViewMode>('video');
+  
+  // Show scroll hint on first hover
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  const scrollHintShownRef = useRef(false);
+  const naturalScrollRef = useRef(naturalScrollProp);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrubberTrackRef = useRef<HTMLDivElement>(null);
   const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(null);
@@ -643,6 +650,55 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     currentTime,
   ]);
 
+  useEffect(() => {
+    naturalScrollRef.current = naturalScrollProp;
+  }, [naturalScrollProp]);
+
+  // Mouse wheel for frame-by-frame navigation
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      // Only handle if we have video metadata (FPS)
+      if (!videoMetadata?.fps) return;
+
+      // Prevent default scroll behavior
+      event.preventDefault();
+
+      // Determine direction based on naturalScroll setting
+      // Traditional: scroll down (deltaY > 0) = forward/next frame
+      // Natural: scroll down (deltaY > 0) = backward/previous frame
+      const scrollingDown = event.deltaY > 0;
+      const goForward = naturalScrollRef.current ? !scrollingDown : scrollingDown;
+
+      if (goForward) {
+        navigateToNextFrame();
+      } else {
+        navigateToPreviousFrame();
+      }
+    };
+
+    // Show scroll hint on first mouse enter
+    const handleMouseEnter = () => {
+      if (!scrollHintShownRef.current && videoMetadata?.fps) {
+        setShowScrollHint(true);
+        scrollHintShownRef.current = true;
+        // Auto-hide after 3 seconds
+        setTimeout(() => setShowScrollHint(false), 3000);
+      }
+    };
+
+    // Use passive: false to allow preventDefault
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('mouseenter', handleMouseEnter);
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('mouseenter', handleMouseEnter);
+    };
+  }, [videoMetadata?.fps, navigateToNextFrame, navigateToPreviousFrame]);
+
   // Memoize formatted time strings to prevent unnecessary re-renders
   const formattedCurrentTime = useMemo(
     () => formatTime(currentTime),
@@ -771,6 +827,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 hasPoseData={hasPoseData}
                 currentTime={currentTime}
               />
+            )}
+
+            {/* Scroll hint */}
+            {showScrollHint && (
+              <div className="scroll-hint">
+                <span className="scroll-hint__icon">⟳</span>
+                <span>Use scroll wheel to navigate frames</span>
+              </div>
             )}
 
             {/* Loading overlay while resolving URL */}
