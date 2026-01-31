@@ -1406,51 +1406,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             )}
           </div>
 
-          {/* Actions Toolbar - View mode and serve detection */}
-          {hasPoseData && (
-            <div className="video-controls-below__toolbar">
-              <div className="video-controls-below__toolbar-left">
-                <label className="video-controls-below__view-label">
-                  View:
-                  <select
-                    value={viewMode}
-                    onChange={(e) => setViewMode(e.target.value as ViewMode)}
-                    className="video-controls-below__view-select"
-                  >
-                    <option value="video">Video Only</option>
-                    <option value="skeleton">Video + Skeleton</option>
-                    <option value="stickfigure">Stick Figure</option>
-                  </select>
-                </label>
-              </div>
-              {hasPoseDataForDetection && (
-                <div className="video-controls-below__toolbar-right">
-                  <button
-                    className={`video-controls-below__find-serves-btn ${hasExistingDetections ? 'video-controls-below__find-serves-btn--done' : ''}`}
-                    onClick={handleAutoDetect}
-                    disabled={isRunningDetection}
-                    title={hasExistingDetections
-                      ? 'Serves already found - click to re-detect'
-                      : 'Automatically find serve positions in the video'
-                    }
-                  >
-                    {isRunningDetection ? 'Finding...' : hasExistingDetections ? 'Re-find Serves' : 'Find Serves'}
-                  </button>
-                  {proposals.length > 0 && (
-                    <button
-                      className="video-controls-below__clear-btn"
-                      onClick={handleClearProposals}
-                      disabled={isRunningDetection}
-                      title="Clear detected serve proposals"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Navigation Controls */}
           <div className="video-controls-below__nav">
             <button
@@ -1459,15 +1414,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               onClick={navigateToPreviousServeAttempt}
               title={hasPreviousServeAttempt ? 'Go to previous serve' : 'No previous serve'}
             >
-              <ArrowBackIcon size={16} />
-              <span>Previous</span>
+              <ArrowBackIcon size={18} />
+              <span>Previous Serve</span>
             </button>
             <button
               className="video-controls-below__play-btn"
               onClick={togglePlay}
-              title={isPlaying ? 'Pause' : 'Play'}
+              title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
             >
-              {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
+              {isPlaying ? <PauseIcon size={24} /> : <PlayIcon size={24} />}
             </button>
             <button
               className="video-controls-below__nav-btn video-controls-below__nav-btn--next"
@@ -1475,18 +1430,33 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               onClick={navigateToNextServeAttempt}
               title={hasNextServeAttempt ? 'Go to next serve' : 'No next serve'}
             >
-              <span>Next</span>
-              <ArrowBackIcon size={16} />
+              <span>Next Serve</span>
+              <ArrowBackIcon size={18} />
             </button>
             {hasContactPoint && (
               <button
                 className="video-controls-below__contact-btn"
                 onClick={navigateToContact}
-                title="Jump to the contact point of this serve"
+                title="Jump to the ball contact moment"
               >
                 <span className="video-controls-below__contact-icon">◉</span>
                 <span>Go to Contact</span>
               </button>
+            )}
+            {/* View mode selector - subtle placement */}
+            {hasPoseData && (
+              <div className="video-controls-below__view-mode">
+                <select
+                  value={viewMode}
+                  onChange={(e) => setViewMode(e.target.value as ViewMode)}
+                  className="video-controls-below__view-select"
+                  title="Change video overlay"
+                >
+                  <option value="video">Video Only</option>
+                  <option value="skeleton">+ Skeleton</option>
+                  <option value="stickfigure">Stick Figure</option>
+                </select>
+              </div>
             )}
           </div>
 

@@ -8,7 +8,7 @@ import { VideoMetadata } from '../types/video';
 import AnalysisRightPanel from './AnalysisRightPanel';
 import './DemoDashboard.css';
 import { UploadIcon } from './Icons';
-import KeyboardShortcutsBanner from './KeyboardShortcutsBanner';
+import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import Tour, { TourStep } from './Tour';
 import VideoPlayer from './VideoPlayer';
 
@@ -61,6 +61,26 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   >(null);
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+
+  // Keyboard shortcut listener for ?
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+      if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setShowKeyboardShortcuts(true);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const tourSteps: TourStep[] = useMemo(
     () => [
@@ -188,11 +208,9 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
               naturalScroll={naturalScroll}
             />
           </div>
-          <KeyboardShortcutsBanner
-            isDemo={isDemoReadOnly}
-            naturalScroll={naturalScroll}
-            onNaturalScrollChange={setNaturalScroll}
-          />
+          <div className="demo-dashboard__shortcuts-hint">
+            Press <kbd>?</kbd> for keyboard shortcuts
+          </div>
         </div>
 
         {/* Right Column - Upload CTA & Analysis Panel */}
@@ -236,6 +254,12 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
         onClose={() => setIsTourOpen(false)}
         onComplete={handleTourComplete}
         showSkip={true}
+      />
+
+      <KeyboardShortcutsModal
+        isOpen={showKeyboardShortcuts}
+        onClose={() => setShowKeyboardShortcuts(false)}
+        isDemo={isDemoReadOnly}
       />
     </div>
   );
