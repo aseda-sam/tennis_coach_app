@@ -618,13 +618,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const hasAnyContact = contactTimestamps.length > 0;
 
   // Previous/next contact relative to current time
+  // Use tolerance to handle video frame alignment issues - when navigating to a contact
+  // timestamp, the video element may round to the nearest frame, causing the actual
+  // currentTime to differ slightly from the target timestamp
+  const CONTACT_TOLERANCE = 0.1; // 100ms tolerance for frame alignment
+
   const previousContactTimestamp = useMemo(() => {
-    const prev = contactTimestamps.filter((t) => t < currentTime);
+    const prev = contactTimestamps.filter(
+      (t) => t < currentTime - CONTACT_TOLERANCE
+    );
     return prev.length > 0 ? prev[prev.length - 1] : undefined;
   }, [contactTimestamps, currentTime]);
 
   const nextContactTimestamp = useMemo(() => {
-    return contactTimestamps.find((t) => t > currentTime);
+    return contactTimestamps.find((t) => t > currentTime + CONTACT_TOLERANCE);
   }, [contactTimestamps, currentTime]);
 
   const hasPreviousContact = previousContactTimestamp !== undefined;
