@@ -6,10 +6,12 @@ import React, {
   useState,
 } from 'react';
 import { useServeAttempts } from '../hooks/useServeAttempts';
+import { useServeProposals } from '../hooks/useServeProposals';
 import { useVideoMetadata } from '../hooks/useVideos';
 import { useVideoUrl } from '../hooks/useVideoUrl';
 import { ServeAttempt, ServeAttemptCreate } from '../services/serveAttemptApi';
 import AddServeAttemptButton from './AddServeAttemptButton';
+import ProposalRange from './ProposalRange';
 import ServeAttemptRange from './ServeAttemptRange';
 import ServeAttemptModal from './ServeAttemptModal';
 import {
@@ -73,6 +75,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const scrubberTrackRef = useRef<HTMLDivElement>(null);
   const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(null);
   const wasPlayingRef = useRef<boolean>(false);
+  const toastTimeoutRef = useRef<number | null>(null);
   const [openRequestId, setOpenRequestId] = useState(0);
   const [openRange, setOpenRange] = useState<{ start: number; end: number } | null>(
     null
@@ -80,6 +83,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [rangeInTime, setRangeInTime] = useState<number | null>(null);
   const [rangeOutTime, setRangeOutTime] = useState<number | null>(null);
   const isAddServeAttemptVisible = !!videoId && !error && duration > 0;
+  const hasPoseDataForDetection = hasPoseData && !!videoId;
+  const [detectionMessage, setDetectionMessage] = useState<string | null>(null);
 
   // Use serve attempts hook if videoId is provided
   const {
@@ -92,6 +97,61 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     filters: videoId ? { video_id: videoId } : undefined,
     autoRefresh: !!videoId,
   });
+
+  // Use serve proposals hook if videoId is provided
+  const {
+    proposals,
+    runDetection,
+    acceptProposal,
+    rejectProposal,
+    editProposal,
+  } = useServeProposals({
+    videoId,
+    autoRefresh: !!videoId,
+  });
+
+  const [isRunningDetection, setIsRunningDetection] = useState(false);
+
+  const showDetectionMessage = useCallback((message: string) => {
+    setDetectionMessage(message);
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setDetectionMessage(null);
+      toastTimeoutRef.current = null;
+    }, 4000);
+  }, []);
+
+  // Handle auto-detect
+  const handleAutoDetect = useCallback(async () => {
+    if (!videoId || isRunningDetection) return;
+    setIsRunningDetection(true);
+    setDetectionMessage(null);
+    try {
+      const response = await runDetection();
+      if (response.count === 0) {
+        showDetectionMessage("No serve windows detected.");
+      } else {
+        showDetectionMessage(`Found ${response.count} proposals.`);
+      }
+    } catch (err) {
+      console.error('Failed to run detection:', err);
+      showDetectionMessage(
+        'Serve detection failed. Please ensure pose detection is completed.'
+      );
+    } finally {
+      setIsRunningDetection(false);
+    }
+  }, [videoId, isRunningDetection, runDetection, showDetectionMessage]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Use React Query hook for video URL resolution
   const { resolvedUrl: resolvedVideoUrl, isLoading: isLoadingUrl } = useVideoUrl({
@@ -619,6 +679,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     <div
       className={`video-player-container ${controlsBelow ? 'controls-below' : ''}`}
     >
+      {detectionMessage && (
+        <div className="auto-detect-toast" role="status">
+          {detectionMessage}
+        </div>
+      )}
       {onClose && (
         <div className="video-player-header">
           <button className="close-btn" onClick={onClose}>
@@ -641,6 +706,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               />
               <span className="overlay-toggle-text">Pose overlay</span>
             </label>
+            {hasPoseDataForDetection && (
+              <div className="auto-detect-wrap">
+                <button
+                  className="auto-detect-btn"
+                  onClick={handleAutoDetect}
+                  disabled={isRunningDetection}
+                  title="Auto-detect serve windows"
+                >
+                  {isRunningDetection ? 'Detecting...' : 'Auto-detect serves'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -765,6 +842,51 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       }}
                       step={frameStep}
                     />
+              {/* Proposal ranges (shown before serve attempts) */}
+              {proposals.length > 0 && duration > 0 && (
+                <div className="proposal-ranges">
+                  {proposals.map((proposal) => (
+                    <ProposalRange
+                      key={proposal.id}
+                      proposal={proposal}
+                      duration={duration}
+                      onClick={() => {
+                        // Seek to proposal start
+                        seekToTime(proposal.start_timestamp);
+                      }}
+                      onAccept={async () => {
+                        try {
+                          await acceptProposal(proposal.id);
+                        } catch (err) {
+                          console.error('Failed to accept proposal:', err);
+                          alert('Failed to accept proposal');
+                        }
+                      }}
+                      onReject={async () => {
+                        try {
+                          await rejectProposal(proposal.id);
+                        } catch (err) {
+                          console.error('Failed to reject proposal:', err);
+                          alert('Failed to reject proposal');
+                        }
+                      }}
+                      onEdit={async () => {
+                        // For now, just accept with current timestamps
+                        // In future, could open a modal to edit timestamps
+                        try {
+                          await editProposal(proposal.id, {
+                            start_timestamp: proposal.start_timestamp,
+                            end_timestamp: proposal.end_timestamp,
+                          });
+                        } catch (err) {
+                          console.error('Failed to edit proposal:', err);
+                          alert('Failed to edit proposal');
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
               {/* Serve attempt ranges */}
               {serveAttempts.length > 0 && duration > 0 && (
                 <div className="serve-attempt-ranges" data-tour="serve-attempt-ranges">
@@ -963,6 +1085,48 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onTouchEnd={handleSeekEnd}
                 step={frameStep}
               />
+              {/* Proposal ranges (shown before serve attempts) */}
+              {proposals.length > 0 && duration > 0 && (
+                <div className="video-controls-below__proposal-ranges">
+                  {proposals.map((proposal) => (
+                    <ProposalRange
+                      key={proposal.id}
+                      proposal={proposal}
+                      duration={duration}
+                      onClick={() => {
+                        seekToTime(proposal.start_timestamp);
+                      }}
+                      onAccept={async () => {
+                        try {
+                          await acceptProposal(proposal.id);
+                        } catch (err) {
+                          console.error('Failed to accept proposal:', err);
+                          alert('Failed to accept proposal');
+                        }
+                      }}
+                      onReject={async () => {
+                        try {
+                          await rejectProposal(proposal.id);
+                        } catch (err) {
+                          console.error('Failed to reject proposal:', err);
+                          alert('Failed to reject proposal');
+                        }
+                      }}
+                      onEdit={async () => {
+                        try {
+                          await editProposal(proposal.id, {
+                            start_timestamp: proposal.start_timestamp,
+                            end_timestamp: proposal.end_timestamp,
+                          });
+                        } catch (err) {
+                          console.error('Failed to edit proposal:', err);
+                          alert('Failed to edit proposal');
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
               {/* Serve attempt ranges */}
               {serveAttempts.length > 0 && duration > 0 && (
                 <div
@@ -1092,18 +1256,32 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               )}
             </div>
             {hasPoseData && (
-              <label className="video-controls-below__annotation-toggle">
-                <input
-                  type="checkbox"
-                  checked={showOverlay}
-                  onChange={(e) => setShowOverlay(e.target.checked)}
-                  className="video-controls-below__toggle-input"
-                />
-                <span className="video-controls-below__toggle-slider"></span>
-                <span className="video-controls-below__toggle-label">
-                  Show Annotation
-                </span>
-              </label>
+              <div className="video-controls-below__right-controls">
+                <label className="video-controls-below__annotation-toggle">
+                  <input
+                    type="checkbox"
+                    checked={showOverlay}
+                    onChange={(e) => setShowOverlay(e.target.checked)}
+                    className="video-controls-below__toggle-input"
+                  />
+                  <span className="video-controls-below__toggle-slider"></span>
+                  <span className="video-controls-below__toggle-label">
+                    Show Annotation
+                  </span>
+                </label>
+                {hasPoseDataForDetection && (
+                  <div className="video-controls-below__auto-detect-wrap">
+                    <button
+                      className="video-controls-below__auto-detect-btn"
+                      onClick={handleAutoDetect}
+                      disabled={isRunningDetection}
+                      title="Auto-detect serve windows"
+                    >
+                      {isRunningDetection ? 'Detecting...' : 'Auto-detect serves'}
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

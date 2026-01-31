@@ -22,6 +22,7 @@ from app.api.routes import (
     overlay_data,
     players,
     serve_attempts,
+    serve_detection,
     video,
 )
 from app.core.config import settings
@@ -295,6 +296,17 @@ app.include_router(
     serve_attempts.router,
     prefix="/v0/serve-attempts",
     tags=["serve-attempts"],
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"},
+    },
+)
+
+app.include_router(
+    serve_detection.router,
+    prefix="/v0",
+    tags=["serve-detection"],
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},

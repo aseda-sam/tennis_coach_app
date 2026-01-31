@@ -48,9 +48,27 @@ class ServeAttempt(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
+    # Provenance tracking
+    source = Column(String(20), nullable=False, default="manual")
+    # Values: "manual", "auto_accepted", "auto_edited"
+
+    source_proposal_id = Column(
+        Integer, ForeignKey("serve_window_proposals.id", ondelete="SET NULL"), nullable=True
+    )
+
+    # Original timestamps (if edited from proposal)
+    original_start_timestamp = Column(Float, nullable=True)
+    original_end_timestamp = Column(Float, nullable=True)
+
     # Relationships
     video = relationship("Video", back_populates="serve_attempts")
     player = relationship("Player", back_populates="serve_attempts")
+    source_proposal = relationship(
+        "ServeWindowProposal",
+        back_populates="serve_attempt",
+        foreign_keys=[source_proposal_id],
+        uselist=False,  # One-to-one: one serve attempt comes from one proposal
+    )
 
     # Indexes for common query patterns
     __table_args__ = (

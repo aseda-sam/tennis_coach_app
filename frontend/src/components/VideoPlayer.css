@@ -6,6 +6,7 @@
   overflow: hidden;
   max-width: 100%;
   border: 1px solid var(--color-surface-tertiary);
+  position: relative;
 }
 
 .video-player-container.controls-below {
@@ -39,6 +40,48 @@
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
+}
+
+.auto-detect-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: #f59e0b; /* orange-500 */
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auto-detect-btn:hover:not(:disabled) {
+  background-color: #d97706; /* orange-600 */
+}
+
+.auto-detect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auto-detect-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+
+.auto-detect-toast {
+  position: absolute;
+  right: var(--spacing-lg);
+  bottom: var(--spacing-lg);
+  background: rgba(17, 24, 39, 0.95);
+  color: var(--color-white, #ffffff);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  box-shadow: var(--shadow-lg);
+  z-index: 30;
+  pointer-events: none;
 }
 
 .overlay-toggle-label {
@@ -416,6 +459,7 @@
 
 /* Contact Markers */
 .serve-attempt-ranges,
+.proposal-ranges,
 .contact-markers {
   position: absolute;
   top: 0;
@@ -854,6 +898,7 @@
 }
 
 .video-controls-below__serve-attempt-ranges,
+.video-controls-below__proposal-ranges,
 .video-controls-below__contact-markers {
   position: absolute;
   top: 0;
@@ -865,12 +910,15 @@
 }
 
 .video-controls-below__serve-attempt-ranges .serve-attempt-range,
+.video-controls-below__proposal-ranges .proposal-range,
 .video-controls-below__contact-markers .ball-contact-marker {
   top: var(--spacing-xs);
 }
 
 .video-controls-below__serve-attempt-ranges .serve-attempt-range,
 .video-controls-below__serve-attempt-ranges .serve-attempt-range *,
+.video-controls-below__proposal-ranges .proposal-range,
+.video-controls-below__proposal-ranges .proposal-range *,
 .video-controls-below__contact-markers .ball-contact-marker,
 .video-controls-below__contact-markers .ball-contact-marker * {
   pointer-events: auto;
@@ -1017,6 +1065,13 @@
 }
 
 /* Annotation Toggle */
+.video-controls-below__right-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-left: auto;
+}
+
 .video-controls-below__annotation-toggle {
   display: flex;
   align-items: center;
@@ -1025,7 +1080,38 @@
   user-select: none;
   flex-shrink: 0;
   z-index: 1;
-  margin-left: auto;
+}
+
+.video-controls-below__auto-detect-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: #f59e0b; /* orange-500 */
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.video-controls-below__auto-detect-btn:hover:not(:disabled) {
+  background-color: #d97706; /* orange-600 */
+}
+
+.video-controls-below__auto-detect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.video-controls-below__auto-detect-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.video-controls-below__auto-detect-message {
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 .video-controls-below__toggle-input {
