@@ -69,6 +69,4 @@ Demo editor access is controlled by the `DEMO_EDITOR_USER_IDS` allowlist in back
 - Set active demo
 - Trigger pose analysis for demo videos
 - Create/edit serve attempts for demo videos
-- Access the admin UI
-
-The admin UI automatically checks demo editor status and only shows the "Admin" tab to authorized users.
+- Access the admin UI. The admin UI automatically checks demo editor status and only shows the "Admin" tab to authorized users.
