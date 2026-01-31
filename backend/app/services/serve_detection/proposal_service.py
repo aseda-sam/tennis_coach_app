@@ -337,6 +337,7 @@ def accept_proposal(
     # Update proposal
     proposal.status = "accepted"
     proposal.reviewed_at = datetime.utcnow()
+    proposal.serve_attempt_id = serve_attempt.id
     db.commit()
 
     logger.info(f"Accepted proposal {proposal_id} as serve attempt {serve_attempt.id}")
@@ -452,6 +453,7 @@ def accept_with_edits(
     # Update proposal
     proposal.status = "edited"
     proposal.reviewed_at = datetime.utcnow()
+    proposal.serve_attempt_id = serve_attempt.id
     db.commit()
 
     logger.info(

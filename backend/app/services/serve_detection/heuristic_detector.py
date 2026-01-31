@@ -151,10 +151,16 @@ def merge_overlapping(proposals: List[Dict]) -> List[Dict]:
                 current_features = current["detection_features"]
                 next_features = next_proposal["detection_features"]
                 current["detection_features"] = {
-                    "peak_frame": max(
-                        current_features.get("peak_frame", 0),
-                        next_features.get("peak_frame", 0),
+                    "first_raised_frame": min(
+                        current_features.get("first_raised_frame", 0),
+                        next_features.get("first_raised_frame", 0),
                     ),
+                    "last_raised_frame": max(
+                        current_features.get("last_raised_frame", 0),
+                        next_features.get("last_raised_frame", 0),
+                    ),
+                    "raised_frame_count": current_features.get("raised_frame_count", 0)
+                    + next_features.get("raised_frame_count", 0),
                     "peak_wrist_height": max(
                         current_features.get("peak_wrist_height", 0),
                         next_features.get("peak_wrist_height", 0),
@@ -163,6 +169,8 @@ def merge_overlapping(proposals: List[Dict]) -> List[Dict]:
                         current_features.get("peak_wrist_velocity", 0),
                         next_features.get("peak_wrist_velocity", 0),
                     ),
+                    "both_arms_raised": current_features.get("both_arms_raised", False)
+                    or next_features.get("both_arms_raised", False),
                 }
         else:
             # No overlap, save current and move to next

@@ -134,6 +134,7 @@ export const useServeProposals = ({
       // Invalidate proposals and serve attempts
       queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
       queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
+      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
     },
   });
 
@@ -143,6 +144,7 @@ export const useServeProposals = ({
     onSuccess: () => {
       // Invalidate proposals
       queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
     },
   });
 
@@ -159,6 +161,7 @@ export const useServeProposals = ({
       // Invalidate proposals and serve attempts
       queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
       queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
+      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
     },
   });
 
@@ -167,40 +170,46 @@ export const useServeProposals = ({
   }, [queryClient]);
 
   const refreshStatus = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
+    await queryClient.invalidateQueries({
+      queryKey: ['serve-detection-status'],
+    });
   }, [queryClient]);
 
-  const runDetection = useCallback(async (force: boolean = false): Promise<ProposeResponse> => {
-    try {
-      return await runDetectionMutation.mutateAsync(force);
-    } catch (err: unknown) {
-      const axiosError = err as {
-        response?: { data?: { detail?: string } };
-        message?: string;
-      };
-      const errorMessage =
-        axiosError?.response?.data?.detail ||
-        axiosError?.message ||
-        'Failed to run detection';
-      throw new Error(errorMessage);
-    }
-  }, [runDetectionMutation]);
+  const runDetection = useCallback(
+    async (force: boolean = false): Promise<ProposeResponse> => {
+      try {
+        return await runDetectionMutation.mutateAsync(force);
+      } catch (err: unknown) {
+        const axiosError = err as {
+          response?: { data?: { detail?: string } };
+          message?: string;
+        };
+        const errorMessage =
+          axiosError?.response?.data?.detail ||
+          axiosError?.message ||
+          'Failed to run detection';
+        throw new Error(errorMessage);
+      }
+    },
+    [runDetectionMutation]
+  );
 
-  const clearProposals = useCallback(async (): Promise<ClearProposalsResponse> => {
-    try {
-      return await clearProposalsMutation.mutateAsync();
-    } catch (err: unknown) {
-      const axiosError = err as {
-        response?: { data?: { detail?: string } };
-        message?: string;
-      };
-      const errorMessage =
-        axiosError?.response?.data?.detail ||
-        axiosError?.message ||
-        'Failed to clear proposals';
-      throw new Error(errorMessage);
-    }
-  }, [clearProposalsMutation]);
+  const clearProposals =
+    useCallback(async (): Promise<ClearProposalsResponse> => {
+      try {
+        return await clearProposalsMutation.mutateAsync();
+      } catch (err: unknown) {
+        const axiosError = err as {
+          response?: { data?: { detail?: string } };
+          message?: string;
+        };
+        const errorMessage =
+          axiosError?.response?.data?.detail ||
+          axiosError?.message ||
+          'Failed to clear proposals';
+        throw new Error(errorMessage);
+      }
+    }, [clearProposalsMutation]);
 
   const acceptProposal = useCallback(
     async (
