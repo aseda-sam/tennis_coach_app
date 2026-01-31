@@ -1,22 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ServeAttempt } from '../services/serveAttemptApi';
 import './ServeAttemptRange.css';
 
 interface ServeAttemptRangeProps {
   serveAttempt: ServeAttempt;
   duration: number;
+  currentTime?: number;
   isSelected?: boolean;
+  isDemo?: boolean;
   onClick?: () => void;
   onContactClick?: () => void;
+  onMarkContact?: (timestamp: number) => void;
 }
 
 const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
   serveAttempt,
   duration,
+  currentTime = 0,
   isSelected = false,
+  isDemo = false,
   onClick,
   onContactClick,
+  onMarkContact,
 }) => {
+  const [showMarkContact, setShowMarkContact] = useState(false);
   if (duration === 0) return null;
 
   const startPercent = (serveAttempt.start_timestamp / duration) * 100;
@@ -35,14 +42,35 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
     ? '#3b82f6' // blue - has metrics
     : '#6b7280'; // gray - no metrics yet
 
+  // Check if current time is within this serve attempt's range
+  const isCurrentTimeInRange =
+    currentTime >= serveAttempt.start_timestamp &&
+    currentTime <= serveAttempt.end_timestamp;
+
+  // Determine if we should show the mark contact button
+  const canMarkContact =
+    !isDemo &&
+    onMarkContact &&
+    isCurrentTimeInRange &&
+    serveAttempt.contact_timestamp === null;
+
+  const handleMarkContact = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onMarkContact && isCurrentTimeInRange) {
+      onMarkContact(currentTime);
+    }
+  };
+
   return (
     <div
-      className={`serve-attempt-range ${isSelected ? 'selected' : ''}`}
+      className={`serve-attempt-range ${isSelected ? 'selected' : ''} ${showMarkContact && canMarkContact ? 'show-mark-contact' : ''}`}
       style={{
         left: `${startPercent}%`,
         width: `${width}%`,
       }}
       onClick={onClick}
+      onMouseEnter={() => setShowMarkContact(true)}
+      onMouseLeave={() => setShowMarkContact(false)}
       title={`Serve: ${serveAttempt.start_timestamp.toFixed(2)}s - ${serveAttempt.end_timestamp.toFixed(2)}s`}
     >
       {/* Range band */}
@@ -71,6 +99,17 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
             onContactClick?.();
           }}
         />
+      )}
+
+      {/* Mark Contact button (shown when hovering and no contact exists) */}
+      {canMarkContact && showMarkContact && (
+        <button
+          className="serve-attempt-range__mark-contact-btn"
+          onClick={handleMarkContact}
+          title="Set contact point at current video time"
+        >
+          Mark Contact
+        </button>
       )}
 
       {/* Tooltip on hover */}

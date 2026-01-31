@@ -64,6 +64,9 @@ class Video(Base):
     serve_attempts = relationship(
         "ServeAttempt", back_populates="video", cascade="all, delete-orphan"
     )
+    serve_window_proposals = relationship(
+        "ServeWindowProposal", back_populates="video", cascade="all, delete-orphan"
+    )
     jobs = relationship(
         "VideoJob", back_populates="video", cascade="all, delete-orphan"
     )

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import React, {
   useCallback,
   useEffect,
@@ -5,13 +6,16 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import {
+  contactTimestampsQueryKey,
+  useContactTimestamps,
+} from '../hooks/useContactTimestamps';
 import { useServeAttempts } from '../hooks/useServeAttempts';
+import { useServeProposals } from '../hooks/useServeProposals';
 import { useVideoMetadata } from '../hooks/useVideos';
 import { useVideoUrl } from '../hooks/useVideoUrl';
 import { ServeAttempt, ServeAttemptCreate } from '../services/serveAttemptApi';
 import AddServeAttemptButton from './AddServeAttemptButton';
-import ServeAttemptRange from './ServeAttemptRange';
-import ServeAttemptModal from './ServeAttemptModal';
 import {
   ArrowBackIcon,
   CloseIcon,
@@ -22,6 +26,10 @@ import {
   VolumeOffIcon,
   WarningIcon,
 } from './Icons';
+import ProposalRange from './ProposalRange';
+import ServeAttemptModal from './ServeAttemptModal';
+import ServeAttemptRange from './ServeAttemptRange';
+import StickFigureCanvas from './StickFigureCanvas';
 import VideoOverlay from './VideoOverlay';
 import './VideoPlayer.css';
 
@@ -37,6 +45,7 @@ interface VideoPlayerProps {
   onContactNavigate?: (serveAttemptId: number) => void; // Callback when serve attempt is navigated to
   onNavigateReady?: (navigateFn: (serveAttemptId: number) => void) => void; // Callback to expose navigate function
   isDemo?: boolean; // If true, disable manual range tagging and editing
+  naturalScroll?: boolean; // Scroll direction: false = traditional (scroll down = forward), true = natural (scroll down = backward)
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -51,6 +60,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onContactNavigate,
   onNavigateReady,
   isDemo = false,
+  naturalScroll: naturalScrollProp = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -61,25 +71,39 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
-  const [selectedServeAttempt, setSelectedServeAttempt] = useState<ServeAttempt | null>(
-    null
-  );
+  const [selectedServeAttempt, setSelectedServeAttempt] =
+    useState<ServeAttempt | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedServeAttemptId, setSelectedServeAttemptId] = useState<
     number | undefined
   >();
-  const [showOverlay, setShowOverlay] = useState(true);
+  // View mode: 'video' = no overlay, 'skeleton' = video + overlay, 'stickfigure' = stick figure only
+  type ViewMode = 'video' | 'skeleton' | 'stickfigure';
+  const [viewMode, setViewMode] = useState<ViewMode>('video');
+
+  // Show scroll hint on first hover
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  const scrollHintShownRef = useRef(false);
+  const naturalScrollRef = useRef(naturalScrollProp);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrubberTrackRef = useRef<HTMLDivElement>(null);
-  const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(null);
-  const wasPlayingRef = useRef<boolean>(false);
-  const [openRequestId, setOpenRequestId] = useState(0);
-  const [openRange, setOpenRange] = useState<{ start: number; end: number } | null>(
+  const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(
     null
   );
+  const wasPlayingRef = useRef<boolean>(false);
+  const toastTimeoutRef = useRef<number | null>(null);
+  const [openRequestId, setOpenRequestId] = useState(0);
+  const [openRange, setOpenRange] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
   const [rangeInTime, setRangeInTime] = useState<number | null>(null);
   const [rangeOutTime, setRangeOutTime] = useState<number | null>(null);
   const isAddServeAttemptVisible = !!videoId && !error && duration > 0;
+  const hasPoseDataForDetection = hasPoseData && !!videoId;
+  const [detectionMessage, setDetectionMessage] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
 
   // Use serve attempts hook if videoId is provided
   const {
@@ -93,12 +117,145 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     autoRefresh: !!videoId,
   });
 
-  // Use React Query hook for video URL resolution
-  const { resolvedUrl: resolvedVideoUrl, isLoading: isLoadingUrl } = useVideoUrl({
+  // Contact timestamps from backend (for prev/next contact navigation)
+  const { contactTimestamps } = useContactTimestamps(videoId);
+
+  // Use serve proposals hook if videoId is provided
+  const {
+    proposals,
+    detectionStatus,
+    runDetection,
+    clearProposals,
+    acceptProposal,
+    rejectProposal,
+    editProposal,
+  } = useServeProposals({
     videoId,
-    videoUrl,
-    expiresIn: 3600,
+    autoRefresh: !!videoId,
   });
+
+  const [isRunningDetection, setIsRunningDetection] = useState(false);
+
+  const showDetectionMessage = useCallback((message: string) => {
+    setDetectionMessage(message);
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setDetectionMessage(null);
+      toastTimeoutRef.current = null;
+    }, 4000);
+  }, []);
+
+  // Determine auto-detect button state
+  const hasExistingDetections =
+    detectionStatus &&
+    (detectionStatus.pending_proposals > 0 ||
+      detectionStatus.serve_attempts > 0);
+
+  // Handle auto-detect
+  const handleAutoDetect = useCallback(async () => {
+    if (!videoId || isRunningDetection) return;
+
+    // If there are existing proposals or serve attempts, ask for confirmation
+    if (hasExistingDetections && detectionStatus) {
+      const hasServeAttempts = detectionStatus.serve_attempts > 0;
+      const hasPendingProposals = detectionStatus.pending_proposals > 0;
+
+      let message = 'This video already has ';
+      const parts: string[] = [];
+      if (hasServeAttempts) {
+        parts.push(`${detectionStatus.serve_attempts} serve attempt(s)`);
+      }
+      if (hasPendingProposals) {
+        parts.push(`${detectionStatus.pending_proposals} pending proposal(s)`);
+      }
+      message += parts.join(' and ') + '. ';
+
+      if (hasServeAttempts) {
+        message +=
+          'Running detection again will only add new proposals. Delete existing serve attempts first if you want to start fresh.';
+        showDetectionMessage(message);
+        return;
+      }
+
+      if (hasPendingProposals) {
+        const confirmed = window.confirm(
+          message +
+            'Do you want to clear existing proposals and re-run detection?'
+        );
+        if (!confirmed) return;
+      }
+    }
+
+    setIsRunningDetection(true);
+    setDetectionMessage(null);
+    try {
+      // Use force=true if there are pending proposals (we confirmed above)
+      const force = detectionStatus?.pending_proposals
+        ? detectionStatus.pending_proposals > 0
+        : false;
+      const response = await runDetection(force);
+      if (response.count === 0) {
+        showDetectionMessage('No serve windows detected.');
+      } else {
+        showDetectionMessage(`Found ${response.count} proposals.`);
+      }
+    } catch (err) {
+      console.error('Failed to run detection:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      if (errorMessage.includes('already has')) {
+        showDetectionMessage(errorMessage);
+      } else {
+        showDetectionMessage(
+          'Serve detection failed. Please ensure pose detection is completed.'
+        );
+      }
+    } finally {
+      setIsRunningDetection(false);
+    }
+  }, [
+    videoId,
+    isRunningDetection,
+    runDetection,
+    showDetectionMessage,
+    hasExistingDetections,
+    detectionStatus,
+  ]);
+
+  // Handle clearing proposals
+  const handleClearProposals = useCallback(async () => {
+    if (!videoId) return;
+
+    const confirmed = window.confirm(
+      'Are you sure you want to clear all pending proposals? This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await clearProposals();
+      showDetectionMessage(`Cleared ${response.cleared_count} proposal(s).`);
+    } catch (err) {
+      console.error('Failed to clear proposals:', err);
+      showDetectionMessage('Failed to clear proposals.');
+    }
+  }, [videoId, clearProposals, showDetectionMessage]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Use React Query hook for video URL resolution
+  const { resolvedUrl: resolvedVideoUrl, isLoading: isLoadingUrl } =
+    useVideoUrl({
+      videoId,
+      videoUrl,
+      expiresIn: 3600,
+    });
 
   // Use React Query hook for video metadata
   const { data: videoMetadata } = useVideoMetadata(videoId);
@@ -391,10 +548,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       // Update state first to ensure overlay gets the new time immediately
       setCurrentTime(targetTime);
       setSelectedServeAttemptId(serveAttempt.id);
-      
+
       // Then seek video (this will trigger seeked event which overlay listens to)
       video.currentTime = targetTime;
-      
+
       onContactNavigate?.(serveAttempt.id);
     },
     [serveAttempts, isPlaying, onContactNavigate]
@@ -458,37 +615,54 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     });
   }, [sortedServeAttempts, currentTime]);
 
-  // Find the serve attempt that contains the current time
-  const currentServeAttempt = useMemo(() => {
-    return sortedServeAttempts.find((sa) => {
-      return currentTime >= sa.start_timestamp && currentTime <= sa.end_timestamp;
-    });
-  }, [sortedServeAttempts, currentTime]);
+  const hasAnyContact = contactTimestamps.length > 0;
 
-  // Check if current serve attempt has a contact point
-  const hasContactPoint = useMemo(() => {
-    return currentServeAttempt?.contact_timestamp !== null && currentServeAttempt?.contact_timestamp !== undefined;
-  }, [currentServeAttempt]);
+  // Previous/next contact relative to current time
+  // Use tolerance to handle video frame alignment issues - when navigating to a contact
+  // timestamp, the video element may round to the nearest frame, causing the actual
+  // currentTime to differ slightly from the target timestamp
+  const CONTACT_TOLERANCE = 0.1; // 100ms tolerance for frame alignment
+
+  const previousContactTimestamp = useMemo(() => {
+    const prev = contactTimestamps.filter(
+      (t) => t < currentTime - CONTACT_TOLERANCE
+    );
+    return prev.length > 0 ? prev[prev.length - 1] : undefined;
+  }, [contactTimestamps, currentTime]);
+
+  const nextContactTimestamp = useMemo(() => {
+    return contactTimestamps.find((t) => t > currentTime + CONTACT_TOLERANCE);
+  }, [contactTimestamps, currentTime]);
+
+  const hasPreviousContact = previousContactTimestamp !== undefined;
+  const hasNextContact = nextContactTimestamp !== undefined;
 
   // Navigate to a specific timestamp (for moments within serve attempts)
-  const navigateToTimestamp = useCallback((timestamp: number) => {
-    const video = videoRef.current;
-    if (!video) return;
+  const navigateToTimestamp = useCallback(
+    (timestamp: number) => {
+      const video = videoRef.current;
+      if (!video) return;
 
-    // Pause if playing
-    if (isPlaying) {
-      video.pause();
-    }
+      // Pause if playing
+      if (isPlaying) {
+        video.pause();
+      }
 
-    setCurrentTime(timestamp);
-    video.currentTime = timestamp;
-  }, [isPlaying]);
+      setCurrentTime(timestamp);
+      video.currentTime = timestamp;
+    },
+    [isPlaying]
+  );
 
-  // Navigate to contact point in current serve attempt
-  const navigateToContact = useCallback(() => {
-    if (!currentServeAttempt || !currentServeAttempt.contact_timestamp) return;
-    navigateToTimestamp(currentServeAttempt.contact_timestamp);
-  }, [currentServeAttempt, navigateToTimestamp]);
+  const navigateToPreviousContact = useCallback(() => {
+    if (previousContactTimestamp === undefined) return;
+    navigateToTimestamp(previousContactTimestamp);
+  }, [previousContactTimestamp, navigateToTimestamp]);
+
+  const navigateToNextContact = useCallback(() => {
+    if (nextContactTimestamp === undefined) return;
+    navigateToTimestamp(nextContactTimestamp);
+  }, [nextContactTimestamp, navigateToTimestamp]);
 
   const navigateRef = useRef(navigateToServeAttemptById);
 
@@ -496,9 +670,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     navigateRef.current = navigateToServeAttemptById;
   }, [navigateToServeAttemptById]);
 
-  const stableNavigateToServeAttemptById = useCallback((serveAttemptId: number) => {
-    navigateRef.current(serveAttemptId);
-  }, []);
+  const stableNavigateToServeAttemptById = useCallback(
+    (serveAttemptId: number) => {
+      navigateRef.current(serveAttemptId);
+    },
+    []
+  );
 
   // Expose navigate function to parent
   useEffect(() => {
@@ -580,6 +757,57 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     currentTime,
   ]);
 
+  useEffect(() => {
+    naturalScrollRef.current = naturalScrollProp;
+  }, [naturalScrollProp]);
+
+  // Mouse wheel for frame-by-frame navigation
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      // Only handle if we have video metadata (FPS)
+      if (!videoMetadata?.fps) return;
+
+      // Prevent default scroll behavior
+      event.preventDefault();
+
+      // Determine direction based on naturalScroll setting
+      // Traditional: scroll down (deltaY > 0) = forward/next frame
+      // Natural: scroll down (deltaY > 0) = backward/previous frame
+      const scrollingDown = event.deltaY > 0;
+      const goForward = naturalScrollRef.current
+        ? !scrollingDown
+        : scrollingDown;
+
+      if (goForward) {
+        navigateToNextFrame();
+      } else {
+        navigateToPreviousFrame();
+      }
+    };
+
+    // Show scroll hint on first mouse enter
+    const handleMouseEnter = () => {
+      if (!scrollHintShownRef.current && videoMetadata?.fps) {
+        setShowScrollHint(true);
+        scrollHintShownRef.current = true;
+        // Auto-hide after 3 seconds
+        setTimeout(() => setShowScrollHint(false), 3000);
+      }
+    };
+
+    // Use passive: false to allow preventDefault
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('mouseenter', handleMouseEnter);
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('mouseenter', handleMouseEnter);
+    };
+  }, [videoMetadata?.fps, navigateToNextFrame, navigateToPreviousFrame]);
+
   // Memoize formatted time strings to prevent unnecessary re-renders
   const formattedCurrentTime = useMemo(
     () => formatTime(currentTime),
@@ -598,7 +826,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       togglePlay();
     }
   };
-
 
   const toggleFullscreen = () => {
     const video = videoRef.current;
@@ -619,6 +846,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     <div
       className={`video-player-container ${controlsBelow ? 'controls-below' : ''}`}
     >
+      {detectionMessage && (
+        <div className="auto-detect-toast" role="status">
+          {detectionMessage}
+        </div>
+      )}
       {onClose && (
         <div className="video-player-header">
           <button className="close-btn" onClick={onClose}>
@@ -632,21 +864,48 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {/* Controls row (kept minimal) - only show when controlsBelow is false */}
         {hasPoseData && !controlsBelow && (
           <div className="overlay-toggle-container">
-            <label className="overlay-toggle-label">
-              <input
-                type="checkbox"
-                checked={showOverlay}
-                onChange={(e) => setShowOverlay(e.target.checked)}
-                className="overlay-toggle-checkbox"
-              />
-              <span className="overlay-toggle-text">Pose overlay</span>
-            </label>
+            <div className="view-mode-selector">
+              <label className="view-mode-label">View:</label>
+              <select
+                value={viewMode}
+                onChange={(e) => setViewMode(e.target.value as ViewMode)}
+                className="view-mode-select"
+              >
+                <option value="video">Video Only</option>
+                <option value="skeleton">Video + Skeleton</option>
+                <option value="stickfigure">Stick Figure</option>
+              </select>
+            </div>
+            {hasPoseDataForDetection && (
+              <div className="auto-detect-wrap">
+                <button
+                  className={`auto-detect-btn ${hasExistingDetections ? 'auto-detect-btn--has-detections' : ''}`}
+                  onClick={handleAutoDetect}
+                  disabled={isRunningDetection}
+                  title={
+                    hasExistingDetections
+                      ? 'Detection already run - click to re-detect'
+                      : 'Auto-detect serve windows'
+                  }
+                >
+                  {isRunningDetection ? 'Detecting...' : 'Auto-detect serves'}
+                </button>
+                {proposals.length > 0 && (
+                  <button
+                    className="auto-detect-clear-btn"
+                    onClick={handleClearProposals}
+                    disabled={isRunningDetection}
+                    title="Clear all pending proposals"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        <div
-          className="video-player-main"
-        >
+        <div className="video-player-main">
           {/* Video Container */}
           <div
             ref={containerRef}
@@ -660,22 +919,44 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <video
                 ref={videoRef}
                 src={resolvedVideoUrl}
-                className={`video-element video-element-${aspectRatioMode}`}
+                className={`video-element video-element-${aspectRatioMode} ${
+                  viewMode === 'stickfigure' && hasPoseData
+                    ? 'video-element--hidden'
+                    : ''
+                }`}
                 preload="metadata"
                 crossOrigin="anonymous"
                 data-testid="video-element"
               />
             )}
 
-            {/* Video Overlay */}
-            {videoId && showOverlay && (
+            {/* Stick Figure Mode - shown when viewMode is 'stickfigure' */}
+            {videoId && viewMode === 'stickfigure' && hasPoseData && (
+              <StickFigureCanvas
+                videoId={videoId}
+                currentTime={currentTime}
+                fps={videoMetadata?.fps}
+                isPlaying={isPlaying}
+              />
+            )}
+
+            {/* Video Overlay - shown when viewMode is 'skeleton' */}
+            {videoId && viewMode === 'skeleton' && hasPoseData && (
               <VideoOverlay
                 videoId={videoId}
                 videoElement={videoRef.current}
-                showOverlay={showOverlay}
+                showOverlay={true}
                 hasPoseData={hasPoseData}
                 currentTime={currentTime}
               />
+            )}
+
+            {/* Scroll hint */}
+            {showScrollHint && (
+              <div className="scroll-hint">
+                <span className="scroll-hint__icon">⟳</span>
+                <span>Use scroll wheel to navigate frames</span>
+              </div>
             )}
 
             {/* Loading overlay while resolving URL */}
@@ -695,6 +976,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 fps={videoMetadata?.fps}
                 onAddServeAttempt={async (serveAttempt: ServeAttemptCreate) => {
                   await createServeAttempt(serveAttempt);
+                  if (videoId) {
+                    queryClient.invalidateQueries({
+                      queryKey: contactTimestampsQueryKey(videoId),
+                    });
+                  }
                   if (openRange) {
                     clearRangeMarks();
                   }
@@ -765,28 +1051,105 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       }}
                       step={frameStep}
                     />
-              {/* Serve attempt ranges */}
-              {serveAttempts.length > 0 && duration > 0 && (
-                <div className="serve-attempt-ranges" data-tour="serve-attempt-ranges">
-                  {serveAttempts.map((serveAttempt) => {
-                    const isSelected = selectedServeAttemptId === serveAttempt.id;
+                    {/* Proposal ranges (shown before serve attempts) */}
+                    {proposals.length > 0 && duration > 0 && (
+                      <div className="proposal-ranges">
+                        {proposals.map((proposal) => (
+                          <ProposalRange
+                            key={proposal.id}
+                            proposal={proposal}
+                            duration={duration}
+                            onClick={() => {
+                              // Seek to proposal start
+                              seekToTime(proposal.start_timestamp);
+                            }}
+                            onAccept={async () => {
+                              try {
+                                await acceptProposal(proposal.id);
+                              } catch (err) {
+                                console.error(
+                                  'Failed to accept proposal:',
+                                  err
+                                );
+                                alert('Failed to accept proposal');
+                              }
+                            }}
+                            onReject={async () => {
+                              try {
+                                await rejectProposal(proposal.id);
+                              } catch (err) {
+                                console.error(
+                                  'Failed to reject proposal:',
+                                  err
+                                );
+                                alert('Failed to reject proposal');
+                              }
+                            }}
+                            onEdit={async () => {
+                              // For now, just accept with current timestamps
+                              // In future, could open a modal to edit timestamps
+                              try {
+                                await editProposal(proposal.id, {
+                                  start_timestamp: proposal.start_timestamp,
+                                  end_timestamp: proposal.end_timestamp,
+                                });
+                              } catch (err) {
+                                console.error('Failed to edit proposal:', err);
+                                alert('Failed to edit proposal');
+                              }
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {/* Serve attempt ranges */}
+                    {serveAttempts.length > 0 && duration > 0 && (
+                      <div
+                        className="serve-attempt-ranges"
+                        data-tour="serve-attempt-ranges"
+                      >
+                        {serveAttempts.map((serveAttempt) => {
+                          const isSelected =
+                            selectedServeAttemptId === serveAttempt.id;
 
-                    return (
-                      <ServeAttemptRange
-                        key={serveAttempt.id}
-                        serveAttempt={serveAttempt}
-                        duration={duration}
-                        isSelected={isSelected}
-                        onClick={() => {
-                          setSelectedServeAttempt(serveAttempt);
-                          setSelectedServeAttemptId(serveAttempt.id);
-                          setIsModalOpen(true);
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              )}
+                          return (
+                            <ServeAttemptRange
+                              key={serveAttempt.id}
+                              serveAttempt={serveAttempt}
+                              duration={duration}
+                              currentTime={currentTime}
+                              isSelected={isSelected}
+                              isDemo={isDemo}
+                              onClick={() => {
+                                setSelectedServeAttempt(serveAttempt);
+                                setSelectedServeAttemptId(serveAttempt.id);
+                                setIsModalOpen(true);
+                              }}
+                              onContactClick={() => {
+                                if (serveAttempt.contact_timestamp) {
+                                  seekToTime(serveAttempt.contact_timestamp);
+                                }
+                              }}
+                              onMarkContact={async (timestamp) => {
+                                try {
+                                  await updateServeAttempt(serveAttempt.id, {
+                                    contact_timestamp: timestamp,
+                                  });
+                                  if (videoId) {
+                                    queryClient.invalidateQueries({
+                                      queryKey:
+                                        contactTimestampsQueryKey(videoId),
+                                    });
+                                  }
+                                } catch (err) {
+                                  console.error('Failed to mark contact:', err);
+                                }
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
                     {rangeInTime !== null && duration > 0 && (
                       <div
                         className="range-mark-marker range-mark-marker--start"
@@ -907,6 +1270,43 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Controls Below Video (when controlsBelow is true) - Outside video wrapper */}
       {showControls && controlsBelow && (
         <div className="video-controls-below">
+          {/* View mode – above timeline so nav row stays uncluttered */}
+          {hasPoseData && (
+            <div className="video-controls-below__view-row">
+              <span className="video-controls-below__view-label">View</span>
+              <div
+                className="video-controls-below__view-segmented"
+                role="radiogroup"
+                aria-label="Overlay mode"
+              >
+                {(
+                  [
+                    { value: 'video' as ViewMode, label: 'Video' },
+                    { value: 'skeleton' as ViewMode, label: 'Skeleton' },
+                    { value: 'stickfigure' as ViewMode, label: 'Stick' },
+                  ] as const
+                ).map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={viewMode === value}
+                    title={
+                      value === 'video'
+                        ? 'Video only'
+                        : value === 'skeleton'
+                          ? 'Video with skeleton overlay'
+                          : 'Video with stick figure'
+                    }
+                    className={`video-controls-below__view-option ${viewMode === value ? 'video-controls-below__view-option--active' : ''}`}
+                    onClick={() => setViewMode(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Video Scrubber */}
           <div className="video-controls-below__scrubber">
             <div
@@ -920,6 +1320,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 fps={videoMetadata?.fps}
                 onAddServeAttempt={async (serveAttempt: ServeAttemptCreate) => {
                   await createServeAttempt(serveAttempt);
+                  if (videoId) {
+                    queryClient.invalidateQueries({
+                      queryKey: contactTimestampsQueryKey(videoId),
+                    });
+                  }
                   if (openRange) {
                     clearRangeMarks();
                   }
@@ -963,6 +1368,48 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onTouchEnd={handleSeekEnd}
                 step={frameStep}
               />
+              {/* Proposal ranges (shown before serve attempts) */}
+              {proposals.length > 0 && duration > 0 && (
+                <div className="video-controls-below__proposal-ranges">
+                  {proposals.map((proposal) => (
+                    <ProposalRange
+                      key={proposal.id}
+                      proposal={proposal}
+                      duration={duration}
+                      onClick={() => {
+                        seekToTime(proposal.start_timestamp);
+                      }}
+                      onAccept={async () => {
+                        try {
+                          await acceptProposal(proposal.id);
+                        } catch (err) {
+                          console.error('Failed to accept proposal:', err);
+                          alert('Failed to accept proposal');
+                        }
+                      }}
+                      onReject={async () => {
+                        try {
+                          await rejectProposal(proposal.id);
+                        } catch (err) {
+                          console.error('Failed to reject proposal:', err);
+                          alert('Failed to reject proposal');
+                        }
+                      }}
+                      onEdit={async () => {
+                        try {
+                          await editProposal(proposal.id, {
+                            start_timestamp: proposal.start_timestamp,
+                            end_timestamp: proposal.end_timestamp,
+                          });
+                        } catch (err) {
+                          console.error('Failed to edit proposal:', err);
+                          alert('Failed to edit proposal');
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
               {/* Serve attempt ranges */}
               {serveAttempts.length > 0 && duration > 0 && (
                 <div
@@ -970,18 +1417,40 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   data-tour="serve-attempt-ranges"
                 >
                   {serveAttempts.map((serveAttempt) => {
-                    const isSelected = selectedServeAttemptId === serveAttempt.id;
+                    const isSelected =
+                      selectedServeAttemptId === serveAttempt.id;
 
                     return (
                       <ServeAttemptRange
                         key={serveAttempt.id}
                         serveAttempt={serveAttempt}
                         duration={duration}
+                        currentTime={currentTime}
                         isSelected={isSelected}
+                        isDemo={isDemo}
                         onClick={() => {
                           setSelectedServeAttempt(serveAttempt);
                           setSelectedServeAttemptId(serveAttempt.id);
                           setIsModalOpen(true);
+                        }}
+                        onContactClick={() => {
+                          if (serveAttempt.contact_timestamp) {
+                            seekToTime(serveAttempt.contact_timestamp);
+                          }
+                        }}
+                        onMarkContact={async (timestamp) => {
+                          try {
+                            await updateServeAttempt(serveAttempt.id, {
+                              contact_timestamp: timestamp,
+                            });
+                            if (videoId) {
+                              queryClient.invalidateQueries({
+                                queryKey: contactTimestampsQueryKey(videoId),
+                              });
+                            }
+                          } catch (err) {
+                            console.error('Failed to mark contact:', err);
+                          }
                         }}
                       />
                     );
@@ -1052,81 +1521,140 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             )}
           </div>
 
-          {/* Controls Row */}
-          <div className="video-controls-below__controls">
-            <div className="video-controls-below__center-controls">
+          {/* Navigation: Contact (when any) | Serve | Play | Serve | Contact */}
+          <div className="video-controls-below__nav">
+            {hasAnyContact && (
               <button
-                className="video-controls-below__nav-btn"
-                disabled={!hasPreviousServeAttempt}
-                onClick={navigateToPreviousServeAttempt}
-                title={hasPreviousServeAttempt ? 'Go to previous serve attempt' : 'No previous serve attempt'}
+                className="video-controls-below__contact-btn"
+                disabled={!hasPreviousContact}
+                onClick={navigateToPreviousContact}
+                title={
+                  hasPreviousContact
+                    ? 'Go to previous contact'
+                    : 'No previous contact'
+                }
               >
-                <ArrowBackIcon size={16} />
-                Previous Serve
+                <ArrowBackIcon size={18} />
+                <span className="video-controls-below__contact-icon">◉</span>
+                <span>Previous Contact</span>
               </button>
+            )}
+            <button
+              className="video-controls-below__nav-btn"
+              disabled={!hasPreviousServeAttempt}
+              onClick={navigateToPreviousServeAttempt}
+              title={
+                hasPreviousServeAttempt
+                  ? 'Go to previous serve'
+                  : 'No previous serve'
+              }
+            >
+              <ArrowBackIcon size={18} />
+              <span>Previous Serve</span>
+            </button>
+            <button
+              className="video-controls-below__play-btn"
+              onClick={togglePlay}
+              title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+            >
+              {isPlaying ? <PauseIcon size={24} /> : <PlayIcon size={24} />}
+            </button>
+            <button
+              className="video-controls-below__nav-btn video-controls-below__nav-btn--next"
+              disabled={!hasNextServeAttempt}
+              onClick={navigateToNextServeAttempt}
+              title={hasNextServeAttempt ? 'Go to next serve' : 'No next serve'}
+            >
+              <span>Next Serve</span>
+              <ArrowBackIcon size={18} />
+            </button>
+            {hasAnyContact && (
               <button
-                className="video-controls-below__play-btn"
-                onClick={togglePlay}
+                className="video-controls-below__contact-btn video-controls-below__contact-btn--next"
+                disabled={!hasNextContact}
+                onClick={navigateToNextContact}
+                title={
+                  hasNextContact ? 'Go to next contact' : 'No next contact'
+                }
               >
-                {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+                <span>Next Contact</span>
+                <span className="video-controls-below__contact-icon">◉</span>
+                <ArrowBackIcon size={18} />
               </button>
-              <button
-                className="video-controls-below__next-btn"
-                disabled={!hasNextServeAttempt}
-                onClick={navigateToNextServeAttempt}
-                title={hasNextServeAttempt ? 'Go to next serve attempt' : 'No next serve attempt'}
-              >
-                Next Serve
-                <span className="video-controls-below__arrow-right">
-                  <ArrowBackIcon size={16} />
-                </span>
-              </button>
-              {hasContactPoint && (
-                <button
-                  className="video-controls-below__moment-btn"
-                  onClick={navigateToContact}
-                  title="Go to contact point"
-                >
-                  Contact
-                </button>
-              )}
-            </div>
-            {hasPoseData && (
-              <label className="video-controls-below__annotation-toggle">
-                <input
-                  type="checkbox"
-                  checked={showOverlay}
-                  onChange={(e) => setShowOverlay(e.target.checked)}
-                  className="video-controls-below__toggle-input"
-                />
-                <span className="video-controls-below__toggle-slider"></span>
-                <span className="video-controls-below__toggle-label">
-                  Show Annotation
-                </span>
-              </label>
             )}
           </div>
+
+          {/* Serve Detail Panel (inline, non-blocking) */}
+          {isModalOpen && selectedServeAttempt && (
+            <div className="video-controls-below__serve-panel">
+              <ServeAttemptModal
+                serveAttempt={selectedServeAttempt}
+                isOpen={isModalOpen}
+                videoDuration={duration}
+                currentTime={currentTime}
+                isDemo={isDemo}
+                mode="panel"
+                onClose={() => {
+                  setIsModalOpen(false);
+                  setSelectedServeAttempt(null);
+                  setSelectedServeAttemptId(undefined);
+                }}
+                onUpdate={async (serveAttemptId, updates) => {
+                  await updateServeAttempt(serveAttemptId, updates);
+                  if (videoId && updates.contact_timestamp !== undefined) {
+                    queryClient.invalidateQueries({
+                      queryKey: contactTimestampsQueryKey(videoId),
+                    });
+                  }
+                }}
+                onDelete={async (serveAttemptId) => {
+                  await deleteServeAttempt(serveAttemptId);
+                  if (videoId) {
+                    queryClient.invalidateQueries({
+                      queryKey: contactTimestampsQueryKey(videoId),
+                    });
+                  }
+                }}
+                onSeek={seekToTime}
+              />
+            </div>
+          )}
         </div>
       )}
 
-      {/* Serve Attempt Management Modal */}
-      <ServeAttemptModal
-        serveAttempt={selectedServeAttempt}
-        isOpen={isModalOpen}
-        videoDuration={duration}
-        isDemo={isDemo}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedServeAttempt(null);
-          setSelectedServeAttemptId(undefined);
-        }}
-        onUpdate={async (serveAttemptId, updates) => {
-          await updateServeAttempt(serveAttemptId, updates);
-        }}
-        onDelete={async (serveAttemptId) => {
-          await deleteServeAttempt(serveAttemptId);
-        }}
-      />
+      {/* Serve Attempt Management Modal (overlay mode for non-controlsBelow) */}
+      {!controlsBelow && (
+        <ServeAttemptModal
+          serveAttempt={selectedServeAttempt}
+          isOpen={isModalOpen}
+          videoDuration={duration}
+          currentTime={currentTime}
+          isDemo={isDemo}
+          mode="overlay"
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedServeAttempt(null);
+            setSelectedServeAttemptId(undefined);
+          }}
+          onUpdate={async (serveAttemptId, updates) => {
+            await updateServeAttempt(serveAttemptId, updates);
+            if (videoId && updates.contact_timestamp !== undefined) {
+              queryClient.invalidateQueries({
+                queryKey: contactTimestampsQueryKey(videoId),
+              });
+            }
+          }}
+          onDelete={async (serveAttemptId) => {
+            await deleteServeAttempt(serveAttemptId);
+            if (videoId) {
+              queryClient.invalidateQueries({
+                queryKey: contactTimestampsQueryKey(videoId),
+              });
+            }
+          }}
+          onSeek={seekToTime}
+        />
+      )}
     </div>
   );
 };
