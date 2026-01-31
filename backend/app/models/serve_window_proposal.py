@@ -24,11 +24,15 @@ class ServeWindowProposal(Base):
     end_timestamp = Column(Float, nullable=False)  # When serve attempt ends
 
     # Model metadata
-    model_version = Column(String(50), nullable=False)  # e.g., "heuristic-v1", "tcn-v1.2"
+    model_version = Column(
+        String(50), nullable=False
+    )  # e.g., "heuristic-v1", "tcn-v1.2"
     confidence = Column(Float, nullable=False)  # 0.0 - 1.0
 
     # Detection features (for debugging/analysis)
-    detection_features = Column(Text, nullable=True)  # JSON: peak_velocity, arm_height, etc.
+    detection_features = Column(
+        Text, nullable=True
+    )  # JSON: peak_velocity, arm_height, etc.
 
     # Status tracking
     status = Column(String(20), nullable=False, default="pending")

@@ -9,7 +9,6 @@ Create Date: 2026-01-30 12:00:00.000000
 from typing import Sequence, Union
 
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -33,7 +32,9 @@ def upgrade() -> None:
         sa.Column("model_version", sa.String(length=50), nullable=False),
         sa.Column("confidence", sa.Float(), nullable=False),
         sa.Column("detection_features", sa.Text(), nullable=True),
-        sa.Column("status", sa.String(length=20), nullable=False, server_default="pending"),
+        sa.Column(
+            "status", sa.String(length=20), nullable=False, server_default="pending"
+        ),
         sa.Column("serve_attempt_id", sa.Integer(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
@@ -44,7 +45,10 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_serve_window_proposals_id"), "serve_window_proposals", ["id"], unique=False
+        op.f("ix_serve_window_proposals_id"),
+        "serve_window_proposals",
+        ["id"],
+        unique=False,
     )
     op.create_index(
         op.f("ix_serve_window_proposals_video_id"),
@@ -74,7 +78,9 @@ def upgrade() -> None:
     # Add provenance columns to serve_attempts table
     op.add_column(
         "serve_attempts",
-        sa.Column("source", sa.String(length=20), nullable=False, server_default="manual"),
+        sa.Column(
+            "source", sa.String(length=20), nullable=False, server_default="manual"
+        ),
     )
     op.add_column(
         "serve_attempts",
@@ -110,9 +116,19 @@ def downgrade() -> None:
     op.drop_column("serve_attempts", "source")
 
     # Drop serve_window_proposals table
-    op.drop_index("ix_serve_window_proposals_user_created", table_name="serve_window_proposals")
-    op.drop_index("ix_serve_window_proposals_video_status", table_name="serve_window_proposals")
-    op.drop_index(op.f("ix_serve_window_proposals_user_id"), table_name="serve_window_proposals")
-    op.drop_index(op.f("ix_serve_window_proposals_video_id"), table_name="serve_window_proposals")
-    op.drop_index(op.f("ix_serve_window_proposals_id"), table_name="serve_window_proposals")
+    op.drop_index(
+        "ix_serve_window_proposals_user_created", table_name="serve_window_proposals"
+    )
+    op.drop_index(
+        "ix_serve_window_proposals_video_status", table_name="serve_window_proposals"
+    )
+    op.drop_index(
+        op.f("ix_serve_window_proposals_user_id"), table_name="serve_window_proposals"
+    )
+    op.drop_index(
+        op.f("ix_serve_window_proposals_video_id"), table_name="serve_window_proposals"
+    )
+    op.drop_index(
+        op.f("ix_serve_window_proposals_id"), table_name="serve_window_proposals"
+    )
     op.drop_table("serve_window_proposals")

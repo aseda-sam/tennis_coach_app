@@ -53,7 +53,9 @@ class ServeAttempt(Base):
     # Values: "manual", "auto_accepted", "auto_edited"
 
     source_proposal_id = Column(
-        Integer, ForeignKey("serve_window_proposals.id", ondelete="SET NULL"), nullable=True
+        Integer,
+        ForeignKey("serve_window_proposals.id", ondelete="SET NULL"),
+        nullable=True,
     )
 
     # Original timestamps (if edited from proposal)

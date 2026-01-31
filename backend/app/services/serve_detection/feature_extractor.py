@@ -115,8 +115,16 @@ def extract_frame_features(
     # 1. Arm height (normalized) - key for trophy/contact detection
     # Higher = more likely in serve motion
     # Y increases downward, so subtract from hip_center Y
-    left_wrist_height = (hip_center[1] - left_wrist[1]) / distance(hip_center, left_shoulder) if distance(hip_center, left_shoulder) > 0 else 0.0
-    right_wrist_height = (hip_center[1] - right_wrist[1]) / distance(hip_center, right_shoulder) if distance(hip_center, right_shoulder) > 0 else 0.0
+    left_wrist_height = (
+        (hip_center[1] - left_wrist[1]) / distance(hip_center, left_shoulder)
+        if distance(hip_center, left_shoulder) > 0
+        else 0.0
+    )
+    right_wrist_height = (
+        (hip_center[1] - right_wrist[1]) / distance(hip_center, right_shoulder)
+        if distance(hip_center, right_shoulder) > 0
+        else 0.0
+    )
     max_wrist_height = max(left_wrist_height, right_wrist_height)
 
     # Use normalized coordinates for more accurate height calculation
@@ -136,7 +144,9 @@ def extract_frame_features(
     # After normalization, negative Y = above hips
     # Check if wrists are above their respective shoulders
     norm_left_shoulder_y = -norm_left_shoulder[1]  # Height of left shoulder above hips
-    norm_right_shoulder_y = -norm_right_shoulder[1]  # Height of right shoulder above hips
+    norm_right_shoulder_y = -norm_right_shoulder[
+        1
+    ]  # Height of right shoulder above hips
 
     left_wrist_above_shoulder = norm_left_wrist_height > norm_left_shoulder_y
     right_wrist_above_shoulder = norm_right_wrist_height > norm_right_shoulder_y
@@ -166,7 +176,9 @@ def extract_frame_features(
     torso_length = distance(hip_center, midpoint(left_shoulder, right_shoulder))
     if torso_length == 0:
         torso_length = 1.0
-    knee_hip_ratio = (avg_knee_y - avg_hip_y) / torso_length  # Positive = knees below hips
+    knee_hip_ratio = (
+        avg_knee_y - avg_hip_y
+    ) / torso_length  # Positive = knees below hips
 
     return {
         "max_wrist_height": max_wrist_height,

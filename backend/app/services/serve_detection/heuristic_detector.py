@@ -91,9 +91,13 @@ def calculate_confidence(
     else:
         # Linear falloff from optimal range
         if duration < 2.0:
-            duration_score = (duration - MIN_SERVE_DURATION) / (2.0 - MIN_SERVE_DURATION)
+            duration_score = (duration - MIN_SERVE_DURATION) / (
+                2.0 - MIN_SERVE_DURATION
+            )
         else:
-            duration_score = (MAX_SERVE_DURATION - duration) / (MAX_SERVE_DURATION - 4.0)
+            duration_score = (MAX_SERVE_DURATION - duration) / (
+                MAX_SERVE_DURATION - 4.0
+            )
 
     # Weighted combination
     confidence = (
@@ -128,12 +132,22 @@ def merge_overlapping(proposals: List[Dict]) -> List[Dict]:
     for next_proposal in sorted_proposals[1:]:
         # Check if overlapping (within 0.5 seconds)
         overlap_threshold = 0.5
-        if next_proposal["start_timestamp"] <= current["end_timestamp"] + overlap_threshold:
+        if (
+            next_proposal["start_timestamp"]
+            <= current["end_timestamp"] + overlap_threshold
+        ):
             # Merge: extend end timestamp, keep higher confidence
-            current["end_timestamp"] = max(current["end_timestamp"], next_proposal["end_timestamp"])
-            current["confidence"] = max(current["confidence"], next_proposal["confidence"])
+            current["end_timestamp"] = max(
+                current["end_timestamp"], next_proposal["end_timestamp"]
+            )
+            current["confidence"] = max(
+                current["confidence"], next_proposal["confidence"]
+            )
             # Merge detection features (keep peak values)
-            if "detection_features" in current and "detection_features" in next_proposal:
+            if (
+                "detection_features" in current
+                and "detection_features" in next_proposal
+            ):
                 current_features = current["detection_features"]
                 next_features = next_proposal["detection_features"]
                 current["detection_features"] = {
@@ -190,22 +204,26 @@ def detect_serve_windows(
 
     # Log feature statistics for debugging
     poses_count = sum(1 for f in features if f.get("has_pose", False))
-    arm_raised_count = sum(1 for f in features if f.get("any_wrist_above_shoulder", False))
+    arm_raised_count = sum(
+        1 for f in features if f.get("any_wrist_above_shoulder", False)
+    )
     both_raised_count = sum(1 for f in features if f.get("both_arms_raised", False))
 
-    heights = [f.get("max_wrist_height", 0.0) for f in features if f.get("has_pose", False)]
-    velocities = [f.get("max_wrist_velocity", 0.0) for f in features if f.get("has_pose", False)]
+    heights = [
+        f.get("max_wrist_height", 0.0) for f in features if f.get("has_pose", False)
+    ]
+    velocities = [
+        f.get("max_wrist_velocity", 0.0) for f in features if f.get("has_pose", False)
+    ]
 
     logger.info(
-        f"Feature stats for {n_frames} frames ({n_frames/fps:.1f}s at {fps:.1f} fps):"
+        f"Feature stats for {n_frames} frames ({n_frames / fps:.1f}s at {fps:.1f} fps):"
     )
     logger.info(f"  - Frames with pose: {poses_count}")
     logger.info(f"  - Frames with any wrist above shoulder: {arm_raised_count}")
     logger.info(f"  - Frames with both arms raised: {both_raised_count}")
     if heights:
-        logger.info(
-            f"  - Wrist height range: [{min(heights):.2f}, {max(heights):.2f}]"
-        )
+        logger.info(f"  - Wrist height range: [{min(heights):.2f}, {max(heights):.2f}]")
         logger.info(
             f"  - Wrist velocity range: [{min(velocities):.1f}, {max(velocities):.1f}]"
         )
@@ -223,7 +241,7 @@ def detect_serve_windows(
 
     logger.info(
         f"Found {len(raised_arm_frames)} frames with wrist above shoulder "
-        f"({100*len(raised_arm_frames)/n_frames:.1f}% of video)"
+        f"({100 * len(raised_arm_frames) / n_frames:.1f}% of video)"
     )
 
     if not raised_arm_frames:
@@ -268,9 +286,7 @@ def detect_serve_windows(
             continue
 
         # Find peak metrics within the cluster for confidence scoring
-        peak_height = max(
-            features[i].get("max_wrist_height", 0.0) for i in cluster
-        )
+        peak_height = max(features[i].get("max_wrist_height", 0.0) for i in cluster)
         peak_velocity = max(
             features[i].get("max_wrist_velocity", 0.0)
             for i in range(start_frame, end_frame + 1)
@@ -291,19 +307,21 @@ def detect_serve_windows(
             f"(duration: {duration:.2f}s, confidence: {confidence:.2f})"
         )
 
-        proposals.append({
-            "start_timestamp": start_ts,
-            "end_timestamp": end_ts,
-            "confidence": confidence,
-            "detection_features": {
-                "first_raised_frame": first_raised,
-                "last_raised_frame": last_raised,
-                "raised_frame_count": len(cluster),
-                "peak_wrist_height": peak_height,
-                "peak_wrist_velocity": peak_velocity,
-                "both_arms_raised": both_arms_ever,
-            },
-        })
+        proposals.append(
+            {
+                "start_timestamp": start_ts,
+                "end_timestamp": end_ts,
+                "confidence": confidence,
+                "detection_features": {
+                    "first_raised_frame": first_raised,
+                    "last_raised_frame": last_raised,
+                    "raised_frame_count": len(cluster),
+                    "peak_wrist_height": peak_height,
+                    "peak_wrist_velocity": peak_velocity,
+                    "both_arms_raised": both_arms_ever,
+                },
+            }
+        )
 
     # Step 4: Merge any overlapping proposals
     merged = merge_overlapping(proposals)

@@ -20,7 +20,9 @@ logger = logging.getLogger(__name__)
 MODEL_VERSION = "heuristic-v1"
 
 
-def generate_proposals(db: Session, video_id: int, user_id: str) -> List[ServeWindowProposal]:
+def generate_proposals(
+    db: Session, video_id: int, user_id: str
+) -> List[ServeWindowProposal]:
     """
     Generate serve window proposals for a video using heuristic detection.
 
@@ -108,8 +110,14 @@ def generate_proposals(db: Session, video_id: int, user_id: str) -> List[ServeWi
                 f"Pose data format: dict with keys: {list(sample_frame.keys())[:10]}..."
             )
             # Check if we have the expected keypoint names
-            expected_keys = ["left_wrist", "right_wrist", "left_shoulder", "right_shoulder",
-                           "left_hip", "right_hip"]
+            expected_keys = [
+                "left_wrist",
+                "right_wrist",
+                "left_shoulder",
+                "right_shoulder",
+                "left_hip",
+                "right_hip",
+            ]
             missing_keys = [k for k in expected_keys if k not in sample_frame]
             if missing_keys:
                 logger.warning(f"Missing expected keypoints: {missing_keys}")
@@ -152,7 +160,9 @@ def generate_proposals(db: Session, video_id: int, user_id: str) -> List[ServeWi
     # Create proposal records
     proposals: List[ServeWindowProposal] = []
     for proposal_data in proposals_data:
-        detection_features_json = json.dumps(proposal_data.get("detection_features", {}))
+        detection_features_json = json.dumps(
+            proposal_data.get("detection_features", {})
+        )
 
         proposal = ServeWindowProposal(
             video_id=video_id,
@@ -193,7 +203,11 @@ def accept_proposal(
     Raises:
         ValueError: If proposal not found or unauthorized
     """
-    proposal = db.query(ServeWindowProposal).filter(ServeWindowProposal.id == proposal_id).first()
+    proposal = (
+        db.query(ServeWindowProposal)
+        .filter(ServeWindowProposal.id == proposal_id)
+        .first()
+    )
     if not proposal:
         raise ValueError(f"Proposal {proposal_id} not found")
 
@@ -201,7 +215,9 @@ def accept_proposal(
         raise ValueError("Unauthorized: proposal belongs to different user")
 
     if proposal.status != "pending":
-        raise ValueError(f"Proposal {proposal_id} already reviewed (status: {proposal.status})")
+        raise ValueError(
+            f"Proposal {proposal_id} already reviewed (status: {proposal.status})"
+        )
 
     # Get or create default player if not provided
     if not player_id:
@@ -249,7 +265,11 @@ def reject_proposal(db: Session, proposal_id: int, user_id: str) -> None:
     Raises:
         ValueError: If proposal not found or unauthorized
     """
-    proposal = db.query(ServeWindowProposal).filter(ServeWindowProposal.id == proposal_id).first()
+    proposal = (
+        db.query(ServeWindowProposal)
+        .filter(ServeWindowProposal.id == proposal_id)
+        .first()
+    )
     if not proposal:
         raise ValueError(f"Proposal {proposal_id} not found")
 
@@ -257,7 +277,9 @@ def reject_proposal(db: Session, proposal_id: int, user_id: str) -> None:
         raise ValueError("Unauthorized: proposal belongs to different user")
 
     if proposal.status != "pending":
-        raise ValueError(f"Proposal {proposal_id} already reviewed (status: {proposal.status})")
+        raise ValueError(
+            f"Proposal {proposal_id} already reviewed (status: {proposal.status})"
+        )
 
     proposal.status = "rejected"
     proposal.reviewed_at = datetime.utcnow()
@@ -291,7 +313,11 @@ def accept_with_edits(
     Raises:
         ValueError: If proposal not found, unauthorized, or timestamps invalid
     """
-    proposal = db.query(ServeWindowProposal).filter(ServeWindowProposal.id == proposal_id).first()
+    proposal = (
+        db.query(ServeWindowProposal)
+        .filter(ServeWindowProposal.id == proposal_id)
+        .first()
+    )
     if not proposal:
         raise ValueError(f"Proposal {proposal_id} not found")
 
@@ -299,7 +325,9 @@ def accept_with_edits(
         raise ValueError("Unauthorized: proposal belongs to different user")
 
     if proposal.status != "pending":
-        raise ValueError(f"Proposal {proposal_id} already reviewed (status: {proposal.status})")
+        raise ValueError(
+            f"Proposal {proposal_id} already reviewed (status: {proposal.status})"
+        )
 
     if new_start_timestamp >= new_end_timestamp:
         raise ValueError("start_timestamp must be less than end_timestamp")

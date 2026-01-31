@@ -23,7 +23,9 @@ const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
     <div className="keyboard-shortcuts">
       <div className="keyboard-shortcuts__icon">⌨️</div>
       <div className="keyboard-shortcuts__content">
-        <h4 className="keyboard-shortcuts__title">Keyboard Shortcuts & Mouse Controls</h4>
+        <h4 className="keyboard-shortcuts__title">
+          Keyboard Shortcuts & Mouse Controls
+        </h4>
         <div className="keyboard-shortcuts__list">
           <div className="keyboard-shortcuts__item">
             <kbd className="keyboard-shortcuts__kbd">Space</kbd>

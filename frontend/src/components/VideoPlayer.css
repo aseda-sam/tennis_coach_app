@@ -158,7 +158,6 @@
   gap: var(--spacing-sm);
 }
 
-
 .auto-detect-toast {
   position: absolute;
   right: var(--spacing-lg);

@@ -19,12 +19,16 @@ class ServeWindowProposalInfo(BaseModel):
     detection_features: Optional[Dict[str, Any]] = Field(
         default=None, description="Detection features (peak_velocity, arm_height, etc.)"
     )
-    status: str = Field(description="Proposal status: pending, accepted, rejected, edited")
+    status: str = Field(
+        description="Proposal status: pending, accepted, rejected, edited"
+    )
     serve_attempt_id: Optional[int] = Field(
         default=None, description="ID of resulting serve attempt if accepted/edited"
     )
     created_at: datetime = Field(description="Creation timestamp")
-    reviewed_at: Optional[datetime] = Field(default=None, description="Review timestamp")
+    reviewed_at: Optional[datetime] = Field(
+        default=None, description="Review timestamp"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -63,7 +67,9 @@ class AcceptProposalRequest(BaseModel):
 class EditProposalRequest(BaseModel):
     """Request to accept a proposal with edits."""
 
-    start_timestamp: float = Field(ge=0, description="Edited start timestamp in seconds")
+    start_timestamp: float = Field(
+        ge=0, description="Edited start timestamp in seconds"
+    )
     end_timestamp: float = Field(ge=0, description="Edited end timestamp in seconds")
     player_id: Optional[int] = Field(
         default=None, description="Player ID (defaults to user's default player)"

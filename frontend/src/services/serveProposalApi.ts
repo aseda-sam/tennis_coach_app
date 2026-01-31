@@ -56,7 +56,10 @@ export const serveProposalApi = {
     proposalId: number,
     request?: AcceptProposalRequest
   ): Promise<void> => {
-    await api.post(`/serve-detection/proposals/${proposalId}/accept`, request || {});
+    await api.post(
+      `/serve-detection/proposals/${proposalId}/accept`,
+      request || {}
+    );
   },
 
   // Reject a proposal

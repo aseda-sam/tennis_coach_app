@@ -1,11 +1,11 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  serveProposalApi,
-  ServeWindowProposal,
-  ProposeResponse,
   AcceptProposalRequest,
   EditProposalRequest,
+  ProposeResponse,
+  serveProposalApi,
+  ServeWindowProposal,
 } from '../services/serveProposalApi';
 
 interface UseServeProposalsOptions {
@@ -21,9 +21,15 @@ interface UseServeProposalsResult {
   error: string | null;
   refreshProposals: () => Promise<void>;
   runDetection: () => Promise<ProposeResponse>;
-  acceptProposal: (proposalId: number, request?: AcceptProposalRequest) => Promise<void>;
+  acceptProposal: (
+    proposalId: number,
+    request?: AcceptProposalRequest
+  ) => Promise<void>;
   rejectProposal: (proposalId: number) => Promise<void>;
-  editProposal: (proposalId: number, request: EditProposalRequest) => Promise<void>;
+  editProposal: (
+    proposalId: number,
+    request: EditProposalRequest
+  ) => Promise<void>;
 }
 
 export const useServeProposals = ({
@@ -86,8 +92,13 @@ export const useServeProposals = ({
 
   // Accept proposal mutation
   const acceptMutation = useMutation({
-    mutationFn: ({ proposalId, request }: { proposalId: number; request?: AcceptProposalRequest }) =>
-      serveProposalApi.accept(proposalId, request),
+    mutationFn: ({
+      proposalId,
+      request,
+    }: {
+      proposalId: number;
+      request?: AcceptProposalRequest;
+    }) => serveProposalApi.accept(proposalId, request),
     onSuccess: () => {
       // Invalidate proposals and serve attempts
       queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
@@ -106,8 +117,13 @@ export const useServeProposals = ({
 
   // Edit proposal mutation
   const editMutation = useMutation({
-    mutationFn: ({ proposalId, request }: { proposalId: number; request: EditProposalRequest }) =>
-      serveProposalApi.edit(proposalId, request),
+    mutationFn: ({
+      proposalId,
+      request,
+    }: {
+      proposalId: number;
+      request: EditProposalRequest;
+    }) => serveProposalApi.edit(proposalId, request),
     onSuccess: () => {
       // Invalidate proposals and serve attempts
       queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
@@ -136,7 +152,10 @@ export const useServeProposals = ({
   }, [runDetectionMutation]);
 
   const acceptProposal = useCallback(
-    async (proposalId: number, request?: AcceptProposalRequest): Promise<void> => {
+    async (
+      proposalId: number,
+      request?: AcceptProposalRequest
+    ): Promise<void> => {
       try {
         await acceptMutation.mutateAsync({ proposalId, request });
       } catch (err: unknown) {

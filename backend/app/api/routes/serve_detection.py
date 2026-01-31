@@ -52,7 +52,9 @@ async def propose_serve_windows(
         require_video_not_demo(video, current_user)
 
         # Generate proposals
-        proposals = proposal_service.generate_proposals(db, video_id, current_user["id"])
+        proposals = proposal_service.generate_proposals(
+            db, video_id, current_user["id"]
+        )
 
         return ProposeResponse(
             video_id=video_id,
