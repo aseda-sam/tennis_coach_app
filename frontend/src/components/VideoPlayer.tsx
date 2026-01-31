@@ -1406,84 +1406,87 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             )}
           </div>
 
-          {/* Controls Row */}
-          <div className="video-controls-below__controls">
-            <div className="video-controls-below__center-controls">
-              <button
-                className="video-controls-below__nav-btn"
-                disabled={!hasPreviousServeAttempt}
-                onClick={navigateToPreviousServeAttempt}
-                title={hasPreviousServeAttempt ? 'Go to previous serve attempt' : 'No previous serve attempt'}
-              >
-                <ArrowBackIcon size={16} />
-                Previous Serve
-              </button>
-              <button
-                className="video-controls-below__play-btn"
-                onClick={togglePlay}
-              >
-                {isPlaying ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
-              </button>
-              <button
-                className="video-controls-below__next-btn"
-                disabled={!hasNextServeAttempt}
-                onClick={navigateToNextServeAttempt}
-                title={hasNextServeAttempt ? 'Go to next serve attempt' : 'No next serve attempt'}
-              >
-                Next Serve
-                <span className="video-controls-below__arrow-right">
-                  <ArrowBackIcon size={16} />
-                </span>
-              </button>
-              {hasContactPoint && (
-                <button
-                  className="video-controls-below__moment-btn"
-                  onClick={navigateToContact}
-                  title="Go to contact point"
-                >
-                  Contact
-                </button>
-              )}
-            </div>
-            {hasPoseData && (
-              <div className="video-controls-below__right-controls">
-                <div className="video-controls-below__view-mode">
+          {/* Actions Toolbar - View mode and serve detection */}
+          {hasPoseData && (
+            <div className="video-controls-below__toolbar">
+              <div className="video-controls-below__toolbar-left">
+                <label className="video-controls-below__view-label">
+                  View:
                   <select
                     value={viewMode}
                     onChange={(e) => setViewMode(e.target.value as ViewMode)}
-                    className="video-controls-below__view-mode-select"
+                    className="video-controls-below__view-select"
                   >
                     <option value="video">Video Only</option>
                     <option value="skeleton">Video + Skeleton</option>
                     <option value="stickfigure">Stick Figure</option>
                   </select>
-                </div>
-                {hasPoseDataForDetection && (
-                  <div className="video-controls-below__auto-detect-wrap">
-                    <button
-                      className={`video-controls-below__auto-detect-btn ${hasExistingDetections ? 'video-controls-below__auto-detect-btn--has-detections' : ''}`}
-                      onClick={handleAutoDetect}
-                      disabled={isRunningDetection}
-                      title={hasExistingDetections
-                        ? 'Detection already run - click to re-detect'
-                        : 'Auto-detect serve windows'
-                      }
-                    >
-                      {isRunningDetection ? 'Detecting...' : 'Auto-detect serves'}
-                    </button>
-                    {proposals.length > 0 && (
-                      <button
-                        className="video-controls-below__auto-detect-clear-btn"
-                        onClick={handleClearProposals}
-                        disabled={isRunningDetection}
-                        title="Clear all pending proposals"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                )}
+                </label>
               </div>
+              {hasPoseDataForDetection && (
+                <div className="video-controls-below__toolbar-right">
+                  <button
+                    className={`video-controls-below__find-serves-btn ${hasExistingDetections ? 'video-controls-below__find-serves-btn--done' : ''}`}
+                    onClick={handleAutoDetect}
+                    disabled={isRunningDetection}
+                    title={hasExistingDetections
+                      ? 'Serves already found - click to re-detect'
+                      : 'Automatically find serve positions in the video'
+                    }
+                  >
+                    {isRunningDetection ? 'Finding...' : hasExistingDetections ? 'Re-find Serves' : 'Find Serves'}
+                  </button>
+                  {proposals.length > 0 && (
+                    <button
+                      className="video-controls-below__clear-btn"
+                      onClick={handleClearProposals}
+                      disabled={isRunningDetection}
+                      title="Clear detected serve proposals"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Navigation Controls */}
+          <div className="video-controls-below__nav">
+            <button
+              className="video-controls-below__nav-btn"
+              disabled={!hasPreviousServeAttempt}
+              onClick={navigateToPreviousServeAttempt}
+              title={hasPreviousServeAttempt ? 'Go to previous serve' : 'No previous serve'}
+            >
+              <ArrowBackIcon size={16} />
+              <span>Previous</span>
+            </button>
+            <button
+              className="video-controls-below__play-btn"
+              onClick={togglePlay}
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
+            </button>
+            <button
+              className="video-controls-below__nav-btn video-controls-below__nav-btn--next"
+              disabled={!hasNextServeAttempt}
+              onClick={navigateToNextServeAttempt}
+              title={hasNextServeAttempt ? 'Go to next serve' : 'No next serve'}
+            >
+              <span>Next</span>
+              <ArrowBackIcon size={16} />
+            </button>
+            {hasContactPoint && (
+              <button
+                className="video-controls-below__contact-btn"
+                onClick={navigateToContact}
+                title="Jump to the contact point of this serve"
+              >
+                <span className="video-controls-below__contact-icon">◉</span>
+                <span>Go to Contact</span>
+              </button>
             )}
           </div>
 

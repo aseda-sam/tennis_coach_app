@@ -21,11 +21,11 @@ const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
 
   return (
     <div className="keyboard-shortcuts">
-      <div className="keyboard-shortcuts__icon">⌨️</div>
       <div className="keyboard-shortcuts__content">
-        <h4 className="keyboard-shortcuts__title">
-          Keyboard Shortcuts & Mouse Controls
-        </h4>
+        <div className="keyboard-shortcuts__header">
+          <span className="keyboard-shortcuts__icon">⌨️</span>
+          <h4 className="keyboard-shortcuts__title">Controls</h4>
+        </div>
         <div className="keyboard-shortcuts__list">
           <div className="keyboard-shortcuts__item">
             <kbd className="keyboard-shortcuts__kbd">Space</kbd>
@@ -37,7 +37,7 @@ const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
           </div>
           <div className="keyboard-shortcuts__item">
             <kbd className="keyboard-shortcuts__kbd">[ ]</kbd>
-            <span>Previous/Next serve attempt</span>
+            <span>Prev/Next serve</span>
           </div>
           <div
             className={`keyboard-shortcuts__item ${
@@ -47,7 +47,7 @@ const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
             aria-disabled={isDemo}
           >
             <kbd className="keyboard-shortcuts__kbd">S</kbd>
-            <span>Mark START point</span>
+            <span>Start</span>
           </div>
           <div
             className={`keyboard-shortcuts__item ${
@@ -57,7 +57,7 @@ const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
             aria-disabled={isDemo}
           >
             <kbd className="keyboard-shortcuts__kbd">E</kbd>
-            <span>Mark END point</span>
+            <span>End</span>
           </div>
           <div
             className={`keyboard-shortcuts__item ${
@@ -71,25 +71,23 @@ const KeyboardShortcutsBanner: React.FC<KeyboardShortcutsBannerProps> = ({
             aria-disabled={isDemo}
           >
             <kbd className="keyboard-shortcuts__kbd">C</kbd>
-            <span>Mark contact point</span>
+            <span>Contact</span>
           </div>
-          <div className="keyboard-shortcuts__item">
+          <div className="keyboard-shortcuts__item keyboard-shortcuts__item--scroll">
             <kbd className="keyboard-shortcuts__kbd">⟳</kbd>
-            <span>Scroll wheel: navigate frames</span>
+            <span>Scroll</span>
+            {onNaturalScrollChange && (
+              <label className="keyboard-shortcuts__natural-toggle">
+                <input
+                  type="checkbox"
+                  checked={naturalScroll}
+                  onChange={(e) => onNaturalScrollChange(e.target.checked)}
+                />
+                <span>Natural</span>
+              </label>
+            )}
           </div>
         </div>
-        {onNaturalScrollChange && (
-          <div className="keyboard-shortcuts__scroll-toggle">
-            <label>
-              <input
-                type="checkbox"
-                checked={naturalScroll}
-                onChange={(e) => onNaturalScrollChange(e.target.checked)}
-              />
-              <span>Natural scroll</span>
-            </label>
-          </div>
-        )}
       </div>
     </div>
   );

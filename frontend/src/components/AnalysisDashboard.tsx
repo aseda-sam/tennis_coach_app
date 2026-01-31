@@ -6,7 +6,6 @@ import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { serveAttemptApi } from '../services/serveAttemptApi';
 import './AnalysisDashboard.css';
 import AnalysisRightPanel from './AnalysisRightPanel';
-import { ArrowBackIcon } from './Icons';
 import KeyboardShortcutsBanner from './KeyboardShortcutsBanner';
 import ProgressBar from './ProgressBar';
 import VideoPlayer from './VideoPlayer';
@@ -130,15 +129,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   return (
     <div className="analysis-dashboard">
-      {/* Header */}
+      {/* Header - Compact title bar */}
       <div className="analysis-dashboard__header">
-        <button className="analysis-dashboard__back-btn" onClick={onClose}>
-          <ArrowBackIcon size={16} />
-          Back
-        </button>
         <div className="analysis-dashboard__header-content">
-          <h1 className="analysis-dashboard__title">Serve Analysis</h1>
-          <p className="analysis-dashboard__subtitle">{videoFilename}</p>
+          <h1 className="analysis-dashboard__title">{videoFilename}</h1>
         </div>
       </div>
 
