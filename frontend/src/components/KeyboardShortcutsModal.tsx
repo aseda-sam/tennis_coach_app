@@ -5,12 +5,16 @@ interface KeyboardShortcutsModalProps {
   isOpen: boolean;
   onClose: () => void;
   isDemo?: boolean;
+  naturalScroll?: boolean;
+  onNaturalScrollChange?: (value: boolean) => void;
 }
 
 const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
   isOpen,
   onClose,
   isDemo = false,
+  naturalScroll = false,
+  onNaturalScrollChange,
 }) => {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -59,6 +63,16 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
               <div className="keyboard-modal__shortcut">
                 <kbd>Scroll</kbd>
                 <span>Navigate frames</span>
+                {onNaturalScrollChange && (
+                  <label className="keyboard-modal__toggle">
+                    <input
+                      type="checkbox"
+                      checked={naturalScroll}
+                      onChange={(e) => onNaturalScrollChange(e.target.checked)}
+                    />
+                    <span>Natural</span>
+                  </label>
+                )}
               </div>
             </div>
           </div>

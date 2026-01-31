@@ -375,6 +375,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       <KeyboardShortcutsModal
         isOpen={showKeyboardShortcuts}
         onClose={() => setShowKeyboardShortcuts(false)}
+        naturalScroll={naturalScroll}
+        onNaturalScrollChange={setNaturalScroll}
       />
     </div>
   );

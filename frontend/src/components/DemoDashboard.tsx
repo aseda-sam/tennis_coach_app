@@ -260,6 +260,8 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
         isOpen={showKeyboardShortcuts}
         onClose={() => setShowKeyboardShortcuts(false)}
         isDemo={isDemoReadOnly}
+        naturalScroll={naturalScroll}
+        onNaturalScrollChange={setNaturalScroll}
       />
     </div>
   );
