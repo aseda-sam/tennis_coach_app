@@ -861,47 +861,71 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
 
       <div className="video-player-wrapper">
-        {/* Controls row (kept minimal) - only show when controlsBelow is false */}
-        {hasPoseData && !controlsBelow && (
-          <div className="overlay-toggle-container">
-            <div className="view-mode-selector">
-              <label className="view-mode-label">View:</label>
-              <select
-                value={viewMode}
-                onChange={(e) => setViewMode(e.target.value as ViewMode)}
-                className="view-mode-select"
-              >
-                <option value="video">Video Only</option>
-                <option value="skeleton">Video + Skeleton</option>
-                <option value="stickfigure">Stick Figure</option>
-              </select>
-            </div>
-            {hasPoseDataForDetection && (
-              <div className="auto-detect-wrap">
+        {/* View mode bar – top of video player (when pose data exists) */}
+        {hasPoseData && (
+          <div className="video-player-view-bar">
+            <span className="video-player-view-bar__label">View</span>
+            <div
+              className="video-player-view-bar__segmented"
+              role="radiogroup"
+              aria-label="Overlay mode"
+            >
+              {(
+                [
+                  { value: 'video' as ViewMode, label: 'Video' },
+                  { value: 'skeleton' as ViewMode, label: 'Skeleton' },
+                  { value: 'stickfigure' as ViewMode, label: 'Stick' },
+                ] as const
+              ).map(({ value, label }) => (
                 <button
-                  className={`auto-detect-btn ${hasExistingDetections ? 'auto-detect-btn--has-detections' : ''}`}
-                  onClick={handleAutoDetect}
-                  disabled={isRunningDetection}
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={viewMode === value}
                   title={
-                    hasExistingDetections
-                      ? 'Detection already run - click to re-detect'
-                      : 'Auto-detect serve windows'
+                    value === 'video'
+                      ? 'Video only'
+                      : value === 'skeleton'
+                        ? 'Video with skeleton overlay'
+                        : 'Video with stick figure'
                   }
+                  className={`video-player-view-bar__option ${viewMode === value ? 'video-player-view-bar__option--active' : ''}`}
+                  onClick={() => setViewMode(value)}
                 >
-                  {isRunningDetection ? 'Detecting...' : 'Auto-detect serves'}
+                  {label}
                 </button>
-                {proposals.length > 0 && (
-                  <button
-                    className="auto-detect-clear-btn"
-                    onClick={handleClearProposals}
-                    disabled={isRunningDetection}
-                    title="Clear all pending proposals"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            )}
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Auto-detect row (only when controls overlay, not controls-below) */}
+        {hasPoseData && !controlsBelow && hasPoseDataForDetection && (
+          <div className="overlay-toggle-container">
+            <div className="auto-detect-wrap">
+              <button
+                className={`auto-detect-btn ${hasExistingDetections ? 'auto-detect-btn--has-detections' : ''}`}
+                onClick={handleAutoDetect}
+                disabled={isRunningDetection}
+                title={
+                  hasExistingDetections
+                    ? 'Detection already run - click to re-detect'
+                    : 'Auto-detect serve windows'
+                }
+              >
+                {isRunningDetection ? 'Detecting...' : 'Auto-detect serves'}
+              </button>
+              {proposals.length > 0 && (
+                <button
+                  className="auto-detect-clear-btn"
+                  onClick={handleClearProposals}
+                  disabled={isRunningDetection}
+                  title="Clear all pending proposals"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -1270,43 +1294,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Controls Below Video (when controlsBelow is true) - Outside video wrapper */}
       {showControls && controlsBelow && (
         <div className="video-controls-below">
-          {/* View mode – above timeline so nav row stays uncluttered */}
-          {hasPoseData && (
-            <div className="video-controls-below__view-row">
-              <span className="video-controls-below__view-label">View</span>
-              <div
-                className="video-controls-below__view-segmented"
-                role="radiogroup"
-                aria-label="Overlay mode"
-              >
-                {(
-                  [
-                    { value: 'video' as ViewMode, label: 'Video' },
-                    { value: 'skeleton' as ViewMode, label: 'Skeleton' },
-                    { value: 'stickfigure' as ViewMode, label: 'Stick' },
-                  ] as const
-                ).map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    role="radio"
-                    aria-checked={viewMode === value}
-                    title={
-                      value === 'video'
-                        ? 'Video only'
-                        : value === 'skeleton'
-                          ? 'Video with skeleton overlay'
-                          : 'Video with stick figure'
-                    }
-                    className={`video-controls-below__view-option ${viewMode === value ? 'video-controls-below__view-option--active' : ''}`}
-                    onClick={() => setViewMode(value)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
           {/* Video Scrubber */}
           <div className="video-controls-below__scrubber">
             <div
