@@ -117,6 +117,44 @@
   gap: var(--spacing-xl);
 }
 
+/* Admin Actions */
+.demo-dashboard__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.demo-dashboard__action-btn {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  text-align: center;
+}
+
+.demo-dashboard__action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.demo-dashboard__action-btn--primary {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-dark)
+  );
+  color: white;
+}
+
+.demo-dashboard__action-btn--primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 188, 125, 0.3);
+}
+
 /* Upload CTA Card */
 .demo-dashboard__upload-cta {
   margin-top: var(--spacing-lg);
