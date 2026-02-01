@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDemoEditor } from '../hooks/useDemoEditor';
+import { useServeAttempts } from '../hooks/useServeAttempts';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { videoApi } from '../services/api';
 import { serveAttemptApi } from '../services/serveAttemptApi';
@@ -23,6 +24,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
 }) => {
   const { isDemoEditor } = useDemoEditor();
   const isDemoReadOnly = !isDemoEditor;
+  const queryClient = useQueryClient();
 
   // Fetch demo video
   const {
@@ -40,19 +42,15 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   // Use React Query hook for analysis status
   const { data: analysisStatus } = useVideoAnalysisStatus(demoVideo?.id || 0);
 
-  // Fetch serve attempts count
-  const { data: serveAttempts } = useQuery({
-    queryKey: ['serve-attempts', { video_id: demoVideo?.id }],
-    queryFn: async () => {
-      if (!demoVideo?.id) return [];
-      return await serveAttemptApi.list({ video_id: demoVideo.id });
-    },
-    enabled: !!demoVideo?.id,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+  // Get serve attempts for this video using the hook (for admin analysis functionality)
+  const { serveAttempts } = useServeAttempts({
+    videoId: demoVideo?.id,
+    filters: demoVideo?.id ? { video_id: demoVideo.id } : undefined,
+    autoRefresh: true,
   });
 
   const hasPoseAnalysis = analysisStatus?.has_analysis || false;
-  const hasServeAttempts = (serveAttempts?.length || 0) > 0;
+  const hasServeAttempts = serveAttempts.length > 0;
   const showStatusWarning =
     isDemoEditor && (!hasPoseAnalysis || !hasServeAttempts);
 
@@ -62,6 +60,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [isAnalyzingServes, setIsAnalyzingServes] = useState(false);
 
   // Keyboard shortcut listener for ?
   useEffect(() => {
@@ -143,6 +142,46 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
     },
     []
   );
+
+  const handleAnalyzeServes = useCallback(async () => {
+    if (!demoVideo?.id) return;
+    if (serveAttempts.length === 0) {
+      alert('Please tag serve attempts first before analyzing.');
+      return;
+    }
+
+    // Check if any serve attempts already have metrics
+    const hasExistingMetrics = serveAttempts.some(
+      (sa) =>
+        sa.elbow_angle_at_contact !== null &&
+        sa.elbow_angle_at_contact !== undefined
+    );
+
+    setIsAnalyzingServes(true);
+    try {
+      await serveAttemptApi.analyzeServes(demoVideo.id);
+      // Invalidate serve attempts query to refresh with metrics
+      queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
+      // Show different message based on whether metrics already existed
+      const message = hasExistingMetrics
+        ? 'Serves re-analyzed! Updated metrics are shown below.'
+        : 'Serve analysis completed! Check the metrics below.';
+      alert(message);
+    } catch (error: unknown) {
+      // Error detail is already normalized to string by axios interceptor
+      const axiosError = error as {
+        response?: { data?: { detail?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        axiosError?.response?.data?.detail ||
+        axiosError?.message ||
+        'Failed to analyze serves. Please try again.';
+      alert(errorMessage);
+    } finally {
+      setIsAnalyzingServes(false);
+    }
+  }, [demoVideo?.id, serveAttempts, queryClient]);
 
   // Demo mode is read-only for non-admin/demo editor users.
 
@@ -235,6 +274,29 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Admin-only: Serve Analysis Button */}
+          {isDemoEditor &&
+            analysisStatus?.has_analysis &&
+            serveAttempts.length > 0 && (
+              <div className="demo-dashboard__actions">
+                <button
+                  className="demo-dashboard__action-btn demo-dashboard__action-btn--primary"
+                  onClick={handleAnalyzeServes}
+                  disabled={isAnalyzingServes}
+                >
+                  {isAnalyzingServes
+                    ? 'Analyzing…'
+                    : serveAttempts.some(
+                          (sa) =>
+                            sa.elbow_angle_at_contact !== null &&
+                            sa.elbow_angle_at_contact !== undefined
+                        )
+                      ? 'Re-Analyze Serves'
+                      : 'Analyze Serves'}
+                </button>
+              </div>
+            )}
 
           <div data-tour="analysis-panel">
             <AnalysisRightPanel
