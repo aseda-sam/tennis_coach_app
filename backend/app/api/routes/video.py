@@ -67,6 +67,7 @@ from app.utils.file_validation import (
     validate_file_exists,
     validate_video_file,
 )
+from app.utils.video_utils import get_video_rotation
 
 
 class VideoAnalysisStatus(BaseModel):
@@ -148,22 +149,45 @@ def _create_temp_file_for_processing(file_content: bytes, filename: str) -> Path
 
 
 def extract_video_metadata(video_path: Path) -> VideoMetadata:
-    """Extract metadata from video file using OpenCV."""
+    """
+    Extract metadata from video file using OpenCV.
+
+    Important: Returns "display" dimensions that account for rotation metadata.
+    This matches what browsers show, not the raw frame dimensions.
+    """
     try:
         cap = cv2.VideoCapture(str(video_path))
         if not cap.isOpened():
             return VideoMetadata()
 
-        # Get video properties
+        # Get raw video properties (before rotation)
         fps = cap.get(cv2.CAP_PROP_FPS)
         frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        raw_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        raw_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        cap.release()
+
+        # Get rotation metadata
+        rotation = get_video_rotation(video_path)
+
+        # Swap dimensions for 90° or 270° rotation (portrait videos)
+        if rotation in (90, 270, -90, -270):
+            width, height = raw_height, raw_width
+            logger.debug(
+                "Video %s has rotation=%d, swapping dimensions %dx%d -> %dx%d",
+                video_path.name,
+                rotation,
+                raw_width,
+                raw_height,
+                width,
+                height,
+            )
+        else:
+            width, height = raw_width, raw_height
 
         # Calculate duration
         duration = frame_count / fps if fps > 0 else None
-
-        cap.release()
 
         return VideoMetadata(
             fps=fps,
@@ -1147,6 +1171,21 @@ async def upload_video(
         # Read file content
         file_content = file.file.read()
 
+        # Extract and validate metadata before uploading
+        tmp_path = _create_temp_file_for_processing(file_content, unique_filename)
+        try:
+            metadata = extract_video_metadata(tmp_path)
+        finally:
+            tmp_path.unlink()
+
+        metadata_dict = {
+            "width": metadata.width,
+            "height": metadata.height,
+            "fps": metadata.fps,
+            "duration": metadata.duration,
+        }
+        validate_video_file(file.filename, file_size, file.content_type, metadata_dict)
+
         # Upload to storage (local or Supabase)
         try:
             if (
@@ -1173,28 +1212,6 @@ async def upload_video(
             unique_filename = actual_filename
         except (ValueError, RuntimeError, OSError) as e:
             raise handle_file_error("upload_failed", unique_filename, str(e)) from e
-
-        # For metadata extraction, we need the file locally
-        # If using Supabase, use temp file. For local, use actual file path.
-        if settings.STORAGE_TYPE == "supabase":
-            tmp_path = _create_temp_file_for_processing(file_content, unique_filename)
-            try:
-                metadata = extract_video_metadata(tmp_path)
-            finally:
-                tmp_path.unlink()
-        else:
-            # For local storage, resolve the storage path to actual file system path
-            file_path = storage_service.get_local_file_path(storage_path)
-            metadata = extract_video_metadata(file_path)
-
-        # Validate video metadata
-        metadata_dict = {
-            "width": metadata.width,
-            "height": metadata.height,
-            "fps": metadata.fps,
-            "duration": metadata.duration,
-        }
-        validate_video_file(file.filename, file_size, file.content_type, metadata_dict)
 
         # Save to database
         # For storage path, use the storage path returned by storage service

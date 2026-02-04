@@ -72,19 +72,19 @@ def validate_video_file(
     # Validate video metadata (optional)
     if metadata:
         # Resolution validation
-        if (
-            metadata.get("width")
-            and metadata.get("height")
-            and (
-                metadata["width"] > env_limits["max_resolution"][0]
-                or metadata["height"] > env_limits["max_resolution"][1]
-            )
-        ):
-            raise handle_file_error(
-                "resolution_too_high",
-                filename,
-                f"Maximum resolution is {env_limits['max_resolution'][0]}x{env_limits['max_resolution'][1]} ({env_limits['environment']} environment)",
-            )
+        if metadata.get("width") and metadata.get("height"):
+            max_width, max_height = env_limits["max_resolution"]
+            max_dim = max(max_width, max_height)
+            min_dim = min(max_width, max_height)
+            if (
+                max(metadata["width"], metadata["height"]) > max_dim
+                or min(metadata["width"], metadata["height"]) > min_dim
+            ):
+                raise handle_file_error(
+                    "resolution_too_high",
+                    filename,
+                    f"Maximum resolution is {env_limits['max_resolution'][0]}x{env_limits['max_resolution'][1]} ({env_limits['environment']} environment)",
+                )
 
         # FPS validation
         if metadata.get("fps") and metadata["fps"] > env_limits["max_fps"]:

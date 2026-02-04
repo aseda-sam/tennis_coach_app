@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.pose_detection import PoseDetection
+from app.utils.video_utils import get_video_rotation
 
 logger = logging.getLogger(__name__)
 
@@ -430,11 +431,41 @@ class PoseDetectionService:
             logger.error(f"Failed to deserialize pose data: {e}")
             return None
 
+    def _rotate_frame(self, frame: np.ndarray, rotation: int) -> np.ndarray:
+        """
+        Rotate frame to match display orientation.
+
+        The rotation value from ffprobe indicates how much the raw frames need
+        to be rotated to display correctly. A negative value means rotate
+        clockwise by that amount (e.g., -90 means rotate 90° clockwise).
+
+        Args:
+            frame: Input frame
+            rotation: Rotation in degrees from ffprobe (-90, 90, 180, -180, etc.)
+
+        Returns:
+            Rotated frame
+        """
+        # Determine rotation operation based on ffprobe rotation value
+        # rotation=-90: raw video needs 90° clockwise rotation to display correctly
+        # rotation=90: raw video needs 90° counterclockwise rotation to display correctly
+        # rotation=180/-180: raw video needs 180° rotation
+        if rotation == -90 or rotation == 270:
+            return cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        elif rotation == 90 or rotation == -270:
+            return cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        elif rotation == 180 or rotation == -180:
+            return cv2.rotate(frame, cv2.ROTATE_180)
+        else:
+            return frame
+
     def _iter_frames(
         self, video_path: Path, max_frames: Optional[int] = None
     ) -> Iterator[Tuple[int, np.ndarray]]:
         """
         Yield frames one at a time instead of loading all into memory.
+
+        Frames are rotated according to video metadata to match browser display.
 
         Args:
             video_path: Path to video file
@@ -449,11 +480,28 @@ class PoseDetectionService:
                 logger.error(f"Could not open video: {video_path}")
                 return
 
+            # Disable OpenCV's auto-rotation to get raw frames
+            # OpenCV 4.x auto-rotates based on metadata, but interprets rotation sign
+            # differently than browsers. We disable it and manually rotate using
+            # ffprobe's rotation value (which matches browser behavior).
+            cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 0)
+
+            # Get rotation once for the entire video
+            rotation = get_video_rotation(video_path)
+            if rotation != 0:
+                logger.info(
+                    "Applying rotation=%d° to frames from %s", rotation, video_path
+                )
+
             frame_index = 0
             while True:
                 ret, frame = cap.read()
                 if not ret:
                     break
+
+                # Rotate frame to match display orientation
+                if rotation != 0:
+                    frame = self._rotate_frame(frame, rotation)
 
                 yield frame_index, frame
                 frame_index += 1

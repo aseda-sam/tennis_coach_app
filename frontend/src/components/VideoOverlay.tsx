@@ -153,16 +153,8 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       return false;
     }
 
-    // Check if dimensions match (accounting for possible 90° rotation)
-    const dimensionsMatch =
-      (overlayData.width === videoNaturalWidth &&
-        overlayData.height === videoNaturalHeight) ||
-      (overlayData.width === videoNaturalHeight &&
-        overlayData.height === videoNaturalWidth);
-
-    // If dimensions don't match, we need to rotate (90° clockwise)
+    // Detect 90° rotation when overlay dimensions are swapped
     return (
-      !dimensionsMatch &&
       overlayData.width === videoNaturalHeight &&
       overlayData.height === videoNaturalWidth
     );
