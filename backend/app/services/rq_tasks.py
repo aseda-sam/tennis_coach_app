@@ -8,6 +8,7 @@ These functions are executed by RQ workers and must be:
 - Error-handling (log and re-raise exceptions)
 """
 
+import json
 import logging
 import subprocess
 import tempfile
@@ -651,12 +652,33 @@ def analyze_pose_detection_scout_refine_rq(
                 )
                 refine_results = None
             else:
-                # Add time_windows to results
-                refine_results["time_windows"] = windows
+                # Merge refine data into scout record (no separate record)
+                scout_pose_data = json.loads(scout_pose_detection.pose_data)
+                refine_pose_data = refine_results["pose_detections"]
 
-                # Save refine results as new pose detection record
-                refine_pose_detection = pose_service.save_detection_results(
-                    db=db, video_id=video_id, detection_results=refine_results
+                merged_data = pose_service.merge_pose_data(
+                    scout_pose_data, refine_pose_data
+                )
+
+                # Update scout record with merged data
+                scout_pose_detection.pose_data = json.dumps(merged_data)
+                scout_pose_detection.time_windows = json.dumps(windows)
+
+                # Recalculate metrics
+                frames_with_poses = sum(
+                    1 for f in merged_data if f and f.get("keypoints") is not None
+                )
+                scout_pose_detection.frames_with_poses = frames_with_poses
+                scout_pose_detection.detection_rate = (
+                    frames_with_poses / len(merged_data) if merged_data else 0.0
+                )
+                db.commit()
+
+                logger.info(
+                    "Merged refine data into scout record for video %s, "
+                    "%s frames now have pose data",
+                    video_id,
+                    frames_with_poses,
                 )
 
             # Update VideoJob status
@@ -677,9 +699,6 @@ def analyze_pose_detection_scout_refine_rq(
                 "mode": "scout_refine",
                 "serve_windows_found": len(windows),
                 "scout_pose_detection_id": scout_pose_detection.id,
-                "refine_pose_detection_id": refine_pose_detection.id
-                if refine_results
-                else None,
             }
 
     except Exception as e:

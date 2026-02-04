@@ -318,7 +318,7 @@ class TestAnalyzePoseDetectionScoutRefineRq:
     @patch("app.services.rq_tasks.video_service.get_video_by_id")
     @patch("app.services.rq_tasks.storage_service.get_local_file_path")
     @patch("app.services.pose_detection.PoseDetectionService")
-    @patch("app.services.rq_tasks.generate_proposals")
+    @patch("app.services.serve_detection.proposal_service.generate_proposals")
     def test_scout_refine_completes_with_scout_only_when_no_proposals(
         self,
         mock_generate_proposals: MagicMock,
@@ -365,7 +365,7 @@ class TestAnalyzePoseDetectionScoutRefineRq:
     @patch("app.services.rq_tasks.video_service.get_video_by_id")
     @patch("app.services.rq_tasks.storage_service.get_local_file_path")
     @patch("app.services.pose_detection.PoseDetectionService")
-    @patch("app.services.rq_tasks.generate_proposals")
+    @patch("app.services.serve_detection.proposal_service.generate_proposals")
     def test_scout_refine_success_with_windows(
         self,
         mock_generate_proposals: MagicMock,
@@ -375,7 +375,9 @@ class TestAnalyzePoseDetectionScoutRefineRq:
         mock_db_session: MagicMock,
         mock_video: MagicMock,
     ) -> None:
-        """Test successful scout/refine pipeline when serve windows are found."""
+        """Test successful scout/refine pipeline merges into single record."""
+        import json
+
         from app.models.serve_window_proposal import ServeWindowProposal
 
         mock_get_video.return_value = mock_video
@@ -383,17 +385,35 @@ class TestAnalyzePoseDetectionScoutRefineRq:
         mock_pose_service = MagicMock()
         mock_pose_service_class.return_value = mock_pose_service
 
-        # Mock scout results
+        # Mock scout results with pose data
+        scout_pose_data = [
+            {
+                "frame_index": 0,
+                "timestamp_ms": 0.0,
+                "keypoints": {"left_shoulder": [100, 100]},
+            },
+            {"frame_index": 1, "timestamp_ms": 33.3, "keypoints": None},  # skipped
+            {
+                "frame_index": 2,
+                "timestamp_ms": 66.6,
+                "keypoints": {"left_shoulder": [102, 102]},
+            },
+        ]
         mock_pose_service.analyze_video_file.return_value = {
             "processing_time_seconds": 60.0,
             "total_frames": 900,
             "frames_with_poses": 700,
             "detection_rate": 0.78,
             "mode": "scout",
+            "pose_detections": scout_pose_data,
         }
 
+        # Mock scout pose detection record
         scout_pose_detection = MagicMock()
         scout_pose_detection.id = 123
+        scout_pose_detection.pose_data = json.dumps(scout_pose_data)
+        scout_pose_detection.frames_with_poses = 700
+        scout_pose_detection.detection_rate = 0.78
         mock_pose_service.save_detection_results.return_value = scout_pose_detection
 
         # Mock proposals found
@@ -405,7 +425,20 @@ class TestAnalyzePoseDetectionScoutRefineRq:
         proposal2.end_timestamp = 7.0
         mock_generate_proposals.return_value = [proposal1, proposal2]
 
-        # Mock refine results
+        # Mock refine results with pose data for frames 1-2
+        refine_pose_data = [
+            None,  # frame 0 outside window
+            {
+                "frame_index": 1,
+                "timestamp_ms": 33.3,
+                "keypoints": {"left_shoulder": [150, 150]},
+            },
+            {
+                "frame_index": 2,
+                "timestamp_ms": 66.6,
+                "keypoints": {"left_shoulder": [160, 160]},
+            },
+        ]
         mock_pose_service.analyze_serve_windows.return_value = {
             "processing_time_seconds": 30.0,
             "total_frames": 900,
@@ -413,25 +446,57 @@ class TestAnalyzePoseDetectionScoutRefineRq:
             "detection_rate": 0.67,
             "mode": "refine",
             "windows_processed": 2,
+            "pose_detections": refine_pose_data,
         }
 
-        refine_pose_detection = MagicMock()
-        refine_pose_detection.id = 456
-        # Second call to save_detection_results returns refine result
-        mock_pose_service.save_detection_results.side_effect = [
-            scout_pose_detection,
-            refine_pose_detection,
+        # Mock merge_pose_data to return actual merged data
+        merged_data = [
+            {
+                "frame_index": 0,
+                "timestamp_ms": 0.0,
+                "keypoints": {"left_shoulder": [100, 100]},
+            },
+            {
+                "frame_index": 1,
+                "timestamp_ms": 33.3,
+                "keypoints": {"left_shoulder": [150, 150]},
+            },
+            {
+                "frame_index": 2,
+                "timestamp_ms": 66.6,
+                "keypoints": {"left_shoulder": [160, 160]},
+            },
         ]
+        mock_pose_service.merge_pose_data.return_value = merged_data
 
         result = analyze_pose_detection_scout_refine_rq(
-            video_id=1, video_path="/test/path/video.mp4"
+            video_id=mock_video.id, video_path="/test/path/video.mp4"
         )
 
         assert result["status"] == "completed"
         assert result["mode"] == "scout_refine"
         assert result["serve_windows_found"] == 2
-        assert result["scout_pose_detection_id"] == 123
-        assert result["refine_pose_detection_id"] == 456
+        assert result["scout_pose_detection_id"] == scout_pose_detection.id
+        # Should NOT have refine_pose_detection_id (no separate record created)
+        assert "refine_pose_detection_id" not in result
+
+        # Verify merge_pose_data was called with correct arguments
+        mock_pose_service.merge_pose_data.assert_called_once()
+        merge_call_args = mock_pose_service.merge_pose_data.call_args
+        assert merge_call_args[0][0] == scout_pose_data  # scout data
+        assert merge_call_args[0][1] == refine_pose_data  # refine data
+
+        # Verify scout record was updated with merged data
+        # Check that pose_data was set to merged data
+        assert scout_pose_detection.pose_data == json.dumps(merged_data)
+        assert (
+            scout_pose_detection.frames_with_poses == 3
+        )  # All 3 frames have keypoints after merge
+
+        # Verify time_windows was set
+        assert scout_pose_detection.time_windows is not None
+        time_windows = json.loads(scout_pose_detection.time_windows)
+        assert len(time_windows) == 2
 
         # Verify refine was called with correct windows
         mock_pose_service.analyze_serve_windows.assert_called_once()
@@ -442,3 +507,6 @@ class TestAnalyzePoseDetectionScoutRefineRq:
         assert windows[0]["end_ms"] == 3000.0
         assert windows[1]["start_ms"] == 5000.0
         assert windows[1]["end_ms"] == 7000.0
+
+        # Verify save_detection_results was NOT called a second time (no refine record)
+        assert mock_pose_service.save_detection_results.call_count == 1

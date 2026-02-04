@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     FPS_TOLERANCE: float = 0.5
     POSE_DETECTION_JOB_TIMEOUT_SECONDS: int = 1800
 
+    # Scout mode settings
+    SCOUT_FRAME_SKIP: int = (
+        2  # Process every Nth frame in scout mode (2 = 15fps effective at 30fps)
+    )
+
     # Transcoding settings
     TRANSCODE_ENABLED: bool = True
     TRANSCODE_THRESHOLD_BYTES: int = (

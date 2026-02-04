@@ -282,6 +282,97 @@ class TestPoseDetectionService:
         assert len(accessed_frames) > 0
 
 
+class TestMergePoseData:
+    """Unit tests for merge_pose_data static method."""
+
+    def test_merge_overwrites_scout_with_refine_keypoints(self) -> None:
+        """Refine data should overwrite scout data where keypoints exist."""
+        from typing import Any, Dict, List, Optional
+
+        scout_data: List[Dict[str, Any]] = [
+            {
+                "frame_index": 0,
+                "timestamp_ms": 0.0,
+                "keypoints": {"left_shoulder": [100, 100]},
+            },
+            {"frame_index": 1, "timestamp_ms": 33.3, "keypoints": None},  # skipped
+            {
+                "frame_index": 2,
+                "timestamp_ms": 66.6,
+                "keypoints": {"left_shoulder": [102, 102]},
+            },
+        ]
+        refine_data: List[Optional[Dict[str, Any]]] = [
+            None,  # outside window
+            {
+                "frame_index": 1,
+                "timestamp_ms": 33.3,
+                "keypoints": {"left_shoulder": [150, 150]},
+            },
+            {
+                "frame_index": 2,
+                "timestamp_ms": 66.6,
+                "keypoints": {"left_shoulder": [160, 160]},
+            },
+        ]
+
+        merged = PoseDetectionService.merge_pose_data(scout_data, refine_data)
+
+        assert merged[0]["keypoints"] == {"left_shoulder": [100, 100]}  # unchanged
+        assert merged[1]["keypoints"] == {"left_shoulder": [150, 150]}  # from refine
+        assert merged[2]["keypoints"] == {"left_shoulder": [160, 160]}  # from refine
+
+    def test_merge_preserves_scout_when_refine_is_none(self) -> None:
+        """Scout data preserved when refine frame is None."""
+        scout_data = [{"frame_index": 0, "keypoints": {"a": [1, 2]}}]
+        refine_data = [None]
+
+        merged = PoseDetectionService.merge_pose_data(scout_data, refine_data)
+
+        assert merged[0]["keypoints"] == {"a": [1, 2]}
+
+    def test_merge_handles_empty_arrays(self) -> None:
+        """Empty arrays should return empty result."""
+        assert PoseDetectionService.merge_pose_data([], []) == []
+
+    def test_merge_does_not_mutate_input(self) -> None:
+        """Original scout_data should not be mutated."""
+        scout_data = [{"frame_index": 0, "keypoints": {"a": [1, 2]}}]
+        refine_data = [{"frame_index": 0, "keypoints": {"a": [9, 9]}}]
+        original_keypoints = scout_data[0]["keypoints"].copy()
+
+        PoseDetectionService.merge_pose_data(scout_data, refine_data)
+
+        assert scout_data[0]["keypoints"] == original_keypoints
+
+    def test_merge_handles_refine_shorter_than_scout(self) -> None:
+        """When refine data is shorter, merge only up to refine length."""
+        scout_data = [
+            {"frame_index": 0, "keypoints": {"a": [1, 2]}},
+            {"frame_index": 1, "keypoints": {"a": [2, 3]}},
+            {"frame_index": 2, "keypoints": {"a": [3, 4]}},
+        ]
+        refine_data = [
+            {"frame_index": 0, "keypoints": {"a": [9, 9]}},
+            None,  # frame 1 has no refine data
+        ]
+
+        merged = PoseDetectionService.merge_pose_data(scout_data, refine_data)
+
+        assert merged[0]["keypoints"] == {"a": [9, 9]}  # overwritten
+        assert merged[1]["keypoints"] == {"a": [2, 3]}  # preserved from scout
+        assert merged[2]["keypoints"] == {"a": [3, 4]}  # preserved from scout
+
+    def test_merge_handles_refine_with_none_keypoints(self) -> None:
+        """Refine frame with None keypoints should not overwrite scout."""
+        scout_data = [{"frame_index": 0, "keypoints": {"a": [1, 2]}}]
+        refine_data = [{"frame_index": 0, "keypoints": None}]
+
+        merged = PoseDetectionService.merge_pose_data(scout_data, refine_data)
+
+        assert merged[0]["keypoints"] == {"a": [1, 2]}  # preserved from scout
+
+
 class TestPoseDetectionAPI:
     """Test pose detection API endpoints."""
 

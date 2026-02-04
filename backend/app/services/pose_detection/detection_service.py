@@ -2,6 +2,7 @@
 Pose detection service using MediaPipe for independent pose analysis.
 """
 
+import copy
 import json
 import logging
 import time
@@ -263,8 +264,8 @@ class PoseDetectionService:
         fps = cap.get(cv2.CAP_PROP_FPS)
         cap.release()
 
-        # Scout mode: process every 2nd frame (effective 15fps at 30fps input)
-        frame_skip = 2 if is_scout_mode else 1
+        # Scout mode: process every Nth frame (configurable, default 2 = 15fps effective at 30fps input)
+        frame_skip = settings.SCOUT_FRAME_SKIP if is_scout_mode else 1
 
         try:
             # Process frames one at a time via generator
@@ -594,6 +595,38 @@ class PoseDetectionService:
                 "frame_processing_rate": 0.0,
                 "confidence_scores": confidence_scores,
             }
+
+    @staticmethod
+    def merge_pose_data(
+        scout_data: List[Dict[str, Any]],
+        refine_data: List[Optional[Dict[str, Any]]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Merge refine pose data into scout data.
+
+        Refine data overwrites scout data for frames where refine has keypoints.
+        This combines sparse scout data (entire video) with dense refine data
+        (serve windows only).
+
+        Args:
+            scout_data: Pose data from scout pass (sparse, covers entire video)
+            refine_data: Pose data from refine pass (dense, only serve windows)
+
+        Returns:
+            Merged pose data with refine data overwriting scout for serve windows
+        """
+        merged = copy.deepcopy(scout_data)
+
+        for frame_idx, refine_frame in enumerate(refine_data):
+            if frame_idx >= len(merged):
+                break
+            if refine_frame is None:
+                continue
+            refine_keypoints = refine_frame.get("keypoints")
+            if refine_keypoints is not None:
+                merged[frame_idx] = refine_frame
+
+        return merged
 
     def save_detection_results(
         self, db: Session, video_id: int, detection_results: Dict[str, any]
