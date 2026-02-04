@@ -107,7 +107,7 @@ def format_overlay_data(
             pose_data_size,
             MAX_POSE_DATA_SIZE,
         )
-        raise RuntimeError("Pose data exceeds maximum size limit")
+        raise ValueError("Pose data exceeds maximum size limit")
 
     try:
         raw_pose_data = json.loads(pose_detection.pose_data)

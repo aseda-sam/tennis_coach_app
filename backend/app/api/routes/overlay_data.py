@@ -48,8 +48,18 @@ async def get_overlay_data(
 
     except ValueError as e:
         error_msg = str(e).lower()
-        if "not found" in error_msg:
-            raise handle_not_found_error("video", str(video_id)) from e
+        # Map "no pose detection/data" errors to 404
+        if "no pose detection" in error_msg or "no pose data" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            ) from e
+        # Map "exceeds" errors to 400 (validation error)
+        if "exceeds" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            ) from e
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),

@@ -73,14 +73,19 @@ class TestPoseDetectionService:
         mock_cap.release.assert_called_once()
 
     @patch("app.services.pose_detection.detection_service.cv2.VideoCapture")
+    @patch.object(PoseDetectionService, "_initialize_mediapipe")
     def test_analyze_video_file_no_detector(
         self,
+        mock_init_mediapipe: Mock,
         mock_video_capture: Mock,
         pose_service: PoseDetectionService,
         mock_video_file: Path,
     ) -> None:
         """Test pose detection when detector is not available."""
+        # Set both detectors to None and prevent re-initialization
         pose_service.pose_detector = None
+        pose_service._scout_detector = None
+        mock_init_mediapipe.return_value = None  # Don't actually initialize
 
         results = pose_service.analyze_video_file(mock_video_file)
 
@@ -181,15 +186,17 @@ class TestPoseDetectionService:
         mock_video_file: Path,
     ) -> None:
         """Test that scout mode skips frames and includes timestamp_ms."""
+        import cv2
         import numpy as np
 
         # Mock video capture with multiple frames
         mock_cap = Mock()
         mock_video_capture.return_value = mock_cap
         mock_cap.isOpened.return_value = True
+        # Use cv2 constants (integers) as keys, not strings
         mock_cap.get.side_effect = lambda prop: {
-            "CAP_PROP_FPS": 30.0,
-            "CAP_PROP_FRAME_COUNT": 10.0,
+            cv2.CAP_PROP_FPS: 30.0,
+            cv2.CAP_PROP_FRAME_COUNT: 10.0,
         }.get(prop, 0.0)
 
         # Mock frames (10 frames total)
@@ -200,10 +207,13 @@ class TestPoseDetectionService:
         frames.append((False, None))  # End of video
         mock_cap.read.side_effect = frames
 
-        # Mock pose detector
+        # Mock pose detector with properly structured detection result - set it for scout mode
         mock_detector = Mock()
-        mock_detector.detect_for_video.return_value = Mock()
-        pose_service.pose_detector = mock_detector
+        mock_detection_result = Mock()
+        # Set pose_landmarks to an empty list (no poses detected)
+        mock_detection_result.pose_landmarks = []
+        mock_detector.detect_for_video.return_value = mock_detection_result
+        pose_service._scout_detector = mock_detector
 
         # Run scout mode
         results = pose_service.analyze_video_file(
@@ -264,9 +274,12 @@ class TestPoseDetectionService:
 
         mock_cap.read.side_effect = mock_read
 
-        # Mock pose detector
+        # Mock pose detector with properly structured detection result
         mock_detector = Mock()
-        mock_detector.detect_for_video.return_value = Mock()
+        mock_detection_result = Mock()
+        # Set pose_landmarks to an empty list (no poses detected)
+        mock_detection_result.pose_landmarks = []
+        mock_detector.detect_for_video.return_value = mock_detection_result
         pose_service.pose_detector = mock_detector
 
         # Call analyze_serve_windows with a single window

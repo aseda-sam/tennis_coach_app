@@ -596,6 +596,9 @@ class TestVideoAPI:
         self, client: TestClient, db_session: "Session", test_user_id: str
     ) -> None:
         """Test that users cannot update metadata for videos they don't own."""
+        from unittest.mock import patch
+
+        from app.core.config import settings
         from app.models.video import Video
 
         # Create a video owned by a different user
@@ -615,12 +618,196 @@ class TestVideoAPI:
         db_session.commit()
         video_id = video.id
 
-        # Try to update metadata (should fail - different user)
-        update_data = {"session_type": "serve_practice"}
-        response = client.patch(f"/v0/videos/{video_id}/metadata", json=update_data)
+        # Mock ADMIN_USER_IDS to exclude test user (test user is admin by default)
+        # This ensures the test verifies non-admin ownership checks
+        with patch.object(settings, "ADMIN_USER_IDS", ""):
+            # Try to update metadata (should fail - different user, not admin)
+            update_data = {"session_type": "serve_practice"}
+            response = client.patch(f"/v0/videos/{video_id}/metadata", json=update_data)
 
-        # Should return 403 or 404 (depending on implementation)
-        assert response.status_code in [403, 404]
+            # Should return 403 (forbidden - user doesn't own video)
+            assert response.status_code == 403
+
+
+class TestBallContactTimestamps:
+    """Tests for GET /v0/videos/{video_id}/ball-contact-timestamps endpoint."""
+
+    def test_get_ball_contact_timestamps_empty(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test returns empty list when no serve attempts exist."""
+        from app.models.video import Video
+
+        video = Video(
+            filename="test_timestamps.mp4",
+            file_path="raw/test_timestamps.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+        )
+        db_session.add(video)
+        db_session.commit()
+
+        response = client.get(f"/v0/videos/{video.id}/ball-contact-timestamps")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "ball_contact_timestamps" in data
+        assert data["ball_contact_timestamps"] == []
+
+    def test_get_ball_contact_timestamps_with_serves(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test returns sorted unique timestamps from serve attempts."""
+        from app.models.player import Player
+        from app.models.serve_attempt import ServeAttempt
+        from app.models.video import Video
+
+        video = Video(
+            filename="test_timestamps2.mp4",
+            file_path="raw/test_timestamps2.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+        )
+        db_session.add(video)
+        db_session.commit()
+
+        player = Player(
+            name="Test Player",
+            dominant_hand="right",
+            user_id=test_user_id,
+        )
+        db_session.add(player)
+        db_session.commit()
+
+        # Create serve attempts with contact timestamps
+        serve1 = ServeAttempt(
+            video_id=video.id,
+            player_id=player.id,
+            user_id=test_user_id,
+            start_timestamp=1.0,
+            end_timestamp=3.0,
+            contact_timestamp=2.5,
+            court_side="deuce",
+            serve_number=1,
+        )
+        serve2 = ServeAttempt(
+            video_id=video.id,
+            player_id=player.id,
+            user_id=test_user_id,
+            start_timestamp=5.0,
+            end_timestamp=7.0,
+            contact_timestamp=6.2,
+            court_side="ad",
+            serve_number=1,
+        )
+        # Serve without contact timestamp (should be excluded)
+        serve3 = ServeAttempt(
+            video_id=video.id,
+            player_id=player.id,
+            user_id=test_user_id,
+            start_timestamp=10.0,
+            end_timestamp=12.0,
+            contact_timestamp=None,
+            court_side="deuce",
+            serve_number=2,
+        )
+        db_session.add_all([serve1, serve2, serve3])
+        db_session.commit()
+
+        response = client.get(f"/v0/videos/{video.id}/ball-contact-timestamps")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "ball_contact_timestamps" in data
+        timestamps = data["ball_contact_timestamps"]
+        assert len(timestamps) == 2
+        assert timestamps == [2.5, 6.2]  # Sorted ascending
+
+    def test_get_ball_contact_timestamps_video_not_found(
+        self, client: TestClient
+    ) -> None:
+        """Test returns 404 for non-existent video."""
+        response = client.get("/v0/videos/99999/ball-contact-timestamps")
+
+        assert response.status_code == 404
+
+    def test_get_ball_contact_timestamps_excludes_other_users(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test only returns timestamps from current user's serve attempts."""
+        from app.models.player import Player
+        from app.models.serve_attempt import ServeAttempt
+        from app.models.video import Video
+
+        video = Video(
+            filename="test_timestamps3.mp4",
+            file_path="raw/test_timestamps3.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+        )
+        db_session.add(video)
+        db_session.commit()
+
+        player = Player(
+            name="Test Player",
+            dominant_hand="right",
+            user_id=test_user_id,
+        )
+        other_player = Player(
+            name="Other Player",
+            dominant_hand="left",
+            user_id="other-user-id",
+        )
+        db_session.add_all([player, other_player])
+        db_session.commit()
+
+        # User's serve attempt
+        user_serve = ServeAttempt(
+            video_id=video.id,
+            player_id=player.id,
+            user_id=test_user_id,
+            start_timestamp=1.0,
+            end_timestamp=3.0,
+            contact_timestamp=2.0,
+            court_side="deuce",
+            serve_number=1,
+        )
+        # Other user's serve attempt (should be excluded)
+        other_serve = ServeAttempt(
+            video_id=video.id,
+            player_id=other_player.id,
+            user_id="other-user-id",
+            start_timestamp=5.0,
+            end_timestamp=7.0,
+            contact_timestamp=6.0,
+            court_side="ad",
+            serve_number=1,
+        )
+        db_session.add_all([user_serve, other_serve])
+        db_session.commit()
+
+        response = client.get(f"/v0/videos/{video.id}/ball-contact-timestamps")
+
+        assert response.status_code == 200
+        data = response.json()
+        timestamps = data["ball_contact_timestamps"]
+        assert len(timestamps) == 1
+        assert timestamps == [2.0]  # Only user's timestamp
 
 
 if __name__ == "__main__":

@@ -198,15 +198,12 @@ class TestTranscodeVideoRq:
         mock_video_large: MagicMock,
     ) -> None:
         """Test successful transcoding updates video record and returns completed status."""
-        import tempfile
-
         mock_get_video.return_value = mock_video_large
         # get_local_file_path returns a single Path, not a tuple
         mock_get_path.return_value = Path("/local/path/video.mp4")
 
-        # Mock temp file creation
-        temp_fd, temp_path = tempfile.mkstemp(suffix=".mp4")
-        mock_mkstemp.return_value = (temp_fd, temp_path)
+        # Mock temp file creation with hardcoded values (no need for real temp file)
+        mock_mkstemp.return_value = (999, "/tmp/test_output.mp4")
 
         # Mock ffmpeg success
         mock_subprocess_result = MagicMock()
@@ -242,6 +239,9 @@ class TestTranscodeVideoRq:
         transcoded_content = b"transcoded video content"
         mock_replace_file.return_value = new_storage_path
 
+        # Save original file size before the function mutates it
+        original_file_size = mock_video_large.file_size
+
         # Mock file reading
         with patch("builtins.open", create=True) as mock_open:
             mock_file = MagicMock()
@@ -252,7 +252,7 @@ class TestTranscodeVideoRq:
             result = transcode_video_rq(video_id=1, video_path="/test/path/video.mp4")
 
         assert result["status"] == "completed"
-        assert result["original_file_size"] == mock_video_large.file_size
+        assert result["original_file_size"] == original_file_size
         assert result["new_file_size"] == len(transcoded_content)
         assert "size_reduction_percent" in result
         assert result["new_width"] == 1280
@@ -263,7 +263,7 @@ class TestTranscodeVideoRq:
         assert mock_video_large.file_path == new_storage_path
         assert mock_video_large.file_size == len(transcoded_content)
         assert mock_video_large.is_transcoded is True
-        assert mock_video_large.original_file_size == mock_video_large.file_size
+        assert mock_video_large.original_file_size == original_file_size
         mock_db_session.commit.assert_called()
 
     @patch("app.services.rq_tasks.video_service.get_video_by_id")
@@ -280,13 +280,11 @@ class TestTranscodeVideoRq:
         mock_video_large: MagicMock,
     ) -> None:
         """Test that transcode raises RuntimeError when ffmpeg fails."""
-        import tempfile
-
         mock_get_video.return_value = mock_video_large
         mock_get_path.return_value = Path("/local/path/video.mp4")
 
-        temp_fd, temp_path = tempfile.mkstemp(suffix=".mp4")
-        mock_mkstemp.return_value = (temp_fd, temp_path)
+        # Mock temp file creation with hardcoded values (no need for real temp file)
+        mock_mkstemp.return_value = (999, "/tmp/test_output.mp4")
 
         # Mock ffmpeg failure
         mock_subprocess_result = MagicMock()
