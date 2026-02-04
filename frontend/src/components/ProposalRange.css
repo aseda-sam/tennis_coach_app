@@ -33,6 +33,16 @@
   background-color: rgba(251, 191, 36, 0.2);
 }
 
+/* Low confidence proposals - red tint to indicate potential removal */
+.proposal-range.low-confidence .proposal-range__band {
+  background-color: rgba(239, 68, 68, 0.15); /* red-500 with low opacity */
+}
+
+.proposal-range.low-confidence.selected .proposal-range__band {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4);
+  background-color: rgba(239, 68, 68, 0.25);
+}
+
 .proposal-range__start-marker,
 .proposal-range__end-marker {
   position: absolute;

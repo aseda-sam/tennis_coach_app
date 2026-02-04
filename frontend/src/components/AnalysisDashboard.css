@@ -134,6 +134,63 @@
   color: var(--color-error, #dc2626);
 }
 
+/* Proposal actions container */
+.analysis-dashboard__proposal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Secondary action row - tighter spacing */
+.analysis-dashboard__action-row--secondary {
+  gap: 8px;
+}
+
+/* Accept All button - prominent green, full width */
+.analysis-dashboard__action-btn--accept-all {
+  width: 100%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  font-weight: var(--font-weight-semibold);
+  padding: 12px 16px;
+}
+
+.analysis-dashboard__action-btn--accept-all:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
+/* Remove low confidence button - red/destructive */
+.analysis-dashboard__action-btn--remove-low {
+  flex: 1;
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.analysis-dashboard__action-btn--remove-low:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+/* Clear all button - subtle gray */
+.analysis-dashboard__action-btn--clear-all {
+  flex: 1;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.analysis-dashboard__action-btn--clear-all:hover:not(:disabled) {
+  background: var(--color-surface-secondary);
+  border-color: var(--color-border-dark);
+  color: var(--color-text);
+}
+
 .analysis-dashboard__toast {
   padding: 8px 12px;
   background: rgba(17, 24, 39, 0.9);

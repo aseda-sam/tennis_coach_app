@@ -35,6 +35,12 @@ interface UseServeProposalsResult {
     proposalId: number,
     request: EditProposalRequest
   ) => Promise<void>;
+  // Bulk operations
+  acceptAllProposals: () => Promise<{ accepted: number; failed: number }>;
+  rejectLowConfidence: (
+    threshold?: number
+  ) => Promise<{ rejected: number; failed: number }>;
+  lowConfidenceCount: number;
 }
 
 export const useServeProposals = ({
@@ -271,6 +277,70 @@ export const useServeProposals = ({
     [editMutation]
   );
 
+  // Count proposals below confidence threshold (default 60%)
+  const LOW_CONFIDENCE_THRESHOLD = 0.6;
+  const proposals = proposalsQuery.data || [];
+  const lowConfidenceCount = proposals.filter(
+    (p) => p.confidence < LOW_CONFIDENCE_THRESHOLD
+  ).length;
+
+  // Accept all proposals
+  const acceptAllProposals = useCallback(async (): Promise<{
+    accepted: number;
+    failed: number;
+  }> => {
+    const currentProposals = proposalsQuery.data || [];
+    let accepted = 0;
+    let failed = 0;
+
+    for (const proposal of currentProposals) {
+      try {
+        await serveProposalApi.accept(proposal.id);
+        accepted++;
+      } catch {
+        failed++;
+      }
+    }
+
+    // Invalidate queries to refresh
+    queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
+    queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
+    queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
+
+    return { accepted, failed };
+  }, [proposalsQuery.data, queryClient]);
+
+  // Reject proposals below confidence threshold
+  const rejectLowConfidence = useCallback(
+    async (
+      threshold: number = LOW_CONFIDENCE_THRESHOLD
+    ): Promise<{ rejected: number; failed: number }> => {
+      const currentProposals = proposalsQuery.data || [];
+      const lowConfidenceProposals = currentProposals.filter(
+        (p) => p.confidence < threshold
+      );
+
+      let rejected = 0;
+      let failed = 0;
+
+      for (const proposal of lowConfidenceProposals) {
+        try {
+          await serveProposalApi.reject(proposal.id);
+          rejected++;
+        } catch {
+          failed++;
+        }
+      }
+
+      // Invalidate queries to refresh
+      queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
+
+      return { rejected, failed };
+    },
+    [proposalsQuery.data, queryClient]
+  );
+
   // Extract loading state
   const loading = proposalsQuery.isLoading;
 
@@ -291,7 +361,7 @@ export const useServeProposals = ({
     : null;
 
   return {
-    proposals: proposalsQuery.data || [],
+    proposals,
     loading,
     error,
     detectionStatus: statusQuery.data || null,
@@ -302,5 +372,8 @@ export const useServeProposals = ({
     acceptProposal,
     rejectProposal,
     editProposal,
+    acceptAllProposals,
+    rejectLowConfidence,
+    lowConfidenceCount,
   };
 };

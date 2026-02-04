@@ -30,8 +30,17 @@ const ProposalRange: React.FC<ProposalRangeProps> = ({
   const endPercent = (proposal.end_timestamp / duration) * 100;
   const width = endPercent - startPercent;
 
-  // Confidence-based color (higher = more orange/yellow)
-  const confidenceColor = proposal.confidence > 0.7 ? '#f59e0b' : '#fbbf24'; // orange-500 or amber-400
+  // Confidence-based color
+  // >= 70%: orange (high confidence)
+  // 60-70%: amber (medium confidence)
+  // < 60%: red/muted (low confidence - candidates for removal)
+  const LOW_CONFIDENCE_THRESHOLD = 0.6;
+  const isLowConfidence = proposal.confidence < LOW_CONFIDENCE_THRESHOLD;
+  const confidenceColor = isLowConfidence
+    ? '#ef4444' // red-500 for low confidence
+    : proposal.confidence > 0.7
+      ? '#f59e0b' // orange-500 for high confidence
+      : '#fbbf24'; // amber-400 for medium confidence
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -79,13 +88,13 @@ const ProposalRange: React.FC<ProposalRangeProps> = ({
 
   return (
     <div
-      className={`proposal-range ${isSelected ? 'selected' : ''} ${showActions ? 'actions-visible' : ''}`}
+      className={`proposal-range ${isSelected ? 'selected' : ''} ${showActions ? 'actions-visible' : ''} ${isLowConfidence ? 'low-confidence' : ''}`}
       style={{
         left: `${startPercent}%`,
         width: `${width}%`,
       }}
       onClick={handleClick}
-      title={`Proposal: ${proposal.start_timestamp.toFixed(2)}s - ${proposal.end_timestamp.toFixed(2)}s (${Math.round(proposal.confidence * 100)}% confidence)`}
+      title={`Proposal: ${proposal.start_timestamp.toFixed(2)}s - ${proposal.end_timestamp.toFixed(2)}s (${Math.round(proposal.confidence * 100)}% confidence)${isLowConfidence ? ' - Low confidence' : ''}`}
     >
       {/* Range band - dashed, semi-transparent */}
       <div
@@ -97,19 +106,31 @@ const ProposalRange: React.FC<ProposalRangeProps> = ({
       />
 
       {/* Start marker */}
-      <div className="proposal-range__start-marker" style={{ borderColor: confidenceColor }} />
+      <div
+        className="proposal-range__start-marker"
+        style={{ borderColor: confidenceColor }}
+      />
 
       {/* End marker */}
-      <div className="proposal-range__end-marker" style={{ borderColor: confidenceColor }} />
+      <div
+        className="proposal-range__end-marker"
+        style={{ borderColor: confidenceColor }}
+      />
 
       {/* Confidence badge */}
-      <div className="proposal-range__confidence-badge" style={{ backgroundColor: confidenceColor }}>
+      <div
+        className="proposal-range__confidence-badge"
+        style={{ backgroundColor: confidenceColor }}
+      >
         {Math.round(proposal.confidence * 100)}%
       </div>
 
       {/* Actions menu - shown when clicked */}
       {showActions && (
-        <div className="proposal-range__actions" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="proposal-range__actions"
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             className="proposal-range__action-btn proposal-range__action-btn--accept"
             onClick={handleAccept}
@@ -143,14 +164,28 @@ const ProposalRange: React.FC<ProposalRangeProps> = ({
               <span>{Math.round(proposal.confidence * 100)}%</span>
             </div>
             <div className="tooltip-details">
-              <div>{proposal.start_timestamp.toFixed(2)}s - {proposal.end_timestamp.toFixed(2)}s</div>
+              <div>
+                {proposal.start_timestamp.toFixed(2)}s -{' '}
+                {proposal.end_timestamp.toFixed(2)}s
+              </div>
               {proposal.detection_features && (
                 <>
-                  {proposal.detection_features.peak_wrist_height !== undefined && (
-                    <div>Peak Height: {proposal.detection_features.peak_wrist_height.toFixed(2)}</div>
+                  {proposal.detection_features.peak_wrist_height !==
+                    undefined && (
+                    <div>
+                      Peak Height:{' '}
+                      {proposal.detection_features.peak_wrist_height.toFixed(2)}
+                    </div>
                   )}
-                  {proposal.detection_features.peak_wrist_velocity !== undefined && (
-                    <div>Peak Velocity: {Math.round(proposal.detection_features.peak_wrist_velocity)} px/s</div>
+                  {proposal.detection_features.peak_wrist_velocity !==
+                    undefined && (
+                    <div>
+                      Peak Velocity:{' '}
+                      {Math.round(
+                        proposal.detection_features.peak_wrist_velocity
+                      )}{' '}
+                      px/s
+                    </div>
                   )}
                 </>
               )}
