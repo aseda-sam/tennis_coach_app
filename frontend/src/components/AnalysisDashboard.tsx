@@ -70,7 +70,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     ((serveAttemptId: number) => void) | null
   >(null);
   const [isAnalyzingServes, setIsAnalyzingServes] = useState(false);
-  const [naturalScroll, setNaturalScroll] = useState(false);
+  const [naturalScroll, setNaturalScroll] = useState(true);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [isFindingServes, setIsFindingServes] = useState(false);
   const [findServesMessage, setFindServesMessage] = useState<string | null>(

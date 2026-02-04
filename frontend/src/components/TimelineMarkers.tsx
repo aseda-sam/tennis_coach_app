@@ -15,6 +15,8 @@ interface TimelineMarkersProps {
   density?: 'default' | 'compact';
   showHeader?: boolean;
   showActions?: boolean;
+  /** When true, the slider maps to the serve window (startTime to endTime) instead of the entire video */
+  zoomToWindow?: boolean;
 }
 
 type MarkerType = 'start' | 'end' | 'contact' | null;
@@ -32,27 +34,52 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
   density = 'default',
   showHeader = true,
   showActions = true,
+  zoomToWindow = false,
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<MarkerType>(null);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
 
+  // When zoomed to window, calculate relative to the window range
+  const windowDuration = endTime - startTime;
+
   // Calculate percentages for positioning
-  const startPercent = (startTime / videoDuration) * 100;
-  const endPercent = (endTime / videoDuration) * 100;
-  const contactPercent = contactTime !== null ? (contactTime / videoDuration) * 100 : null;
-  const currentPercent = (currentTime / videoDuration) * 100;
+  // When zoomed to window: start is at 0%, end is at 100%
+  // When not zoomed: percentages relative to video duration
+  const startPercent = zoomToWindow ? 0 : (startTime / videoDuration) * 100;
+  const endPercent = zoomToWindow ? 100 : (endTime / videoDuration) * 100;
+  const contactPercent =
+    contactTime !== null
+      ? zoomToWindow
+        ? ((contactTime - startTime) / windowDuration) * 100
+        : (contactTime / videoDuration) * 100
+      : null;
+  // Clamp currentPercent when zoomed to window so it stays within bounds
+  const currentPercentRaw = zoomToWindow
+    ? ((currentTime - startTime) / windowDuration) * 100
+    : (currentTime / videoDuration) * 100;
+  const currentPercent = zoomToWindow
+    ? Math.max(0, Math.min(100, currentPercentRaw))
+    : currentPercentRaw;
 
   // Get time from mouse position
+  // When zoomed to window, map to the window range; otherwise map to video duration
   const getTimeFromPosition = useCallback(
     (clientX: number): number => {
-      if (!timelineRef.current) return 0;
+      if (!timelineRef.current) return zoomToWindow ? startTime : 0;
       const rect = timelineRef.current.getBoundingClientRect();
       const x = clientX - rect.left;
       const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
-      return (percent / 100) * videoDuration;
+
+      if (zoomToWindow) {
+        // Map to window range: 0% = startTime, 100% = endTime
+        return startTime + (percent / 100) * windowDuration;
+      } else {
+        // Map to video duration: 0% = 0, 100% = videoDuration
+        return (percent / 100) * videoDuration;
+      }
     },
-    [videoDuration]
+    [zoomToWindow, startTime, windowDuration, videoDuration]
   );
 
   // Handle mouse down on marker
@@ -73,11 +100,23 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
       const time = getTimeFromPosition(e.clientX);
 
       if (dragging === 'start') {
-        const clampedTime = Math.max(0, Math.min(time, endTime - 0.1));
+        // When zoomed to window, allow slight expansion beyond current window
+        // but still respect video bounds
+        const minTime = zoomToWindow
+          ? Math.max(0, startTime - windowDuration * 0.5)
+          : 0;
+        const maxTime = endTime - 0.1;
+        const clampedTime = Math.max(minTime, Math.min(time, maxTime));
         onStartChange(clampedTime);
         if (onSeek) onSeek(clampedTime);
       } else if (dragging === 'end') {
-        const clampedTime = Math.max(startTime + 0.1, Math.min(time, videoDuration));
+        // When zoomed to window, allow slight expansion beyond current window
+        // but still respect video bounds
+        const minTime = startTime + 0.1;
+        const maxTime = zoomToWindow
+          ? Math.min(videoDuration, endTime + windowDuration * 0.5)
+          : videoDuration;
+        const clampedTime = Math.max(minTime, Math.min(time, maxTime));
         onEndChange(clampedTime);
         if (onSeek) onSeek(clampedTime);
       } else if (dragging === 'contact' && onContactChange) {
@@ -98,24 +137,37 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragging, getTimeFromPosition, startTime, endTime, videoDuration, onStartChange, onEndChange, onContactChange, onSeek]);
+  }, [
+    dragging,
+    getTimeFromPosition,
+    startTime,
+    endTime,
+    videoDuration,
+    windowDuration,
+    zoomToWindow,
+    onStartChange,
+    onEndChange,
+    onContactChange,
+    onSeek,
+  ]);
 
   // Handle timeline click
   const handleTimelineClick = useCallback(
     (e: React.MouseEvent) => {
       if (dragging) return; // Don't handle clicks while dragging
       const time = getTimeFromPosition(e.clientX);
-      
+
       // Determine which marker to set based on click position
       const distToStart = Math.abs(time - startTime);
       const distToEnd = Math.abs(time - endTime);
-      const distToContact = contactTime !== null ? Math.abs(time - contactTime) : Infinity;
-      
+      const distToContact =
+        contactTime !== null ? Math.abs(time - contactTime) : Infinity;
+
       // If clicking near a marker, don't do anything (let drag handle it)
       if (distToStart < 0.5 || distToEnd < 0.5 || distToContact < 0.5) {
         return;
       }
-      
+
       // If clicking before start, set start
       if (time < startTime) {
         onStartChange(Math.max(0, time));
@@ -140,14 +192,28 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
             onStartChange(clampedTime);
             if (onSeek) onSeek(clampedTime);
           } else {
-            const clampedTime = Math.max(startTime + 0.1, Math.min(time, videoDuration));
+            const clampedTime = Math.max(
+              startTime + 0.1,
+              Math.min(time, videoDuration)
+            );
             onEndChange(clampedTime);
             if (onSeek) onSeek(clampedTime);
           }
         }
       }
     },
-    [dragging, getTimeFromPosition, startTime, endTime, contactTime, videoDuration, onStartChange, onEndChange, onContactChange, onSeek]
+    [
+      dragging,
+      getTimeFromPosition,
+      startTime,
+      endTime,
+      contactTime,
+      videoDuration,
+      onStartChange,
+      onEndChange,
+      onContactChange,
+      onSeek,
+    ]
   );
 
   // Handle timeline hover
@@ -165,6 +231,14 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
       setHoverTime(null);
     }
   }, [dragging]);
+
+  // Calculate hover indicator position
+  const hoverPercent =
+    hoverTime !== null
+      ? zoomToWindow
+        ? ((hoverTime - startTime) / windowDuration) * 100
+        : (hoverTime / videoDuration) * 100
+      : null;
 
   return (
     <div
@@ -217,12 +291,12 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
         />
 
         {/* Hover indicator */}
-        {hoverTime !== null && !dragging && (
+        {hoverPercent !== null && !dragging && (
           <div
             className="timeline-hover-indicator"
-            style={{ left: `${(hoverTime / videoDuration) * 100}%` }}
+            style={{ left: `${hoverPercent}%` }}
           >
-            <div className="timeline-hover-time">{formatTime(hoverTime)}</div>
+            <div className="timeline-hover-time">{formatTime(hoverTime!)}</div>
           </div>
         )}
 
@@ -260,7 +334,6 @@ const TimelineMarkers: React.FC<TimelineMarkersProps> = ({
             <div className="timeline-marker-label">CONTACT</div>
           </div>
         )}
-
       </div>
 
       {showActions && (
