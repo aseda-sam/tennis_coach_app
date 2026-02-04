@@ -77,7 +77,10 @@ export const serveProposalApi = {
   },
 
   // Run detection and generate proposals
-  propose: async (videoId: number, force: boolean = false): Promise<ProposeResponse> => {
+  propose: async (
+    videoId: number,
+    force: boolean = false
+  ): Promise<ProposeResponse> => {
     const response = await api.post<ProposeResponse>(
       `/videos/${videoId}/serve-detection/propose`,
       null,
