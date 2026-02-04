@@ -90,18 +90,24 @@ class Settings(BaseSettings):
         "https://aseda-sam.github.io",
     ]
 
+    # Admin access (comma-separated Supabase auth user UUIDs)
+    # In PROFILE=local, the auth dependency returns the mock user id below, so local dev
+    # can access admin-only endpoints by default.
+    ADMIN_USER_IDS: str = "00000000-0000-0000-0000-000000000000"
+
     # Demo (for demo videos)
     DEMO_USER_ID: str = "00000000-0000-0000-0000-000000000001"
-    DEMO_EDITOR_USER_IDS: list[str] = [
-        "00000000-0000-0000-0000-000000000000",  # Local dev mock
-        "ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f",  # Production demo editor
-    ]
 
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
         extra="forbid",
     )
+
+    @property
+    def admin_user_ids(self) -> list[str]:
+        """Admin allowlist parsed from ADMIN_USER_IDS env var."""
+        return [uid.strip() for uid in self.ADMIN_USER_IDS.split(",") if uid.strip()]
 
     @property
     def database_url(self) -> str:

@@ -22,24 +22,10 @@ def is_admin(user: dict) -> bool:
     Returns:
         True if user is admin, False otherwise
     """
-    # Check user_metadata for admin flag
-    # For now, no specific admin emails - can be added later
-    # Example: return user.get("email") == "admin@example.com"
-    return user.get("user_metadata", {}).get("is_admin", False)
-
-
-def is_demo_editor(user: dict) -> bool:
-    """Check if user can manage demo content.
-
-    Uses allowlist-based authorization only (DEMO_EDITOR_USER_IDS).
-
-    Args:
-        user: User dict with id, email, user_metadata, etc.
-
-    Returns:
-        True if user can manage demo content, False otherwise
-    """
-    return user.get("id") in settings.DEMO_EDITOR_USER_IDS
+    user_id = user.get("id")
+    if not user_id:
+        return False
+    return user_id in settings.admin_user_ids
 
 
 def can_access_video(video: "Video", user: dict) -> bool:
@@ -246,12 +232,12 @@ def require_video_not_demo(video: "Video", user: Optional[dict] = None) -> None:
 
     Args:
         video: Video model instance
-        user: User dict to allow demo editor bypass
+        user: User dict to allow admin bypass
 
     Raises:
         HTTPException: 403 if video is a demo
     """
-    if video.is_demo and (user is None or not is_demo_editor(user)):
+    if video.is_demo and (user is None or not is_admin(user)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot modify demo video. Changes are not saved.",

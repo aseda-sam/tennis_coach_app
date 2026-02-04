@@ -12,14 +12,14 @@ import { QuickSetup } from './components/QuickSetup';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
 import { useAuth } from './hooks/useAuth';
-import { useDemoEditor } from './hooks/useDemoEditor';
+import { useAdmin } from './hooks/useAdmin';
 import { videoApi } from './services/api';
 import { VideoMetadata } from './types/video';
 
 function App() {
   const profile = process.env.REACT_APP_PROFILE || 'local';
   const { user, loading, signOut } = useAuth();
-  const { isDemoEditor } = useDemoEditor();
+  const { isAdmin } = useAdmin();
   const queryClient = useQueryClient();
   const [currentView, setCurrentView] = useState<
     'list' | 'dashboard' | 'demo-landing' | 'demo-dashboard' | 'admin-demo'
@@ -246,7 +246,7 @@ function App() {
               >
                 Demo
               </button>
-              {isDemoEditor && (
+              {isAdmin && (
                 <button
                   type="button"
                   role="tab"
@@ -299,11 +299,11 @@ function App() {
         );
 
       case 'admin-demo':
-        if (!isDemoEditor) {
+        if (!isAdmin) {
           return (
             <div className="app-container">
               <div className="error-message">
-                <p>Access denied. Demo editor privileges required.</p>
+                <p>Access denied. Admin privileges required.</p>
                 <button onClick={() => setCurrentView('demo-landing')}>
                   Go Home
                 </button>

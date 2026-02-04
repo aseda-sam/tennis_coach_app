@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDemoEditor } from '../hooks/useDemoEditor';
+import { useAdmin } from '../hooks/useAdmin';
 import { useServeAttempts } from '../hooks/useServeAttempts';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { videoApi } from '../services/api';
@@ -22,8 +22,8 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   onClose,
   onExitToUpload,
 }) => {
-  const { isDemoEditor } = useDemoEditor();
-  const isDemoReadOnly = !isDemoEditor;
+  const { isAdmin } = useAdmin();
+  const isDemoReadOnly = !isAdmin;
   const queryClient = useQueryClient();
 
   // Fetch demo video
@@ -52,7 +52,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   const hasPoseAnalysis = analysisStatus?.has_analysis || false;
   const hasServeAttempts = serveAttempts.length > 0;
   const showStatusWarning =
-    isDemoEditor && (!hasPoseAnalysis || !hasServeAttempts);
+    isAdmin && (!hasPoseAnalysis || !hasServeAttempts);
 
   const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
     ((serveAttemptId: number) => void) | null
@@ -183,7 +183,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
     }
   }, [demoVideo?.id, serveAttempts, queryClient]);
 
-  // Demo mode is read-only for non-admin/demo editor users.
+  // Demo mode is read-only for non-admin users.
 
   if (isLoadingDemo) {
     return (
@@ -276,7 +276,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
           </div>
 
           {/* Admin-only: Serve Analysis Button */}
-          {isDemoEditor &&
+          {isAdmin &&
             analysisStatus?.has_analysis &&
             serveAttempts.length > 0 && (
               <div className="demo-dashboard__actions">

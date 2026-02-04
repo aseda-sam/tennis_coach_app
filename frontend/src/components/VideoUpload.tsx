@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useAppConfig } from '../hooks/useAppConfig';
-import { useDemoEditor } from '../hooks/useDemoEditor';
+import { useAdmin } from '../hooks/useAdmin';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import { UploadIcon } from './Icons';
@@ -41,7 +41,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
   const [cameraAngle, setCameraAngle] = useState<string>('');
   const [isUpdatingMetadata, setIsUpdatingMetadata] = useState(false);
   const { config } = useAppConfig();
-  const { isDemoEditor: canUploadDemo } = useDemoEditor();
+  const { isAdmin: canUploadDemo } = useAdmin();
   const resolvedIsDemo = forceDemo ? true : isDemo;
   const maxSizeBytes = config.upload_limits.max_file_size_bytes;
   const maxSizeLabel = formatFileSizeMb(maxSizeBytes);

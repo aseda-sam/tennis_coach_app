@@ -259,24 +259,22 @@ export const videoApi = {
     }
   },
 
-  // Check if user is demo editor
-  checkDemoEditorStatus: async (): Promise<{ is_demo_editor: boolean }> => {
-    const response = await api.get<{ is_demo_editor: boolean }>(
-      '/videos/admin/demo-editor-status'
-    );
+  // Check if user is admin
+  checkAdminStatus: async (): Promise<{ is_admin: boolean }> => {
+    const response = await api.get<{ is_admin: boolean }>('/admin/status');
     return response.data;
   },
 
   // List all demo videos (admin only)
   listDemoVideos: async (): Promise<DemoVideoListItem[]> => {
-    const response = await api.get('/videos/admin/demos');
+    const response = await api.get('/admin/demos');
     return response.data;
   },
 
   // Set active demo (admin only)
   setActiveDemo: async (videoId: number): Promise<VideoMetadata> => {
     const response = await api.post<VideoMetadata>(
-      `/videos/admin/demos/${videoId}/set-active`
+      `/admin/demos/${videoId}/set-active`
     );
     return response.data;
   },
@@ -287,7 +285,7 @@ export const videoApi = {
     confidenceThreshold: number = 0.7
   ): Promise<AnalysisStartResponse> => {
     const response = await api.post<AnalysisStartResponse>(
-      `/videos/admin/demos/${videoId}/analyze-pose?confidence_threshold=${confidenceThreshold}`
+      `/admin/demos/${videoId}/analyze-pose?confidence_threshold=${confidenceThreshold}`
     );
     return response.data;
   },

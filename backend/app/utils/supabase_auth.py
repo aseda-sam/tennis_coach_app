@@ -127,3 +127,55 @@ def verify_supabase_token(token: str) -> Optional[dict]:
             exc_info=True,
         )
         return None
+
+
+def get_user_by_id(user_id: str) -> Optional[dict]:
+    """Fetch user by ID using Supabase admin API.
+
+    Args:
+        user_id: Supabase auth user UUID
+
+    Returns:
+        User dict with id and email if user exists, None otherwise
+
+    Raises:
+        ValueError: If Supabase configuration is invalid
+    """
+    # Skip validation in local profile (no Supabase available)
+    if settings.PROFILE == "local":
+        # Basic UUID format check
+        import re
+        uuid_pattern = re.compile(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            re.IGNORECASE,
+        )
+        if not uuid_pattern.match(user_id):
+            logger.warning("Invalid UUID format in local profile: %s", user_id)
+            return None
+        # In local, assume valid UUIDs are acceptable
+        return {"id": user_id, "email": None}
+
+    try:
+        client = get_supabase_client()
+        # Use admin API to get user by ID
+        response = client.auth.admin.get_user_by_id(user_id)
+
+        if response and hasattr(response, "user") and response.user:
+            return {
+                "id": response.user.id,
+                "email": response.user.email,
+            }
+        return None
+    except ValueError as e:
+        # Configuration errors - re-raise
+        logger.error("Supabase configuration error in get_user_by_id: %s", e, exc_info=True)
+        raise
+    except Exception as e:  # noqa: BLE001 - Catch all for admin API calls
+        error_type = type(e).__name__
+        logger.warning(
+            "Error fetching user by ID from Supabase: %s: %s",
+            error_type,
+            e,
+            exc_info=True,
+        )
+        return None

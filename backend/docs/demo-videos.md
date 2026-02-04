@@ -15,17 +15,17 @@ If you use demo videos (public bucket), keep the workflow boring:
 SUPABASE_DEMO_BUCKET=demo-videos
 ```
 
-- Configure demo editor user IDs in backend config:
+- Configure admin user IDs in backend config (comma-separated):
 
 ```bash
-DEMO_EDITOR_USER_IDS=ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f,...
+ADMIN_USER_IDS=00000000-0000-0000-0000-000000000000,...
 ```
 
 ## Admin UI (Recommended)
 
-Demo editors can manage demo videos through the web UI:
+Admins can manage demo videos through the web UI:
 
-1. **Access Admin Panel**: Navigate to the "Admin" tab (visible only to demo editors)
+1. **Access Admin Panel**: Navigate to the "Admin" tab (visible only to admins)
 2. **Upload Demo Video**: Click "Upload Demo Video" and check "Upload as demo video"
 3. **Set Active Demo**: Click "Set as Active" on any demo video
 4. **Run Pose Analysis**: Click "Run Pose Analysis" to start pose detection
@@ -63,10 +63,13 @@ python backend/scripts/analyze_demo_pose.py  # Analyzes active demo
 
 ## Authorization
 
-Demo editor access is controlled by the `DEMO_EDITOR_USER_IDS` allowlist in backend config. Only users in this list can:
+Admin access is controlled by the `ADMIN_USER_IDS` environment variable (comma-separated Supabase auth user UUIDs). Only users in this list can:
 
 - Upload demo videos
+- Upload videos on behalf of other users
 - Set active demo
 - Trigger pose analysis for demo videos
 - Create/edit serve attempts for demo videos
-- Access the admin UI. The admin UI automatically checks demo editor status and only shows the "Admin" tab to authorized users.
+- Access the admin UI. The admin UI automatically checks admin status and only shows the "Admin" tab to authorized users.
+
+Set `ADMIN_USER_IDS` via environment variables (e.g., Fly.io secrets in production).

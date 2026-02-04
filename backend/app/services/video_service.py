@@ -1,4 +1,5 @@
 import logging
+import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
@@ -8,7 +9,16 @@ import cv2
 import numpy as np
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.video import Video
+from app.services.storage_service import storage_service
+from app.utils.error_handling import handle_file_error
+from app.utils.file_validation import (
+    ensure_unique_filename,
+    get_safe_filename,
+    validate_video_file,
+)
+from app.utils.video_utils import get_video_rotation
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +80,159 @@ def create_video_record(
     db.commit()
     db.refresh(db_video)
     return db_video
+
+
+def _create_temp_file_for_processing(file_content: bytes, filename: str) -> Path:
+    """Create a temporary file for video processing (metadata extraction)."""
+    with tempfile.NamedTemporaryFile(
+        delete=False, suffix=Path(filename).suffix
+    ) as tmp_file:
+        tmp_file.write(file_content)
+        tmp_path = Path(tmp_file.name)
+    return tmp_path
+
+
+def extract_video_metadata(video_path: Path) -> dict[str, Optional[float | int]]:
+    """Extract metadata from video file using OpenCV."""
+    try:
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            return {
+                "duration": None,
+                "fps": None,
+                "width": None,
+                "height": None,
+                "frame_count": None,
+            }
+
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        raw_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        raw_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        cap.release()
+
+        rotation = get_video_rotation(video_path)
+
+        if rotation in (90, 270, -90, -270):
+            width, height = raw_height, raw_width
+        else:
+            width, height = raw_width, raw_height
+
+        duration = frame_count / fps if fps > 0 else None
+
+        return {
+            "duration": duration,
+            "fps": fps,
+            "width": width,
+            "height": height,
+            "frame_count": frame_count,
+        }
+    except (cv2.error, OSError, ValueError):
+        return {
+            "duration": None,
+            "fps": None,
+            "width": None,
+            "height": None,
+            "frame_count": None,
+        }
+
+
+def _ensure_unique_db_filename(db: Session, filename: str) -> str:
+    """Ensure filename is unique in the database."""
+    base_name = Path(filename).stem
+    extension = Path(filename).suffix
+    candidate = filename
+    counter = 0
+
+    while get_video_by_filename(db, candidate) is not None:
+        counter += 1
+        candidate = f"{base_name}_{counter}{extension}"
+
+    return candidate
+
+
+def handle_video_upload(
+    *,
+    db: Session,
+    file_content: bytes,
+    filename: str,
+    file_size: int,
+    content_type: Optional[str],
+    is_demo: bool,
+    user_id: str,
+    session_type: Optional[str],
+    camera_angle: Optional[str],
+    recorded_at: Optional[datetime],
+) -> tuple[Video, dict[str, Optional[float | int]]]:
+    """Handle common upload flow and create video record."""
+    if not filename:
+        raise handle_file_error("invalid", "", "No file provided")
+
+    validate_video_file(filename, file_size, content_type)
+
+    safe_filename = get_safe_filename(filename)
+    path_prefix = "demo/" if is_demo else "raw/"
+
+    if settings.STORAGE_TYPE == "local":
+        base_upload_dir = Path(settings.UPLOAD_DIR).parent
+        upload_dir = base_upload_dir / path_prefix.rstrip("/")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        unique_filename = ensure_unique_filename(safe_filename, upload_dir)
+        storage_file_path = str(Path(path_prefix.rstrip("/")) / unique_filename)
+    else:
+        unique_filename = _ensure_unique_db_filename(db, safe_filename)
+        storage_file_path = f"{path_prefix}{unique_filename}"
+
+    tmp_path = _create_temp_file_for_processing(file_content, unique_filename)
+    try:
+        metadata = extract_video_metadata(tmp_path)
+    finally:
+        tmp_path.unlink()
+
+    validate_video_file(filename, file_size, content_type, metadata)
+
+    try:
+        if (
+            is_demo
+            and settings.STORAGE_TYPE == "supabase"
+            and settings.SUPABASE_DEMO_BUCKET
+        ):
+            storage_path = storage_service.upload_demo_object(
+                file_path=storage_file_path,
+                file_content=file_content,
+                content_type=content_type,
+            )
+        else:
+            storage_path = storage_service.upload_file(
+                file_content=file_content,
+                file_path=storage_file_path,
+                content_type=content_type,
+            )
+        actual_filename = Path(storage_path).name
+        unique_filename = actual_filename
+    except (ValueError, RuntimeError, OSError) as e:
+        raise handle_file_error("upload_failed", unique_filename, str(e)) from e
+
+    db_video = create_video_record(
+        db=db,
+        filename=unique_filename,
+        file_path=storage_path,
+        file_size=file_size,
+        user_id=user_id,
+        content_type=content_type,
+        duration=metadata["duration"],
+        fps=metadata["fps"],
+        width=metadata["width"],
+        height=metadata["height"],
+        frame_count=metadata["frame_count"],
+        is_demo=is_demo,
+        session_type=session_type,
+        camera_angle=camera_angle,
+        recorded_at=recorded_at,
+    )
+
+    return db_video, metadata
 
 
 def get_video_by_id(db: Session, video_id: int) -> Optional[Video]:
