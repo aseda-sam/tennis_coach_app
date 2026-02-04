@@ -17,6 +17,7 @@ from rq import Retry
 from rq.job import Job
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.redis_config import analysis_queue
 from app.models.video_job import VideoJob
@@ -96,7 +97,7 @@ def enqueue_pose_analysis(
             confidence_threshold=confidence_threshold,
             video_job_id=video_job_id,  # Pass VideoJob ID for status updates
             retry=Retry(max=2, interval=60),
-            job_timeout=900,  # 15 minutes (increased from 5 min to handle longer videos)
+            job_timeout=settings.POSE_DETECTION_JOB_TIMEOUT_SECONDS,
             result_ttl=3600,  # Keep results for 1 hour
         )
 

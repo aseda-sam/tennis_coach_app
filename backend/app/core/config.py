@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     MAX_VIDEO_RESOLUTION: tuple[int, int] = (3840, 2160)  # 4K
     MAX_FPS: int = 60
     FPS_TOLERANCE: float = 0.5
+    POSE_DETECTION_JOB_TIMEOUT_SECONDS: int = 1800
 
     # Upload limits (primarily for production)
     # Note: enforced only when PROFILE != "local" and user is not admin.
