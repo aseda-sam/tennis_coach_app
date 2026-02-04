@@ -194,7 +194,7 @@ class TestPoseDetectionService:
 
         # Mock frames (10 frames total)
         frames = []
-        for i in range(10):
+        for _i in range(10):
             frame = np.zeros((100, 100, 3), dtype=np.uint8)
             frames.append((True, frame))
         frames.append((False, None))  # End of video

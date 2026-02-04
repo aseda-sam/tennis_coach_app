@@ -50,18 +50,39 @@ async def get_overlay_data(
         require_video_access(video, current_user)
 
         # Get pose detection record
+        # Prefer "full" or "scout" mode for overlay (covers entire video)
+        # "refine" mode only has data for serve windows, not suitable for full overlay
         pose_detection = (
             db.query(PoseDetection)
-            .filter(PoseDetection.video_id == video_id)
+            .filter(
+                PoseDetection.video_id == video_id,
+                PoseDetection.detection_mode.in_(["full", "scout"]),
+            )
             .order_by(PoseDetection.created_at.desc())
             .first()
         )
+
+        # Fallback to any pose detection if no full/scout available
+        if not pose_detection:
+            pose_detection = (
+                db.query(PoseDetection)
+                .filter(PoseDetection.video_id == video_id)
+                .order_by(PoseDetection.created_at.desc())
+                .first()
+            )
 
         if not pose_detection:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No pose detection found for video {video_id}",
             )
+
+        logger.debug(
+            "Using pose detection %s (mode=%s) for overlay on video %s",
+            pose_detection.id,
+            pose_detection.detection_mode,
+            video_id,
+        )
 
         if pose_detection.status != "completed":
             raise HTTPException(

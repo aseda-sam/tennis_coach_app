@@ -194,23 +194,52 @@ def generate_proposals(
             sample_frame = frame_data
             break
 
+    # Detect pose data format: new format has "keypoints" wrapper, old format is direct keypoints dict
+    uses_keypoints_wrapper = False
     if sample_frame:
         if isinstance(sample_frame, dict):
-            logger.info(
-                f"Pose data format: dict with keys: {list(sample_frame.keys())[:10]}..."
-            )
-            # Check if we have the expected keypoint names
-            expected_keys = [
-                "left_wrist",
-                "right_wrist",
-                "left_shoulder",
-                "right_shoulder",
-                "left_hip",
-                "right_hip",
-            ]
-            missing_keys = [k for k in expected_keys if k not in sample_frame]
-            if missing_keys:
-                logger.warning(f"Missing expected keypoints: {missing_keys}")
+            if "keypoints" in sample_frame:
+                # New format: {"frame_index": ..., "timestamp_ms": ..., "keypoints": {...}}
+                uses_keypoints_wrapper = True
+                keypoints_sample = sample_frame.get("keypoints")
+                logger.info(
+                    f"Pose data format: new format with keypoints wrapper, "
+                    f"frame keys: {list(sample_frame.keys())}"
+                )
+                if keypoints_sample and isinstance(keypoints_sample, dict):
+                    logger.info(
+                        f"Keypoint names: {list(keypoints_sample.keys())[:10]}..."
+                    )
+                    expected_keys = [
+                        "left_wrist",
+                        "right_wrist",
+                        "left_shoulder",
+                        "right_shoulder",
+                        "left_hip",
+                        "right_hip",
+                    ]
+                    missing_keys = [
+                        k for k in expected_keys if k not in keypoints_sample
+                    ]
+                    if missing_keys:
+                        logger.warning(f"Missing expected keypoints: {missing_keys}")
+            else:
+                # Old format: direct keypoints dict {"left_shoulder": [x, y], ...}
+                logger.info(
+                    f"Pose data format: old format (direct keypoints), "
+                    f"keys: {list(sample_frame.keys())[:10]}..."
+                )
+                expected_keys = [
+                    "left_wrist",
+                    "right_wrist",
+                    "left_shoulder",
+                    "right_shoulder",
+                    "left_hip",
+                    "right_hip",
+                ]
+                missing_keys = [k for k in expected_keys if k not in sample_frame]
+                if missing_keys:
+                    logger.warning(f"Missing expected keypoints: {missing_keys}")
         else:
             logger.warning(
                 f"Unexpected pose data format: {type(sample_frame)}, expected dict"
@@ -222,8 +251,18 @@ def generate_proposals(
 
     logger.info(f"Video dimensions: {video.width}x{video.height}, FPS: {video.fps}")
 
-    for frame_idx, frame_pose_data in enumerate(raw_pose_data):
-        prev_pose = raw_pose_data[frame_idx - 1] if frame_idx > 0 else None
+    for frame_idx, frame_data in enumerate(raw_pose_data):
+        # Extract keypoints based on detected format
+        if uses_keypoints_wrapper:
+            # New format: extract keypoints from wrapper
+            frame_pose_data = frame_data.get("keypoints") if frame_data else None
+            prev_frame = raw_pose_data[frame_idx - 1] if frame_idx > 0 else None
+            prev_pose = prev_frame.get("keypoints") if prev_frame else None
+        else:
+            # Old format: frame_data is the keypoints dict directly
+            frame_pose_data = frame_data
+            prev_pose = raw_pose_data[frame_idx - 1] if frame_idx > 0 else None
+
         frame_features = extract_frame_features(
             pose_data=frame_pose_data,
             prev_pose=prev_pose,

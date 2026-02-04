@@ -266,6 +266,12 @@ def transcode_video_rq(
                         "Failed to chain scout/refine after transcoding: %s", e
                     )
 
+            # Update transcode VideoJob status to completed
+            if video_job:
+                video_job.status = "completed"
+                video_job.finished_at = datetime.utcnow()
+                db.commit()
+
             return {
                 "status": "completed",
                 "original_file_size": original_file_size,
