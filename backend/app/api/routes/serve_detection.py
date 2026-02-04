@@ -9,12 +9,17 @@ from sqlalchemy.orm import Session
 from app.api.schemas.serve_attempt import ServeAttemptInfo
 from app.api.schemas.serve_detection import (
     AcceptProposalRequest,
+    BulkAcceptRequest,
+    BulkAcceptResponse,
     ClearProposalsResponse,
     DetectionStatusResponse,
     EditProposalRequest,
     ProposeResponse,
+    RejectByConfidenceRequest,
+    RejectByConfidenceResponse,
     ServeWindowProposalInfo,
 )
+from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.serve_window_proposal import ServeWindowProposal
@@ -283,3 +288,99 @@ async def edit_proposal(
         raise
     except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(e, "edit_proposal", {"proposal_id": proposal_id})
+
+
+@router.post(
+    "/videos/{video_id}/serve-detection/proposals/accept-all",
+    response_model=BulkAcceptResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def accept_all_proposals(
+    video_id: int,
+    request: BulkAcceptRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BulkAcceptResponse:
+    """
+    Accept all pending proposals for a video, creating ServeAttempts.
+
+    This is a bulk operation that accepts all pending proposals at once,
+    creating a ServeAttempt for each one.
+    """
+    try:
+        # Get video to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Check authorization
+        require_video_access(video, current_user)
+        require_video_not_demo(video, current_user)
+
+        # Accept all proposals
+        serve_attempts = proposal_service.accept_all_proposals(
+            db, video_id, current_user["id"], request.player_id
+        )
+
+        return BulkAcceptResponse(
+            video_id=video_id,
+            accepted_count=len(serve_attempts),
+            serve_attempt_ids=[sa.id for sa in serve_attempts],
+        )
+
+    except ValueError as e:
+        log_and_raise_error(e, "accept_all_proposals", {"video_id": video_id})
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
+        log_and_raise_error(e, "accept_all_proposals", {"video_id": video_id})
+
+
+@router.post(
+    "/videos/{video_id}/serve-detection/proposals/reject-by-confidence",
+    response_model=RejectByConfidenceResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def reject_proposals_by_confidence(
+    video_id: int,
+    request: RejectByConfidenceRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RejectByConfidenceResponse:
+    """
+    Reject all pending proposals below a confidence threshold.
+
+    This is a bulk operation that rejects proposals with confidence
+    scores below the specified threshold. If not provided, uses the
+    SERVE_DETECTION_LOW_CONFIDENCE_THRESHOLD from config (default: 60%).
+    """
+    try:
+        # Get video to check authorization
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise handle_not_found_error("video", str(video_id))
+
+        # Check authorization
+        require_video_access(video, current_user)
+        require_video_not_demo(video, current_user)
+
+        # Use config default if threshold not provided
+        threshold = (
+            request.threshold
+            if request.threshold is not None
+            else settings.SERVE_DETECTION_LOW_CONFIDENCE_THRESHOLD
+        )
+
+        # Reject low confidence proposals
+        rejected_count = proposal_service.reject_proposals_by_confidence(
+            db, video_id, current_user["id"], threshold
+        )
+
+        return RejectByConfidenceResponse(
+            video_id=video_id,
+            rejected_count=rejected_count,
+            threshold=threshold,
+        )
+
+    except ValueError as e:
+        log_and_raise_error(e, "reject_by_confidence", {"video_id": video_id})
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
+        log_and_raise_error(e, "reject_by_confidence", {"video_id": video_id})

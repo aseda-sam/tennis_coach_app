@@ -418,6 +418,138 @@ def reject_proposal(db: Session, proposal_id: int, user_id: str) -> None:
     logger.info(f"Rejected proposal {proposal_id}")
 
 
+def accept_all_proposals(
+    db: Session, video_id: int, user_id: str, player_id: Optional[int] = None
+) -> List[ServeAttempt]:
+    """
+    Accept all pending proposals for a video, creating ServeAttempts.
+
+    Args:
+        db: Database session
+        video_id: Video ID
+        user_id: User ID (for authorization)
+        player_id: Optional player ID (defaults to user's default player)
+
+    Returns:
+        List of created ServeAttempts
+
+    Raises:
+        ValueError: If no pending proposals found
+    """
+    # Get all pending proposals for this video and user
+    proposals = (
+        db.query(ServeWindowProposal)
+        .filter(
+            ServeWindowProposal.video_id == video_id,
+            ServeWindowProposal.user_id == user_id,
+            ServeWindowProposal.status == "pending",
+        )
+        .order_by(ServeWindowProposal.start_timestamp)
+        .all()
+    )
+
+    if not proposals:
+        raise ValueError(f"No pending proposals found for video {video_id}")
+
+    # Get or create default player if not provided
+    if not player_id:
+        default_player = player_service.get_or_create_default_player(db, user_id)
+        player_id = default_player.id
+
+    # Validate player ownership
+    from app.models.player import Player
+
+    player = db.query(Player).filter(Player.id == player_id).first()
+    if not player or player.user_id != user_id:
+        raise ValueError("Player not found or access denied")
+
+    serve_attempts: List[ServeAttempt] = []
+    now = datetime.utcnow()
+
+    for proposal in proposals:
+        # Create serve attempt
+        serve_attempt = ServeAttempt(
+            video_id=proposal.video_id,
+            user_id=user_id,
+            player_id=player_id,
+            start_timestamp=proposal.start_timestamp,
+            end_timestamp=proposal.end_timestamp,
+            source="auto_accepted",
+            source_proposal_id=proposal.id,
+        )
+        db.add(serve_attempt)
+        db.flush()  # Get serve_attempt.id
+
+        # Update proposal
+        proposal.status = "accepted"
+        proposal.reviewed_at = now
+        proposal.serve_attempt_id = serve_attempt.id
+
+        serve_attempts.append(serve_attempt)
+
+    db.commit()
+
+    logger.info(
+        "Accepted %d proposals for video %d, created %d serve attempts",
+        len(proposals),
+        video_id,
+        len(serve_attempts),
+    )
+    return serve_attempts
+
+
+def reject_proposals_by_confidence(
+    db: Session, video_id: int, user_id: str, threshold: float = 0.6
+) -> int:
+    """
+    Reject all pending proposals below a confidence threshold.
+
+    Args:
+        db: Database session
+        video_id: Video ID
+        user_id: User ID (for authorization)
+        threshold: Confidence threshold (reject proposals below this value)
+
+    Returns:
+        Number of proposals rejected
+
+    Raises:
+        ValueError: If threshold is invalid
+    """
+    if threshold < 0 or threshold > 1:
+        raise ValueError("Threshold must be between 0 and 1")
+
+    # Get all pending proposals below threshold
+    proposals = (
+        db.query(ServeWindowProposal)
+        .filter(
+            ServeWindowProposal.video_id == video_id,
+            ServeWindowProposal.user_id == user_id,
+            ServeWindowProposal.status == "pending",
+            ServeWindowProposal.confidence < threshold,
+        )
+        .all()
+    )
+
+    if not proposals:
+        return 0
+
+    now = datetime.utcnow()
+    for proposal in proposals:
+        proposal.status = "rejected"
+        proposal.reviewed_at = now
+
+    db.commit()
+
+    logger.info(
+        "Rejected %d proposals below %.0f%% confidence for video %d",
+        len(proposals),
+        threshold * 100,
+        video_id,
+    )
+    return len(proposals)
+
+
 def accept_with_edits(
     db: Session,
     proposal_id: int,

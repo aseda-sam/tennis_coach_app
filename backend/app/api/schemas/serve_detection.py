@@ -93,3 +93,39 @@ class ClearProposalsResponse(BaseModel):
 
     video_id: int = Field(description="Video ID")
     cleared_count: int = Field(description="Number of proposals cleared")
+
+
+class BulkAcceptRequest(BaseModel):
+    """Request to accept all pending proposals."""
+
+    player_id: Optional[int] = Field(
+        default=None, description="Player ID (defaults to user's default player)"
+    )
+
+
+class BulkAcceptResponse(BaseModel):
+    """Response after accepting all proposals."""
+
+    video_id: int = Field(description="Video ID")
+    accepted_count: int = Field(description="Number of proposals accepted")
+    serve_attempt_ids: List[int] = Field(description="IDs of created serve attempts")
+
+
+class RejectByConfidenceRequest(BaseModel):
+    """Request to reject proposals below a confidence threshold."""
+
+    threshold: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold (reject proposals below this value). "
+        "Defaults to SERVE_DETECTION_LOW_CONFIDENCE_THRESHOLD from config (0.6).",
+    )
+
+
+class RejectByConfidenceResponse(BaseModel):
+    """Response after rejecting low-confidence proposals."""
+
+    video_id: int = Field(description="Video ID")
+    rejected_count: int = Field(description="Number of proposals rejected")
+    threshold: float = Field(description="Confidence threshold used")

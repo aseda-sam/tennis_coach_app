@@ -20,7 +20,18 @@ class UploadLimits(BaseModel):
     )
 
 
+class ServeDetectionConfig(BaseModel):
+    """Serve detection configuration."""
+
+    low_confidence_threshold: float = Field(
+        description="Proposals below this confidence are considered 'uncertain'",
+    )
+
+
 class AppConfigResponse(BaseModel):
     """Public app configuration."""
 
     upload_limits: UploadLimits = Field(description="Upload limits")
+    serve_detection: ServeDetectionConfig = Field(
+        description="Serve detection settings"
+    )

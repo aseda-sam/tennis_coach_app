@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.schemas.config import AppConfigResponse, UploadLimits
+from app.api.schemas.config import AppConfigResponse, ServeDetectionConfig, UploadLimits
 from app.core.config import settings
 
 router = APIRouter(tags=["config"])
@@ -16,5 +16,8 @@ async def get_app_config() -> AppConfigResponse:
             max_file_size_bytes=settings.effective_max_file_size,
             max_video_duration_seconds=settings.effective_max_video_duration,
             supported_formats=settings.SUPPORTED_FORMATS,
-        )
+        ),
+        serve_detection=ServeDetectionConfig(
+            low_confidence_threshold=settings.SERVE_DETECTION_LOW_CONFIDENCE_THRESHOLD,
+        ),
     )

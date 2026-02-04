@@ -8,6 +8,9 @@ const FALLBACK_CONFIG: AppConfig = {
     max_video_duration_seconds: 300,
     supported_formats: ['.mp4', '.mov', '.avi', '.mkv', '.wmv'],
   },
+  serve_detection: {
+    low_confidence_threshold: 0.6,
+  },
 };
 
 export function useAppConfig() {

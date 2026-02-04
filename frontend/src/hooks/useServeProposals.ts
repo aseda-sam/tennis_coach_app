@@ -10,9 +10,13 @@ import {
   ServeWindowProposal,
 } from '../services/serveProposalApi';
 
+// Default threshold - matches backend SERVE_DETECTION_LOW_CONFIDENCE_THRESHOLD
+const DEFAULT_LOW_CONFIDENCE_THRESHOLD = 0.6;
+
 interface UseServeProposalsOptions {
   videoId?: number;
   autoRefresh?: boolean;
+  lowConfidenceThreshold?: number; // From config, defaults to 0.6
   onProposalsLoaded?: (proposals: ServeWindowProposal[]) => void;
   onError?: (error: string) => void;
 }
@@ -46,6 +50,7 @@ interface UseServeProposalsResult {
 export const useServeProposals = ({
   videoId,
   autoRefresh = true,
+  lowConfidenceThreshold = DEFAULT_LOW_CONFIDENCE_THRESHOLD,
   onProposalsLoaded,
   onError,
 }: UseServeProposalsOptions = {}): UseServeProposalsResult => {
@@ -277,68 +282,60 @@ export const useServeProposals = ({
     [editMutation]
   );
 
-  // Count proposals below confidence threshold (default 60%)
-  const LOW_CONFIDENCE_THRESHOLD = 0.6;
+  // Count proposals below confidence threshold
   const proposals = proposalsQuery.data || [];
   const lowConfidenceCount = proposals.filter(
-    (p) => p.confidence < LOW_CONFIDENCE_THRESHOLD
+    (p) => p.confidence < lowConfidenceThreshold
   ).length;
 
-  // Accept all proposals
+  // Accept all proposals using batch API
   const acceptAllProposals = useCallback(async (): Promise<{
     accepted: number;
     failed: number;
   }> => {
-    const currentProposals = proposalsQuery.data || [];
-    let accepted = 0;
-    let failed = 0;
-
-    for (const proposal of currentProposals) {
-      try {
-        await serveProposalApi.accept(proposal.id);
-        accepted++;
-      } catch {
-        failed++;
-      }
+    if (!videoId) {
+      return { accepted: 0, failed: 0 };
     }
 
-    // Invalidate queries to refresh
-    queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-    queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
-    queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
-
-    return { accepted, failed };
-  }, [proposalsQuery.data, queryClient]);
-
-  // Reject proposals below confidence threshold
-  const rejectLowConfidence = useCallback(
-    async (
-      threshold: number = LOW_CONFIDENCE_THRESHOLD
-    ): Promise<{ rejected: number; failed: number }> => {
-      const currentProposals = proposalsQuery.data || [];
-      const lowConfidenceProposals = currentProposals.filter(
-        (p) => p.confidence < threshold
-      );
-
-      let rejected = 0;
-      let failed = 0;
-
-      for (const proposal of lowConfidenceProposals) {
-        try {
-          await serveProposalApi.reject(proposal.id);
-          rejected++;
-        } catch {
-          failed++;
-        }
-      }
+    try {
+      const response = await serveProposalApi.acceptAll(videoId);
 
       // Invalidate queries to refresh
       queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
       queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
 
-      return { rejected, failed };
+      return { accepted: response.accepted_count, failed: 0 };
+    } catch {
+      return { accepted: 0, failed: proposals.length };
+    }
+  }, [videoId, proposals.length, queryClient]);
+
+  // Reject proposals below confidence threshold using batch API
+  const rejectLowConfidence = useCallback(
+    async (
+      threshold: number = lowConfidenceThreshold
+    ): Promise<{ rejected: number; failed: number }> => {
+      if (!videoId) {
+        return { rejected: 0, failed: 0 };
+      }
+
+      try {
+        const response = await serveProposalApi.rejectByConfidence(
+          videoId,
+          threshold
+        );
+
+        // Invalidate queries to refresh
+        queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
+        queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
+
+        return { rejected: response.rejected_count, failed: 0 };
+      } catch {
+        return { rejected: 0, failed: lowConfidenceCount };
+      }
     },
-    [proposalsQuery.data, queryClient]
+    [videoId, lowConfidenceCount, lowConfidenceThreshold, queryClient]
   );
 
   // Extract loading state

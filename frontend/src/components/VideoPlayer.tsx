@@ -46,6 +46,7 @@ interface VideoPlayerProps {
   onNavigateReady?: (navigateFn: (serveAttemptId: number) => void) => void; // Callback to expose navigate function
   isDemo?: boolean; // If true, disable manual range tagging and editing
   naturalScroll?: boolean; // Scroll direction: false = traditional (scroll down = forward), true = natural (scroll down = backward)
+  lowConfidenceThreshold?: number; // Threshold for coloring proposals as "uncertain"
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -61,6 +62,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onNavigateReady,
   isDemo = false,
   naturalScroll: naturalScrollProp = false,
+  lowConfidenceThreshold = 0.6,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1083,6 +1085,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                             key={proposal.id}
                             proposal={proposal}
                             duration={duration}
+                            lowConfidenceThreshold={lowConfidenceThreshold}
                             onClick={() => {
                               // Seek to proposal start
                               seekToTime(proposal.start_timestamp);
@@ -1363,6 +1366,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       key={proposal.id}
                       proposal={proposal}
                       duration={duration}
+                      lowConfidenceThreshold={lowConfidenceThreshold}
                       onClick={() => {
                         seekToTime(proposal.start_timestamp);
                       }}

@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { ServeWindowProposal } from '../services/serveProposalApi';
 import './ProposalRange.css';
 
+// Default threshold - matches backend config
+const DEFAULT_LOW_CONFIDENCE_THRESHOLD = 0.6;
+
 interface ProposalRangeProps {
   proposal: ServeWindowProposal;
   duration: number;
   isSelected?: boolean;
+  lowConfidenceThreshold?: number;
   onClick?: () => void;
   onAccept?: () => void;
   onReject?: () => void;
@@ -16,6 +20,7 @@ const ProposalRange: React.FC<ProposalRangeProps> = ({
   proposal,
   duration,
   isSelected = false,
+  lowConfidenceThreshold = DEFAULT_LOW_CONFIDENCE_THRESHOLD,
   onClick,
   onAccept,
   onReject,
@@ -33,9 +38,8 @@ const ProposalRange: React.FC<ProposalRangeProps> = ({
   // Confidence-based color
   // >= 70%: orange (high confidence)
   // 60-70%: amber (medium confidence)
-  // < 60%: red/muted (low confidence - candidates for removal)
-  const LOW_CONFIDENCE_THRESHOLD = 0.6;
-  const isLowConfidence = proposal.confidence < LOW_CONFIDENCE_THRESHOLD;
+  // < threshold: red/muted (low confidence - candidates for removal)
+  const isLowConfidence = proposal.confidence < lowConfidenceThreshold;
   const confidenceColor = isLowConfidence
     ? '#ef4444' // red-500 for low confidence
     : proposal.confidence > 0.7

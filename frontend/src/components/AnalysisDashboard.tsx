@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
+import { useAppConfig } from '../hooks/useAppConfig';
 import { useServeAttempts } from '../hooks/useServeAttempts';
 import { useServeProposals } from '../hooks/useServeProposals';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
@@ -25,6 +26,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   onClose,
 }) => {
   const queryClient = useQueryClient();
+  const { config } = useAppConfig();
+  const lowConfidenceThreshold =
+    config.serve_detection.low_confidence_threshold;
 
   // Use React Query hook for analysis status (with caching)
   const { data: analysisStatus, refetch: refetchAnalysisStatus } =
@@ -92,6 +96,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   } = useServeProposals({
     videoId,
     autoRefresh: true,
+    lowConfidenceThreshold,
   });
 
   // State for bulk operations
@@ -315,6 +320,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             onNavigateReady={handleNavigateReady}
             isDemo={false}
             naturalScroll={naturalScroll}
+            lowConfidenceThreshold={lowConfidenceThreshold}
           />
           <button
             className="analysis-dashboard__shortcuts-hint"
