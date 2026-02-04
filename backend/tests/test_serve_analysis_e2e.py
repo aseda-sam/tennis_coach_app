@@ -411,17 +411,23 @@ class TestServeAnalysisE2E:
                 Path(tmp_file_path).unlink()
 
     def _create_mock_pose_data(
-        self, video: Video, contact_timestamps: list[float]
+        self,
+        video: Video,
+        contact_timestamps: list[float],
+        use_new_format: bool = True,
     ) -> list:
         """
         Create mock pose data structure for testing.
 
-        The pose_data field stores a JSON array where each element is a dict
-        of keypoints for that frame. Format: [frame0_keypoints, frame1_keypoints, ...]
+        The pose_data field stores a JSON array where each element represents a frame.
+
+        New format (default): [{"frame_index": 0, "timestamp_ms": 0.0, "keypoints": {...}}, ...]
+        Old format: [{keypoints}, {keypoints}, ...]
 
         Args:
             video: Video model instance
             contact_timestamps: List of timestamps where contact occurs
+            use_new_format: If True, use new format with frame_index/timestamp_ms wrapper
 
         Returns:
             List of pose data dictionaries (one per frame)
@@ -434,6 +440,7 @@ class TestServeAnalysisE2E:
         pose_detections = []
         for frame_idx in range(total_frames):
             timestamp = frame_idx / fps
+            timestamp_ms = timestamp * 1000.0
 
             # Create mock keypoints dict (format expected by calculate_elbow_angle)
             # Each keypoint is a list [x, y, z] or dict with coordinates
@@ -450,6 +457,17 @@ class TestServeAnalysisE2E:
                 keypoints["right_elbow"] = [0.6, 0.35, 0.9]  # Slightly higher
                 keypoints["right_wrist"] = [0.7, 0.45, 0.9]  # Slightly lower
 
-            pose_detections.append(keypoints)
+            if use_new_format:
+                # New format with wrapper dict
+                pose_detections.append(
+                    {
+                        "frame_index": frame_idx,
+                        "timestamp_ms": timestamp_ms,
+                        "keypoints": keypoints,
+                    }
+                )
+            else:
+                # Old format: keypoints dict directly
+                pose_detections.append(keypoints)
 
         return pose_detections

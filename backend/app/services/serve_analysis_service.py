@@ -15,6 +15,28 @@ from app.services.posture_analysis import calculate_elbow_angle
 logger = logging.getLogger(__name__)
 
 
+def _extract_keypoints(frame_data: Optional[Dict]) -> Optional[Dict]:
+    """
+    Extract keypoints from frame data, handling both old and new formats.
+
+    Args:
+        frame_data: Frame data from pose_detections (either keypoints dict directly
+                   or wrapper dict with frame_index/timestamp_ms/keypoints)
+
+    Returns:
+        Keypoints dict if available, None otherwise
+    """
+    if frame_data is None:
+        return None
+
+    # New format: {"frame_index": ..., "timestamp_ms": ..., "keypoints": {...}}
+    if isinstance(frame_data, dict) and "keypoints" in frame_data:
+        return frame_data.get("keypoints")
+
+    # Old format: keypoints dict directly (backward compatibility)
+    return frame_data
+
+
 def get_pose_at_timestamp(
     pose_detection: PoseDetection, video: Video, timestamp: float
 ) -> Optional[Dict]:
@@ -51,8 +73,9 @@ def get_pose_at_timestamp(
         # Find the closest available frame
         if target_frame < len(raw_pose_data):
             frame_data = raw_pose_data[target_frame]
-            if frame_data is not None:
-                return frame_data
+            keypoints = _extract_keypoints(frame_data)
+            if keypoints is not None:
+                return keypoints
 
         # If exact frame not found, search for nearest frame with pose data
         for offset in range(1, min(10, len(raw_pose_data))):  # Search within 10 frames
@@ -61,12 +84,13 @@ def get_pose_at_timestamp(
                 frame_idx = target_frame + (offset * direction)
                 if 0 <= frame_idx < len(raw_pose_data):
                     frame_data = raw_pose_data[frame_idx]
-                    if frame_data is not None:
+                    keypoints = _extract_keypoints(frame_data)
+                    if keypoints is not None:
                         logger.info(
                             f"Using frame {frame_idx} (offset {offset * direction}) "
                             f"for timestamp {timestamp}s"
                         )
-                        return frame_data
+                        return keypoints
 
         logger.warning(f"No pose data found near timestamp {timestamp}s")
         return None
