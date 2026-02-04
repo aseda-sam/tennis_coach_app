@@ -87,7 +87,9 @@ def validate_video_file(
                 )
 
         # FPS validation
-        if metadata.get("fps") and metadata["fps"] > env_limits["max_fps"]:
+        if metadata.get("fps") and metadata["fps"] > (
+            env_limits["max_fps"] + settings.FPS_TOLERANCE
+        ):
             raise handle_file_error(
                 "fps_too_high",
                 filename,

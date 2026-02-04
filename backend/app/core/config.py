@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     FRAME_SKIP_RATIO: int = 1
     MAX_VIDEO_RESOLUTION: tuple[int, int] = (3840, 2160)  # 4K
     MAX_FPS: int = 60
+    FPS_TOLERANCE: float = 0.5
 
     # Upload limits (primarily for production)
     # Note: enforced only when PROFILE != "local" and user is not admin.
