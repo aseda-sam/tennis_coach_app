@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { AppConfig } from '../types/config';
 import {
   DemoVideoListItem,
   OverlayData,
@@ -134,6 +135,12 @@ export const videoApi = {
         },
       }
     );
+    return response.data;
+  },
+
+  // Get public app configuration (upload limits, etc.)
+  getAppConfig: async (): Promise<AppConfig> => {
+    const response = await api.get<AppConfig>('/config');
     return response.data;
   },
 

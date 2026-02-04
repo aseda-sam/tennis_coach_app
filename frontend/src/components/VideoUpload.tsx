@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { useAppConfig } from '../hooks/useAppConfig';
 import { useDemoEditor } from '../hooks/useDemoEditor';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
@@ -14,6 +15,11 @@ interface VideoUploadProps {
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
+
+function formatFileSizeMb(bytes: number) {
+  const mb = bytes / (1024 * 1024);
+  return Number.isInteger(mb) ? `${mb}` : mb.toFixed(1);
+}
 
 const VideoUpload: React.FC<VideoUploadProps> = ({
   onUploadSuccess,
@@ -34,8 +40,11 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
   const [sessionType, setSessionType] = useState<string>('');
   const [cameraAngle, setCameraAngle] = useState<string>('');
   const [isUpdatingMetadata, setIsUpdatingMetadata] = useState(false);
+  const { config } = useAppConfig();
   const { isDemoEditor: canUploadDemo } = useDemoEditor();
   const resolvedIsDemo = forceDemo ? true : isDemo;
+  const maxSizeBytes = config.upload_limits.max_file_size_bytes;
+  const maxSizeLabel = formatFileSizeMb(maxSizeBytes);
 
   const handleFileSelect = useCallback(
     async (file: File) => {
@@ -52,10 +61,9 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
         return;
       }
 
-      // Validate file size (100MB limit)
-      const maxSize = 100 * 1024 * 1024; // 100MB
-      if (file.size > maxSize) {
-        setError('File size must be less than 100MB');
+      // Validate file size (backend-configured limit)
+      if (file.size > maxSizeBytes) {
+        setError(`File size must be less than ${maxSizeLabel}MB`);
         return;
       }
 
@@ -87,7 +95,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
         setUploadStatus('error');
       }
     },
-    [resolvedIsDemo]
+    [maxSizeBytes, maxSizeLabel, resolvedIsDemo]
   );
 
   const handleFinishUpload = useCallback(async () => {
