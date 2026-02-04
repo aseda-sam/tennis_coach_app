@@ -60,6 +60,15 @@ class Settings(BaseSettings):
     FPS_TOLERANCE: float = 0.5
     POSE_DETECTION_JOB_TIMEOUT_SECONDS: int = 1800
 
+    # Transcoding settings
+    TRANSCODE_ENABLED: bool = True
+    TRANSCODE_THRESHOLD_BYTES: int = (
+        20 * 1024 * 1024
+    )  # 20MB - skip transcoding for smaller files
+    TRANSCODE_RESOLUTION: int = 720  # height in pixels
+    TRANSCODE_FPS: int = 30
+    TRANSCODE_CRF: int = 23  # quality (lower = better, 18-28 typical)
+
     # Upload limits (primarily for production)
     # Note: enforced only when PROFILE != "local" and user is not admin.
     MAX_VIDEO_UPLOADS_PER_DAY: int = 20

@@ -49,6 +49,14 @@ class PoseDetection(Base):
     status = Column(String(50), default="completed", nullable=False)
     error_message = Column(Text, nullable=True)
 
+    # Detection mode and windows (for scout/refine pipeline)
+    detection_mode = Column(
+        String(20), default="full", nullable=False
+    )  # "scout", "full", "refine"
+    time_windows = Column(
+        Text, nullable=True
+    )  # JSON: [{"start_ms": ..., "end_ms": ...}]
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     completed_at = Column(DateTime(timezone=True), nullable=True)

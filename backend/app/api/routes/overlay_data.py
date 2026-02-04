@@ -112,9 +112,17 @@ async def get_overlay_data(
 
         # Format frames
         frames: list[PoseFrame] = []
-        for frame_index, frame_pose_data in enumerate(raw_pose_data):
-            # Calculate timestamp
-            timestamp = frame_index / fps if fps > 0 else 0.0
+        for frame_index, frame_data in enumerate(raw_pose_data):
+            # Handle both old format (dict of keypoints or None) and new format (dict with frame_index/timestamp_ms/keypoints)
+            if isinstance(frame_data, dict) and "keypoints" in frame_data:
+                # New format with timestamp_ms
+                timestamp_ms = frame_data.get("timestamp_ms", 0.0)
+                timestamp = timestamp_ms / 1000.0  # Convert to seconds
+                frame_pose_data = frame_data.get("keypoints")
+            else:
+                # Old format (backward compatibility)
+                frame_pose_data = frame_data
+                timestamp = frame_index / fps if fps > 0 else 0.0
 
             # Get confidence for this frame
             confidence = (

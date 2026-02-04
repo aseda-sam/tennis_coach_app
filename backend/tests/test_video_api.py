@@ -92,8 +92,10 @@ class TestVideoAPI:
             # Mock the enqueue function to verify it's called when enabled
             mock_job = MagicMock()
             mock_job.id = "test-job-id-123"
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch(
-                "app.api.routes.video.enqueue_pose_analysis", return_value=mock_job
+            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
+                settings, "TRANSCODE_ENABLED", False
+            ), patch(
+                "app.api.routes.video.analysis_queue.enqueue", return_value=mock_job
             ) as mock_enqueue:
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test.mp4", f, "video/mp4")}
@@ -109,12 +111,8 @@ class TestVideoAPI:
                 assert "message" in data
                 assert "video_id" in data
 
-                # Verify that enqueue was called with correct parameters
+                # Verify that enqueue was called
                 assert mock_enqueue.called
-                call_args = mock_enqueue.call_args
-                assert call_args.kwargs["video_id"] == data["video_id"]
-                assert call_args.kwargs["confidence_threshold"] == 0.7
-                assert "video_path" in call_args.kwargs
         finally:
             # Clean up
             if os.path.exists(tmp_file_path):
@@ -129,8 +127,10 @@ class TestVideoAPI:
 
         try:
             # Mock enqueue to return None (simulating Redis failure)
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch(
-                "app.api.routes.video.enqueue_pose_analysis", return_value=None
+            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
+                settings, "TRANSCODE_ENABLED", False
+            ), patch(
+                "app.api.routes.video.analysis_queue.enqueue", return_value=None
             ) as mock_enqueue:
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test.mp4", f, "video/mp4")}
@@ -160,8 +160,10 @@ class TestVideoAPI:
 
         try:
             # Mock enqueue to raise RedisConnectionError
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch(
-                "app.api.routes.video.enqueue_pose_analysis",
+            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
+                settings, "TRANSCODE_ENABLED", False
+            ), patch(
+                "app.api.routes.video.analysis_queue.enqueue",
                 side_effect=RedisConnectionError("Redis unavailable"),
             ) as mock_enqueue:
                 with open(tmp_file_path, "rb") as f:
@@ -178,6 +180,87 @@ class TestVideoAPI:
                 assert mock_enqueue.called
         finally:
             # Clean up
+            if os.path.exists(tmp_file_path):
+                os.unlink(tmp_file_path)
+
+    def test_upload_with_auto_enqueue_large_file_enqueues_transcode(
+        self, client: TestClient
+    ) -> None:
+        """Test that large files trigger transcode job enqueue."""
+        # Create a mock video file larger than threshold
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
+            # Write enough content to exceed threshold (25MB)
+            tmp_file.write(b"fake video content" * (25 * 1024 * 1024 // 18))
+            tmp_file_path = tmp_file.name
+
+        try:
+            mock_job = MagicMock()
+            mock_job.id = "test-transcode-job-id"
+            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
+                settings, "TRANSCODE_ENABLED", True
+            ), patch.object(
+                settings, "TRANSCODE_THRESHOLD_BYTES", 20 * 1024 * 1024
+            ), patch(
+                "app.api.routes.video.analysis_queue.enqueue", return_value=mock_job
+            ) as mock_enqueue:
+                with open(tmp_file_path, "rb") as f:
+                    files = {"file": ("test_large.mp4", f, "video/mp4")}
+                    response = client.post("/v0/videos/upload", files=files)
+
+                assert response.status_code == 200
+                data = response.json()
+                assert "video_id" in data
+
+                # Verify transcode_video_rq was enqueued
+                assert mock_enqueue.called
+                call_args = mock_enqueue.call_args
+                # Check that transcode_video_rq function was passed
+                from app.services.rq_tasks import transcode_video_rq
+
+                assert call_args[0][0] == transcode_video_rq
+                assert call_args[1]["video_id"] == data["video_id"]
+        finally:
+            if os.path.exists(tmp_file_path):
+                os.unlink(tmp_file_path)
+
+    def test_upload_with_auto_enqueue_small_file_enqueues_scout_refine(
+        self, client: TestClient
+    ) -> None:
+        """Test that small files skip transcode and go straight to scout/refine."""
+        # Create a mock video file smaller than threshold
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
+            # Write small content (10MB)
+            tmp_file.write(b"fake video content" * (10 * 1024 * 1024 // 18))
+            tmp_file_path = tmp_file.name
+
+        try:
+            mock_job = MagicMock()
+            mock_job.id = "test-scout-refine-job-id"
+            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
+                settings, "TRANSCODE_ENABLED", True
+            ), patch.object(
+                settings, "TRANSCODE_THRESHOLD_BYTES", 20 * 1024 * 1024
+            ), patch(
+                "app.api.routes.video.analysis_queue.enqueue", return_value=mock_job
+            ) as mock_enqueue:
+                with open(tmp_file_path, "rb") as f:
+                    files = {"file": ("test_small.mp4", f, "video/mp4")}
+                    response = client.post("/v0/videos/upload", files=files)
+
+                assert response.status_code == 200
+                data = response.json()
+                assert "video_id" in data
+
+                # Verify analyze_pose_detection_scout_refine_rq was enqueued (not transcode)
+                assert mock_enqueue.called
+                call_args = mock_enqueue.call_args
+                # Check that analyze_pose_detection_scout_refine_rq function was passed
+                from app.services.rq_tasks import analyze_pose_detection_scout_refine_rq
+
+                assert call_args[0][0] == analyze_pose_detection_scout_refine_rq
+                assert call_args[1]["video_id"] == data["video_id"]
+                assert call_args[1]["confidence_threshold"] == 0.7
+        finally:
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)
 

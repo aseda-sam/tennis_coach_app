@@ -26,10 +26,19 @@ class VideoJob(Base):
     user_id = Column(
         String(36), nullable=False
     )  # UUID as string (matches Video.user_id)
-    job_type = Column(String(50), nullable=False)  # pose_detection, serve_analysis
+    job_type = Column(
+        String(50), nullable=False
+    )  # pose_detection, serve_analysis, transcode
     status = Column(String(20), nullable=False, default="queued")
     error = Column(Text, nullable=True)
     rq_job_id = Column(String(100), nullable=True)  # For debugging correlation
+    stage = Column(
+        String(50), nullable=True
+    )  # "transcoding", "scout", "detecting_serves", "refining", "complete"
+    progress_percent = Column(Integer, default=0, nullable=False)
+    serve_windows_found = Column(
+        Integer, nullable=True
+    )  # Number of serve windows found (after scout pass)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)

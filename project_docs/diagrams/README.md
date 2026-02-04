@@ -11,8 +11,8 @@ Source-of-truth diagrams live here as Mermaid blocks in Markdown files.
 ## Index
 
 - `auth-flow.md` - Auth and session flow
-- `upload-flow.md` - Upload pipeline and background processing
-- `analysis-pipeline.md` - Analysis stages and outputs
+- `upload-flow.md` - Upload, optional transcode, and scout/refine background pipeline
+- `analysis-pipeline.md` - Transcode, scout/refine pose pipeline, serve windows, and analysis
 - `data-flow.md` - End-to-end data movement
 - `db-relationships.md` - Conceptual table relationships
 

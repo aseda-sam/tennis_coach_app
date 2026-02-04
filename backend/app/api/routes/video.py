@@ -42,6 +42,7 @@ from app.api.schemas.video import (
 )
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.redis_config import analysis_queue
 from app.dependencies.auth import get_current_user, get_optional_user
 from app.models.video_job import VideoJob
 from app.services import video_service
@@ -113,6 +114,13 @@ class VideoJobResponse(BaseModel):
     job_type: str
     status: str
     error: Optional[str] = None
+    stage: Optional[str] = (
+        None  # "transcoding", "scout", "detecting_serves", "refining", "complete"
+    )
+    progress_percent: int = 0
+    serve_windows_found: Optional[int] = (
+        None  # Number of serve windows found (after scout pass)
+    )
     created_at: datetime
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
@@ -1234,54 +1242,109 @@ async def upload_video(
             recorded_at=recorded_at,
         )
 
-        # Auto-enqueue pose detection analysis (opt-in via setting)
+        # Auto-enqueue transcoding and pose detection (opt-in via setting)
         # Disabled by default to prevent unintended background jobs during tests
         # or in environments where Redis should not be used.
         # When enabled, ALL uploads (regular and demo) are auto-enqueued.
-        # Pytest tests are unaffected because they mock enqueue_pose_analysis.
+        # Pytest tests are unaffected because they mock enqueue functions.
         if settings.AUTO_ENQUEUE_ON_UPLOAD:
-            # Auto-enqueue pose detection analysis (silently fail if Redis unavailable)
-            # This allows uploads to succeed even if Redis is down, user can manually trigger analysis later
-            video_job = VideoJob(
+            from rq import Retry
+
+            from app.services.rq_tasks import transcode_video_rq
+
+            # Create pose detection job record (will be started after transcode if needed)
+            pose_job = VideoJob(
                 video_id=db_video.id,
                 user_id=current_user["id"],
                 job_type="pose_only",
                 status="queued",
             )
-            db.add(video_job)
+            db.add(pose_job)
             db.commit()
-            db.refresh(video_job)
+            db.refresh(pose_job)
 
+            # Enqueue transcoding first if file is large enough, otherwise go straight to pose detection
             try:
-                job = enqueue_pose_analysis(
-                    video_id=db_video.id,
-                    video_path=db_video.file_path,
-                    confidence_threshold=0.7,  # Default threshold from AnalysisRequest schema
-                    video_job_id=str(video_job.id),
-                )
-                if not job:
-                    video_job.status = "failed"
-                    video_job.error = "Failed to enqueue job to Redis"
-                    db.commit()
-                    logger.debug(
-                        "Auto-enqueue failed for video %d (is_demo=%s)",
-                        db_video.id,
-                        is_demo,
+                if (
+                    settings.TRANSCODE_ENABLED
+                    and db_video.file_size >= settings.TRANSCODE_THRESHOLD_BYTES
+                ):
+                    # Create transcode job record
+                    transcode_job = VideoJob(
+                        video_id=db_video.id,
+                        user_id=current_user["id"],
+                        job_type="transcode",
+                        status="queued",
                     )
+                    db.add(transcode_job)
+                    db.commit()
+                    db.refresh(transcode_job)
+
+                    # Enqueue transcode job (will chain to pose detection on completion)
+                    rq_job = analysis_queue.enqueue(
+                        transcode_video_rq,
+                        video_id=db_video.id,
+                        video_path=db_video.file_path,
+                        video_job_id=str(transcode_job.id),
+                        retry=Retry(max=2, interval=60),
+                        job_timeout=600,  # 10 minutes for transcoding
+                        result_ttl=3600,
+                    )
+                    if rq_job:
+                        transcode_job.rq_job_id = rq_job.id
+                        db.commit()
+                        logger.info(
+                            "Auto-enqueued transcoding for video %d (is_demo=%s)",
+                            db_video.id,
+                            is_demo,
+                        )
+                    else:
+                        transcode_job.status = "failed"
+                        transcode_job.error = "Failed to enqueue transcode job to Redis"
+                        db.commit()
                 else:
-                    video_job.rq_job_id = job.id
-                    db.commit()
-                    logger.info(
-                        "Auto-enqueued pose analysis for video %d (is_demo=%s)",
-                        db_video.id,
-                        is_demo,
+                    # File is small enough, skip transcoding and go straight to scout/refine pipeline
+                    from app.services.rq_tasks import (
+                        analyze_pose_detection_scout_refine_rq,
                     )
+
+                    rq_job = analysis_queue.enqueue(
+                        analyze_pose_detection_scout_refine_rq,
+                        video_id=db_video.id,
+                        video_path=db_video.file_path,
+                        video_job_id=str(pose_job.id),
+                        confidence_threshold=0.7,
+                        retry=Retry(max=2, interval=60),
+                        job_timeout=settings.POSE_DETECTION_JOB_TIMEOUT_SECONDS,
+                        result_ttl=3600,
+                    )
+                    job = rq_job
+                    if not job:
+                        pose_job.status = "failed"
+                        pose_job.error = "Failed to enqueue job to Redis"
+                        db.commit()
+                        logger.debug(
+                            "Auto-enqueue failed for video %d (is_demo=%s)",
+                            db_video.id,
+                            is_demo,
+                        )
+                    else:
+                        pose_job.rq_job_id = job.id
+                        db.commit()
+                        logger.info(
+                            "Auto-enqueued pose analysis for video %d (is_demo=%s, skipped transcode)",
+                            db_video.id,
+                            is_demo,
+                        )
             except Exception:  # noqa: BLE001 - Intentionally catch all to ensure upload succeeds
-                # enqueue_pose_analysis already logs errors internally, just ensure upload doesn't fail
-                video_job.status = "failed"
-                video_job.error = "Failed to enqueue job to Redis"
+                # Enqueue functions already log errors internally, just ensure upload doesn't fail
+                if "transcode_job" in locals():
+                    transcode_job.status = "failed"
+                    transcode_job.error = "Failed to enqueue job to Redis"
+                pose_job.status = "failed"
+                pose_job.error = "Failed to enqueue job to Redis"
                 db.commit()
-                logger.debug("Failed to enqueue pose analysis, but upload succeeded")
+                logger.debug("Failed to enqueue jobs, but upload succeeded")
         else:
             logger.debug(
                 "Auto-enqueue disabled (AUTO_ENQUEUE_ON_UPLOAD=False). "
