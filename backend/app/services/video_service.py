@@ -250,6 +250,48 @@ def get_all_videos(db: Session) -> List[Video]:
     return db.query(Video).order_by(Video.created_at.desc()).all()
 
 
+def list_user_videos(
+    db: Session,
+    user_id: str,
+    is_admin: bool = False,
+    skip: int = 0,
+    limit: int = 20,
+) -> List[Video]:
+    """List videos for a user with pagination.
+
+    Excludes demo videos from user's library.
+    Admins see all non-demo videos.
+
+    Args:
+        db: Database session
+        user_id: User ID to filter by (if not admin)
+        is_admin: Whether the user is an admin
+        skip: Number of videos to skip (for pagination)
+        limit: Maximum number of videos to return
+
+    Returns:
+        List of Video instances ordered by creation date (newest first)
+    """
+    query = db.query(Video).filter(~Video.is_demo)
+
+    if not is_admin:
+        query = query.filter(Video.user_id == user_id)
+
+    return query.order_by(Video.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def get_active_demo_video(db: Session) -> Optional[Video]:
+    """Get the active demo video (is_active_demo=True).
+
+    Args:
+        db: Database session
+
+    Returns:
+        Video object or None if no active demo exists
+    """
+    return db.query(Video).filter(Video.is_active_demo).first()
+
+
 def delete_video_record(db: Session, video_id: int) -> bool:
     """Delete video record from database by ID."""
     video = db.query(Video).filter(Video.id == video_id).first()

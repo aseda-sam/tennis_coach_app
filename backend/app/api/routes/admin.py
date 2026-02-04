@@ -9,17 +9,12 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.schemas.background_tasks import AnalysisResponse
-from app.api.schemas.video import VideoInfo, VideoUploadResponse
-from app.core.config import settings
+from app.api.schemas.video import VideoInfo, VideoMetadata, VideoUploadResponse
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
-from app.models.video_job import VideoJob
-from app.services import video_service
-from app.services.rq_tasks import enqueue_pose_analysis
-from app.services.storage_service import storage_service
+from app.services import admin_service, demo_service, video_service
 from app.utils.authorization import is_admin, require_admin
 from app.utils.error_handling import handle_not_found_error, log_and_raise_error
-from app.utils.supabase_auth import get_user_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -83,43 +78,8 @@ async def list_demo_videos(
     require_admin(current_user)
 
     try:
-        from app.models.pose_detection import PoseDetection
-        from app.models.serve_attempt import ServeAttempt
-        from app.models.video import Video
-
-        demo_videos = (
-            db.query(Video).filter(Video.is_demo).order_by(Video.id.desc()).all()
-        )
-
-        result = []
-        for video in demo_videos:
-            pose_detection = (
-                db.query(PoseDetection.id)
-                .filter(
-                    PoseDetection.video_id == video.id,
-                    PoseDetection.status == "completed",
-                )
-                .first()
-            )
-            has_pose_analysis = pose_detection is not None
-
-            serve_count = (
-                db.query(ServeAttempt).filter(ServeAttempt.video_id == video.id).count()
-            )
-
-            result.append(
-                DemoVideoListItem(
-                    id=video.id,
-                    filename=video.filename,
-                    file_path=video.file_path,
-                    is_active_demo=video.is_active_demo,
-                    has_pose_analysis=has_pose_analysis,
-                    serve_attempt_count=serve_count,
-                    created_at=video.created_at,
-                )
-            )
-
-        return result
+        demo_list = demo_service.list_demo_videos_with_status(db)
+        return [DemoVideoListItem(**item) for item in demo_list]
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
         log_and_raise_error(e, "list_demo_videos")
 
@@ -141,50 +101,21 @@ async def set_active_demo(
     require_admin(current_user)
 
     try:
-        from app.models.video import Video
-
-        video = db.query(Video).filter(Video.id == video_id).first()
-        if not video:
-            raise handle_not_found_error("video", str(video_id))
-
-        if not video.is_demo:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Video {video_id} is not a demo video",
-            )
-
-        if not video.file_path.startswith("demo/"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Video {video_id} is not eligible to be active demo. "
-                f"File path must start with 'demo/'",
-            )
-
-        if settings.STORAGE_TYPE == "supabase" and settings.SUPABASE_DEMO_BUCKET:
-            demo_path = video.file_path
-            if not storage_service.demo_object_exists(demo_path):
-                try:
-                    file_content = storage_service.download_private_file(
-                        video.file_path
-                    )
-                    storage_service.upload_demo_object(
-                        demo_path, file_content, video.content_type
-                    )
-                except Exception as e:
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Failed to copy video to demo bucket: {e}",
-                    ) from e
-
-        old_active = db.query(Video).filter(Video.is_active_demo).first()
-        if old_active and old_active.id != video_id:
-            old_active.is_active_demo = False
-
-        video.is_active_demo = True
-        db.commit()
-        db.refresh(video)
-
+        video = demo_service.set_active_demo_video(db, video_id)
         return VideoInfo.model_validate(video)
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise handle_not_found_error("video", str(video_id)) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        ) from e
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
@@ -210,83 +141,40 @@ async def analyze_demo_pose(
     require_admin(current_user)
 
     try:
-        video = video_service.get_video_by_id(db, video_id)
-        if not video:
-            raise handle_not_found_error("video", str(video_id))
-
-        if not video.is_demo:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Video {video_id} is not a demo video",
-            )
-
-        from app.models.pose_detection import PoseDetection
-
-        existing_detection = (
-            db.query(PoseDetection.id)
-            .filter(
-                PoseDetection.video_id == video_id,
-                PoseDetection.status == "completed",
-            )
-            .first()
-        )
-        if existing_detection:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Video {video_id} already has completed pose analysis",
-            )
-
-        video_job = VideoJob(
+        video_job = demo_service.enqueue_demo_pose_analysis(
+            db=db,
             video_id=video_id,
             user_id=current_user["id"],
-            job_type="pose_only",
-            status="queued",
+            confidence_threshold=confidence_threshold,
         )
-        db.add(video_job)
-        db.commit()
-        db.refresh(video_job)
 
-        try:
-            job = enqueue_pose_analysis(
-                video_id=video_id,
-                video_path=video.file_path,
-                confidence_threshold=confidence_threshold,
-                video_job_id=str(video_job.id),
-            )
-            if not job:
-                video_job.status = "failed"
-                video_job.error = "Failed to enqueue job to Redis"
-                db.commit()
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Failed to enqueue job to Redis. Please check Redis connection.",
-                )
-
-            video_job.rq_job_id = job.id
-            db.commit()
-
-            return AnalysisResponse(
-                job_id=str(video_job.id),
-                video_id=video_id,
-                analysis_type="pose_only",
-                status="queued",
-                message="Pose analysis started successfully",
-                estimated_duration=120.0,
-            )
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.exception(
-                "Failed to enqueue pose analysis for demo video %s", video_id
-            )
-            video_job.status = "failed"
-            video_job.error = f"Failed to enqueue job: {e}"
-            db.commit()
+        return AnalysisResponse(
+            job_id=str(video_job.id),
+            video_id=video_id,
+            analysis_type="pose_only",
+            status="queued",
+            message="Pose analysis started successfully",
+            estimated_duration=120.0,
+        )
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise handle_not_found_error("video", str(video_id)) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except RuntimeError as e:
+        error_msg = str(e).lower()
+        if "redis" in error_msg:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to start analysis. Please try again later.",
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Failed to enqueue job to Redis. Please check Redis connection.",
             ) from e
-
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to start analysis. Please try again later.",
+        ) from e
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
@@ -329,12 +217,7 @@ async def upload_video_for_user(
 
     try:
         # Validate target user exists in Supabase
-        target_user = get_user_by_id(target_user_id)
-        if not target_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Target user {target_user_id} not found in Supabase",
-            )
+        target_user = admin_service.validate_target_user_exists(target_user_id)
 
         logger.info(
             "Admin %s uploading video for user %s",
@@ -373,12 +256,17 @@ async def upload_video_for_user(
             file_size=db_video.file_size,
             status="uploaded",
             message="Video uploaded successfully",
-            metadata=metadata,
+            metadata=VideoMetadata(**metadata) if metadata else None,
             quality_metrics=None,
         )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except HTTPException:
         raise
-    except (OSError, ValueError) as e:
+    except OSError as e:
         log_and_raise_error(
             e,
             "upload_video_for_user",
@@ -468,24 +356,13 @@ def check_orphaned_data(
     require_admin(current_user)
 
     try:
-        from app.services.cleanup_service import find_orphaned_user_ids
+        from app.services.cleanup_service import (
+            find_orphaned_user_ids,
+            get_orphaned_data_details,
+        )
 
         orphaned_ids = find_orphaned_user_ids(db)
-
-        from app.models.player import Player
-        from app.models.video import Video
-
-        details = []
-        for user_id in orphaned_ids:
-            video_count = db.query(Video).filter(Video.user_id == user_id).count()
-            player_count = db.query(Player).filter(Player.user_id == user_id).count()
-            details.append(
-                {
-                    "user_id": user_id,
-                    "video_count": video_count,
-                    "player_count": player_count,
-                }
-            )
+        details = get_orphaned_data_details(db, orphaned_ids)
 
         return {
             "orphaned_user_count": len(orphaned_ids),

@@ -192,8 +192,8 @@ class TestUploadForUserEndpoint:
 
     def test_upload_for_user_validates_target_user_id(self, client: TestClient) -> None:
         """Test upload-for-user validates target_user_id parameter."""
-        with patch("app.api.routes.admin.get_user_by_id") as mock_get_user:
-            mock_get_user.return_value = None  # User doesn't exist
+        with patch("app.services.admin_service.validate_target_user_exists") as mock_get_user:
+            mock_get_user.side_effect = ValueError("Target user invalid-user-id not found in Supabase")  # User doesn't exist
 
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
                 tmp_file.write(b"fake video content" * 1000)
@@ -208,7 +208,8 @@ class TestUploadForUserEndpoint:
                     )
 
                 assert response.status_code == 400
-                mock_get_user.assert_called_once_with("invalid-user-id")
+                mock_get_user.assert_called_once()
+                assert mock_get_user.call_args[0][0] == "invalid-user-id"
             finally:
                 Path(tmp_file_path).unlink(missing_ok=True)
 
@@ -218,8 +219,8 @@ class TestUploadForUserEndpoint:
         """Test successful upload-for-user assigns video to target user."""
         target_user_id = "22222222-2222-2222-2222-222222222222"
 
-        with patch("app.api.routes.admin.get_user_by_id") as mock_get_user, patch(
-            "app.api.routes.admin.storage_service"
+        with patch("app.services.admin_service.validate_target_user_exists") as mock_get_user, patch(
+            "app.services.storage_service.storage_service"
         ) as mock_storage, patch.object(
             settings, "AUTO_ENQUEUE_ON_UPLOAD", False
         ), patch.object(settings, "TRANSCODE_ENABLED", False):

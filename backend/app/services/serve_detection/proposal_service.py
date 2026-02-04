@@ -65,6 +65,33 @@ def check_existing_proposals_or_attempts(
     }
 
 
+def get_pending_proposals(
+    db: Session,
+    video_id: int,
+    user_id: str,
+) -> List[ServeWindowProposal]:
+    """Get pending proposals for a video and user.
+
+    Args:
+        db: Database session
+        video_id: Video ID
+        user_id: User ID
+
+    Returns:
+        List of pending ServeWindowProposal instances ordered by start_timestamp
+    """
+    return (
+        db.query(ServeWindowProposal)
+        .filter(
+            ServeWindowProposal.video_id == video_id,
+            ServeWindowProposal.user_id == user_id,
+            ServeWindowProposal.status == "pending",
+        )
+        .order_by(ServeWindowProposal.start_timestamp)
+        .all()
+    )
+
+
 def clear_pending_proposals(db: Session, video_id: int, user_id: str) -> int:
     """
     Clear all pending proposals for a video.

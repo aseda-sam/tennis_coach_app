@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import (
@@ -17,10 +17,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import (
-    FileResponse,
-    RedirectResponse,
     Response,
-    StreamingResponse,
 )
 from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy.orm import Session
@@ -37,10 +34,14 @@ from app.api.schemas.video import (
 )
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.redis_config import analysis_queue
 from app.dependencies.auth import get_current_user, get_optional_user
-from app.models.video_job import VideoJob
-from app.services import video_service
+from app.services import (
+    analysis_status_service,
+    video_job_enqueue_service,
+    video_job_service,
+    video_service,
+    video_streaming_service,
+)
 from app.services.storage_service import storage_service
 from app.utils.authorization import (
     is_admin,
@@ -55,7 +56,6 @@ from app.utils.error_handling import (
     handle_not_found_error,
     log_and_raise_error,
 )
-from app.utils.file_validation import get_safe_filename, validate_file_exists
 
 
 class VideoAnalysisStatus(BaseModel):
@@ -144,13 +144,16 @@ async def get_video_jobs(
         List of video jobs for the authenticated user
     """
     try:
-        query = db.query(VideoJob).filter(VideoJob.user_id == current_user["id"])
-
+        status_list = None
         if job_status:
             status_list = [s.strip() for s in job_status.split(",")]
-            query = query.filter(VideoJob.status.in_(status_list))
 
-        jobs = query.order_by(VideoJob.created_at.desc()).limit(50).all()
+        jobs = video_job_service.get_user_jobs(
+            db=db,
+            user_id=current_user["id"],
+            status_filter=status_list,
+            limit=50,
+        )
 
         return [VideoJobResponse.model_validate(job) for job in jobs]
 
@@ -179,11 +182,12 @@ async def get_video_job(
         from app.utils.authorization import is_admin
 
         job_uuid = UUID(job_id)
-        query = db.query(VideoJob).filter(VideoJob.id == job_uuid)
-        if not is_admin(current_user):
-            query = query.filter(VideoJob.user_id == current_user["id"])
-
-        job = query.first()
+        job = video_job_service.get_job_by_id(
+            db=db,
+            job_id=job_uuid,
+            user_id=current_user["id"],
+            is_admin=is_admin(current_user),
+        )
         if not job:
             raise handle_not_found_error("job", job_id)
 
@@ -208,24 +212,19 @@ async def list_videos(
     Returns a paginated list of videos with basic information.
     """
     try:
-        from app.models.video import Video
         from app.utils.authorization import is_admin
 
         # Filter by user_id unless admin
         # Exclude demo videos from user's library
-        query = db.query(Video).filter(~Video.is_demo)
-        if not is_admin(current_user):
-            query = query.filter(Video.user_id == current_user["id"])
+        videos = video_service.list_user_videos(
+            db=db,
+            user_id=current_user["id"],
+            is_admin=is_admin(current_user),
+            skip=(pagination.page - 1) * pagination.size,
+            limit=pagination.size,
+        )
 
-        # Order by creation date
-        db_videos = query.order_by(Video.created_at.desc()).all()
-
-        # Apply pagination
-        start_idx = (pagination.page - 1) * pagination.size
-        end_idx = start_idx + pagination.size
-        paginated_videos = db_videos[start_idx:end_idx]
-
-        return [VideoListItem.model_validate(video) for video in paginated_videos]
+        return [VideoListItem.model_validate(video) for video in videos]
     except (OSError, ValueError) as e:
         log_and_raise_error(e, "list_videos")
 
@@ -249,10 +248,7 @@ async def get_demo_video(
         HTTPException: 404 if no active demo video exists
     """
     try:
-        from app.models.video import Video
-
-        # Query for active demo video
-        demo = db.query(Video).filter(Video.is_active_demo).first()
+        demo = video_service.get_active_demo_video(db)
 
         if not demo:
             raise HTTPException(
@@ -283,23 +279,18 @@ async def get_video_ball_contact_timestamps(
 
     Returns sorted, unique ball contact timestamps from serve attempts that have a contact point.
     """
-    from app.models.serve_attempt import ServeAttempt
+    from app.services import serve_attempt_service
 
     db_video = video_service.get_video_by_id(db, video_id)
     if not db_video:
         raise handle_not_found_error("video", str(video_id))
     require_video_access(db_video, current_user)
 
-    rows = (
-        db.query(ServeAttempt.contact_timestamp)
-        .filter(
-            ServeAttempt.video_id == video_id,
-            ServeAttempt.user_id == current_user["id"],
-            ServeAttempt.contact_timestamp.isnot(None),
-        )
-        .all()
+    timestamps = serve_attempt_service.get_ball_contact_timestamps(
+        db=db,
+        video_id=video_id,
+        user_id=current_user["id"],
     )
-    timestamps = sorted({r[0] for r in rows if r[0] is not None})
     return BallContactTimestampsResponse(ball_contact_timestamps=timestamps)
 
 
@@ -355,61 +346,27 @@ async def stream_video(
         # Check authorization (allow public access for demo videos)
         require_video_access_or_public_demo(db_video, current_user)
 
-        # Use storage service to get file
-        if settings.STORAGE_TYPE == "supabase":
-            # For active demo videos, use public demo bucket URL
-            if db_video.is_active_demo and settings.SUPABASE_DEMO_BUCKET:
-                try:
-                    # Demo videos should be stored with 'demo/' prefix in demo bucket
-                    demo_path = db_video.file_path
-                    if not demo_path.startswith("demo/"):
-                        demo_path = f"demo/{db_video.id}_{db_video.filename}"
-                    demo_url = storage_service.get_demo_public_url(demo_path)
-                    logger.info(
-                        f"Redirecting to demo bucket URL for active demo video {video_id}: {demo_url}"
-                    )
-                    return RedirectResponse(url=demo_url)
-                except (ValueError, RuntimeError) as e:
-                    logger.error(
-                        f"Failed to get demo bucket URL for video {video_id}: {e}"
-                    )
-                    # Fallback to regular flow
-
-            # For regular videos, use private bucket with signed URL or public URL
-            # For Supabase, use file_path which contains 'raw/filename.mp4'
-            # For local, file_path is the full path, but for Supabase it's the storage path
-            storage_path = db_video.file_path
-            try:
-                file_url = storage_service.get_file_url(storage_path)
-                logger.info(
-                    f"Redirecting to Supabase URL for video {video_id}: {file_url}"
-                )
-                # Redirect to Supabase public URL
-                return RedirectResponse(url=file_url)
-            except (ValueError, RuntimeError, OSError) as e:
-                logger.error(
-                    f"Failed to get Supabase URL for video {video_id}, storage_path={storage_path}: {e}"
-                )
-                # Fallback: download and stream
-                file_data = storage_service.download_file(storage_path)
-                return StreamingResponse(
-                    iter([file_data]),
-                    media_type=db_video.content_type or "video/mp4",
-                    headers={
-                        "Content-Disposition": f'inline; filename="{get_safe_filename(db_video.filename)}"'
-                    },
-                )
-        else:
-            # For local storage, resolve the storage path to actual file system path
-            resolved_path = storage_service.get_local_file_path(db_video.file_path)
-            validate_file_exists(resolved_path, db_video.filename)
-
-            return FileResponse(
-                path=str(resolved_path),
-                media_type=db_video.content_type or "video/mp4",
-                filename=get_safe_filename(db_video.filename),
-            )
-    except (OSError, ValueError) as e:
+        return video_streaming_service.get_video_stream_response(
+            db=db,
+            video_id=video_id,
+            current_user=current_user,
+        )
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise handle_not_found_error("video", str(video_id)) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        ) from e
+    except HTTPException:
+        raise
+    except OSError as e:
         log_and_raise_error(e, "stream_video", {"video_id": video_id})
 
 
@@ -517,34 +474,27 @@ async def get_video_analysis_status(
         Analysis status information for the video
     """
     try:
-        # Verify video exists
+        # Verify video exists and check authorization
         db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Check authorization
         require_video_access(db_video, current_user)
 
-        analysis_types = []
-        has_analysis = False
+        status_dict = analysis_status_service.get_video_analysis_status(db, video_id)
+        return VideoAnalysisStatus(**status_dict)
 
-        # Check for pose detection
-        from app.models.pose_detection import PoseDetection
-
-        pose_detection = (
-            db.query(PoseDetection).filter(PoseDetection.video_id == video_id).first()
-        )
-        if pose_detection and pose_detection.status == "completed":
-            has_analysis = True
-            analysis_types.append("pose_detection")
-
-        return VideoAnalysisStatus(
-            video_id=video_id,
-            has_analysis=has_analysis,
-            analysis_types=analysis_types,
-        )
-
-    except (OSError, ValueError) as e:
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise handle_not_found_error("video", str(video_id)) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except HTTPException:
+        raise
+    except OSError as e:
         log_and_raise_error(e, "get_video_analysis_status", {"video_id": video_id})
 
 
@@ -567,63 +517,26 @@ async def get_bulk_analysis_status(
         Analysis status for each requested video
     """
     try:
-        from app.models.pose_detection import PoseDetection
-        from app.models.video import Video
         from app.utils.authorization import is_admin
 
-        video_ids = request.video_ids
-
-        # Verify all videos exist and user has access
-        query = db.query(Video).filter(Video.id.in_(video_ids))
-        if not is_admin(current_user):
-            query = query.filter(Video.user_id == current_user["id"])
-
-        accessible_videos = {video.id for video in query.all()}
-
-        # Check for unauthorized access
-        unauthorized_ids = set(video_ids) - accessible_videos
-        if unauthorized_ids:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Videos not found or access denied: {list(unauthorized_ids)}",
-            )
-
-        # Fetch all pose detections in one query
-        pose_detections = (
-            db.query(PoseDetection)
-            .filter(
-                PoseDetection.video_id.in_(video_ids),
-                PoseDetection.status == "completed",
-            )
-            .all()
+        status_dicts = analysis_status_service.get_bulk_analysis_status(
+            db=db,
+            video_ids=request.video_ids,
+            user_id=current_user["id"],
+            is_admin=is_admin(current_user),
         )
 
-        # Build lookup maps for O(1) access
-        pose_map: Dict[int, PoseDetection] = {pd.video_id: pd for pd in pose_detections}
-
-        # Build response for each video
-        statuses = []
-        for video_id in video_ids:
-            analysis_types = []
-            has_analysis = False
-
-            if video_id in pose_map:
-                has_analysis = True
-                analysis_types.append("pose_detection")
-
-            statuses.append(
-                VideoAnalysisStatus(
-                    video_id=video_id,
-                    has_analysis=has_analysis,
-                    analysis_types=analysis_types,
-                )
-            )
-
+        statuses = [VideoAnalysisStatus(**status_dict) for status_dict in status_dicts]
         return BulkAnalysisStatusResponse(statuses=statuses)
 
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        ) from e
     except HTTPException:
         raise
-    except (OSError, ValueError) as e:
+    except OSError as e:
         log_and_raise_error(
             e, "get_bulk_analysis_status", {"video_ids": request.video_ids}
         )
@@ -781,109 +694,11 @@ async def upload_video(
         # or in environments where Redis should not be used.
         # When enabled, ALL uploads (regular and demo) are auto-enqueued.
         # Pytest tests are unaffected because they mock enqueue functions.
-        if settings.AUTO_ENQUEUE_ON_UPLOAD:
-            from rq import Retry
-
-            from app.services.rq_tasks import transcode_video_rq
-
-            # Create pose detection job record (will be started after transcode if needed)
-            pose_job = VideoJob(
-                video_id=db_video.id,
-                user_id=current_user["id"],
-                job_type="pose_only",
-                status="queued",
-            )
-            db.add(pose_job)
-            db.commit()
-            db.refresh(pose_job)
-
-            # Enqueue transcoding first if file is large enough, otherwise go straight to pose detection
-            try:
-                if (
-                    settings.TRANSCODE_ENABLED
-                    and db_video.file_size >= settings.TRANSCODE_THRESHOLD_BYTES
-                ):
-                    # Create transcode job record
-                    transcode_job = VideoJob(
-                        video_id=db_video.id,
-                        user_id=current_user["id"],
-                        job_type="transcode",
-                        status="queued",
-                    )
-                    db.add(transcode_job)
-                    db.commit()
-                    db.refresh(transcode_job)
-
-                    # Enqueue transcode job (will chain to pose detection on completion)
-                    rq_job = analysis_queue.enqueue(
-                        transcode_video_rq,
-                        video_id=db_video.id,
-                        video_path=db_video.file_path,
-                        video_job_id=str(transcode_job.id),
-                        retry=Retry(max=2, interval=60),
-                        job_timeout=600,  # 10 minutes for transcoding
-                        result_ttl=3600,
-                    )
-                    if rq_job:
-                        transcode_job.rq_job_id = rq_job.id
-                        db.commit()
-                        logger.info(
-                            "Auto-enqueued transcoding for video %d (is_demo=%s)",
-                            db_video.id,
-                            is_demo,
-                        )
-                    else:
-                        transcode_job.status = "failed"
-                        transcode_job.error = "Failed to enqueue transcode job to Redis"
-                        db.commit()
-                else:
-                    # File is small enough, skip transcoding and go straight to scout/refine pipeline
-                    from app.services.rq_tasks import (
-                        analyze_pose_detection_scout_refine_rq,
-                    )
-
-                    rq_job = analysis_queue.enqueue(
-                        analyze_pose_detection_scout_refine_rq,
-                        video_id=db_video.id,
-                        video_path=db_video.file_path,
-                        video_job_id=str(pose_job.id),
-                        confidence_threshold=0.7,
-                        retry=Retry(max=2, interval=60),
-                        job_timeout=settings.POSE_DETECTION_JOB_TIMEOUT_SECONDS,
-                        result_ttl=3600,
-                    )
-                    job = rq_job
-                    if not job:
-                        pose_job.status = "failed"
-                        pose_job.error = "Failed to enqueue job to Redis"
-                        db.commit()
-                        logger.debug(
-                            "Auto-enqueue failed for video %d (is_demo=%s)",
-                            db_video.id,
-                            is_demo,
-                        )
-                    else:
-                        pose_job.rq_job_id = job.id
-                        db.commit()
-                        logger.info(
-                            "Auto-enqueued pose analysis for video %d (is_demo=%s, skipped transcode)",
-                            db_video.id,
-                            is_demo,
-                        )
-            except Exception:  # noqa: BLE001 - Intentionally catch all to ensure upload succeeds
-                # Enqueue functions already log errors internally, just ensure upload doesn't fail
-                if "transcode_job" in locals():
-                    transcode_job.status = "failed"
-                    transcode_job.error = "Failed to enqueue job to Redis"
-                pose_job.status = "failed"
-                pose_job.error = "Failed to enqueue job to Redis"
-                db.commit()
-                logger.debug("Failed to enqueue jobs, but upload succeeded")
-        else:
-            logger.debug(
-                "Auto-enqueue disabled (AUTO_ENQUEUE_ON_UPLOAD=False). "
-                "Set AUTO_ENQUEUE_ON_UPLOAD=True in .env to enable."
-            )
+        video_job_enqueue_service.auto_enqueue_video_analysis(
+            db=db,
+            video=db_video,
+            user_id=current_user["id"],
+        )
 
         return VideoUploadResponse(
             video_id=db_video.id,
@@ -911,7 +726,7 @@ async def analyze_serve_attempts(
     Calculates elbow angles synchronously (no RQ).
     """
     try:
-        from app.models.serve_attempt import ServeAttempt
+        from app.services import serve_attempt_service
         from app.services.serve_analysis_service import ServeAnalysisService
 
         # Get video to check authorization
@@ -928,9 +743,10 @@ async def analyze_serve_attempts(
         # Prevent modification of demo videos
         require_video_not_demo(video, current_user)
 
-        # Check if there are serve attempts to analyze
-        serve_attempts = (
-            db.query(ServeAttempt).filter(ServeAttempt.video_id == video_id).all()
+        # Get serve attempts for this video
+        serve_attempts = serve_attempt_service.get_serve_attempts_for_video(
+            db=db,
+            video_id=video_id,
         )
 
         if not serve_attempts:

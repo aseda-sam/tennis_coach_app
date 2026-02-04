@@ -22,7 +22,6 @@ from app.api.schemas.serve_detection import (
 from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
-from app.models.serve_window_proposal import ServeWindowProposal
 from app.services import video_service
 from app.services.serve_detection import proposal_service
 from app.utils.authorization import require_video_access, require_video_not_demo
@@ -185,15 +184,10 @@ async def get_proposals(
         require_video_access(video, current_user)
 
         # Get pending proposals for this video and user
-        proposals = (
-            db.query(ServeWindowProposal)
-            .filter(
-                ServeWindowProposal.video_id == video_id,
-                ServeWindowProposal.user_id == current_user["id"],
-                ServeWindowProposal.status == "pending",
-            )
-            .order_by(ServeWindowProposal.start_timestamp)
-            .all()
+        proposals = proposal_service.get_pending_proposals(
+            db=db,
+            video_id=video_id,
+            user_id=current_user["id"],
         )
 
         return [ServeWindowProposalInfo.model_validate(p) for p in proposals]
@@ -265,13 +259,6 @@ async def edit_proposal(
     Accept a proposal with edited timestamps, creating a ServeAttempt.
     """
     try:
-        # Validate timestamps
-        if request.start_timestamp >= request.end_timestamp:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="start_timestamp must be less than end_timestamp",
-            )
-
         serve_attempt = proposal_service.accept_with_edits(
             db,
             proposal_id,
@@ -283,7 +270,13 @@ async def edit_proposal(
         return ServeAttemptInfo.model_validate(serve_attempt)
 
     except ValueError as e:
-        log_and_raise_error(e, "edit_proposal", {"proposal_id": proposal_id})
+        error_msg = str(e).lower()
+        if "not found" in error_msg or "unauthorized" in error_msg:
+            raise handle_not_found_error("proposal", str(proposal_id)) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error

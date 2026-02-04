@@ -13,10 +13,13 @@ from app.api.schemas.background_tasks import AnalysisRequest, AnalysisResponse
 from app.core.database import get_db
 from app.core.redis_config import analysis_queue, redis_conn
 from app.dependencies.auth import get_current_user
-from app.models.video_job import VideoJob
-from app.services import video_service
+from app.services import video_job_service, video_service
 from app.services.rq_tasks import enqueue_pose_analysis
-from app.utils.authorization import require_video_access, require_video_not_demo
+from app.utils.authorization import (
+    is_admin,
+    require_video_access,
+    require_video_not_demo,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,15 +79,13 @@ async def start_analysis(
             # If Redis is unavailable, the connection will fail when enqueueing, which is handled below
 
             # Create VideoJob record BEFORE enqueuing (status='queued')
-            video_job = VideoJob(
+            video_job = video_job_service.create_video_job(
+                db=db,
                 video_id=video_id,
                 user_id=current_user["id"],
                 job_type=request.analysis_type,
                 status="queued",
             )
-            db.add(video_job)
-            db.commit()
-            db.refresh(video_job)
 
             # Enqueue RQ job using shared helper
             logger.info(f"Enqueueing {request.analysis_type} job to Redis queue...")
@@ -171,7 +172,12 @@ async def cancel_task(
 
         try:
             job_uuid = uuid.UUID(job_id)
-            video_job = db.query(VideoJob).filter(VideoJob.id == job_uuid).first()
+            video_job = video_job_service.get_job_by_id(
+                db=db,
+                job_id=job_uuid,
+                user_id=current_user["id"],
+                is_admin=is_admin(current_user),
+            )
             if video_job:
                 # Check authorization via video access
                 video = video_service.get_video_by_id(db, video_job.video_id)

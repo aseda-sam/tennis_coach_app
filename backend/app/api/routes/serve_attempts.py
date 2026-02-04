@@ -14,12 +14,10 @@ from app.api.schemas.serve_attempt import (
     ServeAttemptUpdate,
 )
 from app.core.database import get_db
-from app.core.shot_types import SERVE_SUBTYPES, is_valid_serve_subtype
 from app.dependencies.auth import get_current_user
-from app.models.player import Player
-from app.models.serve_attempt import ServeAttempt
-from app.services import player_service, video_service
+from app.services import serve_attempt_service, video_service
 from app.utils.authorization import require_video_access, require_video_not_demo
+from app.utils.error_handling import handle_not_found_error, log_and_raise_error
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +40,7 @@ async def create_serve_attempt(
         # Get video to check authorization
         video = video_service.get_video_by_id(db, serve_attempt.video_id)
         if not video:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Video with ID {serve_attempt.video_id} not found",
-            )
+            raise handle_not_found_error("video", str(serve_attempt.video_id))
 
         # Check authorization
         require_video_access(video, current_user)
@@ -53,80 +48,31 @@ async def create_serve_attempt(
         # Prevent modification of demo videos
         require_video_not_demo(video, current_user)
 
-        # Validate timestamps
-        if serve_attempt.start_timestamp >= serve_attempt.end_timestamp:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="start_timestamp must be less than end_timestamp",
-            )
-
-        if serve_attempt.contact_timestamp is not None and (
-            serve_attempt.contact_timestamp < serve_attempt.start_timestamp
-            or serve_attempt.contact_timestamp > serve_attempt.end_timestamp
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="contact_timestamp must be between start_timestamp and end_timestamp",
-            )
-
-        # Validate serve subtype
-        if serve_attempt.serve_subtype and not is_valid_serve_subtype(
-            serve_attempt.serve_subtype
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid serve_subtype: {serve_attempt.serve_subtype}. "
-                f"Valid options: {', '.join(SERVE_SUBTYPES)}",
-            )
-
-        # Auto-assign default player if not provided
-        player_id = serve_attempt.player_id
-        if not player_id:
-            default_player = player_service.get_or_create_default_player(
-                db, current_user["id"]
-            )
-            player_id = default_player.id
-            logger.debug(f"Auto-assigned default player {player_id} for serve attempt")
-
-        # Validate player ownership
-        player = db.query(Player).filter(Player.id == player_id).first()
-        if not player or player.user_id != current_user["id"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Player not found or access denied",
-            )
-
-        # Create serve attempt with user_id from auth
-        db_serve_attempt = ServeAttempt(
-            video_id=serve_attempt.video_id,
+        db_serve_attempt = serve_attempt_service.create_serve_attempt(
+            db=db,
+            serve_attempt_data=serve_attempt,
             user_id=current_user["id"],
-            player_id=player_id,
-            start_timestamp=serve_attempt.start_timestamp,
-            end_timestamp=serve_attempt.end_timestamp,
-            contact_timestamp=serve_attempt.contact_timestamp,
-            court_side=serve_attempt.court_side,
-            serve_number=serve_attempt.serve_number,
-            serve_subtype=serve_attempt.serve_subtype,
-            in_out=serve_attempt.in_out,
-        )
-        db.add(db_serve_attempt)
-        db.commit()
-        db.refresh(db_serve_attempt)
-
-        logger.info(
-            f"Created serve attempt {db_serve_attempt.id} for video {serve_attempt.video_id}"
         )
 
         return ServeAttemptInfo.model_validate(db_serve_attempt)
 
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise handle_not_found_error("video", str(serve_attempt.video_id)) from e
+        if "access denied" in error_msg or "forbidden" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception("Error creating serve attempt")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create serve attempt. Please try again later.",
-        ) from e
+    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
+        log_and_raise_error(e, "create_serve_attempt", {"video_id": serve_attempt.video_id})
 
 
 @router.put("/{serve_attempt_id}", response_model=ServeAttemptInfo)
@@ -138,97 +84,44 @@ async def update_serve_attempt(
 ) -> ServeAttemptInfo:
     """Update a serve attempt (e.g., adjust timestamps)."""
     try:
-        # Get serve attempt
-        serve_attempt = (
-            db.query(ServeAttempt).filter(ServeAttempt.id == serve_attempt_id).first()
+        # Get serve attempt to check demo status
+        serve_attempt = serve_attempt_service.get_serve_attempt_by_id(
+            db=db,
+            serve_attempt_id=serve_attempt_id,
+            user_id=current_user["id"],
         )
-
-        if not serve_attempt:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Serve attempt with ID {serve_attempt_id} not found",
-            )
-
-        # Check authorization
-        if serve_attempt.user_id != current_user["id"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied",
-            )
 
         # Get video to check demo status
         video = video_service.get_video_by_id(db, serve_attempt.video_id)
         if video:
             require_video_not_demo(video, current_user)
 
-        # Validate player ownership if player_id is being updated
-        if updates.player_id is not None:
-            player = db.query(Player).filter(Player.id == updates.player_id).first()
-            if not player or player.user_id != current_user["id"]:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Player not found or access denied",
-                )
-
-        # Validate timestamps if being updated
-        start_ts = (
-            updates.start_timestamp
-            if updates.start_timestamp is not None
-            else serve_attempt.start_timestamp
-        )
-        end_ts = (
-            updates.end_timestamp
-            if updates.end_timestamp is not None
-            else serve_attempt.end_timestamp
-        )
-        contact_ts = (
-            updates.contact_timestamp
-            if updates.contact_timestamp is not None
-            else serve_attempt.contact_timestamp
+        updated_serve_attempt = serve_attempt_service.update_serve_attempt(
+            db=db,
+            serve_attempt_id=serve_attempt_id,
+            updates=updates,
+            user_id=current_user["id"],
         )
 
-        if start_ts >= end_ts:
+        return ServeAttemptInfo.model_validate(updated_serve_attempt)
+
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise handle_not_found_error("serve_attempt", str(serve_attempt_id)) from e
+        if "access denied" in error_msg or "forbidden" in error_msg:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="start_timestamp must be less than end_timestamp",
-            )
-
-        if contact_ts is not None and (contact_ts < start_ts or contact_ts > end_ts):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="contact_timestamp must be between start_timestamp and end_timestamp",
-            )
-
-        # Validate serve subtype if being updated
-        if updates.serve_subtype is not None and not is_valid_serve_subtype(
-            updates.serve_subtype
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid serve_subtype: {updates.serve_subtype}. "
-                f"Valid options: {', '.join(SERVE_SUBTYPES)}",
-            )
-
-        # Update fields
-        update_dict = updates.model_dump(exclude_unset=True)
-        for key, value in update_dict.items():
-            setattr(serve_attempt, key, value)
-
-        db.commit()
-        db.refresh(serve_attempt)
-
-        logger.info(f"Updated serve attempt {serve_attempt_id}")
-
-        return ServeAttemptInfo.model_validate(serve_attempt)
-
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception("Error updating serve attempt")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update serve attempt. Please try again later.",
-        ) from e
+    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
+        log_and_raise_error(e, "update_serve_attempt", {"serve_attempt_id": serve_attempt_id})
 
 
 @router.get("/me", response_model=List[ServeAttemptInfo])
@@ -248,46 +141,33 @@ async def get_my_serve_attempts(
     Otherwise returns all serves for user's players.
     """
     try:
-        query = db.query(ServeAttempt).filter(
-            ServeAttempt.user_id == current_user["id"]
+        serve_attempts = serve_attempt_service.list_user_serve_attempts(
+            db=db,
+            user_id=current_user["id"],
+            player_id=player_id,
+            court_side=court_side,
+            start_date=start_date,
+            end_date=end_date,
+            video_id=video_id,
         )
-
-        # Apply filters
-        if player_id is not None:
-            # Validate player ownership
-            player = db.query(Player).filter(Player.id == player_id).first()
-            if not player or player.user_id != current_user["id"]:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Player not found or access denied",
-                )
-            query = query.filter(ServeAttempt.player_id == player_id)
-
-        if court_side is not None:
-            query = query.filter(ServeAttempt.court_side == court_side)
-
-        if video_id is not None:
-            query = query.filter(ServeAttempt.video_id == video_id)
-
-        if start_date is not None:
-            query = query.filter(ServeAttempt.created_at >= start_date)
-
-        if end_date is not None:
-            query = query.filter(ServeAttempt.created_at <= end_date)
-
-        # Order by creation date (newest first)
-        serve_attempts = query.order_by(ServeAttempt.created_at.desc()).all()
 
         return [ServeAttemptInfo.model_validate(sa) for sa in serve_attempts]
 
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "access denied" in error_msg or "forbidden" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception("Error getting serve attempts")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get serve attempts. Please try again later.",
-        ) from e
+    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
+        log_and_raise_error(e, "get_my_serve_attempts", {})
 
 
 @router.get("/{serve_attempt_id}", response_model=ServeAttemptDetail)
@@ -298,33 +178,31 @@ async def get_serve_attempt(
 ) -> ServeAttemptDetail:
     """Get details of a specific serve attempt."""
     try:
-        serve_attempt = (
-            db.query(ServeAttempt).filter(ServeAttempt.id == serve_attempt_id).first()
+        serve_attempt = serve_attempt_service.get_serve_attempt_by_id(
+            db=db,
+            serve_attempt_id=serve_attempt_id,
+            user_id=current_user["id"],
         )
-
-        if not serve_attempt:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Serve attempt with ID {serve_attempt_id} not found",
-            )
-
-        # Check authorization
-        if serve_attempt.user_id != current_user["id"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied",
-            )
 
         return ServeAttemptDetail.model_validate(serve_attempt)
 
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise handle_not_found_error("serve_attempt", str(serve_attempt_id)) from e
+        if "access denied" in error_msg or "forbidden" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception("Error getting serve attempt")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get serve attempt. Please try again later.",
-        ) from e
+    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
+        log_and_raise_error(e, "get_serve_attempt", {"serve_attempt_id": serve_attempt_id})
 
 
 @router.delete("/{serve_attempt_id}")
@@ -335,42 +213,40 @@ async def delete_serve_attempt(
 ) -> Dict[str, str]:
     """Delete a serve attempt."""
     try:
-        # Get serve attempt
-        serve_attempt = (
-            db.query(ServeAttempt).filter(ServeAttempt.id == serve_attempt_id).first()
+        # Get serve attempt to check demo status
+        serve_attempt = serve_attempt_service.get_serve_attempt_by_id(
+            db=db,
+            serve_attempt_id=serve_attempt_id,
+            user_id=current_user["id"],
         )
-
-        if not serve_attempt:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Serve attempt with ID {serve_attempt_id} not found",
-            )
-
-        # Check authorization
-        if serve_attempt.user_id != current_user["id"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied",
-            )
 
         # Get video to check demo status
         video = video_service.get_video_by_id(db, serve_attempt.video_id)
         if video:
             require_video_not_demo(video, current_user)
 
-        # Delete serve attempt
-        db.delete(serve_attempt)
-        db.commit()
-
-        logger.info(f"Deleted serve attempt {serve_attempt_id}")
+        serve_attempt_service.delete_serve_attempt(
+            db=db,
+            serve_attempt_id=serve_attempt_id,
+            user_id=current_user["id"],
+        )
 
         return {"message": f"Serve attempt {serve_attempt_id} deleted successfully"}
 
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise handle_not_found_error("serve_attempt", str(serve_attempt_id)) from e
+        if "access denied" in error_msg or "forbidden" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception("Error deleting serve attempt")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete serve attempt. Please try again later.",
-        ) from e
+    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
+        log_and_raise_error(e, "delete_serve_attempt", {"serve_attempt_id": serve_attempt_id})

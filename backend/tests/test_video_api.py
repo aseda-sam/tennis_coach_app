@@ -95,7 +95,7 @@ class TestVideoAPI:
             with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
                 settings, "TRANSCODE_ENABLED", False
             ), patch(
-                "app.api.routes.video.analysis_queue.enqueue", return_value=mock_job
+                "app.core.redis_config.analysis_queue.enqueue", return_value=mock_job
             ) as mock_enqueue:
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test.mp4", f, "video/mp4")}
@@ -130,7 +130,7 @@ class TestVideoAPI:
             with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
                 settings, "TRANSCODE_ENABLED", False
             ), patch(
-                "app.api.routes.video.analysis_queue.enqueue", return_value=None
+                "app.core.redis_config.analysis_queue.enqueue", return_value=None
             ) as mock_enqueue:
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test.mp4", f, "video/mp4")}
@@ -163,7 +163,7 @@ class TestVideoAPI:
             with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
                 settings, "TRANSCODE_ENABLED", False
             ), patch(
-                "app.api.routes.video.analysis_queue.enqueue",
+                "app.core.redis_config.analysis_queue.enqueue",
                 side_effect=RedisConnectionError("Redis unavailable"),
             ) as mock_enqueue:
                 with open(tmp_file_path, "rb") as f:
@@ -201,7 +201,7 @@ class TestVideoAPI:
             ), patch.object(
                 settings, "TRANSCODE_THRESHOLD_BYTES", 20 * 1024 * 1024
             ), patch(
-                "app.api.routes.video.analysis_queue.enqueue", return_value=mock_job
+                "app.core.redis_config.analysis_queue.enqueue", return_value=mock_job
             ) as mock_enqueue:
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test_large.mp4", f, "video/mp4")}
@@ -241,7 +241,7 @@ class TestVideoAPI:
             ), patch.object(
                 settings, "TRANSCODE_THRESHOLD_BYTES", 20 * 1024 * 1024
             ), patch(
-                "app.api.routes.video.analysis_queue.enqueue", return_value=mock_job
+                "app.core.redis_config.analysis_queue.enqueue", return_value=mock_job
             ) as mock_enqueue:
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test_small.mp4", f, "video/mp4")}
