@@ -10,6 +10,7 @@ These functions are executed by RQ workers and must be:
 
 import json
 import logging
+import os
 import subprocess
 import tempfile
 from datetime import datetime
@@ -135,9 +136,9 @@ def transcode_video_rq(
             local_path, temp_video_path = _get_temp_video_path(video_path)
 
             # Create temp output file
-            temp_output_path = Path(
-                tempfile.mkstemp(suffix=".mp4", dir=settings.PROCESSED_DIR)[1]
-            )
+            fd, temp_output_name = tempfile.mkstemp(suffix=".mp4", dir=settings.PROCESSED_DIR)
+            os.close(fd)  # Close the file descriptor immediately - we only need the filename
+            temp_output_path = Path(temp_output_name)
             temp_output_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Run ffmpeg transcoding
