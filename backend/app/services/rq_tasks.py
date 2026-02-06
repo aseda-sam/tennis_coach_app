@@ -13,6 +13,7 @@ import logging
 import os
 import subprocess
 import tempfile
+import time
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -34,6 +35,7 @@ from app.utils.metrics import (
     record_job_failed,
     record_job_started,
     record_job_succeeded,
+    record_queue_wait,
 )
 from app.utils.video_utils import get_video_rotation
 
@@ -57,6 +59,10 @@ def _rq_job_span(
                 job = get_current_job()
                 if job is not None:
                     span.set_attribute("rq_job_id", str(job.id))
+                    # Add queue wait time as span attribute (visible in trace detail)
+                    if job.meta and "enqueued_at" in job.meta:
+                        queue_wait = time.time() - job.meta["enqueued_at"]
+                        span.set_attribute("queue_wait_seconds", round(queue_wait, 2))
             except Exception as e:  # noqa: BLE001 - get_current_job can fail outside RQ
                 logger.debug("Could not get RQ job for span: %s", e)
             yield span
@@ -90,6 +96,24 @@ def _stage_span(
             yield span
     except Exception:  # noqa: BLE001 - OTel may not be available
         yield None
+
+
+def _record_queue_wait(job_type: str, video_id: int) -> None:
+    """Read enqueued_at from RQ job meta and record queue wait time."""
+    try:
+        job = get_current_job()
+        if job and job.meta and "enqueued_at" in job.meta:
+            wait = time.time() - job.meta["enqueued_at"]
+            record_queue_wait(job_type, wait, video_id=video_id)
+            logger.info(
+                "Queue wait for %s video %s: %.1fs",
+                job_type,
+                video_id,
+                wait,
+                extra=get_log_extra(video_id=video_id),
+            )
+    except Exception:  # noqa: BLE001, S110 - best-effort, don't break the job
+        pass
 
 
 def _get_temp_video_path(video_path: str) -> tuple[Path, Path | None]:
@@ -142,6 +166,7 @@ def transcode_video_rq(
         ValueError: If video not found or transcoding fails
         RuntimeError: If ffmpeg fails
     """
+    _record_queue_wait("transcode", video_id)
     temp_video_path = None
     temp_output_path = None
     try:
@@ -322,6 +347,7 @@ def transcode_video_rq(
                         retry=Retry(max=2, interval=60),
                         job_timeout=settings.POSE_DETECTION_JOB_TIMEOUT_SECONDS,
                         result_ttl=3600,
+                        meta={"enqueued_at": time.time()},
                     )
                     if pose_rq_job:
                         pose_job.rq_job_id = pose_rq_job.id
@@ -434,6 +460,7 @@ def enqueue_pose_analysis(
             retry=Retry(max=2, interval=60),
             job_timeout=settings.POSE_DETECTION_JOB_TIMEOUT_SECONDS,
             result_ttl=3600,  # Keep results for 1 hour
+            meta={"enqueued_at": time.time()},
         )
 
         logger.info(
@@ -473,9 +500,8 @@ def analyze_pose_detection_rq(
         ValueError: If video not found or analysis fails
         RuntimeError: If pose detection service fails
     """
-    import time
-
     start_time = time.time()
+    _record_queue_wait("pose_detection", video_id)
     record_job_started("pose_detection", video_id=video_id)
 
     with _rq_job_span(
@@ -487,7 +513,8 @@ def analyze_pose_detection_rq(
             from app.services.pose_detection import PoseDetectionService
 
             logger.info(
-                f"RQ task: Starting pose detection for video {video_id}",
+                "RQ task: Starting pose detection for video %s",
+                video_id,
                 extra=get_log_extra(video_id=video_id, job_id=video_job_id),
             )
 
@@ -638,9 +665,8 @@ def analyze_pose_detection_scout_refine_rq(
     Returns:
         Analysis results dictionary
     """
-    import time
-
     start_time = time.time()
+    _record_queue_wait("scout_refine", video_id)
     record_job_started("scout_refine", video_id=video_id)
 
     with _rq_job_span("rq.scout_refine", video_id=video_id, video_job_id=video_job_id):
@@ -744,6 +770,10 @@ def analyze_pose_detection_scout_refine_rq(
                             video_job.status = "completed"
                             video_job.finished_at = datetime.utcnow()
                             db.commit()
+                        duration = time.time() - start_time
+                        record_job_succeeded(
+                            "scout_refine", duration, video_id=video_id
+                        )
                         return {
                             "status": "completed",
                             "mode": "scout_only",

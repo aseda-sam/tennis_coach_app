@@ -97,13 +97,22 @@ if __name__ == "__main__":
     else:
         print(f"✓ Fork safety disabled: {fork_safety}")
 
-    # OpenTelemetry: send traces to same Grafana stack as API (when OTEL_* env set)
+    # OpenTelemetry: send traces + metrics to same Grafana stack as API (when OTEL_* env set)
+    from app.utils.metrics import setup_metrics
     from app.utils.otel import setup_otel_tracing
 
-    if setup_otel_tracing(default_service_name="tennis-coach-worker"):
+    otel_enabled = setup_otel_tracing(default_service_name="tennis-coach-worker")
+    metrics_enabled = setup_metrics(
+        default_service_name="tennis-coach-worker"
+    )  # Uses same OTLP endpoint as traces
+
+    if otel_enabled:
         print("✓ OpenTelemetry tracing enabled (tennis-coach-worker)")
     else:
         print("OpenTelemetry disabled (no OTEL_EXPORTER_OTLP_ENDPOINT)")
+
+    if metrics_enabled:
+        print("✓ OpenTelemetry metrics enabled (tennis-coach-worker)")
 
     # Clean up stale workers before starting
     print("\nChecking for stale worker registrations...")
