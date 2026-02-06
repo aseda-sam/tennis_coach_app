@@ -650,7 +650,6 @@ def analyze_pose_detection_scout_refine_rq(
                 logger.warning(
                     f"Refine pass failed: {refine_results['error']}, using scout data only"
                 )
-                refine_results = None
             else:
                 # Merge refine data into scout record (no separate record)
                 scout_pose_data = json.loads(scout_pose_detection.pose_data)
