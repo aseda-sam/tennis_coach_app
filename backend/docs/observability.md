@@ -74,9 +74,41 @@ When adding logs or spans, attach the relevant subset of these so we can search 
 - [x] API: trace_id/span_id in logs via ObservabilityLogFilter  
 - [x] Worker: stage spans (download, scout, refine, detect_serves, db_write)  
 - [x] Logging: structured fields (trace_id, job_id, video_id) in key log lines via get_log_extra()  
-- [x] Metrics: job counts (started/succeeded/failed) and durations (histogram)  
+- [x] Metrics: job counts (started/succeeded/failed) and durations (histogram) with OTLP exporter to Grafana Cloud  
 - [x] Docs: link from `backend/docs/README.md`  
 - [x] Cursor: observability rule (`.cursor/rules/observability.mdc`) + backend-patterns note
+
+## What to use when (metrics vs traces)
+
+- **Metrics (Prometheus data source)**  
+  Use when you want **aggregated answers**: “How many jobs started/succeeded/failed?” “How long do jobs take on average?” “Is the worker keeping up?”  
+  Example: `jobs_started_total`, `jobs_succeeded_total`, `job_duration_seconds` in Explore with data source **grafanacloud-asedasam-prom**.
+
+- **Traces (Traces / Tempo data source)**  
+  Use when you want **one request or job, step by step**: “Why was this job slow?” “Which stage (download, scout, refine, db_write) took the time?”  
+  Open a trace for a specific job/request and look at the spans; use `trace_id` to find related logs if needed.
+
+- **In practice:** Start with metrics to see “is something wrong?” then use traces to see “what exactly happened for that one execution?”
+
+## Service graph vs job-level flow
+
+- **Service graph (Traces data source)**  
+  In Explore with the **Traces** data source, the “Service Graph” tab shows which *services* call which (e.g. API → something). For us, the “call” from API to worker is enqueue → Redis → worker, so the graph may show tennis-coach-api and tennis-coach-worker; full API→worker flow in one trace would require propagating trace context from API to the job (future improvement).
+
+- **Job-level flow (what we have now)**  
+  Each worker job already produces **one trace** with **stage spans**: download → scout → refine → db_write (or pose_detection → db_write for pose-only). In Explore → Traces, open a trace and you see that timeline. So “flow” today is: per-job trace with stages; service graph is the higher-level “which service talks to which.”
+
+## Differentiating local / Docker vs production
+
+- **Service name** already separates API (`tennis-coach-api`) from worker (`tennis-coach-worker`).
+- To separate **environment** (e.g. local/Docker vs production), set a resource attribute when running in production, and optionally in local/Docker:
+  - **Production (e.g. Fly):** In Fly secrets (or env), add for example  
+    `OTEL_RESOURCE_ATTRIBUTES=deployment.environment=production`  
+    (append to existing `OTEL_RESOURCE_ATTRIBUTES` if you already set `service.namespace=tennis-coach`).
+  - **Local / Docker:** In backend `.env` you can set  
+    `OTEL_RESOURCE_ATTRIBUTES=deployment.environment=development`  
+    (or leave unset if you prefer).
+- In Grafana (metrics and traces) you can then filter by `deployment.environment=production` or `development` so local testing doesn’t mix with production.
 
 ## Troubleshooting: no traces in Grafana
 
