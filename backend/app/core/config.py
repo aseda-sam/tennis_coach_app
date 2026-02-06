@@ -101,7 +101,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
-        extra="forbid",
+        extra="ignore",  # ignore unknown env vars (e.g. OTEL_* for OpenTelemetry)
     )
 
     @property
