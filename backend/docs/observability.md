@@ -30,8 +30,10 @@ When adding logs or spans, attach the relevant subset of these so we can search 
 
 1. **Setup (you)**  
    - Sign up for **Grafana Cloud** (free tier).  
-   - Create an OTLP endpoint / token for traces (and optionally metrics).  
-   - Add env vars (see below); no code change required for “just export”.
+   - In Grafana Cloud: **Get started → connect data**, or **Connections → OpenTelemetry / OLP**. Get:
+     - **OTLP endpoint URL** (e.g. `https://otlp-gateway-<region>.grafana.net/otlp`)
+     - **API token** (or Instance ID + API key) for sending traces.
+   - Add env vars (see below) in backend `.env` (local) and Fly secrets (API + worker); no code change until step 2.
 
 2. **API (first code change)**  
    - Add OTel SDK + FastAPI instrumentation so every HTTP request gets a trace.  
@@ -66,10 +68,21 @@ When adding logs or spans, attach the relevant subset of these so we can search 
 
 ## Status
 
-- [ ] Grafana Cloud account + OTLP endpoint/token  
-- [ ] API: OTel SDK + FastAPI auto-instrumentation  
-- [ ] API: trace_id/span_id in logs (optional filter)  
-- [ ] Worker: root span per job + stage spans  
-- [ ] Worker: job_id/video_id on spans and in logs  
-- [ ] Docs: link from `backend/docs/README.md`  
-- [ ] Cursor: observability rule (optional) + backend-patterns note
+- [x] Grafana Cloud account + OTLP endpoint/token  
+- [x] API: OTel SDK + FastAPI auto-instrumentation (main.py + FastAPIInstrumentor)  
+- [x] Worker: OTel in worker process; root span per job (rq.pose_detection, rq.scout_refine) + job_id/video_id/rq_job_id; flush on job end  
+- [x] API: trace_id/span_id in logs via ObservabilityLogFilter  
+- [x] Worker: stage spans (download, scout, refine, detect_serves, db_write)  
+- [x] Logging: structured fields (trace_id, job_id, video_id) in key log lines via get_log_extra()  
+- [x] Metrics: job counts (started/succeeded/failed) and durations (histogram)  
+- [x] Docs: link from `backend/docs/README.md`  
+- [x] Cursor: observability rule (`.cursor/rules/observability.mdc`) + backend-patterns note
+
+## Troubleshooting: no traces in Grafana
+
+- **Docker**: After adding OTel deps you must **rebuild** the backend image so the container has the packages:  
+  `docker compose build backend` then `docker compose up` (or `up -d backend`).  
+  The compose file already loads `backend/.env` via `env_file`; no extra compose config needed.
+- **Logs**: On startup, look for either **"OpenTelemetry tracer configured (OTLP endpoint=...)"** (success) or **"OpenTelemetry setup failed: ..."** (see the exception).
+- **Auth**: Use exactly the header Grafana gives you, e.g. `OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic <base64>`. Values are URL-unquoted automatically (e.g. `%20` → space).
+- **Traffic**: Hit the API (e.g. `GET /`, `GET /health`, or any route) so spans are generated; traces can take 1–2 minutes to show in Grafana.

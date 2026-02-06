@@ -24,6 +24,9 @@ if sys.platform == "darwin":  # macOS
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Worker identifies as tennis-coach-worker in Grafana (override shared .env)
+os.environ["OTEL_SERVICE_NAME"] = "tennis-coach-worker"
+
 from redis.exceptions import ResponseError as RedisResponseError
 from rq import Worker
 
@@ -93,6 +96,14 @@ if __name__ == "__main__":
         os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
     else:
         print(f"✓ Fork safety disabled: {fork_safety}")
+
+    # OpenTelemetry: send traces to same Grafana stack as API (when OTEL_* env set)
+    from app.utils.otel import setup_otel_tracing
+
+    if setup_otel_tracing(default_service_name="tennis-coach-worker"):
+        print("✓ OpenTelemetry tracing enabled (tennis-coach-worker)")
+    else:
+        print("OpenTelemetry disabled (no OTEL_EXPORTER_OTLP_ENDPOINT)")
 
     # Clean up stale workers before starting
     print("\nChecking for stale worker registrations...")

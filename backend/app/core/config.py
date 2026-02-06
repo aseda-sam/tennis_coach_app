@@ -184,6 +184,8 @@ if settings.PROFILE == "production":
         )
 
 # Setup logging
+# Observability fields (trace_id, span_id, request_id, job_id, video_id) are added
+# by ObservabilityLogFilter and can be included in format if needed
 logging.basicConfig(
     level=logging.DEBUG if settings.DEBUG else logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",

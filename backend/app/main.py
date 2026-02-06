@@ -34,56 +34,16 @@ from app.utils.error_handling import (
     general_error_handler,
     validation_error_handler,
 )
+from app.utils.logging_context import ObservabilityLogFilter
+from app.utils.otel import setup_otel_tracing
 
 logger = logging.getLogger(__name__)
 
+_otel_enabled = setup_otel_tracing(default_service_name="tennis-coach-api")
 
-def _setup_otel_tracer() -> bool:
-    """
-    Initialize OpenTelemetry tracer with OTLP exporter when OTEL_EXPORTER_OTLP_ENDPOINT is set.
-
-    The SDK reads OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_HEADERS, and
-    OTEL_EXPORTER_OTLP_PROTOCOL from environment variables automatically.
-    Importantly, the SDK appends /v1/traces to the base endpoint when reading from env.
-
-    Returns True if tracing was configured, False otherwise.
-    """
-    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-    if not endpoint:
-        return False
-    try:
-        from opentelemetry import trace
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
-            OTLPSpanExporter,
-        )
-        from opentelemetry.sdk.resources import Resource
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-        # Let the SDK read OTEL_EXPORTER_OTLP_ENDPOINT (appends /v1/traces),
-        # OTEL_EXPORTER_OTLP_HEADERS (parses key=value pairs + URL-decodes),
-        # and OTEL_EXPORTER_OTLP_PROTOCOL from env vars automatically.
-        # Do NOT pass endpoint= explicitly — the SDK treats that as the full URL
-        # and won't append /v1/traces, causing a 404.
-        exporter = OTLPSpanExporter()
-
-        resource = Resource.create(
-            {"service.name": os.getenv("OTEL_SERVICE_NAME", "tennis-coach-api")}
-        )
-        provider = TracerProvider(resource=resource)
-        provider.add_span_processor(BatchSpanProcessor(exporter))
-        trace.set_tracer_provider(provider)
-        logger.info(
-            "OpenTelemetry tracer configured (OTLP endpoint=%s)",
-            endpoint.split("//")[-1].split("/")[0] + "/...",
-        )
-        return True
-    except Exception as e:  # noqa: BLE001
-        logger.warning("OpenTelemetry setup failed: %s", e)
-        return False
-
-
-_otel_enabled = _setup_otel_tracer()
+# Add observability filter to root logger (adds trace_id/span_id to all logs)
+root_logger = logging.getLogger()
+root_logger.addFilter(ObservabilityLogFilter())
 
 
 def validate_redis_url(url: str) -> bool:
