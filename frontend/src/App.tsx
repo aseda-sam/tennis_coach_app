@@ -7,6 +7,8 @@ import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
 import DemoDashboard from './components/DemoDashboard';
 import DemoLanding from './components/DemoLanding';
+import FloatingHelpButton from './components/FloatingHelpButton';
+import LoomVideoModal from './components/LoomVideoModal';
 import { CloseIcon, VideoIcon } from './components/Icons';
 import { QuickSetup } from './components/QuickSetup';
 import VideoList from './components/VideoList';
@@ -29,6 +31,7 @@ function App() {
   );
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [showQuickSetup, setShowQuickSetup] = useState(false);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // Check if user needs setup (invited user without display_name)
   useEffect(() => {
@@ -282,6 +285,7 @@ function App() {
             <DemoLanding
               onTryDemo={handleTryDemo}
               onUploadVideo={handleUploadFromHome}
+              onWatchTutorial={() => setIsVideoModalOpen(true)}
               user={user}
             />
           </div>
@@ -399,6 +403,16 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Loom Video Modal - Accessible from anywhere */}
+      <LoomVideoModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        videoId="4e50fe345c664fdca497c2ca884a52e3"
+      />
+
+      {/* Floating Help Button - Persistent access to tutorial */}
+      <FloatingHelpButton onClick={() => setIsVideoModalOpen(true)} />
     </div>
   );
 }
