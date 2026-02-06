@@ -14,7 +14,7 @@ import os
 import subprocess
 import tempfile
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterator, Optional
@@ -47,32 +47,45 @@ def _rq_job_span(
     span_name: str, video_id: int, video_job_id: Optional[str] = None
 ) -> Iterator[Any]:
     """Create one trace span for an RQ job so it shows up in Grafana (job_id, video_id, rq_job_id)."""
+    span_context = None
+    span = None
     try:
         from opentelemetry import trace
 
         tracer = trace.get_tracer(__name__, "0.1.0")
-        with tracer.start_as_current_span(span_name) as span:
-            span.set_attribute("video_id", video_id)
-            if video_job_id:
-                span.set_attribute("job_id", str(video_job_id))
-            try:
-                job = get_current_job()
-                if job is not None:
-                    span.set_attribute("rq_job_id", str(job.id))
-                    # Add queue wait time as span attribute (visible in trace detail)
-                    if job.meta and "enqueued_at" in job.meta:
-                        queue_wait = time.time() - job.meta["enqueued_at"]
-                        span.set_attribute("queue_wait_seconds", round(queue_wait, 2))
-            except Exception as e:  # noqa: BLE001 - get_current_job can fail outside RQ
-                logger.debug("Could not get RQ job for span: %s", e)
-            yield span
-        # Force flush so the span is exported immediately after job completes
-        provider = trace.get_tracer_provider()
-        if hasattr(provider, "force_flush"):
-            provider.force_flush(timeout_millis=5000)
+        span_context = tracer.start_as_current_span(span_name)
+        span = span_context.__enter__()
+        span.set_attribute("video_id", video_id)
+        if video_job_id:
+            span.set_attribute("job_id", str(video_job_id))
+        try:
+            job = get_current_job()
+            if job is not None:
+                span.set_attribute("rq_job_id", str(job.id))
+                # Add queue wait time as span attribute (visible in trace detail)
+                if job.meta and "enqueued_at" in job.meta:
+                    queue_wait = time.time() - job.meta["enqueued_at"]
+                    span.set_attribute("queue_wait_seconds", round(queue_wait, 2))
+        except Exception as e:  # noqa: BLE001 - get_current_job can fail outside RQ
+            logger.debug("Could not get RQ job for span: %s", e)
     except Exception as e:  # noqa: BLE001
         logger.warning("OTel span creation failed: %s", e)
-        yield None
+        span = None
+
+    # Single yield point - always executed
+    try:
+        yield span
+    finally:
+        # Cleanup: ensure span is closed and flushed (don't mask exceptions from with-body)
+        if span_context is not None:
+            try:
+                span_context.__exit__(None, None, None)
+                # Force flush so the span is exported immediately after job completes
+                provider = trace.get_tracer_provider()
+                if hasattr(provider, "force_flush"):
+                    provider.force_flush(timeout_millis=5000)
+            except Exception as e:  # noqa: BLE001 - Don't mask exceptions from with-body
+                logger.debug("OTel span cleanup failed: %s", e)
 
 
 @contextmanager
@@ -80,22 +93,31 @@ def _stage_span(
     span_name: str, **attributes: str | int | float | bool | None
 ) -> Iterator[Any]:
     """Create a child span for a pipeline stage (download, scout, refine, db_write, etc.)."""
+    span_context = None
+    span = None
     try:
         from opentelemetry import trace
 
         tracer = trace.get_tracer(__name__, "0.1.0")
-        with tracer.start_as_current_span(span_name) as span:
-            for key, value in attributes.items():
-                if value is not None:
-                    span.set_attribute(
-                        key,
-                        str(value)
-                        if not isinstance(value, (int, float, bool))
-                        else value,
-                    )
-            yield span
+        span_context = tracer.start_as_current_span(span_name)
+        span = span_context.__enter__()
+        for key, value in attributes.items():
+            if value is not None:
+                span.set_attribute(
+                    key,
+                    str(value) if not isinstance(value, (int, float, bool)) else value,
+                )
     except Exception:  # noqa: BLE001 - OTel may not be available
-        yield None
+        span = None
+
+    # Single yield point - always executed
+    try:
+        yield span
+    finally:
+        # Cleanup: ensure span is closed (don't mask exceptions from with-body)
+        if span_context is not None:
+            with suppress(Exception):  # Don't mask exceptions from with-body
+                span_context.__exit__(None, None, None)
 
 
 def _record_queue_wait(job_type: str, video_id: int) -> None:
@@ -796,6 +818,9 @@ def analyze_pose_detection_scout_refine_rq(
                     )
 
                 # Stage: Refine pass
+                # Initialize frames_with_poses from scout data (fallback if refine fails)
+                frames_with_poses = scout_pose_detection.frames_with_poses or 0
+
                 with _stage_span(
                     "refine",
                     video_id=video_id,
@@ -845,11 +870,6 @@ def analyze_pose_detection_scout_refine_rq(
 
                 # Stage: Final DB write
                 with _stage_span("db_write", video_id=video_id, job_id=video_job_id):
-                    if video_job:
-                        video_job.status = "completed"
-                        video_job.finished_at = datetime.utcnow()
-                        db.commit()
-
                     logger.info(
                         "Merged refine data into scout record for video %s, "
                         "%s frames now have pose data",

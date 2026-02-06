@@ -117,9 +117,8 @@ def record_job_started(job_type: str, video_id: Optional[int] = None) -> None:
     if not _metrics_enabled or _jobs_started_counter is None:
         return
     try:
+        # Don't include video_id in metrics (high cardinality) - use traces/logs instead
         attributes = {"job_type": job_type}
-        if video_id is not None:
-            attributes["video_id"] = str(video_id)
         _jobs_started_counter.add(1, attributes=attributes)
     except Exception:  # noqa: BLE001, S110 - Metrics may fail silently
         pass
@@ -132,9 +131,8 @@ def record_job_succeeded(
     if not _metrics_enabled:
         return
     try:
+        # Don't include video_id in metrics (high cardinality) - use traces/logs instead
         attributes = {"job_type": job_type}
-        if video_id is not None:
-            attributes["video_id"] = str(video_id)
 
         if _jobs_succeeded_counter:
             _jobs_succeeded_counter.add(1, attributes=attributes)
@@ -154,9 +152,8 @@ def record_job_failed(
     if not _metrics_enabled or _jobs_failed_counter is None:
         return
     try:
+        # Don't include video_id in metrics (high cardinality) - use traces/logs instead
         attributes = {"job_type": job_type}
-        if video_id is not None:
-            attributes["video_id"] = str(video_id)
 
         _jobs_failed_counter.add(1, attributes=attributes)
 
@@ -173,9 +170,8 @@ def record_queue_wait(
     if not _metrics_enabled or _queue_wait_histogram is None:
         return
     try:
+        # Don't include video_id in metrics (high cardinality) - use traces/logs instead
         attributes = {"job_type": job_type}
-        if video_id is not None:
-            attributes["video_id"] = str(video_id)
         _queue_wait_histogram.record(wait_seconds, attributes=attributes)
     except Exception:  # noqa: BLE001, S110 - Metrics may fail silently
         pass
