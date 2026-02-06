@@ -778,6 +778,8 @@ async def analyze_serve_attempts(
             total_serves=len(serve_attempts),
             serves_with_contact=serves_with_contact,
             avg_elbow_angle=avg_elbow_angle,
+            knee_bend_analyzed=results.get("knee_bend_analyzed", 0),
+            knee_bend_failed=results.get("knee_bend_failed", 0),
         )
 
     except HTTPException:

@@ -35,6 +35,26 @@ class ServeAttempt(Base):
         Float, nullable=True
     )  # Calculated if contact_timestamp exists
 
+    # Knee bend metrics (pose-based, computed during early serve phase)
+    knee_bend_detected = Column(Boolean, nullable=True)  # Whether knee bend was detected
+    knee_bend_confidence = Column(
+        Float, nullable=True
+    )  # Confidence score (0.0-1.0) for knee bend detection
+    knee_hip_ratio_min = Column(
+        Float, nullable=True
+    )  # Minimum knee-hip ratio (lower = more bend)
+    knee_flexion_min_deg_left = Column(
+        Float, nullable=True
+    )  # Minimum left knee flexion angle (hip-knee-ankle) in degrees
+    knee_flexion_min_deg_right = Column(
+        Float, nullable=True
+    )  # Minimum right knee flexion angle (hip-knee-ankle) in degrees
+
+    # Analysis version tracking
+    analysis_version = Column(
+        String(20), nullable=True
+    )  # Version of analysis heuristics used (e.g., "v1.0")
+
     # Context
     court_side = Column(String(10), nullable=True)  # 'deuce', 'ad'
     serve_number = Column(Integer, nullable=True)  # 1, 2
