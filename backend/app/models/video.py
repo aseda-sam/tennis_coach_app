@@ -57,6 +57,10 @@ class Video(Base):
         DateTime(timezone=True), nullable=True
     )  # When video was recorded (for trends)
 
+    # Transcoding metadata
+    is_transcoded = Column(Boolean, nullable=False, server_default=text("false"))
+    original_file_size = Column(Integer, nullable=True)  # File size before transcoding
+
     # New granular analysis relationships
     pose_detections = relationship(
         "PoseDetection", back_populates="video", cascade="all, delete-orphan"

@@ -10,6 +10,7 @@ interface VideoOverlayProps {
   showOverlay: boolean;
   hasPoseData: boolean;
   currentTime?: number; // Current video time to trigger updates on keyboard navigation
+  zoomLevel?: number; // Current zoom level for transform sync
 }
 
 /**
@@ -118,6 +119,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
   showOverlay,
   hasPoseData,
   currentTime,
+  zoomLevel = 1,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastRenderedFrameRef = useRef<number>(-1);
@@ -153,16 +155,8 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       return false;
     }
 
-    // Check if dimensions match (accounting for possible 90° rotation)
-    const dimensionsMatch =
-      (overlayData.width === videoNaturalWidth &&
-        overlayData.height === videoNaturalHeight) ||
-      (overlayData.width === videoNaturalHeight &&
-        overlayData.height === videoNaturalWidth);
-
-    // If dimensions don't match, we need to rotate (90° clockwise)
+    // Detect 90° rotation when overlay dimensions are swapped
     return (
-      !dimensionsMatch &&
       overlayData.width === videoNaturalHeight &&
       overlayData.height === videoNaturalWidth
     );
@@ -446,7 +440,17 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
     return null;
   }
 
-  return <canvas ref={canvasRef} className="video-overlay-canvas" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="video-overlay-canvas"
+      style={{
+        transform: zoomLevel !== 1 ? `scale(${zoomLevel})` : 'none',
+        transformOrigin: 'center center',
+        transition: 'transform 0.2s ease-out',
+      }}
+    />
+  );
 };
 
 export default VideoOverlay;

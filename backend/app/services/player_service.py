@@ -99,6 +99,40 @@ def get_player_by_id(db: Session, player_id: int) -> Optional[Player]:
     return player
 
 
+def list_user_players(
+    db: Session,
+    user_id: str,
+    is_admin: bool = False,
+    name_filter: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+) -> List[Player]:
+    """List players for a user with optional filtering and pagination.
+
+    Args:
+        db: Database session
+        user_id: User ID to filter by (if not admin)
+        is_admin: Whether the user is an admin (admins can see all players)
+        name_filter: Optional name filter (partial match, case-insensitive)
+        skip: Number of records to skip
+        limit: Maximum number of records to return
+
+    Returns:
+        List of Player instances
+    """
+    query = db.query(Player)
+
+    # Filter by user_id unless admin
+    if not is_admin:
+        query = query.filter(Player.user_id == user_id)
+
+    # Apply name filter if provided
+    if name_filter:
+        query = query.filter(Player.name.ilike(f"%{name_filter}%"))
+
+    return query.offset(skip).limit(limit).all()
+
+
 def get_players(
     db: Session,
     skip: int = 0,

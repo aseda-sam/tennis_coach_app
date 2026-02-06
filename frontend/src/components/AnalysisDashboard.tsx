@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
+import { useAppConfig } from '../hooks/useAppConfig';
 import { useServeAttempts } from '../hooks/useServeAttempts';
 import { useServeProposals } from '../hooks/useServeProposals';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
@@ -25,6 +26,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   onClose,
 }) => {
   const queryClient = useQueryClient();
+  const { config } = useAppConfig();
+  const lowConfidenceThreshold =
+    config.serve_detection.low_confidence_threshold;
 
   // Use React Query hook for analysis status (with caching)
   const { data: analysisStatus, refetch: refetchAnalysisStatus } =
@@ -66,7 +70,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     ((serveAttemptId: number) => void) | null
   >(null);
   const [isAnalyzingServes, setIsAnalyzingServes] = useState(false);
-  const [naturalScroll, setNaturalScroll] = useState(false);
+  const [naturalScroll, setNaturalScroll] = useState(true);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [isFindingServes, setIsFindingServes] = useState(false);
   const [findServesMessage, setFindServesMessage] = useState<string | null>(
@@ -81,11 +85,23 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   });
 
   // Get serve proposals for detection functionality
-  const { proposals, detectionStatus, runDetection, clearProposals } =
-    useServeProposals({
-      videoId,
-      autoRefresh: true,
-    });
+  const {
+    proposals,
+    detectionStatus,
+    runDetection,
+    clearProposals,
+    acceptAllProposals,
+    rejectLowConfidence,
+    lowConfidenceCount,
+  } = useServeProposals({
+    videoId,
+    autoRefresh: true,
+    lowConfidenceThreshold,
+  });
+
+  // State for bulk operations
+  const [isAcceptingAll, setIsAcceptingAll] = useState(false);
+  const [isRejectingLowConf, setIsRejectingLowConf] = useState(false);
 
   // Keyboard shortcut listener for ?
   useEffect(() => {
@@ -181,6 +197,54 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     }
   }, [proposals.length, clearProposals]);
 
+  // Handle accept all proposals
+  const handleAcceptAll = useCallback(async () => {
+    if (proposals.length === 0) return;
+    setIsAcceptingAll(true);
+    try {
+      const result = await acceptAllProposals();
+      if (result.failed > 0) {
+        setFindServesMessage(
+          `Accepted ${result.accepted}, ${result.failed} failed.`
+        );
+      } else {
+        setFindServesMessage(`Accepted ${result.accepted} serves!`);
+      }
+      setTimeout(() => setFindServesMessage(null), 3000);
+    } catch (err) {
+      console.error('Failed to accept all:', err);
+      setFindServesMessage('Failed to accept proposals.');
+      setTimeout(() => setFindServesMessage(null), 3000);
+    } finally {
+      setIsAcceptingAll(false);
+    }
+  }, [proposals.length, acceptAllProposals]);
+
+  // Handle reject low confidence proposals
+  const handleRejectLowConfidence = useCallback(async () => {
+    if (lowConfidenceCount === 0) return;
+    setIsRejectingLowConf(true);
+    try {
+      const result = await rejectLowConfidence();
+      if (result.failed > 0) {
+        setFindServesMessage(
+          `Removed ${result.rejected}, ${result.failed} failed.`
+        );
+      } else {
+        setFindServesMessage(
+          `Removed ${result.rejected} low-confidence proposals.`
+        );
+      }
+      setTimeout(() => setFindServesMessage(null), 3000);
+    } catch (err) {
+      console.error('Failed to reject low confidence:', err);
+      setFindServesMessage('Failed to remove proposals.');
+      setTimeout(() => setFindServesMessage(null), 3000);
+    } finally {
+      setIsRejectingLowConf(false);
+    }
+  }, [lowConfidenceCount, rejectLowConfidence]);
+
   const handleServeAttemptClick = useCallback(
     (serveAttemptId: number) => {
       videoPlayerNavigate?.(serveAttemptId);
@@ -256,6 +320,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             onNavigateReady={handleNavigateReady}
             isDemo={false}
             naturalScroll={naturalScroll}
+            lowConfidenceThreshold={lowConfidenceThreshold}
           />
           <button
             className="analysis-dashboard__shortcuts-hint"
@@ -314,30 +379,65 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             )}
 
             {analysisStatus?.has_analysis && (
-              <div className="analysis-dashboard__action-row">
-                <button
-                  className={`analysis-dashboard__action-btn ${
-                    detectionStatus?.serve_attempts &&
-                    detectionStatus.serve_attempts > 0
-                      ? 'analysis-dashboard__action-btn--secondary'
-                      : 'analysis-dashboard__action-btn--find'
-                  }`}
-                  onClick={handleFindServes}
-                  disabled={isFindingServes}
-                  title="Detect serve windows in the video"
-                >
-                  {isFindingServes ? 'Finding…' : 'Find Serve Windows'}
-                </button>
-                {proposals.length > 0 && (
-                  <button
-                    className="analysis-dashboard__action-btn analysis-dashboard__action-btn--ghost"
-                    onClick={handleClearProposals}
-                    title="Clear pending proposals"
-                  >
-                    Clear ({proposals.length})
-                  </button>
+              <>
+                {proposals.length === 0 ? (
+                  <div className="analysis-dashboard__action-row">
+                    <button
+                      className={`analysis-dashboard__action-btn ${
+                        detectionStatus?.serve_attempts &&
+                        detectionStatus.serve_attempts > 0
+                          ? 'analysis-dashboard__action-btn--secondary'
+                          : 'analysis-dashboard__action-btn--find'
+                      }`}
+                      onClick={handleFindServes}
+                      disabled={isFindingServes}
+                      title="Detect serve windows in the video"
+                    >
+                      {isFindingServes ? 'Finding…' : 'Find Serve Windows'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="analysis-dashboard__proposal-actions">
+                    {/* Accept All - primary action */}
+                    <button
+                      className="analysis-dashboard__action-btn analysis-dashboard__action-btn--accept-all"
+                      onClick={handleAcceptAll}
+                      disabled={isAcceptingAll || proposals.length === 0}
+                      title="Accept all proposals and create serve attempts"
+                    >
+                      {isAcceptingAll
+                        ? 'Accepting…'
+                        : `Accept All Serve Proposals (${proposals.length})`}
+                    </button>
+
+                    {/* Secondary actions row */}
+                    <div className="analysis-dashboard__action-row analysis-dashboard__action-row--secondary">
+                      {/* Remove low confidence - only show if there are any */}
+                      {lowConfidenceCount > 0 && (
+                        <button
+                          className="analysis-dashboard__action-btn analysis-dashboard__action-btn--remove-low"
+                          onClick={handleRejectLowConfidence}
+                          disabled={isRejectingLowConf}
+                          title="Remove proposals with less than 60% confidence"
+                        >
+                          {isRejectingLowConf
+                            ? 'Removing…'
+                            : `Remove Uncertain (${lowConfidenceCount})`}
+                        </button>
+                      )}
+
+                      {/* Clear all */}
+                      <button
+                        className="analysis-dashboard__action-btn analysis-dashboard__action-btn--clear-all"
+                        onClick={handleClearProposals}
+                        title="Clear all pending proposals"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
                 )}
-              </div>
+              </>
             )}
 
             {analysisStatus?.has_analysis && serveAttempts.length > 0 && (

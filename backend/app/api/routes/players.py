@@ -15,20 +15,8 @@ from app.api.schemas.player import (
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.player import Player
-from app.services.player_service import (
-    create_player as create_player_service,
-)
-from app.services.player_service import (
-    delete_player as delete_player_service,
-)
-from app.services.player_service import (
-    get_or_create_default_player,
-    get_player_by_id,
-)
-from app.services.player_service import (
-    update_player as update_player_service,
-)
-from app.utils.authorization import is_admin, require_player_access
+from app.services import player_service
+from app.utils.authorization import require_player_access
 from app.utils.error_handling import handle_processing_error, log_and_raise_error
 
 router = APIRouter(tags=["players"])
@@ -55,7 +43,7 @@ def create_player(
 ) -> PlayerInfo:
     """Create a new player."""
     try:
-        db_player = create_player_service(
+        db_player = player_service.create_player(
             db=db,
             name=player.name,
             dominant_hand=player.dominant_hand,
@@ -84,15 +72,16 @@ def get_players(
 ) -> List[PlayerListItem]:
     """Get all players for the current user with optional filtering and pagination."""
     try:
-        # Filter by user_id unless admin
-        query = db.query(Player)
-        if not is_admin(current_user):
-            query = query.filter(Player.user_id == current_user["id"])
+        from app.utils.authorization import is_admin
 
-        if name:
-            query = query.filter(Player.name.ilike(f"%{name}%"))
-
-        players = query.offset(skip).limit(limit).all()
+        players = player_service.list_user_players(
+            db=db,
+            user_id=current_user["id"],
+            is_admin=is_admin(current_user),
+            name_filter=name,
+            skip=skip,
+            limit=limit,
+        )
 
         # Create response
         return [
@@ -116,7 +105,9 @@ def get_my_player(
 ) -> PlayerInfo:
     """Get the default player profile for the current user."""
     try:
-        default_player = get_or_create_default_player(db, current_user["id"])
+        default_player = player_service.get_or_create_default_player(
+            db, current_user["id"]
+        )
         return _create_player_info(db, default_player)
     except ValueError as e:
         raise HTTPException(
@@ -145,7 +136,7 @@ def upsert_my_player(
             user_metadata = current_user.get("user_metadata", {})
             player_name = user_metadata.get("display_name")
 
-        default_player = get_or_create_default_player(
+        default_player = player_service.get_or_create_default_player(
             db,
             current_user["id"],
             name=player_name,
@@ -156,7 +147,9 @@ def upsert_my_player(
 
         # If player already existed, update it with any new data
         if update_data:
-            default_player = update_player_service(db, default_player.id, **update_data)
+            default_player = player_service.update_player(
+                db, default_player.id, **update_data
+            )
 
         return _create_player_info(db, default_player)
     except ValueError as e:
@@ -174,7 +167,7 @@ def get_player(
 ) -> PlayerInfo:
     """Get a specific player by ID."""
     try:
-        player = get_player_by_id(db, player_id)
+        player = player_service.get_player_by_id(db, player_id)
         if not player:
             raise ValueError(f"Player with ID {player_id} not found")
 
@@ -203,7 +196,7 @@ def update_player(
     """Update a player."""
     try:
         # Get player first to check authorization
-        player = get_player_by_id(db, player_id)
+        player = player_service.get_player_by_id(db, player_id)
         if not player:
             raise ValueError(f"Player with ID {player_id} not found")
 
@@ -219,7 +212,7 @@ def update_player(
             # No fields to update, return current player
             pass
         else:
-            player = update_player_service(db, player_id, **update_data)
+            player = player_service.update_player(db, player_id, **update_data)
 
         return _create_player_info(db, player)
     except ValueError as e:
@@ -242,14 +235,14 @@ def delete_player(
     """Delete a player."""
     try:
         # Get player first to check authorization
-        player = get_player_by_id(db, player_id)
+        player = player_service.get_player_by_id(db, player_id)
         if not player:
             raise ValueError(f"Player with ID {player_id} not found")
 
         # Check authorization (only owner can delete)
         require_player_access(player, current_user)
 
-        delete_player_service(db, player_id)
+        player_service.delete_player(db, player_id)
         return PlayerDeleteResponse(message=f"Player {player_id} deleted successfully")
     except ValueError as e:
         # Check if it's a "not found" error

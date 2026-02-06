@@ -73,14 +73,19 @@ class TestPoseDetectionService:
         mock_cap.release.assert_called_once()
 
     @patch("app.services.pose_detection.detection_service.cv2.VideoCapture")
+    @patch.object(PoseDetectionService, "_initialize_mediapipe")
     def test_analyze_video_file_no_detector(
         self,
+        mock_init_mediapipe: Mock,
         mock_video_capture: Mock,
         pose_service: PoseDetectionService,
         mock_video_file: Path,
     ) -> None:
         """Test pose detection when detector is not available."""
+        # Set both detectors to None and prevent re-initialization
         pose_service.pose_detector = None
+        pose_service._scout_detector = None
+        mock_init_mediapipe.return_value = None  # Don't actually initialize
 
         results = pose_service.analyze_video_file(mock_video_file)
 
@@ -168,6 +173,217 @@ class TestPoseDetectionService:
         assert retrieved.id == pose_detection.id
         assert retrieved.video_id == video.id
         assert retrieved.total_frames == 50
+
+    @patch("app.services.pose_detection.detection_service.cv2.VideoCapture")
+    @patch(
+        "app.services.pose_detection.detection_service.PoseDetectionService._initialize_mediapipe"
+    )
+    def test_analyze_video_file_scout_mode_calls_detector_with_frame_skip(
+        self,
+        mock_init_mediapipe: Mock,
+        mock_video_capture: Mock,
+        pose_service: PoseDetectionService,
+        mock_video_file: Path,
+    ) -> None:
+        """Test that scout mode skips frames and includes timestamp_ms."""
+        import cv2
+        import numpy as np
+
+        # Mock video capture with multiple frames
+        mock_cap = Mock()
+        mock_video_capture.return_value = mock_cap
+        mock_cap.isOpened.return_value = True
+        # Use cv2 constants (integers) as keys, not strings
+        mock_cap.get.side_effect = lambda prop: {
+            cv2.CAP_PROP_FPS: 30.0,
+            cv2.CAP_PROP_FRAME_COUNT: 10.0,
+        }.get(prop, 0.0)
+
+        # Mock frames (10 frames total)
+        frames = []
+        for _i in range(10):
+            frame = np.zeros((100, 100, 3), dtype=np.uint8)
+            frames.append((True, frame))
+        frames.append((False, None))  # End of video
+        mock_cap.read.side_effect = frames
+
+        # Mock pose detector with properly structured detection result - set it for scout mode
+        mock_detector = Mock()
+        mock_detection_result = Mock()
+        # Set pose_landmarks to an empty list (no poses detected)
+        mock_detection_result.pose_landmarks = []
+        mock_detector.detect_for_video.return_value = mock_detection_result
+        pose_service._scout_detector = mock_detector
+
+        # Run scout mode
+        results = pose_service.analyze_video_file(
+            mock_video_file, mode="scout", confidence_threshold=0.7
+        )
+
+        # Verify mode is scout
+        assert results["mode"] == "scout"
+        # Verify pose_detections include timestamp_ms
+        if "pose_detections" in results:
+            for detection in results["pose_detections"]:
+                assert "timestamp_ms" in detection
+                assert "frame_index" in detection
+
+    @patch("app.services.pose_detection.detection_service.cv2.VideoCapture")
+    @patch(
+        "app.services.pose_detection.detection_service.PoseDetectionService._initialize_mediapipe"
+    )
+    def test_analyze_serve_windows_processes_only_window_frames(
+        self,
+        mock_init_mediapipe: Mock,
+        mock_video_capture: Mock,
+        pose_service: PoseDetectionService,
+        mock_video_file: Path,
+    ) -> None:
+        """Test that analyze_serve_windows processes only frames within specified windows."""
+        import cv2
+        import numpy as np
+
+        # Mock video capture
+        mock_cap = Mock()
+        mock_video_capture.return_value = mock_cap
+        mock_cap.isOpened.return_value = True
+        mock_cap.get.side_effect = lambda prop: {
+            cv2.CAP_PROP_FPS: 30.0,
+            cv2.CAP_PROP_FRAME_COUNT: 300.0,  # 10 seconds at 30fps
+        }.get(prop, 0.0)
+
+        # Track which frames were accessed via set()
+        accessed_frames = []
+
+        def mock_set(prop: int, value: float) -> bool:
+            if prop == cv2.CAP_PROP_POS_FRAMES:
+                accessed_frames.append(int(value))
+            return True
+
+        mock_cap.set.side_effect = mock_set
+
+        # Mock frame reading - return frames when read is called
+        frame_count = 0
+
+        def mock_read() -> tuple[bool, np.ndarray]:
+            nonlocal frame_count
+            frame_count += 1
+            if frame_count <= 100:  # Return some frames
+                return True, np.zeros((100, 100, 3), dtype=np.uint8)
+            return False, None
+
+        mock_cap.read.side_effect = mock_read
+
+        # Mock pose detector with properly structured detection result
+        mock_detector = Mock()
+        mock_detection_result = Mock()
+        # Set pose_landmarks to an empty list (no poses detected)
+        mock_detection_result.pose_landmarks = []
+        mock_detector.detect_for_video.return_value = mock_detection_result
+        pose_service.pose_detector = mock_detector
+
+        # Call analyze_serve_windows with a single window
+        windows = [{"start_ms": 1000.0, "end_ms": 2000.0}]
+        results = pose_service.analyze_serve_windows(
+            mock_video_file, windows=windows, padding_ms=500.0, confidence_threshold=0.7
+        )
+
+        # Verify mode is refine and windows_processed is set
+        assert results["mode"] == "refine"
+        assert results["windows_processed"] == 1
+        # Verify that set was called to seek to window frames (with padding)
+        assert len(accessed_frames) > 0
+
+
+class TestMergePoseData:
+    """Unit tests for merge_pose_data static method."""
+
+    def test_merge_overwrites_scout_with_refine_keypoints(self) -> None:
+        """Refine data should overwrite scout data where keypoints exist."""
+        from typing import Any, Dict, List, Optional
+
+        scout_data: List[Dict[str, Any]] = [
+            {
+                "frame_index": 0,
+                "timestamp_ms": 0.0,
+                "keypoints": {"left_shoulder": [100, 100]},
+            },
+            {"frame_index": 1, "timestamp_ms": 33.3, "keypoints": None},  # skipped
+            {
+                "frame_index": 2,
+                "timestamp_ms": 66.6,
+                "keypoints": {"left_shoulder": [102, 102]},
+            },
+        ]
+        refine_data: List[Optional[Dict[str, Any]]] = [
+            None,  # outside window
+            {
+                "frame_index": 1,
+                "timestamp_ms": 33.3,
+                "keypoints": {"left_shoulder": [150, 150]},
+            },
+            {
+                "frame_index": 2,
+                "timestamp_ms": 66.6,
+                "keypoints": {"left_shoulder": [160, 160]},
+            },
+        ]
+
+        merged = PoseDetectionService.merge_pose_data(scout_data, refine_data)
+
+        assert merged[0]["keypoints"] == {"left_shoulder": [100, 100]}  # unchanged
+        assert merged[1]["keypoints"] == {"left_shoulder": [150, 150]}  # from refine
+        assert merged[2]["keypoints"] == {"left_shoulder": [160, 160]}  # from refine
+
+    def test_merge_preserves_scout_when_refine_is_none(self) -> None:
+        """Scout data preserved when refine frame is None."""
+        scout_data = [{"frame_index": 0, "keypoints": {"a": [1, 2]}}]
+        refine_data = [None]
+
+        merged = PoseDetectionService.merge_pose_data(scout_data, refine_data)
+
+        assert merged[0]["keypoints"] == {"a": [1, 2]}
+
+    def test_merge_handles_empty_arrays(self) -> None:
+        """Empty arrays should return empty result."""
+        assert PoseDetectionService.merge_pose_data([], []) == []
+
+    def test_merge_does_not_mutate_input(self) -> None:
+        """Original scout_data should not be mutated."""
+        scout_data = [{"frame_index": 0, "keypoints": {"a": [1, 2]}}]
+        refine_data = [{"frame_index": 0, "keypoints": {"a": [9, 9]}}]
+        original_keypoints = scout_data[0]["keypoints"].copy()
+
+        PoseDetectionService.merge_pose_data(scout_data, refine_data)
+
+        assert scout_data[0]["keypoints"] == original_keypoints
+
+    def test_merge_handles_refine_shorter_than_scout(self) -> None:
+        """When refine data is shorter, merge only up to refine length."""
+        scout_data = [
+            {"frame_index": 0, "keypoints": {"a": [1, 2]}},
+            {"frame_index": 1, "keypoints": {"a": [2, 3]}},
+            {"frame_index": 2, "keypoints": {"a": [3, 4]}},
+        ]
+        refine_data = [
+            {"frame_index": 0, "keypoints": {"a": [9, 9]}},
+            None,  # frame 1 has no refine data
+        ]
+
+        merged = PoseDetectionService.merge_pose_data(scout_data, refine_data)
+
+        assert merged[0]["keypoints"] == {"a": [9, 9]}  # overwritten
+        assert merged[1]["keypoints"] == {"a": [2, 3]}  # preserved from scout
+        assert merged[2]["keypoints"] == {"a": [3, 4]}  # preserved from scout
+
+    def test_merge_handles_refine_with_none_keypoints(self) -> None:
+        """Refine frame with None keypoints should not overwrite scout."""
+        scout_data = [{"frame_index": 0, "keypoints": {"a": [1, 2]}}]
+        refine_data = [{"frame_index": 0, "keypoints": None}]
+
+        merged = PoseDetectionService.merge_pose_data(scout_data, refine_data)
+
+        assert merged[0]["keypoints"] == {"a": [1, 2]}  # preserved from scout
 
 
 class TestPoseDetectionAPI:

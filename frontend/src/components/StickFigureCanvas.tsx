@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { videoApi } from '../services/api';
 import { OverlayData } from '../types/video';
 import './StickFigureCanvas.css';
@@ -176,22 +176,23 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
     }
 
     const frame = overlayData.frames[frameIndex];
-    if (!frame || !frame.keypoints || Object.keys(frame.keypoints).length === 0) {
-      // No pose data - show message
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.font = '16px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('No pose data for this frame', containerWidth / 2, containerHeight / 2);
+    if (
+      !frame ||
+      !frame.keypoints ||
+      Object.keys(frame.keypoints).length === 0
+    ) {
+      // No pose data - show blank canvas (grid already drawn)
       return;
     }
 
     // Normalize pose to canvas coordinates
-    const normalizedPose = normalizePose(frame.keypoints, containerWidth, containerHeight);
+    const normalizedPose = normalizePose(
+      frame.keypoints,
+      containerWidth,
+      containerHeight
+    );
     if (!normalizedPose) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.font = '16px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Incomplete pose data', containerWidth / 2, containerHeight / 2);
+      // Incomplete pose data - show blank canvas (grid already drawn)
       return;
     }
 
@@ -240,8 +241,13 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
     // Draw confidence indicator
     const confidence = frame.confidence || 0;
     ctx.textAlign = 'right';
-    ctx.fillStyle = confidence > 0.7 ? '#00ff88' : confidence > 0.4 ? '#ffaa00' : '#ff4444';
-    ctx.fillText(`Confidence: ${(confidence * 100).toFixed(0)}%`, containerWidth - 10, containerHeight - 14);
+    ctx.fillStyle =
+      confidence > 0.7 ? '#00ff88' : confidence > 0.4 ? '#ffaa00' : '#ff4444';
+    ctx.fillText(
+      `Confidence: ${(confidence * 100).toFixed(0)}%`,
+      containerWidth - 10,
+      containerHeight - 14
+    );
 
     lastRenderedTimeRef.current = currentTime;
   }, [currentTime, overlayData]);

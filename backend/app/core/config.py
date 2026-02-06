@@ -52,11 +52,32 @@ class Settings(BaseSettings):
     POSE_TRACKING_CONFIDENCE: float = 0.5
     POSE_OVERALL_CONFIDENCE: float = 0.8
 
+    # Serve Detection
+    SERVE_DETECTION_LOW_CONFIDENCE_THRESHOLD: float = (
+        0.6  # Proposals below this are "uncertain"
+    )
+
     # Processing limits
     MAX_VIDEO_DURATION: int = 300  # 5 minutes
     FRAME_SKIP_RATIO: int = 1
     MAX_VIDEO_RESOLUTION: tuple[int, int] = (3840, 2160)  # 4K
     MAX_FPS: int = 60
+    FPS_TOLERANCE: float = 0.5
+    POSE_DETECTION_JOB_TIMEOUT_SECONDS: int = 1800
+
+    # Scout mode settings
+    SCOUT_FRAME_SKIP: int = (
+        2  # Process every Nth frame in scout mode (2 = 15fps effective at 30fps)
+    )
+
+    # Transcoding settings
+    TRANSCODE_ENABLED: bool = True
+    TRANSCODE_THRESHOLD_BYTES: int = (
+        20 * 1024 * 1024
+    )  # 20MB - skip transcoding for smaller files
+    TRANSCODE_RESOLUTION: int = 720  # height in pixels
+    TRANSCODE_FPS: int = 30
+    TRANSCODE_CRF: int = 23  # quality (lower = better, 18-28 typical)
 
     # Upload limits (primarily for production)
     # Note: enforced only when PROFILE != "local" and user is not admin.
@@ -69,18 +90,24 @@ class Settings(BaseSettings):
         "https://aseda-sam.github.io",
     ]
 
+    # Admin access (comma-separated Supabase auth user UUIDs)
+    # In PROFILE=local, the auth dependency returns the mock user id below, so local dev
+    # can access admin-only endpoints by default.
+    ADMIN_USER_IDS: str = "00000000-0000-0000-0000-000000000000"
+
     # Demo (for demo videos)
     DEMO_USER_ID: str = "00000000-0000-0000-0000-000000000001"
-    DEMO_EDITOR_USER_IDS: list[str] = [
-        "00000000-0000-0000-0000-000000000000",  # Local dev mock
-        "ca4a6fcc-4cdf-435c-a22f-1c8c02ce4c5f",  # Production demo editor
-    ]
 
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
         extra="forbid",
     )
+
+    @property
+    def admin_user_ids(self) -> list[str]:
+        """Admin allowlist parsed from ADMIN_USER_IDS env var."""
+        return [uid.strip() for uid in self.ADMIN_USER_IDS.split(",") if uid.strip()]
 
     @property
     def database_url(self) -> str:

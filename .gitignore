@@ -120,5 +120,8 @@ test_yolo_fix.py
 *.tmp
 *.temp
 
+# Miscellaneous
+etc/
+
 # Sensitive documentation (kept locally, do not commit)
 backend/scripts/MIGRATION_GUIDE.md

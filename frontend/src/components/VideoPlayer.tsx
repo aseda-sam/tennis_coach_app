@@ -33,6 +33,9 @@ import StickFigureCanvas from './StickFigureCanvas';
 import VideoOverlay from './VideoOverlay';
 import './VideoPlayer.css';
 
+// Manual zoom levels available
+const ZOOM_LEVELS = [1, 1.25, 1.5, 2, 2.5, 3];
+
 interface VideoPlayerProps {
   videoUrl: string;
   title: string;
@@ -46,6 +49,7 @@ interface VideoPlayerProps {
   onNavigateReady?: (navigateFn: (serveAttemptId: number) => void) => void; // Callback to expose navigate function
   isDemo?: boolean; // If true, disable manual range tagging and editing
   naturalScroll?: boolean; // Scroll direction: false = traditional (scroll down = forward), true = natural (scroll down = backward)
+  lowConfidenceThreshold?: number; // Threshold for coloring proposals as "uncertain"
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -61,6 +65,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onNavigateReady,
   isDemo = false,
   naturalScroll: naturalScrollProp = false,
+  lowConfidenceThreshold = 0.6,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -80,6 +85,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // View mode: 'video' = no overlay, 'skeleton' = video + overlay, 'stickfigure' = stick figure only
   type ViewMode = 'video' | 'skeleton' | 'stickfigure';
   const [viewMode, setViewMode] = useState<ViewMode>('video');
+
+  // Manual zoom level
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   // Show scroll hint on first hover
   const [showScrollHint, setShowScrollHint] = useState(false);
@@ -260,6 +268,31 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Use React Query hook for video metadata
   const { data: videoMetadata } = useVideoMetadata(videoId);
 
+  // Zoom helper functions
+  const zoomIn = useCallback(() => {
+    setZoomLevel((prev) => {
+      const currentIndex = ZOOM_LEVELS.indexOf(prev);
+      if (currentIndex < ZOOM_LEVELS.length - 1) {
+        return ZOOM_LEVELS[currentIndex + 1];
+      }
+      return prev;
+    });
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoomLevel((prev) => {
+      const currentIndex = ZOOM_LEVELS.indexOf(prev);
+      if (currentIndex > 0) {
+        return ZOOM_LEVELS[currentIndex - 1];
+      }
+      return prev;
+    });
+  }, []);
+
+  const resetZoom = useCallback(() => {
+    setZoomLevel(1);
+  }, []);
+
   // Reset aspect ratio when video URL changes
   useEffect(() => {
     setVideoAspectRatio(null);
@@ -368,6 +401,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (!container) return;
 
     if (aspectRatioMode === 'auto' && videoAspectRatio) {
+      // Use padding-bottom technique for aspect ratio
       const paddingBottom = (1 / videoAspectRatio) * 100;
       container.style.paddingBottom = `${paddingBottom}%`;
     } else {
@@ -735,6 +769,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           }
           setRangeOutTime(videoRef.current?.currentTime ?? currentTime);
           break;
+        case '+':
+        case '=':
+          event.preventDefault();
+          zoomIn();
+          break;
+        case '-':
+        case '_':
+          event.preventDefault();
+          zoomOut();
+          break;
+        case '0':
+          event.preventDefault();
+          resetZoom();
+          break;
         default:
           break;
       }
@@ -755,6 +803,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     navigateToNextServeAttempt,
     isDemo,
     currentTime,
+    zoomIn,
+    zoomOut,
+    resetZoom,
   ]);
 
   useEffect(() => {
@@ -896,6 +947,35 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 </button>
               ))}
             </div>
+            {/* Manual Zoom Controls */}
+            <div className="video-player-zoom-controls">
+              <button
+                type="button"
+                className="video-player-zoom-btn"
+                onClick={zoomOut}
+                disabled={zoomLevel === ZOOM_LEVELS[0]}
+                title="Zoom out"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                className="video-player-zoom-level"
+                onClick={resetZoom}
+                title="Reset zoom"
+              >
+                {Math.round(zoomLevel * 100)}%
+              </button>
+              <button
+                type="button"
+                className="video-player-zoom-btn"
+                onClick={zoomIn}
+                disabled={zoomLevel === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
+                title="Zoom in"
+              >
+                +
+              </button>
+            </div>
           </div>
         )}
 
@@ -940,18 +1020,33 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             style={{ position: 'relative' }}
           >
             {resolvedVideoUrl && (
-              <video
-                ref={videoRef}
-                src={resolvedVideoUrl}
-                className={`video-element video-element-${aspectRatioMode} ${
-                  viewMode === 'stickfigure' && hasPoseData
-                    ? 'video-element--hidden'
-                    : ''
-                }`}
-                preload="metadata"
-                crossOrigin="anonymous"
-                data-testid="video-element"
-              />
+              <div
+                className="video-zoom-wrapper"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  overflow: 'hidden',
+                  transform: zoomLevel !== 1 ? `scale(${zoomLevel})` : 'none',
+                  transformOrigin: 'center center',
+                  transition: 'transform 0.2s ease-out',
+                }}
+              >
+                <video
+                  ref={videoRef}
+                  src={resolvedVideoUrl}
+                  className={`video-element video-element-${aspectRatioMode} ${
+                    viewMode === 'stickfigure' && hasPoseData
+                      ? 'video-element--hidden'
+                      : ''
+                  }`}
+                  preload="metadata"
+                  crossOrigin="anonymous"
+                  data-testid="video-element"
+                />
+              </div>
             )}
 
             {/* Stick Figure Mode - shown when viewMode is 'stickfigure' */}
@@ -972,6 +1067,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 showOverlay={true}
                 hasPoseData={hasPoseData}
                 currentTime={currentTime}
+                zoomLevel={zoomLevel}
               />
             )}
 
@@ -1083,6 +1179,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                             key={proposal.id}
                             proposal={proposal}
                             duration={duration}
+                            lowConfidenceThreshold={lowConfidenceThreshold}
                             onClick={() => {
                               // Seek to proposal start
                               seekToTime(proposal.start_timestamp);
@@ -1275,6 +1372,34 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   </div>
 
                   <div className="right-controls">
+                    {/* Zoom Controls */}
+                    <div className="zoom-controls-inline">
+                      <button
+                        className="control-btn"
+                        onClick={zoomOut}
+                        disabled={zoomLevel === ZOOM_LEVELS[0]}
+                        title="Zoom out (-)"
+                      >
+                        −
+                      </button>
+                      <span
+                        className="zoom-level-display"
+                        onClick={resetZoom}
+                        title="Reset zoom (0)"
+                      >
+                        {Math.round(zoomLevel * 100)}%
+                      </span>
+                      <button
+                        className="control-btn"
+                        onClick={zoomIn}
+                        disabled={
+                          zoomLevel === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]
+                        }
+                        title="Zoom in (+)"
+                      >
+                        +
+                      </button>
+                    </div>
                     <button
                       className="control-btn fullscreen-btn"
                       onClick={toggleFullscreen}
@@ -1363,6 +1488,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       key={proposal.id}
                       proposal={proposal}
                       duration={duration}
+                      lowConfidenceThreshold={lowConfidenceThreshold}
                       onClick={() => {
                         seekToTime(proposal.start_timestamp);
                       }}

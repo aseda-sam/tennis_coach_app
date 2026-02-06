@@ -10,9 +10,13 @@ import {
   ServeWindowProposal,
 } from '../services/serveProposalApi';
 
+// Default threshold - matches backend SERVE_DETECTION_LOW_CONFIDENCE_THRESHOLD
+const DEFAULT_LOW_CONFIDENCE_THRESHOLD = 0.6;
+
 interface UseServeProposalsOptions {
   videoId?: number;
   autoRefresh?: boolean;
+  lowConfidenceThreshold?: number; // From config, defaults to 0.6
   onProposalsLoaded?: (proposals: ServeWindowProposal[]) => void;
   onError?: (error: string) => void;
 }
@@ -35,11 +39,18 @@ interface UseServeProposalsResult {
     proposalId: number,
     request: EditProposalRequest
   ) => Promise<void>;
+  // Bulk operations
+  acceptAllProposals: () => Promise<{ accepted: number; failed: number }>;
+  rejectLowConfidence: (
+    threshold?: number
+  ) => Promise<{ rejected: number; failed: number }>;
+  lowConfidenceCount: number;
 }
 
 export const useServeProposals = ({
   videoId,
   autoRefresh = true,
+  lowConfidenceThreshold = DEFAULT_LOW_CONFIDENCE_THRESHOLD,
   onProposalsLoaded,
   onError,
 }: UseServeProposalsOptions = {}): UseServeProposalsResult => {
@@ -271,6 +282,62 @@ export const useServeProposals = ({
     [editMutation]
   );
 
+  // Count proposals below confidence threshold
+  const proposals = proposalsQuery.data || [];
+  const lowConfidenceCount = proposals.filter(
+    (p) => p.confidence < lowConfidenceThreshold
+  ).length;
+
+  // Accept all proposals using batch API
+  const acceptAllProposals = useCallback(async (): Promise<{
+    accepted: number;
+    failed: number;
+  }> => {
+    if (!videoId) {
+      return { accepted: 0, failed: 0 };
+    }
+
+    try {
+      const response = await serveProposalApi.acceptAll(videoId);
+
+      // Invalidate queries to refresh
+      queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
+      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
+
+      return { accepted: response.accepted_count, failed: 0 };
+    } catch {
+      return { accepted: 0, failed: proposals.length };
+    }
+  }, [videoId, proposals.length, queryClient]);
+
+  // Reject proposals below confidence threshold using batch API
+  const rejectLowConfidence = useCallback(
+    async (
+      threshold: number = lowConfidenceThreshold
+    ): Promise<{ rejected: number; failed: number }> => {
+      if (!videoId) {
+        return { rejected: 0, failed: 0 };
+      }
+
+      try {
+        const response = await serveProposalApi.rejectByConfidence(
+          videoId,
+          threshold
+        );
+
+        // Invalidate queries to refresh
+        queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
+        queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
+
+        return { rejected: response.rejected_count, failed: 0 };
+      } catch {
+        return { rejected: 0, failed: lowConfidenceCount };
+      }
+    },
+    [videoId, lowConfidenceCount, lowConfidenceThreshold, queryClient]
+  );
+
   // Extract loading state
   const loading = proposalsQuery.isLoading;
 
@@ -291,7 +358,7 @@ export const useServeProposals = ({
     : null;
 
   return {
-    proposals: proposalsQuery.data || [],
+    proposals,
     loading,
     error,
     detectionStatus: statusQuery.data || null,
@@ -302,5 +369,8 @@ export const useServeProposals = ({
     acceptProposal,
     rejectProposal,
     editProposal,
+    acceptAllProposals,
+    rejectLowConfidence,
+    lowConfidenceCount,
   };
 };

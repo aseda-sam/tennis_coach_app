@@ -8,7 +8,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.rq_tasks import analyze_pose_detection_rq
+from app.services.rq_tasks import (
+    analyze_pose_detection_rq,
+    analyze_pose_detection_scout_refine_rq,
+    transcode_video_rq,
+)
 
 
 @pytest.fixture
@@ -76,13 +80,15 @@ class TestAnalyzePoseDetectionRq:
     def test_video_not_found(
         self, mock_get_video: MagicMock, mock_db_session: MagicMock
     ) -> None:
-        """Test error when video not found."""
+        """Test resilient exit when video deleted before job started."""
         mock_get_video.return_value = None
 
-        with pytest.raises(ValueError, match="Video 1 not found"):
-            analyze_pose_detection_rq(
-                video_id=1, video_path="/test/path/video.mp4", confidence_threshold=0.7
-            )
+        result = analyze_pose_detection_rq(
+            video_id=1, video_path="/test/path/video.mp4", confidence_threshold=0.7
+        )
+
+        assert result["status"] == "cancelled"
+        assert result["reason"] == "video_deleted"
 
     @patch("app.services.rq_tasks.video_service.get_video_by_id")
     @patch("app.services.rq_tasks.storage_service.get_local_file_path")
@@ -110,3 +116,395 @@ class TestAnalyzePoseDetectionRq:
             analyze_pose_detection_rq(
                 video_id=1, video_path="/test/path/video.mp4", confidence_threshold=0.7
             )
+
+
+class TestTranscodeVideoRq:
+    """Tests for transcode_video_rq."""
+
+    @pytest.fixture
+    def mock_video_large(self) -> MagicMock:
+        """Mock video object with large file size."""
+        video = MagicMock()
+        video.id = 1
+        video.file_path = "/test/path/video.mp4"
+        video.file_size = 25 * 1024 * 1024  # 25MB, above threshold
+        video.user_id = "test-user-id"
+        return video
+
+    @pytest.fixture
+    def mock_video_small(self) -> MagicMock:
+        """Mock video object with small file size."""
+        video = MagicMock()
+        video.id = 1
+        video.file_path = "/test/path/video.mp4"
+        video.file_size = 10 * 1024 * 1024  # 10MB, below threshold
+        video.user_id = "test-user-id"
+        return video
+
+    @patch("app.services.rq_tasks.video_service.get_video_by_id")
+    def test_transcode_returns_cancelled_when_video_deleted(
+        self, mock_get_video: MagicMock, mock_db_session: MagicMock
+    ) -> None:
+        """Test resilient exit when video deleted before transcode job started."""
+        mock_get_video.return_value = None
+
+        result = transcode_video_rq(video_id=1, video_path="/test/path/video.mp4")
+
+        assert result["status"] == "cancelled"
+        assert result["reason"] == "video_deleted"
+
+    @patch("app.services.rq_tasks.video_service.get_video_by_id")
+    @patch("app.services.rq_tasks.settings.TRANSCODE_THRESHOLD_BYTES", 20 * 1024 * 1024)
+    def test_transcode_skips_when_file_size_below_threshold(
+        self,
+        mock_get_video: MagicMock,
+        mock_db_session: MagicMock,
+        mock_video_small: MagicMock,
+    ) -> None:
+        """Test that transcode is skipped when file size is below threshold."""
+        mock_get_video.return_value = mock_video_small
+
+        with patch(
+            "app.services.rq_tasks.storage_service.replace_file"
+        ) as mock_replace, patch(
+            "app.services.rq_tasks.subprocess.run"
+        ) as mock_subprocess:
+            result = transcode_video_rq(video_id=1, video_path="/test/path/video.mp4")
+
+            assert result["status"] == "skipped"
+            assert result["reason"] == "file_too_small"
+            assert result["file_size"] == mock_video_small.file_size
+            # Verify transcode operations were not called
+            mock_replace.assert_not_called()
+            mock_subprocess.assert_not_called()
+
+    @patch("app.services.rq_tasks.video_service.get_video_by_id")
+    @patch("app.services.rq_tasks.storage_service.get_local_file_path")
+    @patch("app.services.rq_tasks.storage_service.replace_file")
+    @patch("app.services.rq_tasks.subprocess.run")
+    @patch("app.services.rq_tasks.cv2.VideoCapture")
+    @patch("app.services.rq_tasks.get_video_rotation")
+    @patch("app.services.rq_tasks.tempfile.mkstemp")
+    def test_transcode_success_updates_video_and_returns_completed(
+        self,
+        mock_mkstemp: MagicMock,
+        mock_get_rotation: MagicMock,
+        mock_cv2_capture: MagicMock,
+        mock_subprocess: MagicMock,
+        mock_replace_file: MagicMock,
+        mock_get_path: MagicMock,
+        mock_get_video: MagicMock,
+        mock_db_session: MagicMock,
+        mock_video_large: MagicMock,
+    ) -> None:
+        """Test successful transcoding updates video record and returns completed status."""
+        mock_get_video.return_value = mock_video_large
+        # get_local_file_path returns a single Path, not a tuple
+        mock_get_path.return_value = Path("/local/path/video.mp4")
+
+        # Mock temp file creation with hardcoded values (no need for real temp file)
+        mock_mkstemp.return_value = (999, "/tmp/test_output.mp4")  # noqa: S108
+
+        # Mock ffmpeg success
+        mock_subprocess_result = MagicMock()
+        mock_subprocess_result.returncode = 0
+        mock_subprocess_result.stderr = ""
+        mock_subprocess.return_value = mock_subprocess_result
+
+        # Mock cv2 metadata extraction
+        mock_cap = MagicMock()
+        mock_cv2_capture.return_value = mock_cap
+        mock_cap.isOpened.return_value = True
+        # Use proper cv2 constants
+        import cv2
+
+        def get_prop(prop: int) -> float:
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            elif prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 900.0
+            elif prop == cv2.CAP_PROP_FRAME_WIDTH:
+                return 1280.0
+            elif prop == cv2.CAP_PROP_FRAME_HEIGHT:
+                return 720.0
+            return 0.0
+
+        mock_cap.get.side_effect = get_prop
+        mock_cap.release.return_value = None
+
+        mock_get_rotation.return_value = 0
+
+        # Mock replace_file to return new path
+        new_storage_path = "/test/path/video_transcoded.mp4"
+        transcoded_content = b"transcoded video content"
+        mock_replace_file.return_value = new_storage_path
+
+        # Save original file size before the function mutates it
+        original_file_size = mock_video_large.file_size
+
+        # Mock file reading
+        with patch("builtins.open", create=True) as mock_open:
+            mock_file = MagicMock()
+            mock_file.__enter__.return_value.read.return_value = transcoded_content
+            mock_file.__exit__.return_value = None
+            mock_open.return_value = mock_file
+
+            result = transcode_video_rq(video_id=1, video_path="/test/path/video.mp4")
+
+        assert result["status"] == "completed"
+        assert result["original_file_size"] == original_file_size
+        assert result["new_file_size"] == len(transcoded_content)
+        assert "size_reduction_percent" in result
+        assert result["new_width"] == 1280
+        assert result["new_height"] == 720
+        assert result["new_fps"] == 30.0
+
+        # Verify video was updated
+        assert mock_video_large.file_path == new_storage_path
+        assert mock_video_large.file_size == len(transcoded_content)
+        assert mock_video_large.is_transcoded is True
+        assert mock_video_large.original_file_size == original_file_size
+        mock_db_session.commit.assert_called()
+
+    @patch("app.services.rq_tasks.video_service.get_video_by_id")
+    @patch("app.services.rq_tasks.storage_service.get_local_file_path")
+    @patch("app.services.rq_tasks.subprocess.run")
+    @patch("app.services.rq_tasks.tempfile.mkstemp")
+    def test_transcode_raises_when_ffmpeg_fails(
+        self,
+        mock_mkstemp: MagicMock,
+        mock_subprocess: MagicMock,
+        mock_get_path: MagicMock,
+        mock_get_video: MagicMock,
+        mock_db_session: MagicMock,
+        mock_video_large: MagicMock,
+    ) -> None:
+        """Test that transcode raises RuntimeError when ffmpeg fails."""
+        mock_get_video.return_value = mock_video_large
+        mock_get_path.return_value = Path("/local/path/video.mp4")
+
+        # Mock temp file creation with hardcoded values (no need for real temp file)
+        mock_mkstemp.return_value = (999, "/tmp/test_output.mp4")  # noqa: S108
+
+        # Mock ffmpeg failure
+        mock_subprocess_result = MagicMock()
+        mock_subprocess_result.returncode = 1
+        mock_subprocess_result.stderr = "ffmpeg error: codec not found"
+        mock_subprocess.return_value = mock_subprocess_result
+
+        with pytest.raises(RuntimeError, match="ffmpeg transcoding failed"):
+            transcode_video_rq(video_id=1, video_path="/test/path/video.mp4")
+
+
+class TestAnalyzePoseDetectionScoutRefineRq:
+    """Tests for analyze_pose_detection_scout_refine_rq."""
+
+    @patch("app.services.rq_tasks.video_service.get_video_by_id")
+    def test_scout_refine_returns_cancelled_when_video_deleted(
+        self, mock_get_video: MagicMock, mock_db_session: MagicMock
+    ) -> None:
+        """Test resilient exit when video deleted before scout/refine job started."""
+        mock_get_video.return_value = None
+
+        result = analyze_pose_detection_scout_refine_rq(
+            video_id=1, video_path="/test/path/video.mp4"
+        )
+
+        assert result["status"] == "cancelled"
+        assert result["reason"] == "video_deleted"
+
+    @patch("app.services.rq_tasks.video_service.get_video_by_id")
+    @patch("app.services.rq_tasks.storage_service.get_local_file_path")
+    @patch("app.services.pose_detection.PoseDetectionService")
+    @patch("app.services.serve_detection.proposal_service.generate_proposals")
+    def test_scout_refine_completes_with_scout_only_when_no_proposals(
+        self,
+        mock_generate_proposals: MagicMock,
+        mock_pose_service_class: MagicMock,
+        mock_get_path: MagicMock,
+        mock_get_video: MagicMock,
+        mock_db_session: MagicMock,
+        mock_video: MagicMock,
+    ) -> None:
+        """Test that scout/refine completes with scout data only when no serve windows found."""
+        mock_get_video.return_value = mock_video
+        mock_get_path.return_value = Path("/local/path/video.mp4")
+        mock_pose_service = MagicMock()
+        mock_pose_service_class.return_value = mock_pose_service
+
+        # Mock scout results
+        mock_pose_service.analyze_video_file.return_value = {
+            "processing_time_seconds": 60.0,
+            "total_frames": 900,
+            "frames_with_poses": 700,
+            "detection_rate": 0.78,
+            "mode": "scout",
+        }
+
+        mock_pose_detection = MagicMock()
+        mock_pose_detection.id = 123
+        mock_pose_service.save_detection_results.return_value = mock_pose_detection
+
+        # Mock no proposals found
+        mock_generate_proposals.return_value = []
+
+        result = analyze_pose_detection_scout_refine_rq(
+            video_id=1, video_path="/test/path/video.mp4"
+        )
+
+        assert result["status"] == "completed"
+        assert result["mode"] == "scout_only"
+        assert result["serve_windows_found"] == 0
+        assert result["pose_detection_id"] == 123
+
+        # Verify refine was not called
+        mock_pose_service.analyze_serve_windows.assert_not_called()
+
+    @patch("app.services.rq_tasks.video_service.get_video_by_id")
+    @patch("app.services.rq_tasks.storage_service.get_local_file_path")
+    @patch("app.services.pose_detection.PoseDetectionService")
+    @patch("app.services.serve_detection.proposal_service.generate_proposals")
+    def test_scout_refine_success_with_windows(
+        self,
+        mock_generate_proposals: MagicMock,
+        mock_pose_service_class: MagicMock,
+        mock_get_path: MagicMock,
+        mock_get_video: MagicMock,
+        mock_db_session: MagicMock,
+        mock_video: MagicMock,
+    ) -> None:
+        """Test successful scout/refine pipeline merges into single record."""
+        import json
+
+        from app.models.serve_window_proposal import ServeWindowProposal
+
+        mock_get_video.return_value = mock_video
+        mock_get_path.return_value = Path("/local/path/video.mp4")
+        mock_pose_service = MagicMock()
+        mock_pose_service_class.return_value = mock_pose_service
+
+        # Mock scout results with pose data
+        scout_pose_data = [
+            {
+                "frame_index": 0,
+                "timestamp_ms": 0.0,
+                "keypoints": {"left_shoulder": [100, 100]},
+            },
+            {"frame_index": 1, "timestamp_ms": 33.3, "keypoints": None},  # skipped
+            {
+                "frame_index": 2,
+                "timestamp_ms": 66.6,
+                "keypoints": {"left_shoulder": [102, 102]},
+            },
+        ]
+        mock_pose_service.analyze_video_file.return_value = {
+            "processing_time_seconds": 60.0,
+            "total_frames": 900,
+            "frames_with_poses": 700,
+            "detection_rate": 0.78,
+            "mode": "scout",
+            "pose_detections": scout_pose_data,
+        }
+
+        # Mock scout pose detection record
+        scout_pose_detection = MagicMock()
+        scout_pose_detection.id = 123
+        scout_pose_detection.pose_data = json.dumps(scout_pose_data)
+        scout_pose_detection.frames_with_poses = 700
+        scout_pose_detection.detection_rate = 0.78
+        mock_pose_service.save_detection_results.return_value = scout_pose_detection
+
+        # Mock proposals found
+        proposal1 = MagicMock(spec=ServeWindowProposal)
+        proposal1.start_timestamp = 1.0
+        proposal1.end_timestamp = 3.0
+        proposal2 = MagicMock(spec=ServeWindowProposal)
+        proposal2.start_timestamp = 5.0
+        proposal2.end_timestamp = 7.0
+        mock_generate_proposals.return_value = [proposal1, proposal2]
+
+        # Mock refine results with pose data for frames 1-2
+        refine_pose_data = [
+            None,  # frame 0 outside window
+            {
+                "frame_index": 1,
+                "timestamp_ms": 33.3,
+                "keypoints": {"left_shoulder": [150, 150]},
+            },
+            {
+                "frame_index": 2,
+                "timestamp_ms": 66.6,
+                "keypoints": {"left_shoulder": [160, 160]},
+            },
+        ]
+        mock_pose_service.analyze_serve_windows.return_value = {
+            "processing_time_seconds": 30.0,
+            "total_frames": 900,
+            "frames_with_poses": 600,
+            "detection_rate": 0.67,
+            "mode": "refine",
+            "windows_processed": 2,
+            "pose_detections": refine_pose_data,
+        }
+
+        # Mock merge_pose_data to return actual merged data
+        merged_data = [
+            {
+                "frame_index": 0,
+                "timestamp_ms": 0.0,
+                "keypoints": {"left_shoulder": [100, 100]},
+            },
+            {
+                "frame_index": 1,
+                "timestamp_ms": 33.3,
+                "keypoints": {"left_shoulder": [150, 150]},
+            },
+            {
+                "frame_index": 2,
+                "timestamp_ms": 66.6,
+                "keypoints": {"left_shoulder": [160, 160]},
+            },
+        ]
+        mock_pose_service.merge_pose_data.return_value = merged_data
+
+        result = analyze_pose_detection_scout_refine_rq(
+            video_id=mock_video.id, video_path="/test/path/video.mp4"
+        )
+
+        assert result["status"] == "completed"
+        assert result["mode"] == "scout_refine"
+        assert result["serve_windows_found"] == 2
+        assert result["scout_pose_detection_id"] == scout_pose_detection.id
+        # Should NOT have refine_pose_detection_id (no separate record created)
+        assert "refine_pose_detection_id" not in result
+
+        # Verify merge_pose_data was called with correct arguments
+        mock_pose_service.merge_pose_data.assert_called_once()
+        merge_call_args = mock_pose_service.merge_pose_data.call_args
+        assert merge_call_args[0][0] == scout_pose_data  # scout data
+        assert merge_call_args[0][1] == refine_pose_data  # refine data
+
+        # Verify scout record was updated with merged data
+        # Check that pose_data was set to merged data
+        assert scout_pose_detection.pose_data == json.dumps(merged_data)
+        assert (
+            scout_pose_detection.frames_with_poses == 3
+        )  # All 3 frames have keypoints after merge
+
+        # Verify time_windows was set
+        assert scout_pose_detection.time_windows is not None
+        time_windows = json.loads(scout_pose_detection.time_windows)
+        assert len(time_windows) == 2
+
+        # Verify refine was called with correct windows
+        mock_pose_service.analyze_serve_windows.assert_called_once()
+        call_args = mock_pose_service.analyze_serve_windows.call_args
+        windows = call_args[1]["windows"]
+        assert len(windows) == 2
+        assert windows[0]["start_ms"] == 1000.0
+        assert windows[0]["end_ms"] == 3000.0
+        assert windows[1]["start_ms"] == 5000.0
+        assert windows[1]["end_ms"] == 7000.0
+
+        # Verify save_detection_results was NOT called a second time (no refine record)
+        assert mock_pose_service.save_detection_results.call_count == 1

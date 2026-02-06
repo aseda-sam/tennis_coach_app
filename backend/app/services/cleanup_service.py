@@ -55,6 +55,33 @@ def find_orphaned_user_ids(db: Session) -> list[str]:
     return orphaned_ids
 
 
+def get_orphaned_data_details(
+    db: Session,
+    orphaned_user_ids: list[str],
+) -> list[dict]:
+    """Get details about orphaned data for specific user IDs.
+
+    Args:
+        db: Database session
+        orphaned_user_ids: List of orphaned user IDs to get details for
+
+    Returns:
+        List of dicts with user_id, video_count, and player_count
+    """
+    details = []
+    for user_id in orphaned_user_ids:
+        video_count = db.query(Video).filter(Video.user_id == user_id).count()
+        player_count = db.query(Player).filter(Player.user_id == user_id).count()
+        details.append(
+            {
+                "user_id": user_id,
+                "video_count": video_count,
+                "player_count": player_count,
+            }
+        )
+    return details
+
+
 def cleanup_orphaned_data(
     db: Session, dry_run: bool = True, limit: Optional[int] = None
 ) -> dict:

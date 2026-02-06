@@ -47,6 +47,26 @@ export interface ClearProposalsResponse {
   cleared_count: number;
 }
 
+export interface BulkAcceptRequest {
+  player_id?: number | null;
+}
+
+export interface BulkAcceptResponse {
+  video_id: number;
+  accepted_count: number;
+  serve_attempt_ids: number[];
+}
+
+export interface RejectByConfidenceRequest {
+  threshold: number;
+}
+
+export interface RejectByConfidenceResponse {
+  video_id: number;
+  rejected_count: number;
+  threshold: number;
+}
+
 export const serveProposalApi = {
   // Get detection status for a video
   getStatus: async (videoId: number): Promise<DetectionStatusResponse> => {
@@ -57,7 +77,10 @@ export const serveProposalApi = {
   },
 
   // Run detection and generate proposals
-  propose: async (videoId: number, force: boolean = false): Promise<ProposeResponse> => {
+  propose: async (
+    videoId: number,
+    force: boolean = false
+  ): Promise<ProposeResponse> => {
     const response = await api.post<ProposeResponse>(
       `/videos/${videoId}/serve-detection/propose`,
       null,
@@ -104,5 +127,29 @@ export const serveProposalApi = {
     request: EditProposalRequest
   ): Promise<void> => {
     await api.post(`/serve-detection/proposals/${proposalId}/edit`, request);
+  },
+
+  // Bulk accept all pending proposals
+  acceptAll: async (
+    videoId: number,
+    request?: BulkAcceptRequest
+  ): Promise<BulkAcceptResponse> => {
+    const response = await api.post<BulkAcceptResponse>(
+      `/videos/${videoId}/serve-detection/proposals/accept-all`,
+      request || {}
+    );
+    return response.data;
+  },
+
+  // Reject proposals below confidence threshold
+  rejectByConfidence: async (
+    videoId: number,
+    threshold: number = 0.6
+  ): Promise<RejectByConfidenceResponse> => {
+    const response = await api.post<RejectByConfidenceResponse>(
+      `/videos/${videoId}/serve-detection/proposals/reject-by-confidence`,
+      { threshold }
+    );
+    return response.data;
   },
 };

@@ -18,27 +18,25 @@ interface ElbowAngleFeedback {
 /**
  * Maps elbow angle (in degrees) to feedback level, pill text, and coach note.
  * Frontend-only heuristic for MVP - will be replaced with LLM-based recommendations.
+ *
+ * Based on tennis biomechanics: a slight bend is natural and allows for good
+ * pronation. Only flag very bent arms (closer to 90°) as needing attention.
  */
 const getElbowAngleFeedback = (angleDeg: number): ElbowAngleFeedback => {
-  if (angleDeg >= 170) {
-    return {
-      level: 'great',
-      pillText: 'Great',
-      coachNote: 'Nice extension at contact—keep that relaxed arm through the finish.',
-    };
-  } else if (angleDeg >= 160) {
-    return {
-      level: 'solid',
-      pillText: 'Solid',
-      coachNote: 'Good extension—try reaching a touch more at contact for extra power.',
-    };
-  } else {
+  // Only flag if arm is very bent (closer to 90°)
+  if (angleDeg < 120) {
     return {
       level: 'focus',
-      pillText: 'Focus',
-      coachNote: 'Work on extending through contact—think "reach up and out" as you hit.',
+      pillText: 'Needs Work',
+      coachNote: 'Arm is quite bent. Try reaching up more at contact.',
     };
   }
+  // Everything else is fine - don't over-coach natural arm positions
+  return {
+    level: 'great',
+    pillText: 'Good',
+    coachNote: 'Good arm extension at contact.',
+  };
 };
 
 const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
@@ -57,7 +55,9 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
   }, [serveAttempts]);
 
   const serveAttemptsWithMetrics = useMemo(() => {
-    return sortedServeAttempts.filter((sa) => sa.elbow_angle_at_contact !== null);
+    return sortedServeAttempts.filter(
+      (sa) => sa.elbow_angle_at_contact !== null
+    );
   }, [sortedServeAttempts]);
 
   if (loading) {
@@ -108,16 +108,19 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                   : 'Serve';
 
               // Show contact timestamp if available, otherwise show range
-              const timeDisplay = serveAttempt.contact_timestamp !== null
-                ? formatTime(serveAttempt.contact_timestamp)
-                : `${formatTime(serveAttempt.start_timestamp)} - ${formatTime(serveAttempt.end_timestamp)}`;
+              const timeDisplay =
+                serveAttempt.contact_timestamp !== null
+                  ? formatTime(serveAttempt.contact_timestamp)
+                  : `${formatTime(serveAttempt.start_timestamp)} - ${formatTime(serveAttempt.end_timestamp)}`;
 
               return (
                 <div
                   key={serveAttempt.id}
                   className="analysis-right-panel__metric-item"
                   onClick={() => onServeAttemptClick?.(serveAttempt.id)}
-                  style={{ cursor: onServeAttemptClick ? 'pointer' : 'default' }}
+                  style={{
+                    cursor: onServeAttemptClick ? 'pointer' : 'default',
+                  }}
                 >
                   <div className="analysis-right-panel__metric-header">
                     <div className="analysis-right-panel__metric-dot" />
@@ -138,7 +141,10 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                           <div className="analysis-right-panel__metric-angle">
                             <div className="analysis-right-panel__metric-angle-main">
                               <span className="analysis-right-panel__angle-value">
-                                {Math.round(serveAttempt.elbow_angle_at_contact as number)}°
+                                {Math.round(
+                                  serveAttempt.elbow_angle_at_contact as number
+                                )}
+                                °
                               </span>
                               <span className="analysis-right-panel__angle-label">
                                 Elbow Angle

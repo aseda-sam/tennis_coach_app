@@ -65,6 +65,33 @@ def check_existing_proposals_or_attempts(
     }
 
 
+def get_pending_proposals(
+    db: Session,
+    video_id: int,
+    user_id: str,
+) -> List[ServeWindowProposal]:
+    """Get pending proposals for a video and user.
+
+    Args:
+        db: Database session
+        video_id: Video ID
+        user_id: User ID
+
+    Returns:
+        List of pending ServeWindowProposal instances ordered by start_timestamp
+    """
+    return (
+        db.query(ServeWindowProposal)
+        .filter(
+            ServeWindowProposal.video_id == video_id,
+            ServeWindowProposal.user_id == user_id,
+            ServeWindowProposal.status == "pending",
+        )
+        .order_by(ServeWindowProposal.start_timestamp)
+        .all()
+    )
+
+
 def clear_pending_proposals(db: Session, video_id: int, user_id: str) -> int:
     """
     Clear all pending proposals for a video.
@@ -194,23 +221,52 @@ def generate_proposals(
             sample_frame = frame_data
             break
 
+    # Detect pose data format: new format has "keypoints" wrapper, old format is direct keypoints dict
+    uses_keypoints_wrapper = False
     if sample_frame:
         if isinstance(sample_frame, dict):
-            logger.info(
-                f"Pose data format: dict with keys: {list(sample_frame.keys())[:10]}..."
-            )
-            # Check if we have the expected keypoint names
-            expected_keys = [
-                "left_wrist",
-                "right_wrist",
-                "left_shoulder",
-                "right_shoulder",
-                "left_hip",
-                "right_hip",
-            ]
-            missing_keys = [k for k in expected_keys if k not in sample_frame]
-            if missing_keys:
-                logger.warning(f"Missing expected keypoints: {missing_keys}")
+            if "keypoints" in sample_frame:
+                # New format: {"frame_index": ..., "timestamp_ms": ..., "keypoints": {...}}
+                uses_keypoints_wrapper = True
+                keypoints_sample = sample_frame.get("keypoints")
+                logger.info(
+                    f"Pose data format: new format with keypoints wrapper, "
+                    f"frame keys: {list(sample_frame.keys())}"
+                )
+                if keypoints_sample and isinstance(keypoints_sample, dict):
+                    logger.info(
+                        f"Keypoint names: {list(keypoints_sample.keys())[:10]}..."
+                    )
+                    expected_keys = [
+                        "left_wrist",
+                        "right_wrist",
+                        "left_shoulder",
+                        "right_shoulder",
+                        "left_hip",
+                        "right_hip",
+                    ]
+                    missing_keys = [
+                        k for k in expected_keys if k not in keypoints_sample
+                    ]
+                    if missing_keys:
+                        logger.warning(f"Missing expected keypoints: {missing_keys}")
+            else:
+                # Old format: direct keypoints dict {"left_shoulder": [x, y], ...}
+                logger.info(
+                    f"Pose data format: old format (direct keypoints), "
+                    f"keys: {list(sample_frame.keys())[:10]}..."
+                )
+                expected_keys = [
+                    "left_wrist",
+                    "right_wrist",
+                    "left_shoulder",
+                    "right_shoulder",
+                    "left_hip",
+                    "right_hip",
+                ]
+                missing_keys = [k for k in expected_keys if k not in sample_frame]
+                if missing_keys:
+                    logger.warning(f"Missing expected keypoints: {missing_keys}")
         else:
             logger.warning(
                 f"Unexpected pose data format: {type(sample_frame)}, expected dict"
@@ -222,8 +278,18 @@ def generate_proposals(
 
     logger.info(f"Video dimensions: {video.width}x{video.height}, FPS: {video.fps}")
 
-    for frame_idx, frame_pose_data in enumerate(raw_pose_data):
-        prev_pose = raw_pose_data[frame_idx - 1] if frame_idx > 0 else None
+    for frame_idx, frame_data in enumerate(raw_pose_data):
+        # Extract keypoints based on detected format
+        if uses_keypoints_wrapper:
+            # New format: extract keypoints from wrapper
+            frame_pose_data = frame_data.get("keypoints") if frame_data else None
+            prev_frame = raw_pose_data[frame_idx - 1] if frame_idx > 0 else None
+            prev_pose = prev_frame.get("keypoints") if prev_frame else None
+        else:
+            # Old format: frame_data is the keypoints dict directly
+            frame_pose_data = frame_data
+            prev_pose = raw_pose_data[frame_idx - 1] if frame_idx > 0 else None
+
         frame_features = extract_frame_features(
             pose_data=frame_pose_data,
             prev_pose=prev_pose,
@@ -377,6 +443,138 @@ def reject_proposal(db: Session, proposal_id: int, user_id: str) -> None:
     db.commit()
 
     logger.info(f"Rejected proposal {proposal_id}")
+
+
+def accept_all_proposals(
+    db: Session, video_id: int, user_id: str, player_id: Optional[int] = None
+) -> List[ServeAttempt]:
+    """
+    Accept all pending proposals for a video, creating ServeAttempts.
+
+    Args:
+        db: Database session
+        video_id: Video ID
+        user_id: User ID (for authorization)
+        player_id: Optional player ID (defaults to user's default player)
+
+    Returns:
+        List of created ServeAttempts
+
+    Raises:
+        ValueError: If no pending proposals found
+    """
+    # Get all pending proposals for this video and user
+    proposals = (
+        db.query(ServeWindowProposal)
+        .filter(
+            ServeWindowProposal.video_id == video_id,
+            ServeWindowProposal.user_id == user_id,
+            ServeWindowProposal.status == "pending",
+        )
+        .order_by(ServeWindowProposal.start_timestamp)
+        .all()
+    )
+
+    if not proposals:
+        raise ValueError(f"No pending proposals found for video {video_id}")
+
+    # Get or create default player if not provided
+    if not player_id:
+        default_player = player_service.get_or_create_default_player(db, user_id)
+        player_id = default_player.id
+
+    # Validate player ownership
+    from app.models.player import Player
+
+    player = db.query(Player).filter(Player.id == player_id).first()
+    if not player or player.user_id != user_id:
+        raise ValueError("Player not found or access denied")
+
+    serve_attempts: List[ServeAttempt] = []
+    now = datetime.utcnow()
+
+    for proposal in proposals:
+        # Create serve attempt
+        serve_attempt = ServeAttempt(
+            video_id=proposal.video_id,
+            user_id=user_id,
+            player_id=player_id,
+            start_timestamp=proposal.start_timestamp,
+            end_timestamp=proposal.end_timestamp,
+            source="auto_accepted",
+            source_proposal_id=proposal.id,
+        )
+        db.add(serve_attempt)
+        db.flush()  # Get serve_attempt.id
+
+        # Update proposal
+        proposal.status = "accepted"
+        proposal.reviewed_at = now
+        proposal.serve_attempt_id = serve_attempt.id
+
+        serve_attempts.append(serve_attempt)
+
+    db.commit()
+
+    logger.info(
+        "Accepted %d proposals for video %d, created %d serve attempts",
+        len(proposals),
+        video_id,
+        len(serve_attempts),
+    )
+    return serve_attempts
+
+
+def reject_proposals_by_confidence(
+    db: Session, video_id: int, user_id: str, threshold: float = 0.6
+) -> int:
+    """
+    Reject all pending proposals below a confidence threshold.
+
+    Args:
+        db: Database session
+        video_id: Video ID
+        user_id: User ID (for authorization)
+        threshold: Confidence threshold (reject proposals below this value)
+
+    Returns:
+        Number of proposals rejected
+
+    Raises:
+        ValueError: If threshold is invalid
+    """
+    if threshold < 0 or threshold > 1:
+        raise ValueError("Threshold must be between 0 and 1")
+
+    # Get all pending proposals below threshold
+    proposals = (
+        db.query(ServeWindowProposal)
+        .filter(
+            ServeWindowProposal.video_id == video_id,
+            ServeWindowProposal.user_id == user_id,
+            ServeWindowProposal.status == "pending",
+            ServeWindowProposal.confidence < threshold,
+        )
+        .all()
+    )
+
+    if not proposals:
+        return 0
+
+    now = datetime.utcnow()
+    for proposal in proposals:
+        proposal.status = "rejected"
+        proposal.reviewed_at = now
+
+    db.commit()
+
+    logger.info(
+        "Rejected %d proposals below %.0f%% confidence for video %d",
+        len(proposals),
+        threshold * 100,
+        video_id,
+    )
+    return len(proposals)
 
 
 def accept_with_edits(

@@ -1,25 +1,20 @@
 """Overlay data API routes for client-side rendering."""
 
-import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.schemas.overlay_data import PoseFrame, PoseOverlayData
+from app.api.schemas.overlay_data import PoseOverlayData
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
-from app.models.pose_detection import PoseDetection
-from app.models.video import Video
+from app.services import overlay_data_service, video_service
 from app.utils.authorization import require_video_access
-from app.utils.error_handling import handle_not_found_error
+from app.utils.error_handling import handle_not_found_error, log_and_raise_error
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v0/videos", tags=["overlay-data"])
-
-# Maximum size for pose data JSON (50MB)
-MAX_POSE_DATA_SIZE = 50 * 1024 * 1024
 
 
 @router.get("/{video_id}/overlay-data", response_model=PoseOverlayData)
@@ -41,127 +36,40 @@ async def get_overlay_data(
         PoseOverlayData with frame-by-frame pose keypoints
     """
     try:
-        # Verify video exists
-        video = db.query(Video).filter(Video.id == video_id).first()
+        # Verify video exists and check authorization
+        video = video_service.get_video_by_id(db, video_id)
         if not video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Check authorization
         require_video_access(video, current_user)
 
-        # Get pose detection record
-        pose_detection = (
-            db.query(PoseDetection)
-            .filter(PoseDetection.video_id == video_id)
-            .order_by(PoseDetection.created_at.desc())
-            .first()
-        )
+        overlay_data = overlay_data_service.format_overlay_data(db, video_id)
+        return overlay_data
 
-        if not pose_detection:
+    except ValueError as e:
+        error_msg = str(e).lower()
+        # Map "no pose detection/data" errors to 404
+        if "no pose detection" in error_msg or "no pose data" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No pose detection found for video {video_id}",
-            )
-
-        if pose_detection.status != "completed":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Pose detection {pose_detection.id} is not completed",
-            )
-
-        # Parse pose data
-        if not pose_detection.pose_data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No pose data available for video {video_id}",
-            )
-
-        # Validate JSON size before parsing
-        pose_data_size = len(pose_detection.pose_data.encode("utf-8"))
-        if pose_data_size > MAX_POSE_DATA_SIZE:
-            logger.error(
-                "Pose data too large for video %s: %d bytes (max: %d)",
-                video_id,
-                pose_data_size,
-                MAX_POSE_DATA_SIZE,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Pose data exceeds maximum size limit",
-            )
-
-        try:
-            raw_pose_data = json.loads(pose_detection.pose_data)
-            confidence_scores = (
-                json.loads(pose_detection.confidence_scores)
-                if pose_detection.confidence_scores
-                else []
-            )
-        except json.JSONDecodeError as e:
-            logger.error("Failed to parse pose data JSON for video %s: %s", video_id, e)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to parse pose detection data",
+                detail=str(e),
             ) from e
-
-        # Get video FPS (required for timestamp calculation)
-        fps = video.fps
-        if not fps or fps <= 0:
-            fps = 30.0  # Default fallback
-            logger.warning("Invalid FPS for video %s, using default 30.0", video_id)
-
-        # Format frames
-        frames: list[PoseFrame] = []
-        for frame_index, frame_pose_data in enumerate(raw_pose_data):
-            # Calculate timestamp
-            timestamp = frame_index / fps if fps > 0 else 0.0
-
-            # Get confidence for this frame
-            confidence = (
-                confidence_scores[frame_index]
-                if frame_index < len(confidence_scores)
-                else 0.0
-            )
-
-            # Format keypoints as dict (for frontend consumption)
-            # Keep original format: {"left_shoulder": [x, y], ...}
-            keypoints_dict: dict[str, list[float]] = {}
-            if frame_pose_data:
-                for keypoint_name, coordinates in frame_pose_data.items():
-                    if isinstance(coordinates, list) and len(coordinates) >= 2:
-                        # Store as [x, y] - frontend can add confidence if needed
-                        keypoints_dict[keypoint_name] = [
-                            float(coordinates[0]),
-                            float(coordinates[1]),
-                        ]
-
-            frames.append(
-                PoseFrame(
-                    frame_index=frame_index,
-                    timestamp=timestamp,
-                    keypoints=keypoints_dict,
-                    confidence=float(confidence) if confidence is not None else 0.0,
-                )
-            )
-
-        # Get video dimensions
-        width = video.width or 0
-        height = video.height or 0
-
-        return PoseOverlayData(
-            video_id=video_id,
-            fps=fps,
-            total_frames=pose_detection.total_frames,
-            width=width,
-            height=height,
-            frames=frames,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Error getting overlay data for video %s", video_id)
+        # Map "exceeds" errors to 400 (validation error)
+        if "exceeds" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except RuntimeError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get overlay data. Please try again later.",
+            detail=str(e),
         ) from e
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
+        log_and_raise_error(e, "get_overlay_data", {"video_id": video_id})

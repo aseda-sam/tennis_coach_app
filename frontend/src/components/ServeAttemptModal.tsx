@@ -5,8 +5,8 @@ import {
   validateContactTimestamp,
   validateTimestamp,
 } from '../utils/validation';
-import TimelineMarkers from './TimelineMarkers';
 import './BallContactModal.css'; // Reuse styles
+import TimelineMarkers from './TimelineMarkers';
 
 interface ServeAttemptModalProps {
   serveAttempt: ServeAttempt | null;
@@ -14,7 +14,10 @@ interface ServeAttemptModalProps {
   videoDuration: number;
   currentTime?: number;
   onClose: () => void;
-  onUpdate: (serveAttemptId: number, updates: ServeAttemptUpdate) => Promise<void>;
+  onUpdate: (
+    serveAttemptId: number,
+    updates: ServeAttemptUpdate
+  ) => Promise<void>;
   onDelete: (serveAttemptId: number) => Promise<void>;
   onSeek?: (time: number) => void;
   isDemo?: boolean;
@@ -168,9 +171,7 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
   };
 
   const handleDelete = async () => {
-    if (
-      !window.confirm('Are you sure you want to delete this serve?')
-    ) {
+    if (!window.confirm('Are you sure you want to delete this serve?')) {
       return;
     }
 
@@ -217,10 +218,13 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
                     setFormData({ ...formData, contact_timestamp: time })
                   }
                   onSeek={onSeek}
+                  zoomToWindow={true}
                 />
                 {formData.contact_timestamp !== null && (
                   <div className="serve-detail-panel__contact-row">
-                    <span>Contact: {formatTime(formData.contact_timestamp)}</span>
+                    <span>
+                      Contact: {formatTime(formData.contact_timestamp)}
+                    </span>
                     <button
                       type="button"
                       className="serve-detail-panel__clear-btn"
@@ -313,7 +317,9 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
               </div>
 
               {validationError && (
-                <div className="serve-detail-panel__error">{validationError}</div>
+                <div className="serve-detail-panel__error">
+                  {validationError}
+                </div>
               )}
             </div>
           ) : (
@@ -321,13 +327,16 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
               <div className="serve-detail-panel__detail-row">
                 <span className="serve-detail-panel__detail-label">Range:</span>
                 <span className="serve-detail-panel__detail-value">
-                  {formatTime(serveAttempt.start_timestamp)} - {formatTime(serveAttempt.end_timestamp)}
+                  {formatTime(serveAttempt.start_timestamp)} -{' '}
+                  {formatTime(serveAttempt.end_timestamp)}
                 </span>
               </div>
 
               {serveAttempt.contact_timestamp !== null && (
                 <div className="serve-detail-panel__detail-row">
-                  <span className="serve-detail-panel__detail-label">Contact:</span>
+                  <span className="serve-detail-panel__detail-label">
+                    Contact:
+                  </span>
                   <span className="serve-detail-panel__detail-value">
                     {formatTime(serveAttempt.contact_timestamp)}
                   </span>
@@ -336,7 +345,9 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
 
               {serveAttempt.elbow_angle_at_contact !== null && (
                 <div className="serve-detail-panel__detail-row">
-                  <span className="serve-detail-panel__detail-label">Elbow Angle:</span>
+                  <span className="serve-detail-panel__detail-label">
+                    Elbow Angle:
+                  </span>
                   <span className="serve-detail-panel__detail-value">
                     {Math.round(serveAttempt.elbow_angle_at_contact)}°
                   </span>
@@ -345,25 +356,33 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
 
               {serveAttempt.court_side && (
                 <div className="serve-detail-panel__detail-row">
-                  <span className="serve-detail-panel__detail-label">Court:</span>
+                  <span className="serve-detail-panel__detail-label">
+                    Court:
+                  </span>
                   <span className="serve-detail-panel__detail-value">
-                    {serveAttempt.court_side.charAt(0).toUpperCase() + serveAttempt.court_side.slice(1)}
+                    {serveAttempt.court_side.charAt(0).toUpperCase() +
+                      serveAttempt.court_side.slice(1)}
                   </span>
                 </div>
               )}
 
               {serveAttempt.serve_subtype && (
                 <div className="serve-detail-panel__detail-row">
-                  <span className="serve-detail-panel__detail-label">Type:</span>
+                  <span className="serve-detail-panel__detail-label">
+                    Type:
+                  </span>
                   <span className="serve-detail-panel__detail-value">
-                    {serveAttempt.serve_subtype.charAt(0).toUpperCase() + serveAttempt.serve_subtype.slice(1)}
+                    {serveAttempt.serve_subtype.charAt(0).toUpperCase() +
+                      serveAttempt.serve_subtype.slice(1)}
                   </span>
                 </div>
               )}
 
               {serveAttempt.in_out && (
                 <div className="serve-detail-panel__detail-row">
-                  <span className="serve-detail-panel__detail-label">Result:</span>
+                  <span className="serve-detail-panel__detail-label">
+                    Result:
+                  </span>
                   <span className="serve-detail-panel__detail-value">
                     {serveAttempt.in_out.replace('_', ' ')}
                   </span>
@@ -458,6 +477,7 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
                     setFormData({ ...formData, contact_timestamp: time })
                   }
                   onSeek={onSeek}
+                  zoomToWindow={true}
                 />
                 {formData.contact_timestamp !== null && (
                   <div className="contact-clear-row">
@@ -560,7 +580,8 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
               <div className="detail-row">
                 <span className="detail-label">Range:</span>
                 <span className="detail-value">
-                  {formatTime(serveAttempt.start_timestamp)} - {formatTime(serveAttempt.end_timestamp)}
+                  {formatTime(serveAttempt.start_timestamp)} -{' '}
+                  {formatTime(serveAttempt.end_timestamp)}
                 </span>
               </div>
 
@@ -594,7 +615,9 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
               {serveAttempt.serve_number && (
                 <div className="detail-row">
                   <span className="detail-label">Serve Number:</span>
-                  <span className="detail-value">{serveAttempt.serve_number}</span>
+                  <span className="detail-value">
+                    {serveAttempt.serve_number}
+                  </span>
                 </div>
               )}
 

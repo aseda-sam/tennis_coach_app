@@ -233,3 +233,37 @@ class TestVideoJobsAPI:
         response = client.get("/v0/videos/jobs/00000000-0000-0000-0000-000000000999")
 
         assert response.status_code == 404
+
+    def test_get_job_includes_stage_and_serve_windows_found(
+        self, client: TestClient, db_session: Session, test_user_id: str
+    ) -> None:
+        """Contract: GET /v0/videos/jobs/{id} includes stage, progress_percent, and serve_windows_found."""
+        video = Video(
+            filename="test_stage_video.mp4",
+            file_path="/path/to/test_stage_video.mp4",
+            file_size=1000,
+            user_id=test_user_id,
+        )
+        db_session.add(video)
+        db_session.commit()
+
+        job = VideoJob(
+            video_id=video.id,
+            user_id=test_user_id,
+            job_type="pose_only",
+            status="processing",
+            stage="refining",
+            progress_percent=75,
+            serve_windows_found=3,
+        )
+        db_session.add(job)
+        db_session.commit()
+
+        response = client.get(f"/v0/videos/jobs/{job.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(job.id)
+        assert data["stage"] == "refining"
+        assert data["progress_percent"] == 75
+        assert data["serve_windows_found"] == 3
