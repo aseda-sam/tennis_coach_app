@@ -41,9 +41,8 @@ from app.utils.otel import setup_otel_tracing
 logger = logging.getLogger(__name__)
 
 _otel_enabled = setup_otel_tracing(default_service_name="tennis-coach-api")
-_metrics_enabled = setup_metrics(
-    default_service_name="tennis-coach-api"
-)  # Initialize metrics (uses same OTLP endpoint as traces)
+# Initialize metrics (uses same OTLP endpoint as traces). Return value is unused.
+setup_metrics(default_service_name="tennis-coach-api")
 
 # Add observability filter to root logger (adds trace_id/span_id to all logs)
 root_logger = logging.getLogger()
