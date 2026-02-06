@@ -17,7 +17,7 @@ def log_timing(operation_name: str, start_time: float) -> None:
         start_time: Start time from time.time()
     """
     elapsed_time = time.time() - start_time
-    logger.info(f"⏱️ {operation_name} completed in {elapsed_time:.3f}s")
+    logger.info("⏱️ %s completed in %.3fs", operation_name, elapsed_time)
 
 
 def log_timing_error(operation_name: str, start_time: float, error: Exception) -> None:
@@ -30,4 +30,4 @@ def log_timing_error(operation_name: str, start_time: float, error: Exception) -
         error: The exception that occurred
     """
     elapsed_time = time.time() - start_time
-    logger.error(f"❌ {operation_name} failed after {elapsed_time:.3f}s: {error}")
+    logger.error("❌ %s failed after %.3fs: %s", operation_name, elapsed_time, error)

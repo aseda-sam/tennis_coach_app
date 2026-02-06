@@ -115,7 +115,7 @@ redis_conn = InstrumentedRedis.from_url(
 # This allows tests to run without Redis
 try:
     redis_conn.ping()
-    logger.info(f"Successfully connected to Redis at {_mask_redis_url(REDIS_URL)}")
+    logger.info("Successfully connected to Redis at %s", _mask_redis_url(REDIS_URL))
 except (RedisConnectionError, RedisTimeoutError, OSError) as e:
     logger.warning(
         f"Redis not available at {_mask_redis_url(REDIS_URL)}: {e}. "

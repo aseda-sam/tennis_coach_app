@@ -61,7 +61,7 @@ async def get_current_user(
         )
 
     token = credentials.credentials
-    logger.debug(f"Verifying token for PROFILE={settings.PROFILE}")
+    logger.debug("Verifying token for PROFILE=%s", settings.PROFILE)
     user = verify_supabase_token(token)
 
     if user is None:
@@ -74,7 +74,7 @@ async def get_current_user(
             detail="Invalid authentication credentials",
         )
 
-    logger.debug(f"Authentication successful for user: {user.get('email', 'unknown')}")
+    logger.debug("Authentication successful for user: %s", user.get("email", "unknown"))
     return user
 
 

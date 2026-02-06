@@ -342,10 +342,10 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
             # For local, file_path is the full path
             storage_path = video.file_path
             storage_service.delete_file(storage_path)
-            logger.info(f"Deleted original video from storage: {storage_path}")
+            logger.info("Deleted original video from storage: %s", storage_path)
         except (ValueError, RuntimeError, OSError) as e:
             logger.error(
-                f"Failed to delete video file from storage {storage_path}: {e}"
+                "Failed to delete video file from storage %s: %s", storage_path, e
             )
             # Continue with database deletion even if file deletion fails
 
@@ -353,13 +353,13 @@ def delete_video_with_analyses(db: Session, video_id: int) -> tuple[bool, str, i
         # The cascade relationships will automatically delete:
         # - PoseDetection records
         if not delete_video_record(db, video_id):
-            logger.error(f"Database deletion failed for video {video_id}")
+            logger.error("Database deletion failed for video %s", video_id)
             return False, filename, video_id
 
         return True, filename, video_id
 
     except (OSError, ValueError, RuntimeError) as e:
-        logger.error(f"Error during video deletion for {video_id}: {e}")
+        logger.error("Error during video deletion for %s: %s", video_id, e)
         return False, filename, video_id
 
 
@@ -427,7 +427,7 @@ def extract_frames(
     try:
         cap = cv2.VideoCapture(str(video_path))
         if not cap.isOpened():
-            logger.error(f"Could not open video: {video_path}")
+            logger.error("Could not open video: %s", video_path)
             return frames
 
         frame_count = 0
@@ -459,9 +459,13 @@ def extract_frames(
         else:
             logger.info("Frame skipping disabled: processing all frames")
 
-        logger.info(f"Extracting frames from {video_path}")
+        logger.info("Extracting frames from %s", video_path)
         logger.info(
-            f"Total frames: {total_frames}, FPS: {fps}, Frame skip ratio: {frame_skip_ratio}, Interval: {interval}"
+            "Total frames: %s, FPS: %s, Frame skip ratio: %s, Interval: %s",
+            total_frames,
+            fps,
+            frame_skip_ratio,
+            interval,
         )
 
         # Process frames with proper skipping
@@ -486,13 +490,13 @@ def extract_frames(
                     cap.read()
 
         cap.release()
-        logger.info(f"Extracted {len(frames)} frames using interval {interval}")
+        logger.info("Extracted %s frames using interval %s", len(frames), interval)
 
     except (OSError, RuntimeError, ValueError) as e:
-        logger.error(f"Error extracting frames: {e}")
+        logger.error("Error extracting frames: %s", e)
 
     elapsed_time = time.time() - start_time
-    logger.info(f"⏱️ Frame Extraction completed in {elapsed_time:.3f}s")
+    logger.info("⏱️ Frame Extraction completed in %.3fs", elapsed_time)
     return frames
 
 
@@ -525,5 +529,5 @@ def get_video_metadata(video_path: Path) -> Dict[str, Any]:
         return metadata
 
     except (OSError, RuntimeError, ValueError) as e:
-        logger.error(f"Error extracting video metadata: {e}")
+        logger.error("Error extracting video metadata: %s", e)
         return {"error": str(e)}

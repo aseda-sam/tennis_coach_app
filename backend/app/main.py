@@ -34,8 +34,19 @@ from app.utils.error_handling import (
     general_error_handler,
     validation_error_handler,
 )
+from app.utils.logging_context import ObservabilityLogFilter
+from app.utils.metrics import setup_metrics
+from app.utils.otel import setup_otel_tracing
 
 logger = logging.getLogger(__name__)
+
+_otel_enabled = setup_otel_tracing(default_service_name="tennis-coach-api")
+# Initialize metrics (uses same OTLP endpoint as traces). Return value is unused.
+setup_metrics(default_service_name="tennis-coach-api")
+
+# Add observability filter to root logger (adds trace_id/span_id to all logs)
+root_logger = logging.getLogger()
+root_logger.addFilter(ObservabilityLogFilter())
 
 
 def validate_redis_url(url: str) -> bool:
@@ -119,7 +130,7 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
         if not validate_redis_url(redis_url):
             from app.core.redis_config import _mask_redis_url
 
-            logger.error(f"Invalid REDIS_URL format: {_mask_redis_url(redis_url)}")
+            logger.error("Invalid REDIS_URL format: %s", _mask_redis_url(redis_url))
             return None
 
         return subprocess.Popen(  # noqa: S603 - rq command is trusted, redis_url validated above
@@ -128,7 +139,7 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
             stderr=subprocess.PIPE,
         )
     except (subprocess.SubprocessError, OSError, ValueError) as e:
-        logger.error(f"Failed to start RQ worker: {e}")
+        logger.error("Failed to start RQ worker: %s", e)
         return None
 
 
@@ -139,14 +150,17 @@ async def lifespan(app: FastAPI) -> None:
     logger.info("=" * 60)
     logger.info("Tennis Coach API - Starting up")
     logger.info("=" * 60)
-    logger.info(f"Profile: {settings.PROFILE}")
-    logger.info(f"Auth Required: {settings.auth_required}")
-    logger.info(f"Debug Mode: {settings.DEBUG}")
-    logger.info(
-        f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else settings.database_url}"
+    logger.info("Profile: %s", settings.PROFILE)
+    logger.info("Auth Required: %s", settings.auth_required)
+    logger.info("Debug Mode: %s", settings.DEBUG)
+    db_url_display = (
+        settings.database_url.split("@")[-1]
+        if "@" in settings.database_url
+        else settings.database_url
     )
-    logger.info(f"Storage Type: {settings.STORAGE_TYPE}")
-    logger.info(f"CORS Origins: {settings.BACKEND_CORS_ORIGINS}")
+    logger.info("Database: %s", db_url_display)
+    logger.info("Storage Type: %s", settings.STORAGE_TYPE)
+    logger.info("CORS Origins: %s", settings.BACKEND_CORS_ORIGINS)
     logger.info("=" * 60)
     create_tables_if_not_exists()
 
@@ -186,7 +200,7 @@ async def lifespan(app: FastAPI) -> None:
             logger.warning("RQ worker did not terminate gracefully, killing")
             worker_process.kill()
         except (subprocess.SubprocessError, OSError) as e:
-            logger.error(f"Error terminating RQ worker: {e}")
+            logger.error("Error terminating RQ worker: %s", e)
 
     logger.info("Tennis Coach API - Shutting down")
 
@@ -202,6 +216,11 @@ app = FastAPI(
     redoc_url="/redoc" if settings.PROFILE == "local" else None,
     openapi_url="/openapi.json" if settings.PROFILE == "local" else None,
 )
+
+if _otel_enabled:
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+    FastAPIInstrumentor().instrument_app(app)
 
 # Add CORS middleware
 app.add_middleware(

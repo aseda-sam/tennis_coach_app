@@ -192,7 +192,7 @@ async def validation_error_handler(request: Request, exc: ValueError) -> JSONRes
 
 async def general_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle general errors."""
-    logger.error(f"Unhandled error: {exc!s}", exc_info=True)
+    logger.error("Unhandled error: %s", exc, exc_info=True)
 
     return create_error_response(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

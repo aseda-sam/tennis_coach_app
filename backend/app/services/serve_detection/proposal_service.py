@@ -114,7 +114,7 @@ def clear_pending_proposals(db: Session, video_id: int, user_id: str) -> int:
         .delete(synchronize_session=False)
     )
     db.commit()
-    logger.info(f"Cleared {deleted_count} pending proposals for video {video_id}")
+    logger.info("Cleared %s pending proposals for video %s", deleted_count, video_id)
     return deleted_count
 
 
@@ -249,12 +249,12 @@ def generate_proposals(
                         k for k in expected_keys if k not in keypoints_sample
                     ]
                     if missing_keys:
-                        logger.warning(f"Missing expected keypoints: {missing_keys}")
+                        logger.warning("Missing expected keypoints: %s", missing_keys)
             else:
                 # Old format: direct keypoints dict {"left_shoulder": [x, y], ...}
                 logger.info(
-                    f"Pose data format: old format (direct keypoints), "
-                    f"keys: {list(sample_frame.keys())[:10]}..."
+                    "Pose data format: old format (direct keypoints), keys: %s...",
+                    list(sample_frame.keys())[:10],
                 )
                 expected_keys = [
                     "left_wrist",
@@ -266,17 +266,19 @@ def generate_proposals(
                 ]
                 missing_keys = [k for k in expected_keys if k not in sample_frame]
                 if missing_keys:
-                    logger.warning(f"Missing expected keypoints: {missing_keys}")
+                    logger.warning("Missing expected keypoints: %s", missing_keys)
         else:
             logger.warning(
-                f"Unexpected pose data format: {type(sample_frame)}, expected dict"
+                "Unexpected pose data format: %s, expected dict", type(sample_frame)
             )
 
     # Extract features from each frame
     features: List[Dict] = []
     frame_shape = (video.height or 1080, video.width or 1920, 3)  # Default to 1080p
 
-    logger.info(f"Video dimensions: {video.width}x{video.height}, FPS: {video.fps}")
+    logger.info(
+        "Video dimensions: %sx%s, FPS: %s", video.width, video.height, video.fps
+    )
 
     for frame_idx, frame_data in enumerate(raw_pose_data):
         # Extract keypoints based on detected format
@@ -310,7 +312,7 @@ def generate_proposals(
     proposals_data = detect_serve_windows(features, video.fps)
 
     if not proposals_data:
-        logger.info(f"No serve windows detected for video {video_id}")
+        logger.info("No serve windows detected for video %s", video_id)
         return []
 
     # Create proposal records
@@ -406,7 +408,9 @@ def accept_proposal(
     proposal.serve_attempt_id = serve_attempt.id
     db.commit()
 
-    logger.info(f"Accepted proposal {proposal_id} as serve attempt {serve_attempt.id}")
+    logger.info(
+        "Accepted proposal %s as serve attempt %s", proposal_id, serve_attempt.id
+    )
     return serve_attempt
 
 
@@ -442,7 +446,7 @@ def reject_proposal(db: Session, proposal_id: int, user_id: str) -> None:
     proposal.reviewed_at = datetime.utcnow()
     db.commit()
 
-    logger.info(f"Rejected proposal {proposal_id}")
+    logger.info("Rejected proposal %s", proposal_id)
 
 
 def accept_all_proposals(

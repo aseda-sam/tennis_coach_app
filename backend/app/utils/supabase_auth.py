@@ -69,7 +69,7 @@ def verify_supabase_token(token: str) -> Optional[dict]:
                 if hasattr(response.error, "message")
                 else str(response.error)
             )
-            logger.warning(f"Supabase auth error: {error_msg}")
+            logger.warning("Supabase auth error: %s", error_msg)
             return None
 
         if response and hasattr(response, "user") and response.user:
@@ -82,7 +82,7 @@ def verify_supabase_token(token: str) -> Optional[dict]:
         return None
     except ValueError as e:
         # Configuration errors - re-raise as they indicate programming/configuration issues
-        logger.error(f"Supabase configuration error: {e}", exc_info=True)
+        logger.error("Supabase configuration error: %s", e, exc_info=True)
         raise
     except AttributeError as e:
         # Response structure issues - log and return None (auth failure)
@@ -97,14 +97,14 @@ def verify_supabase_token(token: str) -> Optional[dict]:
 
         # Handle specific Supabase auth errors if AuthError is available
         if AuthError and isinstance(e, AuthError):
-            logger.warning(f"Supabase authentication error: {e}")
+            logger.warning("Supabase authentication error: %s", e)
             return None
 
         # Handle network/connection errors if available
         if (HTTPError and isinstance(e, HTTPError)) or (
             RequestError and isinstance(e, RequestError)
         ):
-            logger.warning(f"Network error during Supabase auth: {e}")
+            logger.warning("Network error during Supabase auth: %s", e)
             return None
 
         # For other exceptions, check if they're likely auth-related

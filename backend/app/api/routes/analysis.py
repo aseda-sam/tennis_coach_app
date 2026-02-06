@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from rq.job import Job
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,7 @@ from app.utils.authorization import (
     require_video_access,
     require_video_not_demo,
 )
+from app.utils.logging_context import get_log_extra
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ router = APIRouter(prefix="/v0/analysis", tags=["analysis"])
 async def start_analysis(
     video_id: int,
     request: AnalysisRequest,
+    http_request: Request,  # FastAPI injects this
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AnalysisResponse:
@@ -88,7 +90,7 @@ async def start_analysis(
             )
 
             # Enqueue RQ job using shared helper
-            logger.info(f"Enqueueing {request.analysis_type} job to Redis queue...")
+            logger.info("Enqueueing %s job to Redis queue...", request.analysis_type)
             try:
                 job = enqueue_pose_analysis(
                     video_id=video_id,
@@ -115,7 +117,15 @@ async def start_analysis(
 
                 logger.info(
                     f"Successfully enqueued {request.analysis_type} analysis job {job.id} "
-                    f"for video {video_id} to queue '{analysis_queue.name}'"
+                    f"for video {video_id} to queue '{analysis_queue.name}'",
+                    extra=get_log_extra(
+                        request_id=http_request.state.request_id
+                        if hasattr(http_request, "state")
+                        else None,
+                        job_id=str(video_job.id),
+                        video_id=video_id,
+                        rq_job_id=job.id,
+                    ),
                 )
             except HTTPException:
                 raise
@@ -207,7 +217,7 @@ async def cancel_task(
         try:
             job = Job.fetch(rq_job_id, connection=redis_conn)
         except Exception as e:
-            logger.warning(f"RQ job {rq_job_id} not found in Redis: {e}")
+            logger.warning("RQ job %s not found in Redis: %s", rq_job_id, e)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Job {job_id} not found",
@@ -241,7 +251,7 @@ async def cancel_task(
                 video_job.finished_at = datetime.utcnow()
                 db.commit()
 
-            logger.info(f"Cancelled job {job_id} (RQ: {rq_job_id})")
+            logger.info("Cancelled job %s (RQ: %s)", job_id, rq_job_id)
             return {"message": f"Job {job_id} cancelled successfully"}
         else:
             raise HTTPException(

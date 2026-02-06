@@ -13,12 +13,14 @@ import logging
 import os
 import subprocess
 import tempfile
+import time
+from contextlib import contextmanager, suppress
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterator, Optional
 
 import cv2
-from rq import Retry
+from rq import Retry, get_current_job
 from rq.job import Job
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -28,9 +30,112 @@ from app.core.redis_config import analysis_queue
 from app.models.video_job import VideoJob
 from app.services import video_service
 from app.services.storage_service import storage_service
+from app.utils.logging_context import get_log_extra
+from app.utils.metrics import (
+    record_job_failed,
+    record_job_started,
+    record_job_succeeded,
+    record_queue_wait,
+)
 from app.utils.video_utils import get_video_rotation
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _rq_job_span(
+    span_name: str, video_id: int, video_job_id: Optional[str] = None
+) -> Iterator[Any]:
+    """Create one trace span for an RQ job so it shows up in Grafana (job_id, video_id, rq_job_id)."""
+    span_context = None
+    span = None
+    try:
+        from opentelemetry import trace
+
+        tracer = trace.get_tracer(__name__, "0.1.0")
+        span_context = tracer.start_as_current_span(span_name)
+        span = span_context.__enter__()
+        span.set_attribute("video_id", video_id)
+        if video_job_id:
+            span.set_attribute("job_id", str(video_job_id))
+        try:
+            job = get_current_job()
+            if job is not None:
+                span.set_attribute("rq_job_id", str(job.id))
+                # Add queue wait time as span attribute (visible in trace detail)
+                if job.meta and "enqueued_at" in job.meta:
+                    queue_wait = time.time() - job.meta["enqueued_at"]
+                    span.set_attribute("queue_wait_seconds", round(queue_wait, 2))
+        except Exception as e:  # noqa: BLE001 - get_current_job can fail outside RQ
+            logger.debug("Could not get RQ job for span: %s", e)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("OTel span creation failed: %s", e)
+        span = None
+
+    # Single yield point - always executed
+    try:
+        yield span
+    finally:
+        # Cleanup: ensure span is closed and flushed (don't mask exceptions from with-body)
+        if span_context is not None:
+            try:
+                span_context.__exit__(None, None, None)
+                # Force flush so the span is exported immediately after job completes
+                provider = trace.get_tracer_provider()
+                if hasattr(provider, "force_flush"):
+                    provider.force_flush(timeout_millis=5000)
+            except Exception as e:  # noqa: BLE001 - Don't mask exceptions from with-body
+                logger.debug("OTel span cleanup failed: %s", e)
+
+
+@contextmanager
+def _stage_span(
+    span_name: str, **attributes: str | int | float | bool | None
+) -> Iterator[Any]:
+    """Create a child span for a pipeline stage (download, scout, refine, db_write, etc.)."""
+    span_context = None
+    span = None
+    try:
+        from opentelemetry import trace
+
+        tracer = trace.get_tracer(__name__, "0.1.0")
+        span_context = tracer.start_as_current_span(span_name)
+        span = span_context.__enter__()
+        for key, value in attributes.items():
+            if value is not None:
+                span.set_attribute(
+                    key,
+                    str(value) if not isinstance(value, (int, float, bool)) else value,
+                )
+    except Exception:  # noqa: BLE001 - OTel may not be available
+        span = None
+
+    # Single yield point - always executed
+    try:
+        yield span
+    finally:
+        # Cleanup: ensure span is closed (don't mask exceptions from with-body)
+        if span_context is not None:
+            with suppress(Exception):  # Don't mask exceptions from with-body
+                span_context.__exit__(None, None, None)
+
+
+def _record_queue_wait(job_type: str, video_id: int) -> None:
+    """Read enqueued_at from RQ job meta and record queue wait time."""
+    try:
+        job = get_current_job()
+        if job and job.meta and "enqueued_at" in job.meta:
+            wait = time.time() - job.meta["enqueued_at"]
+            record_queue_wait(job_type, wait, video_id=video_id)
+            logger.info(
+                "Queue wait for %s video %s: %.1fs",
+                job_type,
+                video_id,
+                wait,
+                extra=get_log_extra(video_id=video_id),
+            )
+    except Exception:  # noqa: BLE001, S110 - best-effort, don't break the job
+        pass
 
 
 def _get_temp_video_path(video_path: str) -> tuple[Path, Path | None]:
@@ -58,9 +163,9 @@ def _cleanup_temp_file(temp_path: Path | None) -> None:
     if temp_path and temp_path.exists():
         try:
             temp_path.unlink()
-            logger.debug(f"Cleaned up temp video file: {temp_path}")
+            logger.debug("Cleaned up temp video file: %s", temp_path)
         except OSError as e:
-            logger.warning(f"Failed to delete temp video file {temp_path}: {e}")
+            logger.warning("Failed to delete temp video file %s: %s", temp_path, e)
 
 
 def transcode_video_rq(
@@ -83,10 +188,11 @@ def transcode_video_rq(
         ValueError: If video not found or transcoding fails
         RuntimeError: If ffmpeg fails
     """
+    _record_queue_wait("transcode", video_id)
     temp_video_path = None
     temp_output_path = None
     try:
-        logger.info(f"RQ task: Starting transcoding for video {video_id}")
+        logger.info("RQ task: Starting transcoding for video %s", video_id)
 
         # Create database session
         with SessionLocal() as db:
@@ -139,9 +245,12 @@ def transcode_video_rq(
             fd, temp_output_name = tempfile.mkstemp(
                 suffix=".mp4", dir=settings.PROCESSED_DIR
             )
-            os.close(
-                fd
-            )  # Close the file descriptor immediately - we only need the filename
+            # Close the file descriptor immediately - we only need the filename
+            # Use suppress to handle edge cases (e.g., invalid FD in tests)
+            with suppress(OSError):
+                os.close(
+                    fd
+                )  # FD may already be closed or invalid - not critical since we only need the filename
             temp_output_path = Path(temp_output_name)
             temp_output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -166,7 +275,7 @@ def transcode_video_rq(
                 str(temp_output_path),
             ]
 
-            logger.info(f"Running ffmpeg: {' '.join(ffmpeg_cmd)}")
+            logger.info("Running ffmpeg: %s", " ".join(ffmpeg_cmd))
             result = subprocess.run(  # noqa: S603 - ffmpeg args from config and validated storage path
                 ffmpeg_cmd,
                 capture_output=True,
@@ -175,7 +284,7 @@ def transcode_video_rq(
             )
 
             if result.returncode != 0:
-                logger.error(f"ffmpeg failed: {result.stderr}")
+                logger.error("ffmpeg failed: %s", result.stderr)
                 raise RuntimeError(f"ffmpeg transcoding failed: {result.stderr}")
 
             # Read transcoded file
@@ -231,9 +340,12 @@ def transcode_video_rq(
             db.refresh(video)
 
             logger.info(
-                f"RQ task: Transcoding completed for video {video_id}, "
-                f"size reduced from {original_file_size} to {new_file_size} bytes "
-                f"({100 * (1 - new_file_size / original_file_size):.1f}% reduction)"
+                "RQ task: Transcoding completed for video %s, "
+                "size reduced from %s to %s bytes (%.1f%% reduction)",
+                video_id,
+                original_file_size,
+                new_file_size,
+                100 * (1 - new_file_size / original_file_size),
             )
 
             # Chain to scout/refine pipeline if this was part of auto-enqueue flow
@@ -257,9 +369,10 @@ def transcode_video_rq(
                         video_path=new_storage_path,  # Use transcoded path
                         video_job_id=str(pose_job.id),
                         confidence_threshold=0.7,
-                        retry=Retry(max=2, interval=60),
+                        retry=Retry(max=2, interval=0),
                         job_timeout=settings.POSE_DETECTION_JOB_TIMEOUT_SECONDS,
                         result_ttl=3600,
+                        meta={"enqueued_at": time.time()},
                     )
                     if pose_rq_job:
                         pose_job.rq_job_id = pose_rq_job.id
@@ -290,7 +403,7 @@ def transcode_video_rq(
             }
 
     except Exception as e:
-        logger.error(f"RQ task failed for video {video_id}: {e}", exc_info=True)
+        logger.error("RQ task failed for video %s: %s", video_id, e, exc_info=True)
 
         # Update VideoJob status to failed if video_job_id provided
         if video_job_id:
@@ -321,10 +434,12 @@ def transcode_video_rq(
         if temp_output_path and temp_output_path.exists():
             try:
                 temp_output_path.unlink()
-                logger.debug(f"Cleaned up temp transcoded file: {temp_output_path}")
+                logger.debug("Cleaned up temp transcoded file: %s", temp_output_path)
             except OSError as e:
                 logger.warning(
-                    f"Failed to delete temp transcoded file {temp_output_path}: {e}"
+                    "Failed to delete temp transcoded file %s: %s",
+                    temp_output_path,
+                    e,
                 )
 
 
@@ -367,9 +482,10 @@ def enqueue_pose_analysis(
             video_path=video_path,
             confidence_threshold=confidence_threshold,
             video_job_id=video_job_id,  # Pass VideoJob ID for status updates
-            retry=Retry(max=2, interval=60),
+            retry=Retry(max=2, interval=0),
             job_timeout=settings.POSE_DETECTION_JOB_TIMEOUT_SECONDS,
             result_ttl=3600,  # Keep results for 1 hour
+            meta={"enqueued_at": time.time()},
         )
 
         logger.info(
@@ -409,116 +525,151 @@ def analyze_pose_detection_rq(
         ValueError: If video not found or analysis fails
         RuntimeError: If pose detection service fails
     """
-    temp_video_path = None
-    try:
-        # Lazy imports inside function (avoids fork issues)
-        from app.services.pose_detection import PoseDetectionService
+    start_time = time.time()
+    _record_queue_wait("pose_detection", video_id)
+    record_job_started("pose_detection", video_id=video_id)
 
-        logger.info(f"RQ task: Starting pose detection for video {video_id}")
+    with _rq_job_span(
+        "rq.pose_detection", video_id=video_id, video_job_id=video_job_id
+    ):
+        temp_video_path = None
+        try:
+            # Lazy imports inside function (avoids fork issues)
+            from app.services.pose_detection import PoseDetectionService
 
-        # Create database session
-        with SessionLocal() as db:
-            # Check video exists early - exit gracefully if deleted
-            video = video_service.get_video_by_id(db, video_id)
-            if not video:
+            logger.info(
+                "RQ task: Starting pose detection for video %s",
+                video_id,
+                extra=get_log_extra(video_id=video_id, job_id=video_job_id),
+            )
+
+            # Create database session
+            with SessionLocal() as db:
+                # Check video exists early - exit gracefully if deleted
+                video = video_service.get_video_by_id(db, video_id)
+                if not video:
+                    logger.info(
+                        "Video %s deleted before job started, exiting gracefully",
+                        video_id,
+                    )
+                    return {"status": "cancelled", "reason": "video_deleted"}
+
+                # Update VideoJob status to processing if video_job_id provided
+                video_job = None
+                if video_job_id:
+                    try:
+                        import uuid
+
+                        video_job = (
+                            db.query(VideoJob)
+                            .filter(VideoJob.id == uuid.UUID(video_job_id))
+                            .first()
+                        )
+                        if video_job:
+                            video_job.status = "processing"
+                            video_job.started_at = datetime.utcnow()
+                            db.commit()
+                    except (ValueError, TypeError, SQLAlchemyError) as e:
+                        logger.warning(
+                            "Invalid video_job_id %s: %s. Continuing without status update.",
+                            video_job_id,
+                            e,
+                        )
+
+                # Stage: Download video (if cloud storage)
+                with _stage_span("download", video_id=video_id):
+                    local_path, temp_video_path = _get_temp_video_path(video_path)
+
+                # Stage: Pose detection
+                with _stage_span("pose_detection", video_id=video_id):
+                    pose_service = PoseDetectionService()
+                    pose_results = pose_service.analyze_video_file(
+                        video_path=Path(local_path),
+                        confidence_threshold=confidence_threshold,
+                        detection_threshold=0.5,
+                        max_frames=None,
+                    )
+
+                    # Check for errors
+                    if "error" in pose_results:
+                        raise RuntimeError(
+                            f"Pose detection failed: {pose_results['error']}"
+                        )
+
+                # Stage: DB write
+                with _stage_span("db_write", video_id=video_id, job_id=video_job_id):
+                    pose_detection = pose_service.save_detection_results(
+                        db=db, video_id=video_id, detection_results=pose_results
+                    )
+
+                # Update VideoJob status to completed if video_job_id provided
+                if video_job:
+                    video_job.status = "completed"
+                    video_job.finished_at = datetime.utcnow()
+                    db.commit()
+
+                duration = time.time() - start_time
+                record_job_succeeded("pose_detection", duration, video_id=video_id)
+
                 logger.info(
-                    "Video %s deleted before job started, exiting gracefully", video_id
+                    "RQ task: Pose detection completed for video %s, detection_id=%s",
+                    video_id,
+                    pose_detection.id,
+                    extra=get_log_extra(video_id=video_id, job_id=video_job_id),
                 )
-                return {"status": "cancelled", "reason": "video_deleted"}
 
-            # Update VideoJob status to processing if video_job_id provided
-            video_job = None
+                return {
+                    "status": "completed",
+                    "processing_time": pose_results.get("processing_time_seconds", 0.0),
+                    "analysis_summary": {
+                        "total_frames": pose_results.get("total_frames", 0),
+                        "frames_with_poses": pose_results.get("frames_with_poses", 0),
+                        "detection_rate": pose_results.get("detection_rate", 0.0),
+                    },
+                    "pose_detection_id": pose_detection.id,
+                    "analysis_type": "pose_only",
+                }
+
+        except Exception as e:
+            duration = time.time() - start_time
+            record_job_failed("pose_detection", duration, video_id=video_id)
+
+            logger.error(
+                "RQ task failed for video %s: %s",
+                video_id,
+                e,
+                exc_info=True,
+                extra=get_log_extra(video_id=video_id, job_id=video_job_id),
+            )
+
+            # Update VideoJob status to failed if video_job_id provided
             if video_job_id:
                 try:
                     import uuid
 
-                    video_job = (
-                        db.query(VideoJob)
-                        .filter(VideoJob.id == uuid.UUID(video_job_id))
-                        .first()
-                    )
-                    if video_job:
-                        video_job.status = "processing"
-                        video_job.started_at = datetime.utcnow()
-                        db.commit()
-                except (ValueError, TypeError, SQLAlchemyError) as e:
+                    with SessionLocal() as db:
+                        video_job = (
+                            db.query(VideoJob)
+                            .filter(VideoJob.id == uuid.UUID(video_job_id))
+                            .first()
+                        )
+                        if video_job:
+                            video_job.status = "failed"
+                            video_job.error = str(e)[:500]
+                            video_job.finished_at = datetime.utcnow()
+                            db.commit()
+                except (ValueError, TypeError, SQLAlchemyError) as e2:
                     logger.warning(
-                        f"Invalid video_job_id {video_job_id}: {e}. Continuing without status update."
+                        "Failed to update VideoJob status: %s. Original: %s",
+                        e2,
+                        e,
                     )
 
-            # Get local file path (handles cloud download)
-            local_path, temp_video_path = _get_temp_video_path(video_path)
+            raise
 
-            # Run pose detection
-            pose_service = PoseDetectionService()
-            pose_results = pose_service.analyze_video_file(
-                video_path=Path(local_path),
-                confidence_threshold=confidence_threshold,
-                detection_threshold=0.5,
-                max_frames=None,
-            )
-
-            # Check for errors
-            if "error" in pose_results:
-                raise RuntimeError(f"Pose detection failed: {pose_results['error']}")
-
-            # Save results
-            pose_detection = pose_service.save_detection_results(
-                db=db, video_id=video_id, detection_results=pose_results
-            )
-
-            # Update VideoJob status to completed if video_job_id provided
-            if video_job:
-                video_job.status = "completed"
-                video_job.finished_at = datetime.utcnow()
-                db.commit()
-
-            logger.info(
-                f"RQ task: Pose detection completed for video {video_id}, "
-                f"detection_id={pose_detection.id}"
-            )
-
-            return {
-                "status": "completed",
-                "processing_time": pose_results.get("processing_time_seconds", 0.0),
-                "analysis_summary": {
-                    "total_frames": pose_results.get("total_frames", 0),
-                    "frames_with_poses": pose_results.get("frames_with_poses", 0),
-                    "detection_rate": pose_results.get("detection_rate", 0.0),
-                },
-                "pose_detection_id": pose_detection.id,
-                "analysis_type": "pose_only",
-            }
-
-    except Exception as e:
-        logger.error(f"RQ task failed for video {video_id}: {e}", exc_info=True)
-
-        # Update VideoJob status to failed if video_job_id provided
-        if video_job_id:
-            try:
-                import uuid
-
-                with SessionLocal() as db:
-                    video_job = (
-                        db.query(VideoJob)
-                        .filter(VideoJob.id == uuid.UUID(video_job_id))
-                        .first()
-                    )
-                    if video_job:
-                        video_job.status = "failed"
-                        video_job.error = str(e)[:500]  # Truncate error message
-                        video_job.finished_at = datetime.utcnow()
-                        db.commit()
-            except (ValueError, TypeError, SQLAlchemyError) as e2:
-                logger.warning(
-                    f"Failed to update VideoJob status: {e2}. Original error: {e}"
-                )
-
-        raise
-
-    finally:
-        # Clean up temp video file if created for cloud storage
-        _cleanup_temp_file(temp_video_path)
+        finally:
+            # Clean up temp video file if created for cloud storage
+            _cleanup_temp_file(temp_video_path)
 
 
 def analyze_pose_detection_scout_refine_rq(
@@ -539,197 +690,257 @@ def analyze_pose_detection_scout_refine_rq(
     Returns:
         Analysis results dictionary
     """
-    temp_video_path = None
-    try:
-        # Lazy imports
-        from app.services.pose_detection import PoseDetectionService
-        from app.services.serve_detection.proposal_service import generate_proposals
+    start_time = time.time()
+    _record_queue_wait("scout_refine", video_id)
+    record_job_started("scout_refine", video_id=video_id)
 
-        logger.info(f"RQ task: Starting scout/refine pipeline for video {video_id}")
+    with _rq_job_span("rq.scout_refine", video_id=video_id, video_job_id=video_job_id):
+        temp_video_path = None
+        try:
+            # Lazy imports
+            from app.services.pose_detection import PoseDetectionService
+            from app.services.serve_detection.proposal_service import (
+                generate_proposals,
+            )
 
-        # Create database session
-        with SessionLocal() as db:
-            # Check video exists early
-            video = video_service.get_video_by_id(db, video_id)
-            if not video:
+            logger.info(
+                "RQ task: Starting scout/refine pipeline for video %s",
+                video_id,
+                extra=get_log_extra(video_id=video_id, job_id=video_job_id),
+            )
+
+            # Create database session
+            with SessionLocal() as db:
+                # Check video exists early
+                video = video_service.get_video_by_id(db, video_id)
+                if not video:
+                    logger.info(
+                        "Video %s deleted before job started, exiting gracefully",
+                        video_id,
+                    )
+                    return {"status": "cancelled", "reason": "video_deleted"}
+
+                # Update VideoJob status
+                video_job = None
+                if video_job_id:
+                    try:
+                        import uuid
+
+                        video_job = (
+                            db.query(VideoJob)
+                            .filter(VideoJob.id == uuid.UUID(video_job_id))
+                            .first()
+                        )
+                        if video_job:
+                            video_job.status = "processing"
+                            video_job.started_at = datetime.utcnow()
+                            if hasattr(video_job, "stage"):
+                                video_job.stage = "scout"
+                            db.commit()
+                    except (ValueError, TypeError, SQLAlchemyError) as e:
+                        logger.warning(
+                            "Invalid video_job_id %s: %s",
+                            video_job_id,
+                            e,
+                        )
+
+                # Stage: Download video (if cloud storage)
+                with _stage_span("download", video_id=video_id):
+                    local_path, temp_video_path = _get_temp_video_path(video_path)
+
+                # Stage: Scout pass
+                with _stage_span("scout", video_id=video_id, job_id=video_job_id):
+                    logger.info("Phase 1: Running scout pass (lite model, frame skip)")
+                    pose_service = PoseDetectionService()
+                    scout_results = pose_service.analyze_video_file(
+                        video_path=Path(local_path),
+                        confidence_threshold=confidence_threshold,
+                        detection_threshold=0.5,
+                        max_frames=None,
+                        mode="scout",
+                    )
+
+                    if "error" in scout_results:
+                        raise RuntimeError(
+                            f"Scout pass failed: {scout_results['error']}"
+                        )
+
+                    # Save scout results
+                    scout_pose_detection = pose_service.save_detection_results(
+                        db=db, video_id=video_id, detection_results=scout_results
+                    )
+
+                # Stage: Detect serve windows
+                with _stage_span(
+                    "detect_serves", video_id=video_id, job_id=video_job_id
+                ):
+                    logger.info("Phase 2: Detecting serve windows from scout data")
+                    if video_job and hasattr(video_job, "stage"):
+                        video_job.stage = "detecting_serves"
+                        db.commit()
+
+                    # Generate proposals (uses scout pose data)
+                    proposals = generate_proposals(
+                        db=db,
+                        video_id=video_id,
+                        user_id=video.user_id,
+                        force=True,
+                    )
+
+                    if not proposals:
+                        logger.info(
+                            "No serve windows detected, completing with scout data only"
+                        )
+                        if video_job:
+                            video_job.status = "completed"
+                            video_job.finished_at = datetime.utcnow()
+                            db.commit()
+                        duration = time.time() - start_time
+                        record_job_succeeded(
+                            "scout_refine", duration, video_id=video_id
+                        )
+                        return {
+                            "status": "completed",
+                            "mode": "scout_only",
+                            "serve_windows_found": 0,
+                            "pose_detection_id": scout_pose_detection.id,
+                        }
+
+                    # Convert proposals to windows format (milliseconds)
+                    windows = []
+                    for proposal in proposals:
+                        windows.append(
+                            {
+                                "start_ms": proposal.start_timestamp * 1000.0,
+                                "end_ms": proposal.end_timestamp * 1000.0,
+                            }
+                        )
+
+                    logger.info(
+                        "Found %s serve windows, starting refine pass", len(windows)
+                    )
+
+                # Stage: Refine pass
+                # Initialize frames_with_poses from scout data (fallback if refine fails)
+                frames_with_poses = scout_pose_detection.frames_with_poses or 0
+
+                with _stage_span(
+                    "refine",
+                    video_id=video_id,
+                    job_id=video_job_id,
+                    windows_count=len(windows),
+                ):
+                    if video_job and hasattr(video_job, "stage"):
+                        video_job.stage = "refining"
+                        video_job.serve_windows_found = len(windows)
+                        db.commit()
+
+                    refine_results = pose_service.analyze_serve_windows(
+                        video_path=Path(local_path),
+                        windows=windows,
+                        padding_ms=500.0,  # 0.5s padding
+                        confidence_threshold=confidence_threshold,
+                        detection_threshold=0.5,
+                    )
+
+                    if "error" in refine_results:
+                        logger.warning(
+                            "Refine pass failed: %s, using scout data only",
+                            refine_results["error"],
+                        )
+                    else:
+                        # Merge refine data into scout record (no separate record)
+                        scout_pose_data = json.loads(scout_pose_detection.pose_data)
+                        refine_pose_data = refine_results["pose_detections"]
+
+                        merged_data = pose_service.merge_pose_data(
+                            scout_pose_data, refine_pose_data
+                        )
+
+                        scout_pose_detection.pose_data = json.dumps(merged_data)
+                        scout_pose_detection.time_windows = json.dumps(windows)
+
+                        frames_with_poses = sum(
+                            1
+                            for f in merged_data
+                            if f and f.get("keypoints") is not None
+                        )
+                        scout_pose_detection.frames_with_poses = frames_with_poses
+                        scout_pose_detection.detection_rate = (
+                            frames_with_poses / len(merged_data) if merged_data else 0.0
+                        )
+                        db.commit()
+
+                # Stage: Final DB write
+                with _stage_span("db_write", video_id=video_id, job_id=video_job_id):
+                    logger.info(
+                        "Merged refine data into scout record for video %s, "
+                        "%s frames now have pose data",
+                        video_id,
+                        frames_with_poses,
+                    )
+
+                # Update VideoJob status
+                if video_job:
+                    video_job.status = "completed"
+                    if hasattr(video_job, "stage"):
+                        video_job.stage = "complete"
+                    video_job.finished_at = datetime.utcnow()
+                    db.commit()
+
+                duration = time.time() - start_time
+                record_job_succeeded("scout_refine", duration, video_id=video_id)
+
                 logger.info(
-                    "Video %s deleted before job started, exiting gracefully", video_id
+                    "RQ task: Scout/refine pipeline completed for video %s, "
+                    "found %s serve windows",
+                    video_id,
+                    len(windows),
+                    extra=get_log_extra(video_id=video_id, job_id=video_job_id),
                 )
-                return {"status": "cancelled", "reason": "video_deleted"}
 
-            # Update VideoJob status
-            video_job = None
+                return {
+                    "status": "completed",
+                    "mode": "scout_refine",
+                    "serve_windows_found": len(windows),
+                    "scout_pose_detection_id": scout_pose_detection.id,
+                }
+
+        except Exception as e:
+            duration = time.time() - start_time
+            record_job_failed("scout_refine", duration, video_id=video_id)
+
+            logger.error(
+                "RQ task failed for video %s: %s",
+                video_id,
+                e,
+                exc_info=True,
+                extra=get_log_extra(video_id=video_id, job_id=video_job_id),
+            )
+
             if video_job_id:
                 try:
                     import uuid
 
-                    video_job = (
-                        db.query(VideoJob)
-                        .filter(VideoJob.id == uuid.UUID(video_job_id))
-                        .first()
+                    with SessionLocal() as db:
+                        video_job = (
+                            db.query(VideoJob)
+                            .filter(VideoJob.id == uuid.UUID(video_job_id))
+                            .first()
+                        )
+                        if video_job:
+                            video_job.status = "failed"
+                            video_job.error = str(e)[:500]
+                            video_job.finished_at = datetime.utcnow()
+                            db.commit()
+                except (ValueError, TypeError, SQLAlchemyError) as e2:
+                    logger.warning(
+                        "Failed to update VideoJob status: %s. Original: %s",
+                        e2,
+                        e,
                     )
-                    if video_job:
-                        video_job.status = "processing"
-                        video_job.started_at = datetime.utcnow()
-                        if hasattr(video_job, "stage"):
-                            video_job.stage = "scout"
-                        db.commit()
-                except (ValueError, TypeError, SQLAlchemyError) as e:
-                    logger.warning(f"Invalid video_job_id {video_job_id}: {e}")
 
-            # Get local file path
-            local_path, temp_video_path = _get_temp_video_path(video_path)
+            raise
 
-            # Phase 1: Scout pass
-            logger.info("Phase 1: Running scout pass (lite model, frame skip)")
-            pose_service = PoseDetectionService()
-            scout_results = pose_service.analyze_video_file(
-                video_path=Path(local_path),
-                confidence_threshold=confidence_threshold,
-                detection_threshold=0.5,
-                max_frames=None,
-                mode="scout",
-            )
-
-            if "error" in scout_results:
-                raise RuntimeError(f"Scout pass failed: {scout_results['error']}")
-
-            # Save scout results
-            scout_pose_detection = pose_service.save_detection_results(
-                db=db, video_id=video_id, detection_results=scout_results
-            )
-
-            # Phase 2: Detect serve windows using scout data
-            logger.info("Phase 2: Detecting serve windows from scout data")
-            if video_job and hasattr(video_job, "stage"):
-                video_job.stage = "detecting_serves"
-                db.commit()
-
-            # Generate proposals (uses scout pose data)
-            proposals = generate_proposals(
-                db=db, video_id=video_id, user_id=video.user_id, force=True
-            )
-
-            if not proposals:
-                logger.info(
-                    "No serve windows detected, completing with scout data only"
-                )
-                if video_job:
-                    video_job.status = "completed"
-                    video_job.finished_at = datetime.utcnow()
-                    db.commit()
-                return {
-                    "status": "completed",
-                    "mode": "scout_only",
-                    "serve_windows_found": 0,
-                    "pose_detection_id": scout_pose_detection.id,
-                }
-
-            # Convert proposals to windows format (milliseconds)
-            windows = []
-            for proposal in proposals:
-                windows.append(
-                    {
-                        "start_ms": proposal.start_timestamp * 1000.0,
-                        "end_ms": proposal.end_timestamp * 1000.0,
-                    }
-                )
-
-            logger.info(f"Found {len(windows)} serve windows, starting refine pass")
-
-            # Phase 3: Refine pass (full model on windows only)
-            if video_job and hasattr(video_job, "stage"):
-                video_job.stage = "refining"
-                video_job.serve_windows_found = len(windows)
-                db.commit()
-
-            refine_results = pose_service.analyze_serve_windows(
-                video_path=Path(local_path),
-                windows=windows,
-                padding_ms=500.0,  # 0.5s padding
-                confidence_threshold=confidence_threshold,
-                detection_threshold=0.5,
-            )
-
-            if "error" in refine_results:
-                logger.warning(
-                    f"Refine pass failed: {refine_results['error']}, using scout data only"
-                )
-            else:
-                # Merge refine data into scout record (no separate record)
-                scout_pose_data = json.loads(scout_pose_detection.pose_data)
-                refine_pose_data = refine_results["pose_detections"]
-
-                merged_data = pose_service.merge_pose_data(
-                    scout_pose_data, refine_pose_data
-                )
-
-                # Update scout record with merged data
-                scout_pose_detection.pose_data = json.dumps(merged_data)
-                scout_pose_detection.time_windows = json.dumps(windows)
-
-                # Recalculate metrics
-                frames_with_poses = sum(
-                    1 for f in merged_data if f and f.get("keypoints") is not None
-                )
-                scout_pose_detection.frames_with_poses = frames_with_poses
-                scout_pose_detection.detection_rate = (
-                    frames_with_poses / len(merged_data) if merged_data else 0.0
-                )
-                db.commit()
-
-                logger.info(
-                    "Merged refine data into scout record for video %s, "
-                    "%s frames now have pose data",
-                    video_id,
-                    frames_with_poses,
-                )
-
-            # Update VideoJob status
-            if video_job:
-                video_job.status = "completed"
-                if hasattr(video_job, "stage"):
-                    video_job.stage = "complete"
-                video_job.finished_at = datetime.utcnow()
-                db.commit()
-
-            logger.info(
-                f"RQ task: Scout/refine pipeline completed for video {video_id}, "
-                f"found {len(windows)} serve windows"
-            )
-
-            return {
-                "status": "completed",
-                "mode": "scout_refine",
-                "serve_windows_found": len(windows),
-                "scout_pose_detection_id": scout_pose_detection.id,
-            }
-
-    except Exception as e:
-        logger.error(f"RQ task failed for video {video_id}: {e}", exc_info=True)
-
-        # Update VideoJob status to failed
-        if video_job_id:
-            try:
-                import uuid
-
-                with SessionLocal() as db:
-                    video_job = (
-                        db.query(VideoJob)
-                        .filter(VideoJob.id == uuid.UUID(video_job_id))
-                        .first()
-                    )
-                    if video_job:
-                        video_job.status = "failed"
-                        video_job.error = str(e)[:500]
-                        video_job.finished_at = datetime.utcnow()
-                        db.commit()
-            except (ValueError, TypeError, SQLAlchemyError) as e2:
-                logger.warning(
-                    f"Failed to update VideoJob status: {e2}. Original error: {e}"
-                )
-
-        raise
-
-    finally:
-        _cleanup_temp_file(temp_video_path)
+        finally:
+            _cleanup_temp_file(temp_video_path)

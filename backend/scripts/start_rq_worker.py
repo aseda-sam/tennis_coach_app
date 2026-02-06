@@ -24,6 +24,9 @@ if sys.platform == "darwin":  # macOS
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Worker identifies as tennis-coach-worker in Grafana (override shared .env)
+os.environ["OTEL_SERVICE_NAME"] = "tennis-coach-worker"
+
 from redis.exceptions import ResponseError as RedisResponseError
 from rq import Worker
 
@@ -94,6 +97,23 @@ if __name__ == "__main__":
     else:
         print(f"✓ Fork safety disabled: {fork_safety}")
 
+    # OpenTelemetry: send traces + metrics to same Grafana stack as API (when OTEL_* env set)
+    from app.utils.metrics import setup_metrics
+    from app.utils.otel import setup_otel_tracing
+
+    otel_enabled = setup_otel_tracing(default_service_name="tennis-coach-worker")
+    metrics_enabled = setup_metrics(
+        default_service_name="tennis-coach-worker"
+    )  # Uses same OTLP endpoint as traces
+
+    if otel_enabled:
+        print("✓ OpenTelemetry tracing enabled (tennis-coach-worker)")
+    else:
+        print("OpenTelemetry disabled (no OTEL_EXPORTER_OTLP_ENDPOINT)")
+
+    if metrics_enabled:
+        print("✓ OpenTelemetry metrics enabled (tennis-coach-worker)")
+
     # Clean up stale workers before starting
     print("\nChecking for stale worker registrations...")
     cleanup_stale_workers()
@@ -144,9 +164,9 @@ if __name__ == "__main__":
                 name=worker_name,
                 worker_ttl=worker_ttl,
             )
-            # Important: enable scheduler so delayed jobs / retries move from
-            # "scheduled" back to the queue automatically.
-            worker.work(with_scheduler=True)
+            # Scheduler disabled to reduce Redis command usage (Upstash free tier).
+            # Retries use interval=0 (immediate) so no scheduler needed.
+            worker.work(with_scheduler=False)
             break  # Success, exit retry loop
         except ValueError as e:
             error_msg = str(e)
