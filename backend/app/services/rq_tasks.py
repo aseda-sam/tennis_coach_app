@@ -136,8 +136,12 @@ def transcode_video_rq(
             local_path, temp_video_path = _get_temp_video_path(video_path)
 
             # Create temp output file
-            fd, temp_output_name = tempfile.mkstemp(suffix=".mp4", dir=settings.PROCESSED_DIR)
-            os.close(fd)  # Close the file descriptor immediately - we only need the filename
+            fd, temp_output_name = tempfile.mkstemp(
+                suffix=".mp4", dir=settings.PROCESSED_DIR
+            )
+            os.close(
+                fd
+            )  # Close the file descriptor immediately - we only need the filename
             temp_output_path = Path(temp_output_name)
             temp_output_path.parent.mkdir(parents=True, exist_ok=True)
 
