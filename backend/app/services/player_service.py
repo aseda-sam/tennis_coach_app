@@ -88,13 +88,13 @@ def get_player_by_id(db: Session, player_id: int) -> Optional[Player]:
     Returns:
         Player: The Player record if found, else None.
     """
-    logger.debug(f"Retrieving player by ID: {player_id}")
+    logger.debug("Retrieving player by ID: %s", player_id)
     player = db.query(Player).filter(Player.id == player_id).first()
 
     if player:
-        logger.debug(f"Found player: ID={player.id}, name='{player.name}'")
+        logger.debug("Found player: ID=%s, name='%s'", player.id, player.name)
     else:
-        logger.debug(f"Player not found: ID={player_id}")
+        logger.debug("Player not found: ID=%s", player_id)
 
     return player
 
@@ -152,17 +152,20 @@ def get_players(
         List[Player]: List of Player records.
     """
     logger.debug(
-        f"Retrieving players: skip={skip}, limit={limit}, name_filter='{name_filter}'"
+        "Retrieving players: skip=%s, limit=%s, name_filter='%s'",
+        skip,
+        limit,
+        name_filter,
     )
 
     query = db.query(Player)
 
     if name_filter:
         query = query.filter(Player.name.ilike(f"%{name_filter}%"))
-        logger.debug(f"Applied name filter: '{name_filter}'")
+        logger.debug("Applied name filter: '%s'", name_filter)
 
     players = query.offset(skip).limit(limit).all()
-    logger.debug(f"Retrieved {len(players)} players")
+    logger.debug("Retrieved %s players", len(players))
 
     return players
 
@@ -183,18 +186,22 @@ def update_player(db: Session, player_id: int, **updates: str | float | None) ->
         ValueError: If the Player record is not found or invalid fields
             are provided.
     """
-    logger.info(f"Updating player ID={player_id} with fields: {list(updates.keys())}")
+    logger.info(
+        "Updating player ID=%s with fields: %s", player_id, list(updates.keys())
+    )
 
     player = db.query(Player).filter(Player.id == player_id).first()
     if not player:
-        logger.warning(f"Player update failed: player with ID {player_id} not found")
+        logger.warning("Player update failed: player with ID %s not found", player_id)
         raise ValueError(f"Player with ID {player_id} not found")
 
     # Validate that all update keys are allowed fields
     invalid_fields = set(updates.keys()) - ALLOWED_PLAYER_FIELDS
     if invalid_fields:
         logger.warning(
-            f"Player update failed: invalid fields {invalid_fields} for player ID {player_id}"
+            "Player update failed: invalid fields %s for player ID %s",
+            invalid_fields,
+            player_id,
         )
         raise ValueError(
             f"Invalid fields for update: {invalid_fields}. Allowed fields: {ALLOWED_PLAYER_FIELDS}"
@@ -212,7 +219,10 @@ def update_player(db: Session, player_id: int, **updates: str | float | None) ->
         )
         if existing_player:
             logger.warning(
-                f"Player update failed: name conflict - player with name '{updates['name']}' already exists for user {player.user_id} (ID: {existing_player.id})"
+                "Player update failed: name conflict - player with name '%s' already exists for user %s (ID: %s)",
+                updates["name"],
+                player.user_id,
+                existing_player.id,
             )
             raise ValueError(
                 f"Player with name '{updates['name']}' already exists for this user"
@@ -230,7 +240,7 @@ def update_player(db: Session, player_id: int, **updates: str | float | None) ->
     db.refresh(player)
 
     logger.info(
-        f"✅ Successfully updated player ID={player_id}: {', '.join(updated_fields)}"
+        "✅ Successfully updated player ID=%s: %s", player_id, ", ".join(updated_fields)
     )
     return player
 
@@ -246,24 +256,29 @@ def delete_player(db: Session, player_id: int) -> None:
     Raises:
         ValueError: If the Player record is not found.
     """
-    logger.info(f"Deleting player ID={player_id}")
+    logger.info("Deleting player ID=%s", player_id)
 
     # First check if the player exists
     player = db.query(Player).filter(Player.id == player_id).first()
     if not player:
-        logger.warning(f"Player deletion failed: player with ID {player_id} not found")
+        logger.warning("Player deletion failed: player with ID %s not found", player_id)
         raise ValueError(f"Player with ID {player_id} not found")
 
     # Log player details before deletion
     logger.info(
-        f"Deleting player: ID={player.id}, name='{player.name}', dominant_hand='{player.dominant_hand}'"
+        "Deleting player: ID=%s, name='%s', dominant_hand='%s'",
+        player.id,
+        player.name,
+        player.dominant_hand,
     )
 
     # Delete the player (ball contacts will have player_id set to NULL due to ondelete="SET NULL")
     db.delete(player)
     db.commit()
 
-    logger.info(f"✅ Successfully deleted player ID={player_id} (name='{player.name}')")
+    logger.info(
+        "✅ Successfully deleted player ID=%s (name='%s')", player_id, player.name
+    )
 
 
 def get_or_create_default_player(

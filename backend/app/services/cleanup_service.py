@@ -51,7 +51,7 @@ def find_orphaned_user_ids(db: Session) -> list[str]:
         """)
     )
     orphaned_ids = [row[0] for row in result.fetchall()]
-    logger.info(f"Found {len(orphaned_ids)} orphaned user_ids: {orphaned_ids}")
+    logger.info("Found %s orphaned user_ids: %s", len(orphaned_ids), orphaned_ids)
     return orphaned_ids
 
 

@@ -92,11 +92,11 @@ def get_pose_at_timestamp(
                         )
                         return keypoints
 
-        logger.warning(f"No pose data found near timestamp {timestamp}s")
+        logger.warning("No pose data found near timestamp %ss", timestamp)
         return None
 
     except (json.JSONDecodeError, ValueError, KeyError) as e:
-        logger.error(f"Error getting pose at timestamp: {e}")
+        logger.error("Error getting pose at timestamp: %s", e)
         return None
 
 

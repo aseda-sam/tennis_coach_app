@@ -48,7 +48,7 @@ def get_queue_stats() -> Dict[str, Any]:
                     RedisTimeoutError,
                     AttributeError,
                 ) as e:
-                    logger.debug(f"Skipping job {job_id}: {e}")
+                    logger.debug("Skipping job %s: %s", job_id, e)
                     continue
 
         return {
@@ -61,7 +61,7 @@ def get_queue_stats() -> Dict[str, Any]:
         }
 
     except (RedisConnectionError, RedisTimeoutError, AttributeError) as e:
-        logger.error(f"Error getting queue stats: {e}")
+        logger.error("Error getting queue stats: %s", e)
         return {
             "analysis_queue_length": 0,
             "default_queue_length": 0,
@@ -114,11 +114,11 @@ def list_failed_jobs(limit: int = 10) -> List[Dict[str, Any]]:
                     RedisTimeoutError,
                     AttributeError,
                 ) as e:
-                    logger.warning(f"Failed to fetch job {job_id}: {e}")
+                    logger.warning("Failed to fetch job %s: %s", job_id, e)
                     continue
 
     except (RedisConnectionError, RedisTimeoutError) as e:
-        logger.error(f"Error listing failed jobs: {e}")
+        logger.error("Error listing failed jobs: %s", e)
 
     return failed_jobs
 
@@ -137,12 +137,12 @@ def requeue_failed_job(job_id: str) -> bool:
         job = Job.fetch(job_id, connection=redis_conn)
 
         if not job.is_failed:
-            logger.warning(f"Job {job_id} is not in failed state")
+            logger.warning("Job %s is not in failed state", job_id)
             return False
 
         # Requeue the job
         job.requeue()
-        logger.info(f"Requeued failed job {job_id}")
+        logger.info("Requeued failed job %s", job_id)
         return True
 
     except (
@@ -151,7 +151,7 @@ def requeue_failed_job(job_id: str) -> bool:
         RedisTimeoutError,
         AttributeError,
     ) as e:
-        logger.error(f"Error requeuing job {job_id}: {e}")
+        logger.error("Error requeuing job %s: %s", job_id, e)
         return False
 
 
@@ -188,5 +188,5 @@ def get_job_execution_time(job_id: str) -> Optional[float]:
         RedisTimeoutError,
         AttributeError,
     ) as e:
-        logger.warning(f"Error getting execution time for job {job_id}: {e}")
+        logger.warning("Error getting execution time for job %s: %s", job_id, e)
         return None

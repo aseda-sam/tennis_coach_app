@@ -36,7 +36,7 @@ class StorageService:
             supabase_url = settings.SUPABASE_URL
             if not supabase_url.endswith("/"):
                 supabase_url = supabase_url + "/"
-                logger.debug(f"Added trailing slash to storage URL: {supabase_url}")
+                logger.debug("Added trailing slash to storage URL: %s", supabase_url)
 
             self._supabase_client: Client = create_client(
                 supabase_url, settings.SUPABASE_SECRET_KEY
@@ -48,7 +48,7 @@ class StorageService:
                 "Install it with: pip install supabase"
             ) from None
         except Exception as e:
-            logger.error(f"Failed to initialize cloud storage client: {e}")
+            logger.error("Failed to initialize cloud storage client: %s", e)
             raise RuntimeError(f"Failed to initialize cloud storage client: {e}") from e
 
     def _validate_supabase_config(self) -> None:
@@ -304,7 +304,7 @@ class StorageService:
                 temp_file.write(file_content)
                 temp_path = Path(temp_file.name)
 
-            logger.debug(f"Downloaded to temp file: {temp_path}")
+            logger.debug("Downloaded to temp file: %s", temp_path)
             return temp_path
         else:
             # For local storage, return the actual path
@@ -361,9 +361,11 @@ class StorageService:
                 # Success - file uploaded
                 if counter > 0:
                     logger.debug(
-                        f"File {file_path} already existed, uploaded as {current_path}"
+                        "File %s already existed, uploaded as %s",
+                        file_path,
+                        current_path,
                     )
-                logger.info(f"File uploaded to cloud storage: {current_path}")
+                logger.info("File uploaded to cloud storage: %s", current_path)
                 return current_path
 
             except (RuntimeError, ValueError):
@@ -389,20 +391,21 @@ class StorageService:
                         current_path = f"{directory}/{base_name}_{counter}{extension}"
                     else:
                         current_path = f"{base_name}_{counter}{extension}"
-                    logger.debug(f"File {file_path} exists, trying {current_path}")
+                    logger.debug("File %s exists, trying %s", file_path, current_path)
                 else:
                     # Not a duplicate error, or max attempts reached
                     if counter >= max_attempts - 1:
                         logger.error(
-                            f"Could not generate unique filename for {file_path} "
-                            f"after {max_attempts} attempts"
+                            "Could not generate unique filename for %s after %s attempts",
+                            file_path,
+                            max_attempts,
                         )
                         raise RuntimeError(
                             f"Could not generate unique filename for {file_path} "
                             f"after {max_attempts} attempts"
                         ) from e
                     # Re-raise if it's a different error
-                    logger.error(f"Upload failed for {current_path}: {e}")
+                    logger.error("Upload failed for %s: %s", current_path, e)
                     raise
 
     def _download_from_supabase(self, file_path: str) -> bytes:
@@ -423,7 +426,7 @@ class StorageService:
                 settings.SUPABASE_DEMO_BUCKET
             ).download(file_path)
         except Exception as e:
-            logger.error(f"Failed to download from demo bucket {file_path}: {e}")
+            logger.error("Failed to download from demo bucket %s: %s", file_path, e)
             raise RuntimeError(f"Failed to download from demo bucket: {e}") from e
 
     def _delete_from_supabase(self, file_path: str) -> None:
@@ -434,7 +437,7 @@ class StorageService:
             [file_path]
         )
 
-        logger.info(f"File deleted from cloud storage: {file_path}")
+        logger.info("File deleted from cloud storage: %s", file_path)
 
     def _get_supabase_url(self, file_path: str) -> str:
         """Get public URL for file in cloud storage."""
@@ -464,7 +467,7 @@ class StorageService:
                     f"Unexpected response format from Supabase signed URL: {response}"
                 )
         except Exception as e:
-            logger.error(f"Failed to create signed URL for {file_path}: {e}")
+            logger.error("Failed to create signed URL for %s: %s", file_path, e)
             raise RuntimeError(f"Failed to create signed URL: {e}") from e
 
     # Demo bucket methods
@@ -490,7 +493,7 @@ class StorageService:
                 settings.SUPABASE_DEMO_BUCKET
             ).get_public_url(file_path)
         except (ValueError, RuntimeError, AttributeError) as e:
-            logger.error(f"Failed to get demo public URL for {file_path}: {e}")
+            logger.error("Failed to get demo public URL for %s: %s", file_path, e)
             raise RuntimeError(f"Failed to get demo public URL: {e}") from e
 
     def demo_object_exists(self, file_path: str) -> bool:
@@ -625,7 +628,7 @@ class StorageService:
         with open(full_path, "wb") as f:
             f.write(file_content)
 
-        logger.info(f"File uploaded to local storage: {full_path}")
+        logger.info("File uploaded to local storage: %s", full_path)
         return str(full_path)
 
     def _download_from_local(self, file_path: str) -> bytes:
@@ -641,9 +644,9 @@ class StorageService:
 
         if full_path.exists():
             full_path.unlink()
-            logger.info(f"File deleted from local storage: {full_path}")
+            logger.info("File deleted from local storage: %s", full_path)
         else:
-            logger.warning(f"File not found for deletion: {full_path}")
+            logger.warning("File not found for deletion: %s", full_path)
 
 
 # Create singleton instance

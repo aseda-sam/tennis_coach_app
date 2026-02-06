@@ -73,10 +73,10 @@ class PoseDetectionService:
             )
 
         except ImportError as e:
-            logger.error(f"Failed to import MediaPipe: {e}")
+            logger.error("Failed to import MediaPipe: %s", e)
             self.pose_detector = None
         except (RuntimeError, ValueError, OSError) as e:
-            logger.error(f"Failed to initialize MediaPipe pose detection: {e}")
+            logger.error("Failed to initialize MediaPipe pose detection: %s", e)
             self.pose_detector = None
 
     def _get_or_download_model(self, use_lite: bool = False) -> str:
@@ -110,7 +110,7 @@ class PoseDetectionService:
                 urllib.request.urlretrieve(model_url, model_path)  # noqa: S310 - Downloading from trusted Google storage
                 logger.info("✅ Model downloaded successfully")
             except (urllib.error.URLError, OSError) as e:
-                logger.error(f"Failed to download model: {e}")
+                logger.error("Failed to download model: %s", e)
                 if not use_lite:
                     # Try lighter model as fallback
                     model_url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
@@ -182,7 +182,7 @@ class PoseDetectionService:
             return None
 
         except (RuntimeError, ValueError, OSError) as e:
-            logger.error(f"Error in pose detection: {e}")
+            logger.error("Error in pose detection: %s", e)
             return None
 
     def analyze_video_file(
@@ -381,7 +381,7 @@ class PoseDetectionService:
             return results
 
         except (RuntimeError, ValueError, OSError) as e:
-            logger.error(f"Error in pose detection: {e}")
+            logger.error("Error in pose detection: %s", e)
             return {
                 "error": str(e),
                 "pose_detections": [],
@@ -493,7 +493,7 @@ class PoseDetectionService:
                 # Process frames in this window
                 cap = cv2.VideoCapture(str(video_path))
                 if not cap.isOpened():
-                    logger.error(f"Could not open video for window {window_idx}")
+                    logger.error("Could not open video for window %s", window_idx)
                     continue
 
                 # Seek to start frame
@@ -583,7 +583,7 @@ class PoseDetectionService:
             return results
 
         except (RuntimeError, ValueError, OSError) as e:
-            logger.error(f"Error in refine pass: {e}")
+            logger.error("Error in refine pass: %s", e)
             return {
                 "error": str(e),
                 "pose_detections": [],
@@ -687,7 +687,7 @@ class PoseDetectionService:
         db.commit()
         db.refresh(pose_detection)
 
-        logger.info(f"Saved pose detection results for video {video_id}")
+        logger.info("Saved pose detection results for video %s", video_id)
         return pose_detection
 
     def get_detection_by_video_id(
@@ -793,7 +793,7 @@ class PoseDetectionService:
             return formatted_data
 
         except (json.JSONDecodeError, KeyError, TypeError) as e:
-            logger.error(f"Failed to deserialize pose data: {e}")
+            logger.error("Failed to deserialize pose data: %s", e)
             return None
 
     def _rotate_frame(self, frame: np.ndarray, rotation: int) -> np.ndarray:
@@ -842,7 +842,7 @@ class PoseDetectionService:
         try:
             cap = cv2.VideoCapture(str(video_path))
             if not cap.isOpened():
-                logger.error(f"Could not open video: {video_path}")
+                logger.error("Could not open video: %s", video_path)
                 return
 
             # Disable OpenCV's auto-rotation to get raw frames
@@ -872,13 +872,13 @@ class PoseDetectionService:
                 frame_index += 1
 
                 if max_frames and frame_index >= max_frames:
-                    logger.info(f"Reached max_frames limit: {max_frames}")
+                    logger.info("Reached max_frames limit: %s", max_frames)
                     break
 
-            logger.info(f"Yielded {frame_index} frames from {video_path}")
+            logger.info("Yielded %s frames from %s", frame_index, video_path)
 
         except (OSError, RuntimeError, ValueError) as e:
-            logger.error(f"Error extracting frames from {video_path}: {e}")
+            logger.error("Error extracting frames from %s: %s", video_path, e)
         finally:
             if "cap" in locals():
                 cap.release()

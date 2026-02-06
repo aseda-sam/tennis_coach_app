@@ -90,7 +90,7 @@ async def start_analysis(
             )
 
             # Enqueue RQ job using shared helper
-            logger.info(f"Enqueueing {request.analysis_type} job to Redis queue...")
+            logger.info("Enqueueing %s job to Redis queue...", request.analysis_type)
             try:
                 job = enqueue_pose_analysis(
                     video_id=video_id,
@@ -217,7 +217,7 @@ async def cancel_task(
         try:
             job = Job.fetch(rq_job_id, connection=redis_conn)
         except Exception as e:
-            logger.warning(f"RQ job {rq_job_id} not found in Redis: {e}")
+            logger.warning("RQ job %s not found in Redis: %s", rq_job_id, e)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Job {job_id} not found",
@@ -251,7 +251,7 @@ async def cancel_task(
                 video_job.finished_at = datetime.utcnow()
                 db.commit()
 
-            logger.info(f"Cancelled job {job_id} (RQ: {rq_job_id})")
+            logger.info("Cancelled job %s (RQ: %s)", job_id, rq_job_id)
             return {"message": f"Job {job_id} cancelled successfully"}
         else:
             raise HTTPException(

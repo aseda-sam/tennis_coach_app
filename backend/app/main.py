@@ -127,7 +127,7 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
         if not validate_redis_url(redis_url):
             from app.core.redis_config import _mask_redis_url
 
-            logger.error(f"Invalid REDIS_URL format: {_mask_redis_url(redis_url)}")
+            logger.error("Invalid REDIS_URL format: %s", _mask_redis_url(redis_url))
             return None
 
         return subprocess.Popen(  # noqa: S603 - rq command is trusted, redis_url validated above
@@ -136,7 +136,7 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
             stderr=subprocess.PIPE,
         )
     except (subprocess.SubprocessError, OSError, ValueError) as e:
-        logger.error(f"Failed to start RQ worker: {e}")
+        logger.error("Failed to start RQ worker: %s", e)
         return None
 
 
@@ -147,14 +147,17 @@ async def lifespan(app: FastAPI) -> None:
     logger.info("=" * 60)
     logger.info("Tennis Coach API - Starting up")
     logger.info("=" * 60)
-    logger.info(f"Profile: {settings.PROFILE}")
-    logger.info(f"Auth Required: {settings.auth_required}")
-    logger.info(f"Debug Mode: {settings.DEBUG}")
-    logger.info(
-        f"Database: {settings.database_url.split('@')[-1] if '@' in settings.database_url else settings.database_url}"
+    logger.info("Profile: %s", settings.PROFILE)
+    logger.info("Auth Required: %s", settings.auth_required)
+    logger.info("Debug Mode: %s", settings.DEBUG)
+    db_url_display = (
+        settings.database_url.split("@")[-1]
+        if "@" in settings.database_url
+        else settings.database_url
     )
-    logger.info(f"Storage Type: {settings.STORAGE_TYPE}")
-    logger.info(f"CORS Origins: {settings.BACKEND_CORS_ORIGINS}")
+    logger.info("Database: %s", db_url_display)
+    logger.info("Storage Type: %s", settings.STORAGE_TYPE)
+    logger.info("CORS Origins: %s", settings.BACKEND_CORS_ORIGINS)
     logger.info("=" * 60)
     create_tables_if_not_exists()
 
@@ -194,7 +197,7 @@ async def lifespan(app: FastAPI) -> None:
             logger.warning("RQ worker did not terminate gracefully, killing")
             worker_process.kill()
         except (subprocess.SubprocessError, OSError) as e:
-            logger.error(f"Error terminating RQ worker: {e}")
+            logger.error("Error terminating RQ worker: %s", e)
 
     logger.info("Tennis Coach API - Shutting down")
 

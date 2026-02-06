@@ -67,7 +67,7 @@ def calculate_elbow_angle(
         )
 
     except (ValueError, KeyError, IndexError) as e:
-        logger.error(f"Error calculating elbow angle: {e}")
+        logger.error("Error calculating elbow angle: %s", e)
         return None
 
 

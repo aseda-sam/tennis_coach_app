@@ -225,15 +225,18 @@ def detect_serve_windows(
     ]
 
     logger.info(
-        f"Feature stats for {n_frames} frames ({n_frames / fps:.1f}s at {fps:.1f} fps):"
+        "Feature stats for %s frames (%.1fs at %.1f fps):",
+        n_frames,
+        n_frames / fps,
+        fps,
     )
-    logger.info(f"  - Frames with pose: {poses_count}")
-    logger.info(f"  - Frames with any wrist above shoulder: {arm_raised_count}")
-    logger.info(f"  - Frames with both arms raised: {both_raised_count}")
+    logger.info("  - Frames with pose: %s", poses_count)
+    logger.info("  - Frames with any wrist above shoulder: %s", arm_raised_count)
+    logger.info("  - Frames with both arms raised: %s", both_raised_count)
     if heights:
-        logger.info(f"  - Wrist height range: [{min(heights):.2f}, {max(heights):.2f}]")
+        logger.info("  - Wrist height range: [%.2f, %.2f]", min(heights), max(heights))
         logger.info(
-            f"  - Wrist velocity range: [{min(velocities):.1f}, {max(velocities):.1f}]"
+            "  - Wrist velocity range: [%.1f, %.1f]", min(velocities), max(velocities)
         )
 
     if poses_count == 0:
@@ -260,7 +263,7 @@ def detect_serve_windows(
     # Merge frames that are within GAP_MERGE_THRESHOLD of each other
     clusters = cluster_frames(raised_arm_frames, gap_frames)
 
-    logger.info(f"Clustered into {len(clusters)} potential serve windows")
+    logger.info("Clustered into %s potential serve windows", len(clusters))
 
     # Step 3: Convert clusters to proposals with padding
     proposals: List[Dict] = []
@@ -334,5 +337,5 @@ def detect_serve_windows(
     # Step 4: Merge any overlapping proposals
     merged = merge_overlapping(proposals)
 
-    logger.info(f"Final result: {len(merged)} serve windows detected")
+    logger.info("Final result: %s serve windows detected", len(merged))
     return merged

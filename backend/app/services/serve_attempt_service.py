@@ -119,7 +119,7 @@ def create_serve_attempt(
     if not player_id:
         default_player = player_service.get_or_create_default_player(db, user_id)
         player_id = default_player.id
-        logger.debug(f"Auto-assigned default player {player_id} for serve attempt")
+        logger.debug("Auto-assigned default player %s for serve attempt", player_id)
 
     # Validate player ownership
     validate_player_ownership(db, player_id, user_id)
@@ -236,7 +236,7 @@ def update_serve_attempt(
     db.commit()
     db.refresh(serve_attempt)
 
-    logger.info(f"Updated serve attempt {serve_attempt_id}")
+    logger.info("Updated serve attempt %s", serve_attempt_id)
 
     return serve_attempt
 
@@ -261,7 +261,7 @@ def delete_serve_attempt(
     db.delete(serve_attempt)
     db.commit()
 
-    logger.info(f"Deleted serve attempt {serve_attempt_id}")
+    logger.info("Deleted serve attempt %s", serve_attempt_id)
 
 
 def list_user_serve_attempts(
