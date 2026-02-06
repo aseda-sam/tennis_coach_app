@@ -1,120 +1,149 @@
 # Observability (OpenTelemetry + structured logs)
 
-Single source of truth for what we’re building and how it fits together. Use this doc when adding instrumentation or debugging “where did the time go?”
+Single source of truth for observability setup and usage. Use this doc when adding instrumentation or debugging "where did the time go?"
 
-## Goal
+## Overview
 
-- **Unified view**: one place to see API request → enqueue → worker pipeline → DB/storage, correlated by IDs.
-- **Provider dashboards** (Fly, Upstash Redis, Supabase) stay for infra health; **our instrumentation** gives end-to-end request/job stories.
+We use **OpenTelemetry (OTel)** for distributed tracing and metrics, sending telemetry to **Grafana Cloud** (free tier). Logs are enhanced with canonical IDs (`trace_id`, `span_id`, `request_id`, `job_id`, `video_id`) so they correlate with traces.
 
-## Stack choice
+**What you get:**
 
-- **OpenTelemetry (OTel)** in app code: traces + optional metrics; vendor-neutral.
-- **Backend** (where telemetry is sent): **Grafana Cloud** free tier (or OTLP to any compatible backend). No self-hosted Prometheus/Loki unless we decide otherwise.
-- **Logs**: keep existing Python logging; add **trace_id / request_id / job_id / video_id** so logs correlate with traces. No need to replace current logs—OTel adds correlation.
+- **Traces**: See API request → enqueue → worker pipeline → DB/storage, with stage breakdowns (download → scout → refine → db_write)
+- **Metrics**: Job counts (started/succeeded/failed) and durations (histogram) visible in Grafana Prometheus
+- **Correlated logs**: Search logs by `trace_id` or `job_id` to find all related events
+
+**Provider dashboards** (Fly, Upstash Redis, Supabase) stay for infra health; **our instrumentation** gives end-to-end request/job stories.
+
+## Architecture
+
+### Stack
+
+- **OpenTelemetry (OTel)** in app code: traces + metrics; vendor-neutral
+- **Backend** (where telemetry is sent): **Grafana Cloud** free tier (or OTLP to any compatible backend)
+- **Logs**: Existing Python logging enhanced with **trace_id / request_id / job_id / video_id** for correlation
+
+### Services
+
+- **`tennis-coach-api`**: FastAPI app with auto-instrumentation (HTTP request spans)
+- **`tennis-coach-worker`**: RQ worker with root span per job + stage spans
+
+### Data Flow
+
+1. **API request** → FastAPI auto-instrumentation creates trace → enqueue job → return response
+2. **Worker picks up job** → `_rq_job_span()` creates root span → `_stage_span()` for each pipeline stage → metrics recorded → flush on completion
+3. **All telemetry** → OTLP exporter → Grafana Cloud (Tempo for traces, Prometheus for metrics)
 
 ## Canonical IDs (use everywhere)
 
-| ID | Where | Purpose |
-|----|--------|---------|
-| `trace_id` | OTel context (API + worker) | Link all spans for one request or job |
-| `span_id` | OTel context | Current span (for log correlation) |
+When adding logs or spans, attach the relevant subset of these so we can search by job/video/trace:
+
+| ID           | Where                                 | Purpose                                   |
+| ------------ | ------------------------------------- | ----------------------------------------- |
+| `trace_id`   | OTel context (API + worker)           | Link all spans for one request or job     |
+| `span_id`    | OTel context                          | Current span (for log correlation)        |
 | `request_id` | API only (`request.state.request_id`) | Human-friendly; already in `X-Request-ID` |
-| `job_id` | VideoJob.id (DB) | Our job identity |
-| `rq_job_id` | RQ job id | Queue/worker identity |
-| `video_id` | Video.id | Which video is being processed |
+| `job_id`     | VideoJob.id (DB)                      | Our job identity                          |
+| `rq_job_id`  | RQ job id                             | Queue/worker identity                     |
+| `video_id`   | Video.id                              | Which video is being processed            |
 
-When adding logs or spans, attach the relevant subset of these so we can search by job/video/trace.
+## Code Conventions
 
-## Implementation plan (order of work)
+### Logging
 
-1. **Setup (you)**  
-   - Sign up for **Grafana Cloud** (free tier).  
-   - In Grafana Cloud: **Get started → connect data**, or **Connections → OpenTelemetry / OLP**. Get:
-     - **OTLP endpoint URL** (e.g. `https://otlp-gateway-<region>.grafana.net/otlp`)
-     - **API token** (or Instance ID + API key) for sending traces.
-   - Add env vars (see below) in backend `.env` (local) and Fly secrets (API + worker); no code change until step 2.
+- **API routes**: Use `get_log_extra(request_id=..., video_id=..., job_id=...)` to add IDs to log statements
+- **Worker tasks**: Always include `video_id` and `job_id` via `get_log_extra()`
+- **Automatic**: `trace_id` and `span_id` are added by `ObservabilityLogFilter` (no need to include manually)
 
-2. **API (first code change)**  
-   - Add OTel SDK + FastAPI instrumentation so every HTTP request gets a trace.  
-   - Ensure `request_id` is on the trace (span attribute) and in response headers (already done).  
-   - Keep existing logging; add `trace_id`/`span_id` to log records where easy (e.g. middleware or a small logging filter).
+### Tracing
 
-3. **Worker (second code change)**  
-   - In RQ task: create a **root span per job**; set attributes `job_id`, `video_id`, `rq_job_id`.  
-   - Add **spans per pipeline stage** (e.g. download, decode, pose, ball, DB write, upload).  
-   - Pass through or recreate trace context from enqueue time if we want one trace from API → worker; otherwise worker-only traces are acceptable to start.
+- **API routes**: Automatic via FastAPI instrumentation (`FastAPIInstrumentor`)
+- **Worker tasks**: Use `_rq_job_span()` for root span, `_stage_span()` for pipeline stages (`download`, `scout`, `refine`, `detect_serves`, `db_write`)
 
-4. **Logging conventions**  
-   - Structured fields: `timestamp`, `level`, `service` (api|worker), `trace_id`, `span_id`, `request_id` (API), `job_id`/`video_id` (worker).  
-   - No PII in logs or span attributes (no raw tokens, emails, full URLs with tokens).
+### Metrics
 
-5. **Metrics (optional, after traces)**  
-   - Counters: `jobs_started`, `jobs_succeeded`, `jobs_failed`.  
-   - Histograms: `job_duration_seconds`, `queue_wait_seconds`.  
-   - Gauges: queue depth / active jobs if available.
+- Use `record_job_started()`, `record_job_succeeded()`, `record_job_failed()` from `app.utils.metrics`
+- Record metrics for all background jobs (`pose_detection`, `scout_refine`, `transcode_video`)
 
-## Environment variables (reference)
+### Best Practices
 
-- `OTEL_SERVICE_NAME` — e.g. `tennis-coach-api` or `tennis-coach-worker`.  
-- `OTEL_EXPORTER_OTLP_ENDPOINT` — Grafana Cloud OTLP endpoint (or collector).  
-- `OTEL_EXPORTER_OTLP_HEADERS` — e.g. `Authorization=Basic <token>` for Grafana Cloud.  
-- Optional: `OTEL_TRACES_SAMPLER` (e.g. `parentbased_traceidratio`), `OTEL_LOG_LEVEL`.
+1. **Always include IDs**: Every log/span should have `video_id` (and `job_id` in workers)
+2. **No PII**: Never log tokens, passwords, full URLs with tokens, or raw user data
+3. **Stage spans**: Wrap major pipeline stages so Grafana shows "where did time go?"
+4. **Metrics on all jobs**: Record start/success/failure for every background job
+5. **Silent failures**: OTel/metrics failures should not break the app (they're optional)
 
-## Cursor rules / code conventions
+## Environment Variables
 
-- **backend-patterns**: Routes must have trace/request context; RQ tasks create their own root span and set `job_id`/`video_id`.  
-- **observability**: New rule doc (optional) can require: include canonical IDs in logs/spans, no PII, use OTel for traces (not ad‑hoc timing logs).
+Required for OTel to work (without them, tracing/metrics are no-op):
 
-## Status
+- `OTEL_SERVICE_NAME` — e.g. `tennis-coach-api` or `tennis-coach-worker`
+- `OTEL_EXPORTER_OTLP_ENDPOINT` — Grafana Cloud OTLP endpoint (e.g. `https://otlp-gateway-<region>.grafana.net/otlp`)
+- `OTEL_EXPORTER_OTLP_HEADERS` — e.g. `Authorization=Basic <token>` for Grafana Cloud
+- `OTEL_EXPORTER_OTLP_PROTOCOL` — e.g. `http/protobuf` (default)
+- `OTEL_RESOURCE_ATTRIBUTES` — Optional: `service.namespace=tennis-coach` or `deployment.environment=production`
 
-- [x] Grafana Cloud account + OTLP endpoint/token  
-- [x] API: OTel SDK + FastAPI auto-instrumentation (main.py + FastAPIInstrumentor)  
-- [x] Worker: OTel in worker process; root span per job (rq.pose_detection, rq.scout_refine) + job_id/video_id/rq_job_id; flush on job end  
-- [x] API: trace_id/span_id in logs via ObservabilityLogFilter  
-- [x] Worker: stage spans (download, scout, refine, detect_serves, db_write)  
-- [x] Logging: structured fields (trace_id, job_id, video_id) in key log lines via get_log_extra()  
-- [x] Metrics: job counts (started/succeeded/failed) and durations (histogram) with OTLP exporter to Grafana Cloud  
-- [x] Docs: link from `backend/docs/README.md`  
-- [x] Cursor: observability rule (`.cursor/rules/observability.mdc`) + backend-patterns note
+Optional:
 
-## What to use when (metrics vs traces)
+- `OTEL_TRACES_SAMPLER` (e.g. `parentbased_traceidratio`)
+- `OTEL_LOG_LEVEL`
+- `RQ_DEQUEUE_TIMEOUT` — Worker polling interval (default: 60s)
 
-- **Metrics (Prometheus data source)**  
-  Use when you want **aggregated answers**: “How many jobs started/succeeded/failed?” “How long do jobs take on average?” “Is the worker keeping up?”  
-  Example: `jobs_started_total`, `jobs_succeeded_total`, `job_duration_seconds` in Explore with data source **grafanacloud-asedasam-prom**.
+## Using Grafana
 
-- **Traces (Traces / Tempo data source)**  
-  Use when you want **one request or job, step by step**: “Why was this job slow?” “Which stage (download, scout, refine, db_write) took the time?”  
-  Open a trace for a specific job/request and look at the spans; use `trace_id` to find related logs if needed.
+### Metrics (Prometheus data source)
 
-- **In practice:** Start with metrics to see “is something wrong?” then use traces to see “what exactly happened for that one execution?”
+Use when you want **aggregated answers**: "How many jobs started/succeeded/failed?" "How long do jobs take on average?" "Is the worker keeping up?"
 
-## Service graph vs job-level flow
+**Example queries:**
 
-- **Service graph (Traces data source)**  
-  In Explore with the **Traces** data source, the “Service Graph” tab shows which *services* call which (e.g. API → something). For us, the “call” from API to worker is enqueue → Redis → worker, so the graph may show tennis-coach-api and tennis-coach-worker; full API→worker flow in one trace would require propagating trace context from API to the job (future improvement).
+- `jobs_started_total{service_name="tennis-coach-worker"}`
+- `jobs_succeeded_total{service_name="tennis-coach-worker"}`
+- `job_duration_seconds{job_type="scout_refine"}` (histogram for p50/p95/p99)
+- `queue_wait_seconds{job_type="scout_refine"}` (time jobs spent waiting in queue)
 
-- **Job-level flow (what we have now)**  
-  Each worker job already produces **one trace** with **stage spans**: download → scout → refine → db_write (or pose_detection → db_write for pose-only). In Explore → Traces, open a trace and you see that timeline. So “flow” today is: per-job trace with stages; service graph is the higher-level “which service talks to which.”
+### Traces (Traces / Tempo data source)
 
-## Differentiating local / Docker vs production
+Use when you want **one request or job, step by step**: "Why was this job slow?" "Which stage (download, scout, refine, db_write) took the time?"
 
-- **Service name** already separates API (`tennis-coach-api`) from worker (`tennis-coach-worker`).
-- To separate **environment** (e.g. local/Docker vs production), set a resource attribute when running in production, and optionally in local/Docker:
-  - **Production (e.g. Fly):** In Fly secrets (or env), add for example  
-    `OTEL_RESOURCE_ATTRIBUTES=deployment.environment=production`  
-    (append to existing `OTEL_RESOURCE_ATTRIBUTES` if you already set `service.namespace=tennis-coach`).
-  - **Local / Docker:** In backend `.env` you can set  
-    `OTEL_RESOURCE_ATTRIBUTES=deployment.environment=development`  
-    (or leave unset if you prefer).
-- In Grafana (metrics and traces) you can then filter by `deployment.environment=production` or `development` so local testing doesn’t mix with production.
+**Example queries:**
 
-## Troubleshooting: no traces in Grafana
+- `{resource.service.name="tennis-coach-api" && name="POST /v0/videos/upload"}` — API upload traces
+- `{resource.service.name="tennis-coach-worker"}` — All worker job traces
+- `{resource.service.name="tennis-coach-worker" && name="rq.scout_refine"}` — Scout/refine jobs only
 
-- **Docker**: After adding OTel deps you must **rebuild** the backend image so the container has the packages:  
-  `docker compose build backend` then `docker compose up` (or `up -d backend`).  
-  The compose file already loads `backend/.env` via `env_file`; no extra compose config needed.
-- **Logs**: On startup, look for either **"OpenTelemetry tracer configured (OTLP endpoint=...)"** (success) or **"OpenTelemetry setup failed: ..."** (see the exception).
-- **Auth**: Use exactly the header Grafana gives you, e.g. `OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic <base64>`. Values are URL-unquoted automatically (e.g. `%20` → space).
-- **Traffic**: Hit the API (e.g. `GET /`, `GET /health`, or any route) so spans are generated; traces can take 1–2 minutes to show in Grafana.
+**In practice:** Start with metrics to see "is something wrong?" then use traces to see "what exactly happened for that one execution?"
+
+### Service Graph vs Job-Level Flow
+
+- **Service graph** (Traces data source → Service Graph tab): Shows which _services_ call which (e.g. API ↔ worker). For us, the "call" from API to worker is enqueue → Redis → worker.
+- **Job-level flow** (what we have now): Each worker job produces **one trace** with **stage spans**: download → scout → refine → db_write. Open a trace in Explore → Traces to see the timeline.
+
+## Differentiating Local / Docker vs Production
+
+- **Service name** already separates API (`tennis-coach-api`) from worker (`tennis-coach-worker`)
+- To separate **environment** (e.g. local/Docker vs production), set a resource attribute:
+  - **Production (e.g. Fly):** In Fly secrets, add `OTEL_RESOURCE_ATTRIBUTES=deployment.environment=production` (append to existing if you already set `service.namespace=tennis-coach`)
+  - **Local / Docker:** In backend `.env` you can set `OTEL_RESOURCE_ATTRIBUTES=deployment.environment=development` (or leave unset)
+- In Grafana (metrics and traces) you can then filter by `deployment.environment=production` or `development` so local testing doesn't mix with production
+
+## Troubleshooting
+
+### No traces in Grafana
+
+- **Docker**: After adding OTel deps you must **rebuild** the backend image: `docker compose build backend` then `docker compose up`
+- **Logs**: On startup, look for either **"OpenTelemetry tracer configured (service=..., endpoint=...)"** (success) or **"OpenTelemetry setup failed: ..."** (see the exception)
+- **Auth**: Use exactly the header Grafana gives you, e.g. `OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic <base64>`. Values are URL-unquoted automatically (e.g. `%20` → space)
+- **Traffic**: Hit the API (e.g. `GET /`, `GET /health`, or any route) so spans are generated; traces can take 1–2 minutes to show in Grafana
+
+### No metrics in Grafana
+
+- **Worker running**: Ensure worker has same `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_EXPORTER_OTLP_HEADERS` as API
+- **Jobs executed**: Metrics only appear after jobs run (they're recorded when `record_job_started` / `record_job_succeeded` are called)
+- **Export delay**: Metrics are exported every 30 seconds; wait ~1 minute after jobs run before querying
+
+## Reference Files
+
+- **Logging filter**: `backend/app/utils/logging_context.py` (`ObservabilityLogFilter`, `get_log_extra()`)
+- **Metrics helpers**: `backend/app/utils/metrics.py` (`record_job_started`, `record_job_succeeded`, `record_job_failed`, `record_queue_wait`)
+- **OTel setup**: `backend/app/utils/otel.py` (`setup_otel_tracing()`)
+- **Worker spans**: `backend/app/services/rq_tasks.py` (`_rq_job_span()`, `_stage_span()`)
