@@ -113,6 +113,58 @@ const SKELETON_CONNECTIONS = [
   ['right_shoulder', 'right_hip'],
 ] as const;
 
+const KNEE_CONNECTIONS = new Set([
+  'left_hip|left_knee',
+  'left_knee|left_ankle',
+  'right_hip|right_knee',
+  'right_knee|right_ankle',
+]);
+
+const KNEE_BEND_ANGLE_THRESHOLD = 140;
+const DEFAULT_SKELETON_COLOR = '#00FF00';
+const KNEE_BEND_COLOR = '#A855F7';
+
+function calculateAngle(
+  point1: number[],
+  point2: number[],
+  point3: number[]
+): number | null {
+  if (point1.length < 2 || point2.length < 2 || point3.length < 2) {
+    return null;
+  }
+
+  const v1x = point1[0] - point2[0];
+  const v1y = point1[1] - point2[1];
+  const v2x = point3[0] - point2[0];
+  const v2y = point3[1] - point2[1];
+
+  const dot = v1x * v2x + v1y * v2y;
+  const mag1 = Math.hypot(v1x, v1y);
+  const mag2 = Math.hypot(v2x, v2y);
+  if (mag1 === 0 || mag2 === 0) return null;
+
+  const cosAngle = dot / (mag1 * mag2);
+  const clamped = Math.min(1, Math.max(-1, cosAngle));
+  return (Math.acos(clamped) * 180) / Math.PI;
+}
+
+function isKneeBent(
+  keypoints: Record<string, number[]>,
+  side: 'left' | 'right'
+): boolean {
+  const hip = keypoints[`${side}_hip`];
+  const knee = keypoints[`${side}_knee`];
+  const ankle = keypoints[`${side}_ankle`];
+  if (!hip || !knee || !ankle) return false;
+
+  const angle = calculateAngle(hip, knee, ankle);
+  return angle !== null && angle < KNEE_BEND_ANGLE_THRESHOLD;
+}
+
+function isKneeConnection(startKey: string, endKey: string): boolean {
+  return KNEE_CONNECTIONS.has(`${startKey}|${endKey}`);
+}
+
 const VideoOverlay: React.FC<VideoOverlayProps> = ({
   videoId,
   videoElement,
@@ -298,10 +350,13 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       const scaleY = contentRect.contentHeight / overlayHeight;
 
       // Draw skeleton connections
-      ctx.strokeStyle = '#00FF00'; // Neon green
+      ctx.strokeStyle = DEFAULT_SKELETON_COLOR; // Neon green
       ctx.lineWidth = 2;
       ctx.shadowColor = '#000000'; // Black outline
       ctx.shadowBlur = 2;
+
+      const leftKneeBent = isKneeBent(frame.keypoints, 'left');
+      const rightKneeBent = isKneeBent(frame.keypoints, 'right');
 
       for (const [startKey, endKey] of SKELETON_CONNECTIONS) {
         const startPoint = frame.keypoints[startKey];
@@ -343,6 +398,23 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
             ctx.setLineDash([5, 5]);
           } else {
             ctx.setLineDash([]);
+          }
+
+          const isLeftKneeSegment =
+            leftKneeBent &&
+            isKneeConnection(startKey, endKey) &&
+            startKey.startsWith('left_');
+          const isRightKneeSegment =
+            rightKneeBent &&
+            isKneeConnection(startKey, endKey) &&
+            startKey.startsWith('right_');
+
+          if (isLeftKneeSegment || isRightKneeSegment) {
+            ctx.strokeStyle = KNEE_BEND_COLOR;
+            ctx.lineWidth = 3;
+          } else {
+            ctx.strokeStyle = DEFAULT_SKELETON_COLOR;
+            ctx.lineWidth = 2;
           }
 
           ctx.beginPath();
