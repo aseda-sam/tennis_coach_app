@@ -26,9 +26,7 @@ def list_demo_videos_with_status(db: Session) -> List[dict]:
     Returns:
         List of demo video dictionaries with status information
     """
-    demo_videos = (
-        db.query(Video).filter(Video.is_demo).order_by(Video.id.desc()).all()
-    )
+    demo_videos = db.query(Video).filter(Video.is_demo).order_by(Video.id.desc()).all()
 
     result = []
     for video in demo_videos:

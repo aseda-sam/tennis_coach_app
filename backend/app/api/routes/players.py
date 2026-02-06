@@ -105,7 +105,9 @@ def get_my_player(
 ) -> PlayerInfo:
     """Get the default player profile for the current user."""
     try:
-        default_player = player_service.get_or_create_default_player(db, current_user["id"])
+        default_player = player_service.get_or_create_default_player(
+            db, current_user["id"]
+        )
         return _create_player_info(db, default_player)
     except ValueError as e:
         raise HTTPException(
@@ -145,7 +147,9 @@ def upsert_my_player(
 
         # If player already existed, update it with any new data
         if update_data:
-            default_player = player_service.update_player(db, default_player.id, **update_data)
+            default_player = player_service.update_player(
+                db, default_player.id, **update_data
+            )
 
         return _create_player_info(db, default_player)
     except ValueError as e:

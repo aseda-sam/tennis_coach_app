@@ -72,7 +72,9 @@ async def create_serve_attempt(
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
-        log_and_raise_error(e, "create_serve_attempt", {"video_id": serve_attempt.video_id})
+        log_and_raise_error(
+            e, "create_serve_attempt", {"video_id": serve_attempt.video_id}
+        )
 
 
 @router.put("/{serve_attempt_id}", response_model=ServeAttemptInfo)
@@ -121,7 +123,9 @@ async def update_serve_attempt(
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
-        log_and_raise_error(e, "update_serve_attempt", {"serve_attempt_id": serve_attempt_id})
+        log_and_raise_error(
+            e, "update_serve_attempt", {"serve_attempt_id": serve_attempt_id}
+        )
 
 
 @router.get("/me", response_model=List[ServeAttemptInfo])
@@ -202,7 +206,9 @@ async def get_serve_attempt(
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
-        log_and_raise_error(e, "get_serve_attempt", {"serve_attempt_id": serve_attempt_id})
+        log_and_raise_error(
+            e, "get_serve_attempt", {"serve_attempt_id": serve_attempt_id}
+        )
 
 
 @router.delete("/{serve_attempt_id}")
@@ -249,4 +255,6 @@ async def delete_serve_attempt(
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
-        log_and_raise_error(e, "delete_serve_attempt", {"serve_attempt_id": serve_attempt_id})
+        log_and_raise_error(
+            e, "delete_serve_attempt", {"serve_attempt_id": serve_attempt_id}
+        )

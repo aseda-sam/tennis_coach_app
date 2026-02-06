@@ -145,6 +145,7 @@ def get_user_by_id(user_id: str) -> Optional[dict]:
     if settings.PROFILE == "local":
         # Basic UUID format check
         import re
+
         uuid_pattern = re.compile(
             r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
             re.IGNORECASE,
@@ -168,7 +169,9 @@ def get_user_by_id(user_id: str) -> Optional[dict]:
         return None
     except ValueError as e:
         # Configuration errors - re-raise
-        logger.error("Supabase configuration error in get_user_by_id: %s", e, exc_info=True)
+        logger.error(
+            "Supabase configuration error in get_user_by_id: %s", e, exc_info=True
+        )
         raise
     except Exception as e:  # noqa: BLE001 - Catch all for admin API calls
         error_type = type(e).__name__

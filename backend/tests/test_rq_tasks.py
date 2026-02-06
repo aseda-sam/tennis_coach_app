@@ -203,7 +203,7 @@ class TestTranscodeVideoRq:
         mock_get_path.return_value = Path("/local/path/video.mp4")
 
         # Mock temp file creation with hardcoded values (no need for real temp file)
-        mock_mkstemp.return_value = (999, "/tmp/test_output.mp4")
+        mock_mkstemp.return_value = (999, "/tmp/test_output.mp4")  # noqa: S108
 
         # Mock ffmpeg success
         mock_subprocess_result = MagicMock()
@@ -284,7 +284,7 @@ class TestTranscodeVideoRq:
         mock_get_path.return_value = Path("/local/path/video.mp4")
 
         # Mock temp file creation with hardcoded values (no need for real temp file)
-        mock_mkstemp.return_value = (999, "/tmp/test_output.mp4")
+        mock_mkstemp.return_value = (999, "/tmp/test_output.mp4")  # noqa: S108
 
         # Mock ffmpeg failure
         mock_subprocess_result = MagicMock()

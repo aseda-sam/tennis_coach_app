@@ -263,8 +263,6 @@ async def get_demo_video(
         log_and_raise_error(e, "get_demo_video")
 
 
-
-
 @router.get(
     "/{video_id}/ball-contact-timestamps",
     response_model=BallContactTimestampsResponse,

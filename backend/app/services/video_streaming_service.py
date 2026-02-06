@@ -54,18 +54,14 @@ def get_video_stream_response(
                 )
                 return RedirectResponse(url=demo_url)
             except (ValueError, RuntimeError) as e:
-                logger.error(
-                    f"Failed to get demo bucket URL for video {video_id}: {e}"
-                )
+                logger.error(f"Failed to get demo bucket URL for video {video_id}: {e}")
                 # Fallback to regular flow
 
         # For regular videos, use private bucket with signed URL or public URL
         storage_path = db_video.file_path
         try:
             file_url = storage_service.get_file_url(storage_path)
-            logger.info(
-                f"Redirecting to Supabase URL for video {video_id}: {file_url}"
-            )
+            logger.info(f"Redirecting to Supabase URL for video {video_id}: {file_url}")
             return RedirectResponse(url=file_url)
         except (ValueError, RuntimeError, OSError) as e:
             logger.error(

@@ -327,11 +327,7 @@ def get_serve_attempts_for_video(
     Returns:
         List of ServeAttempt instances for the video
     """
-    return (
-        db.query(ServeAttempt)
-        .filter(ServeAttempt.video_id == video_id)
-        .all()
-    )
+    return db.query(ServeAttempt).filter(ServeAttempt.video_id == video_id).all()
 
 
 def get_ball_contact_timestamps(

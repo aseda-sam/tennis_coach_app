@@ -179,12 +179,16 @@ class TestUploadForUserEndpoint:
                     response = client.post(
                         "/v0/admin/videos/upload-for-user",
                         files={"file": ("test.mp4", f, "video/mp4")},
-                        params={"target_user_id": "22222222-2222-2222-2222-222222222222"},
+                        params={
+                            "target_user_id": "22222222-2222-2222-2222-222222222222"
+                        },
                     )
 
                 assert response.status_code == 403
                 error_data = response.json()
-                assert "error" in error_data or "Admin access required" in str(response.text)
+                assert "error" in error_data or "Admin access required" in str(
+                    response.text
+                )
             finally:
                 Path(tmp_file_path).unlink(missing_ok=True)
         finally:
@@ -192,8 +196,12 @@ class TestUploadForUserEndpoint:
 
     def test_upload_for_user_validates_target_user_id(self, client: TestClient) -> None:
         """Test upload-for-user validates target_user_id parameter."""
-        with patch("app.services.admin_service.validate_target_user_exists") as mock_get_user:
-            mock_get_user.side_effect = ValueError("Target user invalid-user-id not found in Supabase")  # User doesn't exist
+        with patch(
+            "app.services.admin_service.validate_target_user_exists"
+        ) as mock_get_user:
+            mock_get_user.side_effect = ValueError(
+                "Target user invalid-user-id not found in Supabase"
+            )  # User doesn't exist
 
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
                 tmp_file.write(b"fake video content" * 1000)
@@ -219,7 +227,9 @@ class TestUploadForUserEndpoint:
         """Test successful upload-for-user assigns video to target user."""
         target_user_id = "22222222-2222-2222-2222-222222222222"
 
-        with patch("app.services.admin_service.validate_target_user_exists") as mock_get_user, patch(
+        with patch(
+            "app.services.admin_service.validate_target_user_exists"
+        ) as mock_get_user, patch(
             "app.services.storage_service.storage_service"
         ) as mock_storage, patch.object(
             settings, "AUTO_ENQUEUE_ON_UPLOAD", False
@@ -255,9 +265,7 @@ class TestUploadForUserEndpoint:
                 from app.models.video import Video
 
                 video = (
-                    db_session.query(Video)
-                    .filter(Video.id == data["video_id"])
-                    .first()
+                    db_session.query(Video).filter(Video.id == data["video_id"]).first()
                 )
                 assert video is not None
                 assert video.user_id == target_user_id
@@ -289,9 +297,7 @@ class TestDemoManagementEndpoints:
         finally:
             app.dependency_overrides.clear()
 
-    def test_list_demos_success(
-        self, client: TestClient, db_session: Session
-    ) -> None:
+    def test_list_demos_success(self, client: TestClient, db_session: Session) -> None:
         """Test list demos returns demo videos for admin."""
         from app.services import video_service
 

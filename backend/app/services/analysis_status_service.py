@@ -74,9 +74,7 @@ def get_bulk_analysis_status(
     # Check for unauthorized access
     unauthorized_ids = set(video_ids) - accessible_videos
     if unauthorized_ids:
-        raise ValueError(
-            f"Videos not found or access denied: {list(unauthorized_ids)}"
-        )
+        raise ValueError(f"Videos not found or access denied: {list(unauthorized_ids)}")
 
     # Fetch all pose detections in one query
     pose_detections = (
@@ -89,9 +87,7 @@ def get_bulk_analysis_status(
     )
 
     # Build lookup maps for O(1) access
-    pose_map: Dict[int, PoseDetection] = {
-        pd.video_id: pd for pd in pose_detections
-    }
+    pose_map: Dict[int, PoseDetection] = {pd.video_id: pd for pd in pose_detections}
 
     # Build response for each video
     statuses = []
