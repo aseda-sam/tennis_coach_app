@@ -231,8 +231,8 @@ def _compute_knee_bend_metrics(
 
     Returns:
         Dictionary with knee bend metrics and status:
-        - knee_bend_detected: bool
-        - knee_bend_confidence: float (0-1)
+        - knee_bend_detected: bool or None
+        - knee_bend_confidence: float (0-1) or None
         - knee_hip_ratio_min: float
         - knee_flexion_min_deg_left: float or None
         - knee_flexion_min_deg_right: float or None
@@ -259,8 +259,8 @@ def _compute_knee_bend_metrics(
 
     if not pose_frames:
         return {
-            "knee_bend_detected": False,
-            "knee_bend_confidence": 0.0,
+            "knee_bend_detected": None,
+            "knee_bend_confidence": None,
             "knee_hip_ratio_min": None,
             "knee_flexion_min_deg_left": None,
             "knee_flexion_min_deg_right": None,
@@ -272,8 +272,8 @@ def _compute_knee_bend_metrics(
 
     if len(valid_frames) < 3:  # Need at least a few frames for reliable metrics
         return {
-            "knee_bend_detected": False,
-            "knee_bend_confidence": 0.0,
+            "knee_bend_detected": None,
+            "knee_bend_confidence": None,
             "knee_hip_ratio_min": None,
             "knee_flexion_min_deg_left": None,
             "knee_flexion_min_deg_right": None,
@@ -309,8 +309,8 @@ def _compute_knee_bend_metrics(
 
     if not has_ratio_data and not has_angle_data:
         return {
-            "knee_bend_detected": False,
-            "knee_bend_confidence": 0.0,
+            "knee_bend_detected": None,
+            "knee_bend_confidence": None,
             "knee_hip_ratio_min": None,
             "knee_flexion_min_deg_left": None,
             "knee_flexion_min_deg_right": None,
