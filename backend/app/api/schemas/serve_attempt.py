@@ -79,19 +79,29 @@ class ServeAttemptInfo(BaseModel):
         default=None, ge=0, le=180, description="Elbow angle at contact in degrees"
     )
     knee_bend_detected: Optional[bool] = Field(
-        default=None, description="Whether knee bend was detected during early serve phase"
+        default=None,
+        description="Whether knee bend was detected during early serve phase",
     )
     knee_bend_confidence: Optional[float] = Field(
-        default=None, ge=0, le=1, description="Confidence score (0.0-1.0) for knee bend detection"
+        default=None,
+        ge=0,
+        le=1,
+        description="Confidence score (0.0-1.0) for knee bend detection",
     )
     knee_hip_ratio_min: Optional[float] = Field(
         default=None, description="Minimum knee-hip ratio (lower = more bend)"
     )
     knee_flexion_min_deg_left: Optional[float] = Field(
-        default=None, ge=0, le=180, description="Minimum left knee flexion angle in degrees"
+        default=None,
+        ge=0,
+        le=180,
+        description="Minimum left knee flexion angle in degrees",
     )
     knee_flexion_min_deg_right: Optional[float] = Field(
-        default=None, ge=0, le=180, description="Minimum right knee flexion angle in degrees"
+        default=None,
+        ge=0,
+        le=180,
+        description="Minimum right knee flexion angle in degrees",
     )
     analysis_version: Optional[str] = Field(
         default=None, description="Version of analysis heuristics used"

@@ -107,9 +107,7 @@ def _calculate_angle_between_points(
     return float(angle_deg)
 
 
-def calculate_knee_angle(
-    pose_landmarks: Dict, side: str
-) -> Optional[float]:
+def calculate_knee_angle(pose_landmarks: Dict, side: str) -> Optional[float]:
     """
     Calculate knee flexion angle from pose landmarks.
 
@@ -124,9 +122,7 @@ def calculate_knee_angle(
     try:
         # Validate side
         if side not in ["left", "right"]:
-            logger.warning(
-                f"Invalid side: {side}. Expected 'left' or 'right'"
-            )
+            logger.warning(f"Invalid side: {side}. Expected 'left' or 'right'")
             return None
 
         # Extract keypoint coordinates for the specified side
@@ -187,7 +183,9 @@ def calculate_knee_hip_ratio(
         left_shoulder = pose_landmarks.get("left_shoulder")
         right_shoulder = pose_landmarks.get("right_shoulder")
 
-        if not all([left_hip, right_hip, left_knee, right_knee, left_shoulder, right_shoulder]):
+        if not all(
+            [left_hip, right_hip, left_knee, right_knee, left_shoulder, right_shoulder]
+        ):
             logger.debug("Insufficient keypoints for knee-hip ratio calculation")
             return None
 

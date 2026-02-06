@@ -41,9 +41,7 @@ def _extract_keypoints(frame_data: Optional[Dict]) -> Optional[Dict]:
     return frame_data
 
 
-def _select_best_pose_detection(
-    db: Session, video_id: int
-) -> Optional[PoseDetection]:
+def _select_best_pose_detection(db: Session, video_id: int) -> Optional[PoseDetection]:
     """
     Select the best pose detection record for analysis.
 
@@ -75,22 +73,28 @@ def _select_best_pose_detection(
     for detection in all_detections:
         if detection.detection_mode == "refine":
             logger.info(
-                f"Selected refine pose detection {detection.id} for video {video_id}"
+                "Selected refine pose detection %s for video %s",
+                detection.id,
+                video_id,
             )
             return detection
 
     for detection in all_detections:
         if detection.detection_mode == "full":
             logger.info(
-                f"Selected full pose detection {detection.id} for video {video_id}"
+                "Selected full pose detection %s for video %s",
+                detection.id,
+                video_id,
             )
             return detection
 
     # Fall back to scout (or any other mode)
     detection = all_detections[0]
     logger.info(
-        f"Selected {detection.detection_mode} pose detection {detection.id} "
-        f"for video {video_id}"
+        "Selected %s pose detection %s for video %s",
+        detection.detection_mode,
+        detection.id,
+        video_id,
     )
     return detection
 
@@ -244,7 +248,9 @@ def _compute_knee_bend_metrics(
         window_end = min(window_end, window_start + 2.0)
     else:
         # Use first 1.5-2.0s of window
-        window_end = min(serve_attempt.start_timestamp + 1.75, serve_attempt.end_timestamp)
+        window_end = min(
+            serve_attempt.start_timestamp + 1.75, serve_attempt.end_timestamp
+        )
 
     # Get pose frames in window
     pose_frames = get_pose_frames_in_window(
@@ -279,7 +285,6 @@ def _compute_knee_bend_metrics(
     knee_angles_left = []
     knee_angles_right = []
 
-    fps = video.fps if video.fps else 30.0
     frame_shape = (video.height or 720, video.width or 1280, 3)
 
     for frame_landmarks in valid_frames:
@@ -323,11 +328,17 @@ def _compute_knee_bend_metrics(
     angle_threshold = 140.0  # Degrees: < 140° indicates significant bend
 
     detected = False
-    if knee_hip_ratio_min is not None and knee_hip_ratio_min < ratio_threshold:
-        detected = True
-    elif knee_flexion_min_left is not None and knee_flexion_min_left < angle_threshold:
-        detected = True
-    elif knee_flexion_min_right is not None and knee_flexion_min_right < angle_threshold:
+    if (
+        (knee_hip_ratio_min is not None and knee_hip_ratio_min < ratio_threshold)
+        or (
+            knee_flexion_min_left is not None
+            and knee_flexion_min_left < angle_threshold
+        )
+        or (
+            knee_flexion_min_right is not None
+            and knee_flexion_min_right < angle_threshold
+        )
+    ):
         detected = True
 
     # Calculate confidence based on pose coverage and data quality
@@ -347,17 +358,20 @@ def _compute_knee_bend_metrics(
         confidence = confidence * 0.9
 
     # Determine status
-    if confidence < 0.5:
-        status = "computed_low_confidence"
-    else:
-        status = "computed"
+    status = "computed_low_confidence" if confidence < 0.5 else "computed"
 
     return {
         "knee_bend_detected": detected,
         "knee_bend_confidence": round(confidence, 3),
-        "knee_hip_ratio_min": round(knee_hip_ratio_min, 4) if knee_hip_ratio_min is not None else None,
-        "knee_flexion_min_deg_left": round(knee_flexion_min_left, 1) if knee_flexion_min_left is not None else None,
-        "knee_flexion_min_deg_right": round(knee_flexion_min_right, 1) if knee_flexion_min_right is not None else None,
+        "knee_hip_ratio_min": round(knee_hip_ratio_min, 4)
+        if knee_hip_ratio_min is not None
+        else None,
+        "knee_flexion_min_deg_left": round(knee_flexion_min_left, 1)
+        if knee_flexion_min_left is not None
+        else None,
+        "knee_flexion_min_deg_right": round(knee_flexion_min_right, 1)
+        if knee_flexion_min_right is not None
+        else None,
         "status": status,
     }
 
@@ -408,7 +422,7 @@ class ServeAnalysisService:
             knee_bend_failed_count = 0
 
             # Set analysis version
-            ANALYSIS_VERSION = "v1.0"
+            analysis_version = "v1.0"
 
             for serve_attempt in serve_attempts:
                 # Compute knee bend metrics (for all serves, not just those with contact)
@@ -418,32 +432,42 @@ class ServeAnalysisService:
                     )
 
                     # Store knee bend results
-                    serve_attempt.knee_bend_detected = knee_metrics["knee_bend_detected"]
-                    serve_attempt.knee_bend_confidence = knee_metrics["knee_bend_confidence"]
-                    serve_attempt.knee_hip_ratio_min = knee_metrics["knee_hip_ratio_min"]
+                    serve_attempt.knee_bend_detected = knee_metrics[
+                        "knee_bend_detected"
+                    ]
+                    serve_attempt.knee_bend_confidence = knee_metrics[
+                        "knee_bend_confidence"
+                    ]
+                    serve_attempt.knee_hip_ratio_min = knee_metrics[
+                        "knee_hip_ratio_min"
+                    ]
                     serve_attempt.knee_flexion_min_deg_left = knee_metrics[
                         "knee_flexion_min_deg_left"
                     ]
                     serve_attempt.knee_flexion_min_deg_right = knee_metrics[
                         "knee_flexion_min_deg_right"
                     ]
-                    serve_attempt.analysis_version = ANALYSIS_VERSION
+                    serve_attempt.analysis_version = analysis_version
 
                     if knee_metrics["status"] != "insufficient_pose_data":
                         knee_bend_analyzed_count += 1
                         logger.debug(
-                            f"Computed knee bend metrics for serve attempt {serve_attempt.id}: "
-                            f"detected={knee_metrics['knee_bend_detected']}, "
-                            f"confidence={knee_metrics['knee_bend_confidence']:.2f}"
+                            "Computed knee bend metrics for serve attempt %s: detected=%s, confidence=%.2f",
+                            serve_attempt.id,
+                            knee_metrics["knee_bend_detected"],
+                            knee_metrics["knee_bend_confidence"],
                         )
                     else:
                         knee_bend_failed_count += 1
                         logger.debug(
-                            f"Insufficient pose data for knee bend analysis on serve attempt {serve_attempt.id}"
+                            "Insufficient pose data for knee bend analysis on serve attempt %s",
+                            serve_attempt.id,
                         )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - Catch all exceptions to continue batch processing
                     logger.warning(
-                        f"Error computing knee bend metrics for serve attempt {serve_attempt.id}: {e}",
+                        "Error computing knee bend metrics for serve attempt %s: %s",
+                        serve_attempt.id,
+                        e,
                         exc_info=True,
                     )
                     knee_bend_failed_count += 1
@@ -451,7 +475,8 @@ class ServeAnalysisService:
                 # Compute elbow angle (only if contact timestamp exists)
                 if not serve_attempt.contact_timestamp:
                     logger.debug(
-                        f"Skipping elbow angle for serve attempt {serve_attempt.id} - no contact timestamp"
+                        "Skipping elbow angle for serve attempt %s - no contact timestamp",
+                        serve_attempt.id,
                     )
                     skipped_count += 1
                     continue
@@ -464,7 +489,9 @@ class ServeAnalysisService:
                 )
                 if not player:
                     logger.warning(
-                        f"Player {serve_attempt.player_id} not found for serve attempt {serve_attempt.id}"
+                        "Player %s not found for serve attempt %s",
+                        serve_attempt.player_id,
+                        serve_attempt.id,
                     )
                     failed_count += 1
                     continue
@@ -476,8 +503,9 @@ class ServeAnalysisService:
 
                 if not pose_landmarks:
                     logger.warning(
-                        f"No pose data found for serve attempt {serve_attempt.id} "
-                        f"at timestamp {serve_attempt.contact_timestamp}s"
+                        "No pose data found for serve attempt %s at timestamp %ss",
+                        serve_attempt.id,
+                        serve_attempt.contact_timestamp,
                     )
                     failed_count += 1
                     continue
@@ -493,8 +521,9 @@ class ServeAnalysisService:
                     # Validate angle is within reasonable range (0-180 degrees)
                     if not (0.0 <= elbow_angle <= 180.0):
                         logger.warning(
-                            f"Elbow angle {elbow_angle:.1f}° is outside valid range "
-                            f"(0-180°) for serve attempt {serve_attempt.id}"
+                            "Elbow angle %.1f° is outside valid range (0-180°) for serve attempt %s",
+                            elbow_angle,
+                            serve_attempt.id,
                         )
                         failed_count += 1
                         continue
@@ -504,11 +533,14 @@ class ServeAnalysisService:
                     elbow_angles.append(elbow_angle)
                     analyzed_count += 1
                     logger.debug(
-                        f"Calculated elbow angle {elbow_angle:.1f}° for serve attempt {serve_attempt.id}"
+                        "Calculated elbow angle %.1f° for serve attempt %s",
+                        elbow_angle,
+                        serve_attempt.id,
                     )
                 else:
                     logger.warning(
-                        f"Failed to calculate elbow angle for serve attempt {serve_attempt.id}"
+                        "Failed to calculate elbow angle for serve attempt %s",
+                        serve_attempt.id,
                     )
                     failed_count += 1
 

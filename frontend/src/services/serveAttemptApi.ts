@@ -8,6 +8,12 @@ export interface ServeAttempt {
   end_timestamp: number;
   contact_timestamp: number | null;
   elbow_angle_at_contact: number | null;
+  knee_bend_detected: boolean | null;
+  knee_bend_confidence: number | null;
+  knee_hip_ratio_min: number | null;
+  knee_flexion_min_deg_left: number | null;
+  knee_flexion_min_deg_right: number | null;
+  analysis_version: string | null;
   court_side: string | null;
   serve_number: number | null;
   serve_subtype: string | null;
@@ -51,6 +57,8 @@ export interface ServeAnalysisSummary {
   total_serves: number;
   serves_with_contact: number;
   avg_elbow_angle: number | null;
+  knee_bend_analyzed: number;
+  knee_bend_failed: number;
 }
 
 export const serveAttemptApi = {

@@ -2,7 +2,16 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, String
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -36,7 +45,9 @@ class ServeAttempt(Base):
     )  # Calculated if contact_timestamp exists
 
     # Knee bend metrics (pose-based, computed during early serve phase)
-    knee_bend_detected = Column(Boolean, nullable=True)  # Whether knee bend was detected
+    knee_bend_detected = Column(
+        Boolean, nullable=True
+    )  # Whether knee bend was detected
     knee_bend_confidence = Column(
         Float, nullable=True
     )  # Confidence score (0.0-1.0) for knee bend detection

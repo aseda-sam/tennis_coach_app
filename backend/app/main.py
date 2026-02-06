@@ -99,8 +99,9 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
         if existing_workers:
             worker_names = [w.name for w in existing_workers]
             logger.warning(
-                f"Found {len(existing_workers)} existing worker(s): {worker_names}. "
-                "Skipping worker startup on API service."
+                "Found %s existing worker(s): %s. Skipping worker startup on API service.",
+                len(existing_workers),
+                worker_names,
             )
             return None
         else:
@@ -112,9 +113,10 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
         AttributeError,
     ) as e:
         logger.warning(
-            f"Could not check for existing workers: {e}. "
+            "Could not check for existing workers: %s. "
             "This might mean Redis is unavailable, quota exceeded, or connection failed. "
-            "Worker startup will be skipped to avoid duplicates."
+            "Worker startup will be skipped to avoid duplicates.",
+            e,
         )
         # Don't start worker if we can't check - safer to skip than risk duplicates
         return None
