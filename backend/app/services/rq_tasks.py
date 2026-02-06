@@ -344,7 +344,7 @@ def transcode_video_rq(
                         video_path=new_storage_path,  # Use transcoded path
                         video_job_id=str(pose_job.id),
                         confidence_threshold=0.7,
-                        retry=Retry(max=2, interval=60),
+                        retry=Retry(max=2, interval=0),
                         job_timeout=settings.POSE_DETECTION_JOB_TIMEOUT_SECONDS,
                         result_ttl=3600,
                         meta={"enqueued_at": time.time()},
@@ -457,7 +457,7 @@ def enqueue_pose_analysis(
             video_path=video_path,
             confidence_threshold=confidence_threshold,
             video_job_id=video_job_id,  # Pass VideoJob ID for status updates
-            retry=Retry(max=2, interval=60),
+            retry=Retry(max=2, interval=0),
             job_timeout=settings.POSE_DETECTION_JOB_TIMEOUT_SECONDS,
             result_ttl=3600,  # Keep results for 1 hour
             meta={"enqueued_at": time.time()},

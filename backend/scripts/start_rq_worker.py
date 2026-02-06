@@ -164,9 +164,9 @@ if __name__ == "__main__":
                 name=worker_name,
                 worker_ttl=worker_ttl,
             )
-            # Important: enable scheduler so delayed jobs / retries move from
-            # "scheduled" back to the queue automatically.
-            worker.work(with_scheduler=True)
+            # Scheduler disabled to reduce Redis command usage (Upstash free tier).
+            # Retries use interval=0 (immediate) so no scheduler needed.
+            worker.work(with_scheduler=False)
             break  # Success, exit retry loop
         except ValueError as e:
             error_msg = str(e)

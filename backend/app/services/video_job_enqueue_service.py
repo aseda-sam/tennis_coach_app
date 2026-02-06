@@ -78,7 +78,7 @@ def auto_enqueue_video_analysis(
                 video_id=video.id,
                 video_path=video.file_path,
                 video_job_id=str(transcode_job.id),
-                retry=Retry(max=2, interval=60),
+                retry=Retry(max=2, interval=0),
                 job_timeout=600,  # 10 minutes for transcoding
                 result_ttl=3600,
                 meta={"enqueued_at": time.time()},
@@ -103,7 +103,7 @@ def auto_enqueue_video_analysis(
                 video_path=video.file_path,
                 video_job_id=str(pose_job.id),
                 confidence_threshold=0.7,
-                retry=Retry(max=2, interval=60),
+                retry=Retry(max=2, interval=0),
                 job_timeout=settings.POSE_DETECTION_JOB_TIMEOUT_SECONDS,
                 result_ttl=3600,
                 meta={"enqueued_at": time.time()},
