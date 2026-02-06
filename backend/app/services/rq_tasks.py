@@ -245,9 +245,13 @@ def transcode_video_rq(
             fd, temp_output_name = tempfile.mkstemp(
                 suffix=".mp4", dir=settings.PROCESSED_DIR
             )
-            os.close(
-                fd
-            )  # Close the file descriptor immediately - we only need the filename
+            # Close the file descriptor immediately - we only need the filename
+            # Use try/except to handle edge cases (e.g., invalid FD in tests)
+            try:
+                os.close(fd)
+            except OSError:
+                # FD may already be closed or invalid - not critical since we only need the filename
+                pass
             temp_output_path = Path(temp_output_name)
             temp_output_path.parent.mkdir(parents=True, exist_ok=True)
 

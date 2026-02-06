@@ -21,11 +21,15 @@ class TestTimingFunctions:
             # Verify logger was called
             mock_logger.info.assert_called_once()
 
-            # Verify the log message contains timing info
-            log_message = mock_logger.info.call_args[0][0]
-            assert "Test Operation" in log_message
-            assert "completed in" in log_message
-            assert "1.5" in log_message or "1.4" in log_message or "1.6" in log_message
+            # Verify the call arguments (format string and values)
+            call_args = mock_logger.info.call_args[0]
+            format_string = call_args[0]
+            operation_name = call_args[1]
+            elapsed_time = call_args[2]
+
+            assert format_string == "⏱️ %s completed in %.3fs"
+            assert operation_name == "Test Operation"
+            assert 1.4 <= elapsed_time <= 1.6
 
     def test_log_timing_error(self) -> None:
         """Test timing error log."""
@@ -38,11 +42,17 @@ class TestTimingFunctions:
             # Verify logger was called
             mock_logger.error.assert_called_once()
 
-            # Verify the log message contains error info
-            log_message = mock_logger.error.call_args[0][0]
-            assert "Test Operation" in log_message
-            assert "failed after" in log_message
-            assert "Test error" in log_message
+            # Verify the call arguments (format string and values)
+            call_args = mock_logger.error.call_args[0]
+            format_string = call_args[0]
+            operation_name = call_args[1]
+            elapsed_time = call_args[2]
+            error = call_args[3]
+
+            assert format_string == "❌ %s failed after %.3fs: %s"
+            assert operation_name == "Test Operation"
+            assert 1.9 <= elapsed_time <= 2.1
+            assert error == test_error
 
     def test_log_timing_very_fast_operation(self) -> None:
         """Test timing for very fast operations."""
@@ -54,10 +64,15 @@ class TestTimingFunctions:
             # Verify logger was called
             mock_logger.info.assert_called_once()
 
-            # Verify the log message contains timing info
-            log_message = mock_logger.info.call_args[0][0]
-            assert "Fast Operation" in log_message
-            assert "completed in" in log_message
+            # Verify the call arguments
+            call_args = mock_logger.info.call_args[0]
+            format_string = call_args[0]
+            operation_name = call_args[1]
+            elapsed_time = call_args[2]
+
+            assert format_string == "⏱️ %s completed in %.3fs"
+            assert operation_name == "Fast Operation"
+            assert elapsed_time > 0
 
     def test_log_timing_very_slow_operation(self) -> None:
         """Test timing for very slow operations."""
@@ -69,11 +84,15 @@ class TestTimingFunctions:
             # Verify logger was called
             mock_logger.info.assert_called_once()
 
-            # Verify the log message contains timing info
-            log_message = mock_logger.info.call_args[0][0]
-            assert "Slow Operation" in log_message
-            assert "completed in" in log_message
-            assert "60" in log_message or "59" in log_message or "61" in log_message
+            # Verify the call arguments
+            call_args = mock_logger.info.call_args[0]
+            format_string = call_args[0]
+            operation_name = call_args[1]
+            elapsed_time = call_args[2]
+
+            assert format_string == "⏱️ %s completed in %.3fs"
+            assert operation_name == "Slow Operation"
+            assert 59.0 <= elapsed_time <= 61.0
 
 
 class TestAnalysisTiming:
