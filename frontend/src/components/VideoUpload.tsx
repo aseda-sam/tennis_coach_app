@@ -417,15 +417,15 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
                     disabled={isUpdatingMetadata}
                   />
                   <span>
-                    <strong>Anonymous</strong>
+                    <strong>Someone Else</strong>
                     <span className="player-tag-subtitle">
-                      No player tracking yet
+                      Not tracked yet
                     </span>
                   </span>
                 </label>
               </div>
               <p className="player-tag-note">
-                Other players are not supported yet. Update your profile from the
+                Other players aren't supported yet. Update your profile from the
                 account menu anytime.
               </p>
             </div>
