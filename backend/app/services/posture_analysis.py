@@ -5,7 +5,7 @@ This module provides lightweight posture utilities used by serve analysis.
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -105,3 +105,106 @@ def _calculate_angle_between_points(
     angle_deg = np.degrees(angle_rad)
 
     return float(angle_deg)
+
+
+def calculate_knee_angle(pose_landmarks: Dict, side: str) -> Optional[float]:
+    """
+    Calculate knee flexion angle from pose landmarks.
+
+    Args:
+        pose_landmarks: Dictionary with keypoint coordinates (x, y, confidence)
+                       Expected format: {"left_hip": [x, y, confidence], ...}
+        side: Which leg ('left' or 'right')
+
+    Returns:
+        Knee flexion angle in degrees (hip-knee-ankle), or None if keypoints missing
+    """
+    try:
+        # Validate side
+        if side not in ["left", "right"]:
+            logger.warning(f"Invalid side: {side}. Expected 'left' or 'right'")
+            return None
+
+        # Extract keypoint coordinates for the specified side
+        if side == "right":
+            hip = pose_landmarks.get("right_hip")
+            knee = pose_landmarks.get("right_knee")
+            ankle = pose_landmarks.get("right_ankle")
+        else:  # left
+            hip = pose_landmarks.get("left_hip")
+            knee = pose_landmarks.get("left_knee")
+            ankle = pose_landmarks.get("left_ankle")
+
+        # Check if all required keypoints are available
+        if not all([hip, knee, ankle]):
+            logger.debug(
+                f"Insufficient keypoints for {side} leg knee angle calculation"
+            )
+            return None
+
+        # Calculate knee flexion angle (hip-knee-ankle)
+        return _calculate_angle_between_points(
+            hip[:2],  # [x, y]
+            knee[:2],  # [x, y]
+            ankle[:2],  # [x, y]
+        )
+
+    except (ValueError, KeyError, IndexError) as e:
+        logger.error("Error calculating knee angle: %s", e)
+        return None
+
+
+def calculate_knee_hip_ratio(
+    pose_landmarks: Dict, frame_shape: Optional[Tuple[int, int, int]] = None
+) -> Optional[float]:
+    """
+    Calculate knee-hip ratio (normalized by torso length) from pose landmarks.
+
+    Lower ratio = more knee bend (knees further below hips relative to torso).
+
+    Args:
+        pose_landmarks: Dictionary with keypoint coordinates (x, y, confidence)
+        frame_shape: Optional frame shape (height, width, channels) for normalization
+
+    Returns:
+        Knee-hip ratio (positive = knees below hips), or None if keypoints missing
+    """
+    try:
+        from app.services.serve_detection.feature_extractor import (
+            distance,
+            midpoint,
+        )
+
+        # Extract keypoints
+        left_hip = pose_landmarks.get("left_hip")
+        right_hip = pose_landmarks.get("right_hip")
+        left_knee = pose_landmarks.get("left_knee")
+        right_knee = pose_landmarks.get("right_knee")
+        left_shoulder = pose_landmarks.get("left_shoulder")
+        right_shoulder = pose_landmarks.get("right_shoulder")
+
+        if not all(
+            [left_hip, right_hip, left_knee, right_knee, left_shoulder, right_shoulder]
+        ):
+            logger.debug("Insufficient keypoints for knee-hip ratio calculation")
+            return None
+
+        # Calculate averages
+        avg_knee_y = (left_knee[1] + right_knee[1]) / 2
+        avg_hip_y = (left_hip[1] + right_hip[1]) / 2
+        hip_center = midpoint(left_hip[:2], right_hip[:2])
+        shoulder_center = midpoint(left_shoulder[:2], right_shoulder[:2])
+
+        # Calculate torso length (scale factor)
+        torso_length = distance(hip_center, shoulder_center)
+        if torso_length == 0:
+            torso_length = 1.0  # Avoid division by zero
+
+        # Knee-hip ratio: positive = knees below hips
+        knee_hip_ratio = (avg_knee_y - avg_hip_y) / torso_length
+
+        return float(knee_hip_ratio)
+
+    except (ValueError, KeyError, IndexError, ImportError) as e:
+        logger.error("Error calculating knee-hip ratio: %s", e)
+        return None

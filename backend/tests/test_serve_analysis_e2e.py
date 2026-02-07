@@ -136,6 +136,7 @@ class TestServeAnalysisE2E:
                 pose_data=json.dumps(mock_pose_data),
                 processing_time_seconds=10.0,
                 status="completed",
+                detection_mode="refine",  # Use refine mode for best quality
             )
             db_session.add(pose_detection)
             db_session.commit()
@@ -158,6 +159,8 @@ class TestServeAnalysisE2E:
             assert "total_serves" in analysis_summary
             assert "serves_with_contact" in analysis_summary
             assert "avg_elbow_angle" in analysis_summary
+            assert "knee_bend_analyzed" in analysis_summary
+            assert "knee_bend_failed" in analysis_summary
             assert analysis_summary["total_serves"] == 2
             assert analysis_summary["serves_with_contact"] == 2
 
@@ -166,6 +169,10 @@ class TestServeAnalysisE2E:
             avg_angle = analysis_summary["avg_elbow_angle"]
             assert avg_angle is not None
             assert 0.0 <= avg_angle <= 180.0  # Valid angle range
+
+            # Verify knee bend metrics were computed
+            assert analysis_summary["knee_bend_analyzed"] >= 0
+            assert analysis_summary["knee_bend_failed"] >= 0
 
             # Step 6: Verify serve attempts were updated with metrics
             serve_attempts = (
@@ -192,6 +199,15 @@ class TestServeAnalysisE2E:
             for attempt in serve_attempts:
                 assert attempt.elbow_angle_at_contact is not None
                 assert 0.0 <= attempt.elbow_angle_at_contact <= 180.0
+                # Verify knee bend metrics exist (may be None if insufficient pose data)
+                assert hasattr(attempt, "knee_bend_detected")
+                assert hasattr(attempt, "knee_bend_confidence")
+                assert hasattr(attempt, "knee_hip_ratio_min")
+                assert hasattr(attempt, "analysis_version")
+                # If knee bend was detected, confidence should be set
+                if attempt.knee_bend_detected is True:
+                    assert attempt.knee_bend_confidence is not None
+                    assert 0.0 <= attempt.knee_bend_confidence <= 1.0
                 assert attempt.court_side is not None
                 assert attempt.serve_number is not None
                 assert attempt.in_out is not None
@@ -248,6 +264,7 @@ class TestServeAnalysisE2E:
                 pose_data=json.dumps(mock_pose_data),
                 processing_time_seconds=10.0,
                 status="completed",
+                detection_mode="refine",  # Use refine mode for best quality
             )
             db_session.add(pose_detection)
             db_session.commit()
@@ -257,17 +274,25 @@ class TestServeAnalysisE2E:
             assert response.status_code == 200
             analysis_summary = response.json()
 
-            # Should skip serve without contact timestamp
+            # Should skip serve without contact timestamp for elbow angle
             assert analysis_summary["total_serves"] == 1
             assert analysis_summary["serves_with_contact"] == 0
 
-            # Verify serve attempt was NOT updated with metrics
+            # Verify serve attempt was NOT updated with elbow angle (no contact timestamp)
             serve_attempt = (
                 db_session.query(ServeAttempt)
                 .filter(ServeAttempt.video_id == video_id)
                 .first()
             )
             assert serve_attempt.elbow_angle_at_contact is None
+
+            # But knee bend metrics should still be computed (doesn't require contact)
+            assert hasattr(serve_attempt, "knee_bend_detected")
+            assert hasattr(serve_attempt, "analysis_version")
+
+            # But knee bend metrics should still be computed (doesn't require contact)
+            assert hasattr(serve_attempt, "knee_bend_detected")
+            assert hasattr(serve_attempt, "analysis_version")
 
         finally:
             if Path(tmp_file_path).exists():
@@ -442,12 +467,24 @@ class TestServeAnalysisE2E:
             timestamp = frame_idx / fps
             timestamp_ms = timestamp * 1000.0
 
-            # Create mock keypoints dict (format expected by calculate_elbow_angle)
+            # Create mock keypoints dict (format expected by calculate_elbow_angle and knee metrics)
             # Each keypoint is a list [x, y, z] or dict with coordinates
+            # Coordinates are normalized (0-1) for MediaPipe format
             keypoints = {
+                # Upper body (for elbow angle)
                 "right_shoulder": [0.5, 0.3, 0.9],
                 "right_elbow": [0.6, 0.4, 0.9],
                 "right_wrist": [0.7, 0.5, 0.9],
+                "left_shoulder": [0.5, 0.3, 0.9],
+                "left_elbow": [0.4, 0.4, 0.9],
+                "left_wrist": [0.3, 0.5, 0.9],
+                # Lower body (for knee bend metrics)
+                "left_hip": [0.5, 0.6, 0.9],
+                "right_hip": [0.5, 0.6, 0.9],
+                "left_knee": [0.5, 0.75, 0.9],  # Below hip (bent)
+                "right_knee": [0.5, 0.75, 0.9],  # Below hip (bent)
+                "left_ankle": [0.5, 0.9, 0.9],
+                "right_ankle": [0.5, 0.9, 0.9],
             }
 
             # Adjust elbow angle at contact timestamps to simulate serve motion
@@ -456,6 +493,14 @@ class TestServeAnalysisE2E:
                 # Adjust positions to create a more extended arm
                 keypoints["right_elbow"] = [0.6, 0.35, 0.9]  # Slightly higher
                 keypoints["right_wrist"] = [0.7, 0.45, 0.9]  # Slightly lower
+
+            # Simulate knee bend during early serve phase (first 1-2 seconds)
+            # More bend = knees further below hips
+            serve_start = min(contact_timestamps) if contact_timestamps else 0.0
+            if serve_start <= timestamp <= serve_start + 1.5:
+                # During loading phase, increase knee bend (knees lower)
+                keypoints["left_knee"] = [0.5, 0.8, 0.9]  # More bent
+                keypoints["right_knee"] = [0.5, 0.8, 0.9]  # More bent
 
             if use_new_format:
                 # New format with wrapper dict

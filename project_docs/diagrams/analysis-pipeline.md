@@ -20,7 +20,7 @@ flowchart TD
 
   MANUAL --> SA
   SA --> ANALYZE[Run serve analysis]
-  ANALYZE --> SUMMARY["Summary (e.g. elbow angle)"]
+  ANALYZE --> SUMMARY["Summary (elbow angle, knee bend)"]
 ```
 
 ## Notes
@@ -29,4 +29,4 @@ flowchart TD
 - **Scout/refine** — Scout pass uses a lite pose model and frame skip to find serve windows; refine pass runs the full model only on those windows. Resulting pose data is stored (scout + refine records).
 - **Serve windows** — Either (1) we suggest windows from pose data and you accept/edit, or (2) you add a window yourself (start/end time) without using suggestions.
 - **Stored** — Pose data → `pose_detections` table (detection_mode: scout or refine); serve windows → `serve_attempts` table (one row per window; source can be manual or from a proposal).
-- **Serve analysis** — Uses pose data and serve windows to compute metrics (e.g. elbow angle at contact) and return a summary.
+- **Serve analysis** — Uses pose data and serve windows to compute metrics (elbow angle at contact, knee bend during early phase) and return a summary. Selects best pose detection (refine > full > scout).

@@ -15,6 +15,12 @@ interface ElbowAngleFeedback {
   coachNote: string;
 }
 
+interface KneeBendFeedback {
+  level: 'great' | 'solid' | 'focus' | 'unavailable';
+  pillText: string;
+  coachNote: string;
+}
+
 /**
  * Maps elbow angle (in degrees) to feedback level, pill text, and coach note.
  * Frontend-only heuristic for MVP - will be replaced with LLM-based recommendations.
@@ -39,6 +45,45 @@ const getElbowAngleFeedback = (angleDeg: number): ElbowAngleFeedback => {
   };
 };
 
+/**
+ * Maps knee bend detection and confidence to feedback level, pill text, and coach note.
+ * Frontend-only heuristic for MVP - will be replaced with LLM-based recommendations.
+ */
+const getKneeBendFeedback = (
+  detected: boolean | null,
+  confidence: number | null
+): KneeBendFeedback => {
+  if (detected === null || confidence === null) {
+    return {
+      level: 'unavailable',
+      pillText: 'Not Available',
+      coachNote: 'Knee bend analysis not available. May need better camera angle or pose data.',
+    };
+  }
+
+  if (confidence < 0.5) {
+    return {
+      level: 'unavailable',
+      pillText: 'Low Confidence',
+      coachNote: 'Knee bend detected but confidence is low. Camera angle or pose quality may be limiting.',
+    };
+  }
+
+  if (detected) {
+    return {
+      level: 'great',
+      pillText: 'Good Bend',
+      coachNote: 'Good knee bend during loading phase. This helps generate power.',
+    };
+  }
+
+  return {
+    level: 'focus',
+    pillText: 'Needs Work',
+    coachNote: 'Limited knee bend detected. Try bending knees more during the loading phase for better power.',
+  };
+};
+
 const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
   videoId,
   onServeAttemptClick,
@@ -56,7 +101,9 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
 
   const serveAttemptsWithMetrics = useMemo(() => {
     return sortedServeAttempts.filter(
-      (sa) => sa.elbow_angle_at_contact !== null
+      (sa) =>
+        sa.elbow_angle_at_contact !== null ||
+        sa.knee_bend_detected !== null
     );
   }, [sortedServeAttempts]);
 
@@ -99,7 +146,12 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
         <div className="analysis-right-panel__metrics-list">
           {sortedServeAttempts.length > 0 ? (
             sortedServeAttempts.map((serveAttempt) => {
-              const hasMetrics = serveAttempt.elbow_angle_at_contact !== null;
+              const hasElbowMetrics =
+                serveAttempt.elbow_angle_at_contact !== null;
+              const hasKneeMetrics =
+                serveAttempt.knee_bend_detected !== null;
+              const hasMetrics = hasElbowMetrics || hasKneeMetrics;
+
               const displayLabel = serveAttempt.serve_subtype
                 ? serveAttempt.serve_subtype.charAt(0).toUpperCase() +
                   serveAttempt.serve_subtype.slice(1)
@@ -132,12 +184,10 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                     </div>
                   </div>
                   {hasMetrics ? (
-                    (() => {
-                      const feedback = getElbowAngleFeedback(
-                        serveAttempt.elbow_angle_at_contact as number
-                      );
-                      return (
-                        <>
+                    <div className="analysis-right-panel__metrics-group">
+                      {/* Elbow Angle Metric */}
+                      {hasElbowMetrics && (
+                        <div className="analysis-right-panel__metric-section">
                           <div className="analysis-right-panel__metric-angle">
                             <div className="analysis-right-panel__metric-angle-main">
                               <span className="analysis-right-panel__angle-value">
@@ -151,17 +201,66 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                               </span>
                             </div>
                             <span
-                              className={`analysis-right-panel__feedback-pill analysis-right-panel__feedback-pill--${feedback.level}`}
+                              className={`analysis-right-panel__feedback-pill analysis-right-panel__feedback-pill--${getElbowAngleFeedback(serveAttempt.elbow_angle_at_contact as number).level}`}
                             >
-                              {feedback.pillText}
+                              {getElbowAngleFeedback(
+                                serveAttempt.elbow_angle_at_contact as number
+                              ).pillText}
                             </span>
                           </div>
                           <div className="analysis-right-panel__coach-note">
-                            {feedback.coachNote}
+                            {
+                              getElbowAngleFeedback(
+                                serveAttempt.elbow_angle_at_contact as number
+                              ).coachNote
+                            }
                           </div>
-                        </>
-                      );
-                    })()
+                        </div>
+                      )}
+
+                      {/* Knee Bend Metric */}
+                      {hasKneeMetrics && (
+                        <div className="analysis-right-panel__metric-section">
+                          <div className="analysis-right-panel__metric-angle">
+                            <div className="analysis-right-panel__metric-angle-main">
+                              <span className="analysis-right-panel__angle-value">
+                                {serveAttempt.knee_bend_detected
+                                  ? '✓'
+                                  : serveAttempt.knee_bend_confidence !== null &&
+                                    serveAttempt.knee_bend_confidence < 0.5
+                                    ? '?'
+                                    : '✗'}
+                              </span>
+                              <span className="analysis-right-panel__angle-label">
+                                Knee Bend
+                                {serveAttempt.knee_bend_confidence !== null &&
+                                  ` (${Math.round(
+                                    serveAttempt.knee_bend_confidence * 100
+                                  )}%)`}
+                              </span>
+                            </div>
+                            <span
+                              className={`analysis-right-panel__feedback-pill analysis-right-panel__feedback-pill--${getKneeBendFeedback(serveAttempt.knee_bend_detected, serveAttempt.knee_bend_confidence).level}`}
+                            >
+                              {
+                                getKneeBendFeedback(
+                                  serveAttempt.knee_bend_detected,
+                                  serveAttempt.knee_bend_confidence
+                                ).pillText
+                              }
+                            </span>
+                          </div>
+                          <div className="analysis-right-panel__coach-note">
+                            {
+                              getKneeBendFeedback(
+                                serveAttempt.knee_bend_detected,
+                                serveAttempt.knee_bend_confidence
+                              ).coachNote
+                            }
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="analysis-right-panel__metric-angle">
                       <span className="analysis-right-panel__angle-label">

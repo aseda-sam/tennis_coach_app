@@ -30,6 +30,54 @@ const SKELETON_CONNECTIONS = [
   ['right_shoulder', 'right_hip'],
 ] as const;
 
+const KNEE_CONNECTIONS = new Set([
+  'left_hip|left_knee',
+  'left_knee|left_ankle',
+  'right_hip|right_knee',
+  'right_knee|right_ankle',
+]);
+
+const KNEE_BEND_ANGLE_THRESHOLD = 140;
+const DEFAULT_SKELETON_COLOR = '#00ff88';
+const KNEE_BEND_COLOR = '#A855F7';
+
+function calculateAngle(
+  point1: { x: number; y: number },
+  point2: { x: number; y: number },
+  point3: { x: number; y: number }
+): number | null {
+  const v1x = point1.x - point2.x;
+  const v1y = point1.y - point2.y;
+  const v2x = point3.x - point2.x;
+  const v2y = point3.y - point2.y;
+
+  const dot = v1x * v2x + v1y * v2y;
+  const mag1 = Math.hypot(v1x, v1y);
+  const mag2 = Math.hypot(v2x, v2y);
+  if (mag1 === 0 || mag2 === 0) return null;
+
+  const cosAngle = dot / (mag1 * mag2);
+  const clamped = Math.min(1, Math.max(-1, cosAngle));
+  return (Math.acos(clamped) * 180) / Math.PI;
+}
+
+function isKneeBent(
+  pose: Record<string, { x: number; y: number }>,
+  side: 'left' | 'right'
+): boolean {
+  const hip = pose[`${side}_hip`];
+  const knee = pose[`${side}_knee`];
+  const ankle = pose[`${side}_ankle`];
+  if (!hip || !knee || !ankle) return false;
+
+  const angle = calculateAngle(hip, knee, ankle);
+  return angle !== null && angle < KNEE_BEND_ANGLE_THRESHOLD;
+}
+
+function isKneeConnection(startKey: string, endKey: string): boolean {
+  return KNEE_CONNECTIONS.has(`${startKey}|${endKey}`);
+}
+
 // Joint circles for key points
 const JOINT_POINTS = [
   'left_shoulder',
@@ -197,17 +245,37 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
     }
 
     // Draw skeleton connections with glow effect
-    ctx.shadowColor = '#00ff88';
+    ctx.shadowColor = DEFAULT_SKELETON_COLOR;
     ctx.shadowBlur = 8;
-    ctx.strokeStyle = '#00ff88';
+    ctx.strokeStyle = DEFAULT_SKELETON_COLOR;
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
+
+    const leftKneeBent = isKneeBent(normalizedPose, 'left');
+    const rightKneeBent = isKneeBent(normalizedPose, 'right');
 
     for (const [startKey, endKey] of SKELETON_CONNECTIONS) {
       const start = normalizedPose[startKey];
       const end = normalizedPose[endKey];
 
       if (start && end) {
+        const isLeftKneeSegment =
+          leftKneeBent &&
+          isKneeConnection(startKey, endKey) &&
+          startKey.startsWith('left_');
+        const isRightKneeSegment =
+          rightKneeBent &&
+          isKneeConnection(startKey, endKey) &&
+          startKey.startsWith('right_');
+
+        if (isLeftKneeSegment || isRightKneeSegment) {
+          ctx.strokeStyle = KNEE_BEND_COLOR;
+          ctx.lineWidth = 4;
+        } else {
+          ctx.strokeStyle = DEFAULT_SKELETON_COLOR;
+          ctx.lineWidth = 3;
+        }
+
         ctx.beginPath();
         ctx.moveTo(start.x, start.y);
         ctx.lineTo(end.x, end.y);

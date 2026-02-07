@@ -78,6 +78,34 @@ class ServeAttemptInfo(BaseModel):
     elbow_angle_at_contact: Optional[float] = Field(
         default=None, ge=0, le=180, description="Elbow angle at contact in degrees"
     )
+    knee_bend_detected: Optional[bool] = Field(
+        default=None,
+        description="Whether knee bend was detected during early serve phase",
+    )
+    knee_bend_confidence: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="Confidence score (0.0-1.0) for knee bend detection",
+    )
+    knee_hip_ratio_min: Optional[float] = Field(
+        default=None, description="Minimum knee-hip ratio (lower = more bend)"
+    )
+    knee_flexion_min_deg_left: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=180,
+        description="Minimum left knee flexion angle in degrees",
+    )
+    knee_flexion_min_deg_right: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=180,
+        description="Minimum right knee flexion angle in degrees",
+    )
+    analysis_version: Optional[str] = Field(
+        default=None, description="Version of analysis heuristics used"
+    )
     court_side: Optional[str] = Field(default=None, description="Court side")
     serve_number: Optional[int] = Field(default=None, description="Serve number")
     serve_subtype: Optional[str] = Field(default=None, description="Serve subtype")
@@ -103,4 +131,10 @@ class ServeAnalysisSummary(BaseModel):
     )
     avg_elbow_angle: Optional[float] = Field(
         default=None, ge=0, le=180, description="Average elbow angle in degrees"
+    )
+    knee_bend_analyzed: int = Field(
+        ge=0, default=0, description="Number of serves with knee bend metrics computed"
+    )
+    knee_bend_failed: int = Field(
+        ge=0, default=0, description="Number of serves where knee bend analysis failed"
     )

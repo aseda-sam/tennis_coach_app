@@ -13,12 +13,14 @@ import { User } from '@supabase/supabase-js';
 interface DemoLandingProps {
   onTryDemo: () => void;
   onUploadVideo: () => void;
+  onWatchTutorial: () => void;
   user: User | null;
 }
 
 const DemoLanding: React.FC<DemoLandingProps> = ({
   onTryDemo,
   onUploadVideo,
+  onWatchTutorial,
   user,
 }) => {
   return (
@@ -34,6 +36,14 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               We break down body and ball positions for serves and
               groundstrokes to help you understand your technique better.
             </p>
+            <button
+              className="demo-landing__watch-tutorial"
+              onClick={onWatchTutorial}
+              type="button"
+            >
+              <VideoIcon size={16} color="var(--color-primary)" />
+              Watch How It Works
+            </button>
           </div>
 
           {/* Cards Row */}

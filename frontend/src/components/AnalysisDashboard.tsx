@@ -268,8 +268,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     // Check if any serve attempts already have metrics
     const hasExistingMetrics = serveAttempts.some(
       (sa) =>
-        sa.elbow_angle_at_contact !== null &&
-        sa.elbow_angle_at_contact !== undefined
+        (sa.elbow_angle_at_contact !== null &&
+          sa.elbow_angle_at_contact !== undefined) ||
+        sa.knee_bend_detected !== null
     );
 
     setIsAnalyzingServes(true);
@@ -450,8 +451,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   ? 'Analyzing…'
                   : serveAttempts.some(
                         (sa) =>
-                          sa.elbow_angle_at_contact !== null &&
-                          sa.elbow_angle_at_contact !== undefined
+                          (sa.elbow_angle_at_contact !== null &&
+                            sa.elbow_angle_at_contact !== undefined) ||
+                          sa.knee_bend_detected !== null
                       )
                     ? 'Re-Analyze Serves'
                     : 'Analyze Serves'}

@@ -413,13 +413,16 @@ async def get_video_url(
                         demo_path = f"demo/{db_video.id}_{db_video.filename}"
                     demo_url = storage_service.get_demo_public_url(demo_path)
                     logger.info(
-                        f"Generated demo bucket public URL for active demo video {video_id}"
+                        "Generated demo bucket public URL for active demo video %s",
+                        video_id,
                     )
                     # Return with max expiration since it's a public URL
                     return VideoSignedUrlResponse(url=demo_url, expires_in=86400 * 365)
                 except (ValueError, RuntimeError) as e:
                     logger.error(
-                        f"Failed to get demo bucket URL for video {video_id}: {e}"
+                        "Failed to get demo bucket URL for video %s: %s",
+                        video_id,
+                        e,
                     )
                     # Fallback to regular flow
 
@@ -430,12 +433,17 @@ async def get_video_url(
                     storage_path, expires_in=expires_in
                 )
                 logger.info(
-                    f"Generated signed URL for video {video_id}, expires in {expires_in}s"
+                    "Generated signed URL for video %s, expires in %ss",
+                    video_id,
+                    expires_in,
                 )
                 return VideoSignedUrlResponse(url=signed_url, expires_in=expires_in)
             except (ValueError, RuntimeError) as e:
                 logger.error(
-                    f"Failed to create signed URL for video {video_id}, storage_path={storage_path}: {e}"
+                    "Failed to create signed URL for video %s, storage_path=%s: %s",
+                    video_id,
+                    storage_path,
+                    e,
                 )
                 raise HTTPException(
                     status_code=500,
@@ -448,7 +456,9 @@ async def get_video_url(
             base_url = str(request.base_url).rstrip("/")
             stream_url = f"{base_url}/v0/videos/{video_id}/stream"
             logger.debug(
-                f"Returning stream URL for local video {video_id}: {stream_url}"
+                "Returning stream URL for local video %s: %s",
+                video_id,
+                stream_url,
             )
             return VideoSignedUrlResponse(url=stream_url, expires_in=expires_in)
 
@@ -730,10 +740,7 @@ async def analyze_serve_attempts(
         # Get video to check authorization
         video = video_service.get_video_by_id(db, video_id)
         if not video:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Video with ID {video_id} not found",
-            )
+            raise handle_not_found_error("video", str(video_id))
 
         # Check authorization
         require_video_access(video, current_user)
@@ -778,6 +785,8 @@ async def analyze_serve_attempts(
             total_serves=len(serve_attempts),
             serves_with_contact=serves_with_contact,
             avg_elbow_angle=avg_elbow_angle,
+            knee_bend_analyzed=results.get("knee_bend_analyzed", 0),
+            knee_bend_failed=results.get("knee_bend_failed", 0),
         )
 
     except HTTPException:
@@ -788,9 +797,9 @@ async def analyze_serve_attempts(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         ) from e
-    except Exception as e:
-        logger.exception("Error starting serve analysis")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to start serve analysis. Please try again later.",
-        ) from e
+    except Exception as e:  # noqa: BLE001 - Catch all exceptions to ensure proper error handling
+        log_and_raise_error(
+            e,
+            "analyze_serve_attempts",
+            {"video_id": video_id, "user_id": current_user["id"]},
+        )

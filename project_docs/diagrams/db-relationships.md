@@ -79,6 +79,10 @@ erDiagram
     int player_id FK
     float start_timestamp
     float end_timestamp
+    float elbow_angle_at_contact
+    bool knee_bend_detected
+    float knee_bend_confidence
+    float knee_hip_ratio_min
     string source
     int source_proposal_id FK
   }

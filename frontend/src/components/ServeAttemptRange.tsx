@@ -35,7 +35,9 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
     ? ((serveAttempt.contact_timestamp - serveAttempt.start_timestamp) / (serveAttempt.end_timestamp - serveAttempt.start_timestamp)) * 100
     : null;
 
-  const hasMetrics = serveAttempt.elbow_angle_at_contact !== null;
+  const hasMetrics =
+    serveAttempt.elbow_angle_at_contact !== null ||
+    serveAttempt.knee_bend_detected !== null;
 
   // Color based on whether metrics are available
   const rangeColor = hasMetrics
@@ -128,9 +130,17 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
                 Contact: {serveAttempt.contact_timestamp.toFixed(2)}s
               </div>
             )}
-            {hasMetrics && (
+            {serveAttempt.elbow_angle_at_contact !== null && (
               <div>
-                Elbow Angle: {Math.round(serveAttempt.elbow_angle_at_contact!)}°
+                Elbow Angle: {Math.round(serveAttempt.elbow_angle_at_contact)}°
+              </div>
+            )}
+            {serveAttempt.knee_bend_detected !== null && (
+              <div>
+                Knee Bend:{' '}
+                {serveAttempt.knee_bend_detected ? 'Detected' : 'Not Detected'}
+                {serveAttempt.knee_bend_confidence !== null &&
+                  ` (${Math.round(serveAttempt.knee_bend_confidence * 100)}%)`}
               </div>
             )}
             {serveAttempt.court_side && (
