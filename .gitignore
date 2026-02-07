@@ -49,14 +49,9 @@ venv.bak/
 *.swo
 *~
 
-# Cursor (track rules/skills/plans; ignore local state)
-.cursor/*
+# Cursor (but track plans)
+.cursor/
 !.cursor/plans/
-!.cursor/plans/**
-!.cursor/rules/
-!.cursor/rules/**
-!.cursor/skills/
-!.cursor/skills/**
 
 # Claude AI
 .claude/
