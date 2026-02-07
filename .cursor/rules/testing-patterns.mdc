@@ -1,0 +1,34 @@
+---
+description: Testing patterns (short, contract-focused)
+globs:
+  - backend/tests/**/*.py
+  - backend/app/**/*.py
+alwaysApply: false
+---
+
+# Testing Patterns
+
+## Goal
+
+- **Protect contracts** (API response shapes, service behavior) with fast, reliable tests.
+
+## What to Write (Default Order)
+
+- **Contract tests (API)** for new/changed endpoints: status codes + response shape + auth behavior.
+- **Unit tests (services/utils)** for business logic with dependencies mocked.
+- **Integration tests** only when the workflow contract needs it (upload → job → results).
+
+## Guidelines
+
+- **Test behavior, not implementation details** (don’t assert internal config/private fields).
+- **Mock external dependencies** (Redis, storage, external APIs) unless the test is explicitly integration.
+- **Prefer stable IDs/contracts** over internal job backend details (e.g. assert `job_id` exists and status transitions, not that RQ stores X).
+
+## Storage-aware pragmatism
+
+- If a test requires local filesystem access and storage is cloud, **skip** with a clear message.
+
+## Where to look (canonical examples)
+
+- Tests: `backend/tests/`
+- API routes: `backend/app/api/routes/`

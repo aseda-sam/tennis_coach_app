@@ -1,0 +1,74 @@
+---
+description: Project directory structure, file organization, and important files documentation
+alwaysApply: false
+---
+
+# Project Structure
+
+## Root Directory
+
+```
+tennis_coach_app/
+├── .cursor/rules/          # Cursor IDE rules
+├── backend/                # FastAPI backend application
+├── frontend/               # React frontend application
+├── data/                   # Application data storage
+├── project_docs/           # Project documentation
+├── ml_models/              # YOLO model files
+└── README.md               # Project overview
+```
+
+## Backend Structure
+
+```
+backend/
+├── app/
+│   ├── api/
+│   │   ├── routes/          # API endpoints
+│   │   └── schemas/         # Pydantic models
+│   ├── core/
+│   │   ├── config.py        # Configuration
+│   │   └── database.py      # Database setup
+│   ├── models/              # SQLAlchemy models
+│   ├── services/            # Business logic
+│   └── main.py              # FastAPI app
+├── docs/                    # Documentation
+│   ├── api.md              # API reference
+│   ├── database_schema.md  # Database schema
+│   └── ...
+├── alembic/                 # Database migrations
+├── tests/                   # Test files
+└── pyproject.toml           # Project configuration
+```
+
+## Data Storage
+
+```
+data/
+├── analysis_cache/          # Cached analysis results
+├── database/               # SQLite database files
+└── videos/                 # Video file storage
+    ├── processed/          # Processed videos
+    └── raw/               # Original videos
+```
+
+## Documentation
+
+- **Backend API**: `backend/docs/api.md`
+- **Database Schema**: `backend/docs/database_schema.md`
+- **Project Docs**: `project_docs/` (architecture, plans, guides)
+
+## Key Files
+
+- **`backend/app/main.py`**: FastAPI application entry point
+- **`backend/app/core/config.py`**: Environment variables and settings
+- **`backend/app/core/database.py`**: Database connection and session management
+- **`backend/pyproject.toml`**: Python project configuration and dependencies
+
+## Module Responsibilities
+
+- **`api/`**: HTTP request/response handling
+- **`core/`**: Application configuration and database setup
+- **`models/`**: Data models and database schema
+- **`services/`**: Business logic and external integrations
+- **`utils/`**: Shared utility functions

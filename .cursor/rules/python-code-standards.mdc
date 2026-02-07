@@ -1,0 +1,48 @@
+---
+description: Python code quality standards and best practices
+globs:
+  - backend/**/*.py
+alwaysApply: false
+---
+
+# Python Code Standards (Backend)
+
+## Principles
+
+- **KISS**: prefer the simplest solution that meets the contract; avoid clever abstractions.
+- **DRY**: extract shared logic *after* a pattern repeats; prefer small utilities over copy/paste.
+- **YAGNI**: don’t build speculative flexibility; add indirection only when it’s paying rent.
+
+## Defaults
+
+- **Type hints**: required for all new functions/methods (params + return).
+- **Naming**: `snake_case` vars/functions, `PascalCase` classes, `UPPER_SNAKE_CASE` constants.
+- **Strings**: prefer f-strings.
+- **Keep functions simple**: one responsibility; extract helpers when branching grows.
+- **Secrets**: never hardcode or commit secrets; read from env/config.
+
+## Exceptions & Logging
+
+- **No bare `except:`**. Catch specific exceptions; otherwise `except Exception` with a comment why.
+- **Log with parameters** (`logger.info("x=%s", x)`), not f-strings.
+- **Re-raise** in background jobs after logging so the job is marked failed.
+
+## Pydantic v2 (Required)
+
+- Use `ConfigDict(from_attributes=True)` for ORM-backed schemas.
+- Use `Model.model_validate(obj)` (not `from_orm`).
+
+## Formatting / Linting
+
+- Use Ruff: `ruff format .` and `ruff check .` (use `--fix` when safe).
+
+## Imports
+
+- Keep imports at top-level by default.
+- Use **lazy imports** inside RQ task functions only when needed to avoid import/fork issues.
+
+## Where architecture rules live
+
+- API routing + errors: see `api-patterns.mdc`
+- Backend layering/jobs/storage: see `backend-patterns.mdc`
+- Testing guidance: see `testing-patterns.mdc`
