@@ -14,6 +14,9 @@ ALLOWED_PLAYER_FIELDS = {
     "name",
     "dominant_hand",
     "backhand_style",
+    "height_cm",
+    "age_group",
+    "gender",
     "notes",
 }
 
@@ -24,6 +27,9 @@ def create_player(
     dominant_hand: Literal["left", "right"],
     user_id: str,
     backhand_style: Optional[Literal["one_handed", "two_handed"]] = None,
+    height_cm: Optional[float] = None,
+    age_group: Optional[str] = None,
+    gender: Optional[str] = None,
     notes: Optional[str] = None,
 ) -> Player:
     """
@@ -34,7 +40,9 @@ def create_player(
         name (str): Player name.
         dominant_hand (Literal["left", "right"]): Dominant hand.
         backhand_style (Optional[Literal["one_handed", "two_handed"]]): Backhand style.
-        height (Optional[float]): Height in cm.
+        height_cm (Optional[float]): Height in cm.
+        age_group (Optional[str]): Age group.
+        gender (Optional[str]): Gender identity.
         notes (Optional[str]): Additional notes.
         user_id (Optional[str]): UUID of the user who owns this player.
 
@@ -64,6 +72,9 @@ def create_player(
         name=name,
         dominant_hand=dominant_hand,
         backhand_style=backhand_style,
+        height_cm=height_cm,
+        age_group=age_group,
+        gender=gender,
         notes=notes,
         user_id=user_id,
     )
@@ -170,7 +181,9 @@ def get_players(
     return players
 
 
-def update_player(db: Session, player_id: int, **updates: str | float | None) -> Player:
+def update_player(
+    db: Session, player_id: int, **updates: str | float | int | None
+) -> Player:
     """
     Update an existing Player record.
 
@@ -287,6 +300,9 @@ def get_or_create_default_player(
     name: Optional[str] = None,
     dominant_hand: Optional[Literal["left", "right"]] = None,
     backhand_style: Optional[Literal["one_handed", "two_handed"]] = None,
+    height_cm: Optional[float] = None,
+    age_group: Optional[str] = None,
+    gender: Optional[str] = None,
     user_metadata: Optional[dict] = None,
 ) -> Player:
     """
@@ -302,6 +318,9 @@ def get_or_create_default_player(
         name: Optional player name (defaults to "Me" if not provided)
         dominant_hand: Optional dominant hand (defaults to "right" if not provided)
         backhand_style: Optional backhand style
+        height_cm: Optional height in centimeters
+        age_group: Optional age group
+        gender: Optional gender identity
 
     Returns:
         Player: The default player for this user
@@ -329,6 +348,12 @@ def get_or_create_default_player(
             default_player.dominant_hand = dominant_hand
         if backhand_style is not None:
             default_player.backhand_style = backhand_style
+        if height_cm is not None:
+            default_player.height_cm = height_cm
+        if age_group is not None:
+            default_player.age_group = age_group
+        if gender is not None:
+            default_player.gender = gender
         db.commit()
         db.refresh(default_player)
         return default_player
@@ -346,6 +371,9 @@ def get_or_create_default_player(
         name=player_name,
         dominant_hand=player_dominant_hand,
         backhand_style=backhand_style,
+        height_cm=height_cm,
+        age_group=age_group,
+        gender=gender,
         user_id=user_id,
     )
     db.add(default_player)

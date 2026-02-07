@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -17,6 +17,9 @@ class Player(Base):
         String(10), nullable=False
     )  # 'left', 'right' - the hand typically used for hitting
     backhand_style = Column(String(20), nullable=True)  # 'one_handed', 'two_handed'
+    height_cm = Column(Float, nullable=True)  # Player height in centimeters
+    age_group = Column(String(20), nullable=True)  # 'under_13', '13_to_17', etc.
+    gender = Column(String(30), nullable=True)  # 'female', 'male', 'non_binary', etc.
     notes = Column(Text, nullable=True)
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

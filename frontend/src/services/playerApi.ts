@@ -3,8 +3,11 @@ import api from './api';
 export interface PlayerProfileUpdate {
   name?: string;
   dominant_hand?: string;
-  backhand_style?: string;
-  notes?: string;
+  backhand_style?: string | null;
+  height_cm?: number | null;
+  age_group?: string | null;
+  gender?: string | null;
+  notes?: string | null;
 }
 
 export interface PlayerInfo {
@@ -12,6 +15,9 @@ export interface PlayerInfo {
   name: string;
   dominant_hand: string;
   backhand_style?: string | null;
+  height_cm?: number | null;
+  age_group?: string | null;
+  gender?: string | null;
   notes?: string | null;
   created_at: string;
   updated_at?: string | null;

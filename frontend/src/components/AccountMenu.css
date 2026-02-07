@@ -183,6 +183,101 @@
   color: var(--color-text);
 }
 
+.account-menu-edit-btn {
+  margin-top: var(--spacing-md);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: var(--transition-normal);
+}
+
+.account-menu-edit-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-dark);
+}
+
+.account-menu-profile--edit {
+  background: var(--color-surface-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.account-menu-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.account-menu-input {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  transition: var(--transition-normal);
+}
+
+.account-menu-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0, 188, 125, 0.12);
+}
+
+.account-menu-input:disabled {
+  background: var(--color-surface-tertiary);
+  color: var(--color-text-disabled);
+}
+
+.account-menu-error {
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  background: var(--color-error-soft);
+  color: var(--color-error-dark);
+  font-size: var(--font-size-sm);
+}
+
+.account-menu-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+.account-menu-primary-btn,
+.account-menu-secondary-btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  transition: var(--transition-normal);
+}
+
+.account-menu-primary-btn {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: var(--shadow-primary-sm);
+}
+
+.account-menu-primary-btn:hover {
+  background: var(--color-primary-dark);
+}
+
+.account-menu-secondary-btn {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.account-menu-secondary-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-dark);
+}
+
 /* Divider */
 .account-menu-divider {
   height: 1px;

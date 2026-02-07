@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useAdmin } from '../hooks/useAdmin';
+import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import { UploadIcon } from './Icons';
@@ -39,12 +40,15 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
   const [isDemo, setIsDemo] = useState(defaultIsDemo);
   const [sessionType, setSessionType] = useState<string>('');
   const [cameraAngle, setCameraAngle] = useState<string>('');
+  const [playerTag, setPlayerTag] = useState<'you' | 'anonymous'>('you');
   const [isUpdatingMetadata, setIsUpdatingMetadata] = useState(false);
   const { config } = useAppConfig();
   const { isAdmin: canUploadDemo } = useAdmin();
+  const { data: playerProfile } = usePlayerProfile();
   const resolvedIsDemo = forceDemo ? true : isDemo;
   const maxSizeBytes = config.upload_limits.max_file_size_bytes;
   const maxSizeLabel = formatFileSizeMb(maxSizeBytes);
+  const playerLabel = playerProfile?.name || 'You';
 
   const handleFileSelect = useCallback(
     async (file: File) => {
@@ -174,6 +178,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
     setStep(1);
     setSessionType('');
     setCameraAngle('');
+    setPlayerTag('you');
     setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -373,6 +378,56 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
                 <option value="diagonal">Diagonal</option>
                 <option value="unknown">Unknown</option>
               </select>
+            </div>
+
+            <div className="player-tag-section">
+              <div className="player-tag-title">Player Tag</div>
+              <div className="player-tag-options">
+                <label
+                  className={`player-tag-option ${
+                    playerTag === 'you' ? 'selected' : ''
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="playerTag"
+                    value="you"
+                    checked={playerTag === 'you'}
+                    onChange={() => setPlayerTag('you')}
+                    disabled={isUpdatingMetadata}
+                  />
+                  <span>
+                    <strong>You</strong>
+                    <span className="player-tag-subtitle">
+                      {playerLabel} (default)
+                    </span>
+                  </span>
+                </label>
+                <label
+                  className={`player-tag-option ${
+                    playerTag === 'anonymous' ? 'selected' : ''
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="playerTag"
+                    value="anonymous"
+                    checked={playerTag === 'anonymous'}
+                    onChange={() => setPlayerTag('anonymous')}
+                    disabled={isUpdatingMetadata}
+                  />
+                  <span>
+                    <strong>Anonymous</strong>
+                    <span className="player-tag-subtitle">
+                      No player tracking yet
+                    </span>
+                  </span>
+                </label>
+              </div>
+              <p className="player-tag-note">
+                Other players are not supported yet. Update your profile from the
+                account menu anytime.
+              </p>
             </div>
 
             <div className="finish-upload-actions">

@@ -15,6 +15,9 @@ class TestPlayerAPI:
             "name": "John Doe",
             "dominant_hand": "right",
             "backhand_style": "two_handed",
+            "height_cm": 185.5,
+            "age_group": "18_to_29",
+            "gender": "male",
             "notes": "Professional player",
         }
 
@@ -25,6 +28,9 @@ class TestPlayerAPI:
         assert data["name"] == "John Doe"
         assert data["dominant_hand"] == "right"
         assert data["backhand_style"] == "two_handed"
+        assert data["height_cm"] == 185.5
+        assert data["age_group"] == "18_to_29"
+        assert data["gender"] == "male"
         assert data["notes"] == "Professional player"
         assert "id" in data
         assert "created_at" in data
@@ -216,6 +222,8 @@ class TestPlayerAPI:
         update_data = {
             "name": "Updated Name",
             "notes": "Updated notes",
+            "height_cm": 172,
+            "gender": "non_binary",
         }
 
         response = client.put(f"/v0/players/{player_id}", json=update_data)
@@ -224,6 +232,8 @@ class TestPlayerAPI:
         data = response.json()
         assert data["name"] == "Updated Name"
         assert data["notes"] == "Updated notes"
+        assert data["height_cm"] == 172
+        assert data["gender"] == "non_binary"
         assert data["dominant_hand"] == "right"  # Unchanged
         assert data["backhand_style"] == "two_handed"  # Unchanged
 
