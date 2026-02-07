@@ -425,7 +425,11 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
                 </label>
               </div>
               <p className="player-tag-note">
-                Other players aren't supported yet. Update your profile from the
+                Tagging as You keeps your long-term stats accurate across videos.
+              </p>
+              <p className="player-tag-note">
+                Someone Else videos won't be used in your personal trends yet.
+                We don't track other players. Update your profile from the
                 account menu anytime.
               </p>
             </div>
