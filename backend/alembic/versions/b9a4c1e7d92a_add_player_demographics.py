@@ -9,6 +9,7 @@ Create Date: 2026-02-07 12:00:00.000000
 from typing import Sequence, Union
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -32,9 +33,13 @@ def upgrade() -> None:
     if "height_cm" not in columns:
         op.add_column("players", sa.Column("height_cm", sa.Float(), nullable=True))
     if "age_group" not in columns:
-        op.add_column("players", sa.Column("age_group", sa.String(length=20), nullable=True))
+        op.add_column(
+            "players", sa.Column("age_group", sa.String(length=20), nullable=True)
+        )
     if "gender" not in columns:
-        op.add_column("players", sa.Column("gender", sa.String(length=30), nullable=True))
+        op.add_column(
+            "players", sa.Column("gender", sa.String(length=30), nullable=True)
+        )
 
 
 def downgrade() -> None:
