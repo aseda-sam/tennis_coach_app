@@ -1,0 +1,126 @@
+# Observability (OpenTelemetry + Structured Logs)
+
+## Goal
+
+- **Correlate everything**: logs, traces, and metrics share canonical IDs (`trace_id`, `job_id`, `video_id`, `request_id`) so you can jump from Grafana trace → logs → metrics.
+- **See where time goes**: distributed traces show API → queue → worker → stages (download, scout, refine, DB write).
+- **Know when things break**: metrics (counters, histograms) track job success/failure rates and durations.
+
+## Canonical IDs (use everywhere)
+
+When logging or creating spans, include these IDs so everything correlates:
+
+| ID           | Where               | How to get                                     |
+| ------------ | ------------------- | ---------------------------------------------- |
+| `trace_id`   | OTel context (auto) | Added by `ObservabilityLogFilter` to all logs  |
+| `span_id`    | OTel context (auto) | Added by `ObservabilityLogFilter` to all logs  |
+| `request_id` | API routes          | `request.state.request_id` (set by middleware) |
+| `job_id`     | Worker tasks        | `VideoJob.id` (UUID string)                    |
+| `video_id`   | Both                | Function parameter or DB record                |
+| `rq_job_id`  | Worker tasks        | `get_current_job().id` (from RQ)               |
+
+## Logging
+
+### API Routes
+
+Use `get_log_extra()` to add canonical IDs to log statements:
+
+```python
+from app.utils.logging_context import get_log_extra
+
+logger.info(
+    "Processing video %s",
+    video_id,
+    extra=get_log_extra(
+        request_id=request.state.request_id,
+        video_id=video_id,
+        job_id=str(video_job.id) if video_job else None,
+    ),
+)
+```
+
+**Note**: `trace_id` and `span_id` are added automatically by `ObservabilityLogFilter` (no need to include them).
+
+### Worker Tasks
+
+Always include `video_id` and `job_id` in worker logs:
+
+```python
+logger.info(
+    "Starting analysis for video %s",
+    video_id,
+    extra=get_log_extra(video_id=video_id, job_id=video_job_id),
+)
+```
+
+## Tracing (Spans)
+
+### API Routes
+
+- **Automatic**: FastAPI instrumentation (`FastAPIInstrumentor`) creates spans for all HTTP requests.
+- **Manual spans**: Use `tracer.start_as_current_span()` for custom operations if needed.
+
+### Worker Tasks
+
+- **Root span**: Use `_rq_job_span()` context manager to wrap entire job:
+
+  ```python
+  with _rq_job_span("rq.pose_detection", video_id=video_id, video_job_id=video_job_id):
+      # job code here
+  ```
+
+- **Stage spans**: Use `_stage_span()` for pipeline stages:
+
+  ```python
+  with _stage_span("download", video_id=video_id):
+      local_path = storage_service.get_local_file_path(video_path)
+
+  with _stage_span("scout", video_id=video_id, job_id=video_job_id):
+      scout_results = pose_service.analyze_video_file(...)
+  ```
+
+**Stage names**: `download`, `scout`, `refine`, `detect_serves`, `db_write`, `pose_detection`.
+
+## Metrics
+
+Use helpers from `app.utils.metrics`:
+
+```python
+from app.utils.metrics import record_job_started, record_job_succeeded, record_job_failed
+import time
+
+start_time = time.time()
+record_job_started("pose_detection", video_id=video_id)
+
+try:
+    # ... do work ...
+    duration = time.time() - start_time
+    record_job_succeeded("pose_detection", duration, video_id=video_id)
+except Exception as e:
+    duration = time.time() - start_time
+    record_job_failed("pose_detection", duration, video_id=video_id)
+    raise
+```
+
+**Job types**: `pose_detection`, `scout_refine`, `transcode_video`.
+
+## Best Practices
+
+1. **Always include IDs**: Every log/span should have `video_id` (and `job_id` in workers).
+2. **No PII**: Never log tokens, passwords, full URLs with tokens, or raw user data.
+3. **Stage spans**: Wrap major pipeline stages so Grafana shows "where did time go?"
+4. **Metrics on all jobs**: Record start/success/failure for every background job.
+5. **Silent failures**: OTel/metrics failures should not break the app (they're optional).
+
+## Where to Instrument
+
+- **API routes**: Already instrumented (FastAPI auto-instrumentation). Add `get_log_extra()` to key log statements.
+- **Worker tasks**: Add `_rq_job_span()` + `_stage_span()` + metrics (`record_job_*`).
+- **Services**: Add spans/metrics for long-running operations (> 1s) or external calls.
+
+## Reference
+
+- **Plan**: `backend/docs/observability.md`
+- **Logging filter**: `backend/app/utils/logging_context.py`
+- **Metrics helpers**: `backend/app/utils/metrics.py`
+- **OTel setup**: `backend/app/utils/otel.py`
