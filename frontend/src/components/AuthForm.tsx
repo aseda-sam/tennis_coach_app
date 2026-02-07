@@ -73,9 +73,6 @@ export function AuthForm() {
         name?: string;
         dominant_hand?: string;
         backhand_style?: string;
-          height_cm?: number | null;
-          age_group?: string | null;
-          gender?: string | null;
       };
       // Ensure name is provided before upserting
       if (profile.name?.trim()) {
@@ -83,9 +80,6 @@ export function AuthForm() {
           name: profile.name.trim(),
           dominant_hand: profile.dominant_hand || 'right',
           backhand_style: profile.backhand_style || undefined,
-            height_cm: profile.height_cm ?? null,
-            age_group: profile.age_group ?? null,
-            gender: profile.gender ?? null,
         });
         localStorage.removeItem(pendingProfileKey);
       }
@@ -162,18 +156,10 @@ export function AuthForm() {
           // Store pending profile only if name is provided
           const trimmedName = playerName?.trim();
           if (trimmedName) {
-            const parsedHeight = getParsedHeight();
-            if (parsedHeight.error) {
-              setError(parsedHeight.error);
-              return;
-            }
             const pendingProfile = {
               name: trimmedName,
               dominant_hand: dominantHand || 'right',
               backhand_style: backhandStyle?.trim() || undefined,
-              height_cm: parsedHeight.value,
-              age_group: ageGroup || null,
-              gender: gender || null,
             };
             localStorage.setItem(
               pendingProfileKey,
