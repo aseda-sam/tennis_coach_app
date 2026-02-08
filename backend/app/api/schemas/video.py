@@ -131,6 +131,10 @@ class VideoMetadataUpdateRequest(BaseModel):
         default=None,
         description="Default player for serves: 'you' or 'someone_else'",
     )
+    apply_to_existing_serves: Optional[bool] = Field(
+        default=False,
+        description="If true, reassign existing serve attempts for this video",
+    )
 
 
 # Validation functions

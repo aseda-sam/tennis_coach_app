@@ -38,6 +38,7 @@ from app.dependencies.auth import get_current_user, get_optional_user
 from app.services import (
     analysis_status_service,
     player_service,
+    serve_attempt_service,
     video_job_enqueue_service,
     video_job_service,
     video_service,
@@ -645,6 +646,20 @@ async def update_video_metadata(
 
         if not updated_video:
             raise handle_not_found_error("video", str(video_id))
+
+        if metadata_update.apply_to_existing_serves:
+            target_player_id = updated_video.primary_player_id
+            if not target_player_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Default player must be set before reassigning serves.",
+                )
+            serve_attempt_service.reassign_video_serve_attempts(
+                db=db,
+                video_id=video_id,
+                user_id=current_user["id"],
+                player_id=target_player_id,
+            )
 
         return VideoInfo.model_validate(updated_video)
     except (OSError, ValueError) as e:

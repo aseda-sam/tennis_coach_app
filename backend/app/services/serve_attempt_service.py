@@ -320,6 +320,26 @@ def list_user_serve_attempts(
     return query.order_by(ServeAttempt.created_at.desc()).all()
 
 
+def reassign_video_serve_attempts(
+    db: Session,
+    video_id: int,
+    user_id: str,
+    player_id: int,
+) -> int:
+    """Reassign all serve attempts for a video to a new player."""
+    validate_player_ownership(db, player_id, user_id)
+    updated_count = (
+        db.query(ServeAttempt)
+        .filter(
+            ServeAttempt.video_id == video_id,
+            ServeAttempt.user_id == user_id,
+        )
+        .update({ServeAttempt.player_id: player_id}, synchronize_session=False)
+    )
+    db.commit()
+    return updated_count
+
+
 def get_serve_attempts_for_video(
     db: Session,
     video_id: int,
