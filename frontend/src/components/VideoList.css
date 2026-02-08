@@ -644,6 +644,37 @@
   gap: var(--spacing-lg);
 }
 
+.edit-video-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+
+.edit-video-section {
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-secondary);
+}
+
+.edit-video-section-header {
+  margin-bottom: var(--spacing-md);
+}
+
+.edit-video-section-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.edit-video-section-subtitle {
+  margin: var(--spacing-xs) 0 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-relaxed);
+}
+
 .edit-video-field label {
   display: block;
   margin-bottom: var(--spacing-sm);
@@ -667,6 +698,7 @@
 .edit-video-field select {
   width: 100%;
   padding: var(--spacing-md);
+  padding-right: var(--spacing-4xl);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -674,6 +706,10 @@
   color: var(--color-text);
   cursor: pointer;
   transition: var(--transition-normal);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--spacing-md) center;
 }
 
 .edit-video-field select:focus {
@@ -735,7 +771,6 @@
   margin: 0;
   cursor: pointer;
   flex-shrink: 0;
-  accent-color: var(--color-primary);
 }
 
 .edit-video-checkbox span {
@@ -796,6 +831,10 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .edit-video-two-col {
+    grid-template-columns: 1fr;
+  }
+
   .video-grid {
     grid-template-columns: 1fr;
   }

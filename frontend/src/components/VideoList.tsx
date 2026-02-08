@@ -434,40 +434,50 @@ const VideoList: React.FC<VideoListProps> = ({
             </div>
             <div className="modal-content">
               <div className="edit-video-form">
-                <div className="edit-video-field">
-                  <label>
-                    Session Type <span className="required-asterisk" aria-label="required">*</span>
-                  </label>
-                  <select
-                    value={editSessionType}
-                    onChange={(e) => setEditSessionType(e.target.value)}
-                    disabled={updateMetadataMutation.isPending}
-                  >
-                    <option value="">Select session type</option>
-                    <option value="serve_practice">Serve Practice</option>
-                    <option value="match">Match</option>
-                    <option value="other">Other</option>
-                  </select>
+                <div className="edit-video-two-col">
+                  <div className="edit-video-field">
+                    <label>
+                      Session Type{' '}
+                      <span className="required-asterisk" aria-label="required">
+                        *
+                      </span>
+                    </label>
+                    <select
+                      value={editSessionType}
+                      onChange={(e) => setEditSessionType(e.target.value)}
+                      disabled={updateMetadataMutation.isPending}
+                    >
+                      <option value="">Select session type</option>
+                      <option value="serve_practice">Serve Practice</option>
+                      <option value="match">Match</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div className="edit-video-field">
+                    <label>Camera Angle</label>
+                    <select
+                      value={editCameraAngle}
+                      onChange={(e) => setEditCameraAngle(e.target.value)}
+                      disabled={updateMetadataMutation.isPending}
+                    >
+                      <option value="">Select camera angle</option>
+                      <option value="behind">Behind</option>
+                      <option value="profile">Profile</option>
+                      <option value="unknown">Unknown</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div className="edit-video-field">
-                  <label>
-                    Camera Angle <span className="optional">(optional)</span>
-                  </label>
-                  <select
-                    value={editCameraAngle}
-                    onChange={(e) => setEditCameraAngle(e.target.value)}
-                    disabled={updateMetadataMutation.isPending}
-                  >
-                    <option value="">Select camera angle</option>
-                    <option value="behind">Behind</option>
-                    <option value="profile">Profile</option>
-                    <option value="unknown">Unknown</option>
-                  </select>
-                </div>
+                <div className="edit-video-section">
+                  <div className="edit-video-section-header">
+                    <div className="edit-video-section-title">Who Is Serving?</div>
+                    <p className="edit-video-section-subtitle">
+                      New serves detected in this video will be saved under this
+                      player.
+                    </p>
+                  </div>
 
-                <div className="edit-video-field">
-                  <label>Who Is Serving?</label>
                   <div className="edit-video-radio-group edit-video-radio-group--horizontal">
                     <label>
                       <input
@@ -492,10 +502,6 @@ const VideoList: React.FC<VideoListProps> = ({
                       <span>Someone Else</span>
                     </label>
                   </div>
-                  <p className="edit-video-note">
-                    New serves detected in this video will be saved under this
-                    player.
-                  </p>
                   <div className="edit-video-checkbox-wrapper">
                     <label className="edit-video-checkbox">
                       <input

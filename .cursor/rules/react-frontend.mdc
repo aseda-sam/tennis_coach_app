@@ -30,6 +30,7 @@ alwaysApply: false
 - **Avoid jargon in labels**: Prefer user language over internal terms (e.g., “Who Is Serving?” over “Default Player”). Use helper text to explain impact in plain language (e.g., “New serves detected in this video will be saved under this player.”).
 - **Field spacing**: Use consistent spacing between fields (`var(--spacing-lg)` or `var(--spacing-xl)`).
 - **Helper text**: Use `.field-note` class for helper text below fields (small font, muted color, relaxed line-height).
+- **Select dropdowns**: Use custom arrow styling for consistency: `appearance: none` + custom SVG arrow with proper spacing (`padding-right: var(--spacing-4xl)`, `background-position: right var(--spacing-md) center`). Use neutral gray arrow color (`stroke='%23666'`) to match form controls.
 
 ### Focus States (Accessibility)
 

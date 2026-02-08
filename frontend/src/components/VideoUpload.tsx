@@ -367,9 +367,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
             </div>
 
             <div className={`form-field ${cameraAngle ? 'selected' : ''}`}>
-              <label>
-                Camera Angle <span className="optional">(optional)</span>
-              </label>
+              <label>Camera Angle</label>
               <select
                 value={cameraAngle}
                 onChange={(e) => setCameraAngle(e.target.value)}
