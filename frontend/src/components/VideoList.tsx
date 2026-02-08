@@ -436,7 +436,7 @@ const VideoList: React.FC<VideoListProps> = ({
               <div className="edit-video-form">
                 <div className="edit-video-field">
                   <label>
-                    Session Type <span className="required">(required)</span>
+                    Session Type <span className="required-asterisk" aria-label="required">*</span>
                   </label>
                   <select
                     value={editSessionType}
@@ -467,8 +467,8 @@ const VideoList: React.FC<VideoListProps> = ({
                 </div>
 
                 <div className="edit-video-field">
-                  <label>Default Player</label>
-                  <div className="edit-video-radio-group">
+                  <label>Who Is Serving?</label>
+                  <div className="edit-video-radio-group edit-video-radio-group--horizontal">
                     <label>
                       <input
                         type="radio"
@@ -493,21 +493,23 @@ const VideoList: React.FC<VideoListProps> = ({
                     </label>
                   </div>
                   <p className="edit-video-note">
-                    This sets the default player for serves created from this
-                    video.
+                    New serves detected in this video will be saved under this
+                    player.
                   </p>
-                </div>
-
-                <div className="edit-video-field">
-                  <label className="edit-video-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={applyToExistingServes}
-                      onChange={(e) => setApplyToExistingServes(e.target.checked)}
-                      disabled={updateMetadataMutation.isPending}
-                    />
-                    <span>Apply to existing serves from this video</span>
-                  </label>
+                  <div className="edit-video-checkbox-wrapper">
+                    <label className="edit-video-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={applyToExistingServes}
+                        onChange={(e) => setApplyToExistingServes(e.target.checked)}
+                        disabled={updateMetadataMutation.isPending}
+                      />
+                      <span>Also update serves already detected in this video</span>
+                    </label>
+                    <p className="edit-video-note edit-video-note--compact">
+                      Only affects serves for this video.
+                    </p>
+                  </div>
                 </div>
 
                 {editError && <div className="edit-video-error">{editError}</div>}

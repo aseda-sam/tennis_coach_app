@@ -352,7 +352,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
           <div className="details-form">
             <div className={`form-field ${sessionType ? 'selected' : ''}`}>
               <label>
-                Session Type <span className="required">(required)</span>
+                Session Type <span className="required-asterisk" aria-label="required">*</span>
               </label>
               <select
                 value={sessionType}
@@ -383,7 +383,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
             </div>
 
             <div className="player-tag-section">
-              <div className="player-tag-title">Default Player</div>
+              <div className="player-tag-title">Who Is Serving?</div>
               <div className="player-tag-options">
                 <label
                   className={`player-tag-option ${
@@ -421,7 +421,8 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
                 </label>
               </div>
               <p className="player-tag-note">
-                This sets the default player for serves created from this video.
+                New serves detected in this video will be saved under this
+                player.
               </p>
             </div>
 

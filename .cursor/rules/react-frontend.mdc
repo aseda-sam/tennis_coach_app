@@ -21,6 +21,16 @@ alwaysApply: false
 - **Follow the design system** in `frontend/DESIGN.md`.
 - **Prefer component-scoped CSS** (import `./Component.css`) and consistent class naming.
 
+### Form Fields (Required)
+
+- **Required fields**: Use a red asterisk (`*`) with `aria-label="required"` for accessibility. Style with `.required-asterisk` class (red color, semibold weight, small left margin).
+- **Optional fields**: Prefer required-only labeling (asterisk) and omit "(optional)" by default. Add "(optional)" only when it reduces ambiguity (e.g., when most fields are required, or the optionality is surprising).
+- **Radio buttons**: When there are only 2 options, use horizontal layout (`.radio-group--horizontal` with `display: flex; flex-direction: row; gap: var(--spacing-lg)`). For 3+ options, use vertical grid layout.
+- **Checkboxes**: When a checkbox applies to a specific field (e.g., "apply to existing items"), nest it within that field's container with a visual separator (border-top) and clear context in the label text.
+- **Avoid jargon in labels**: Prefer user language over internal terms (e.g., “Who Is Serving?” over “Default Player”). Use helper text to explain impact in plain language (e.g., “New serves detected in this video will be saved under this player.”).
+- **Field spacing**: Use consistent spacing between fields (`var(--spacing-lg)` or `var(--spacing-xl)`).
+- **Helper text**: Use `.field-note` class for helper text below fields (small font, muted color, relaxed line-height).
+
 ### Focus States (Accessibility)
 
 - **Preserve keyboard navigation**: Focus indicators are required for accessibility. Don't remove them without providing alternative visual feedback.

@@ -347,9 +347,10 @@
   color: var(--color-text);
 }
 
-.form-field .required {
+.form-field .required-asterisk {
   color: var(--color-error);
-  font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-semibold);
+  margin-left: var(--spacing-xs);
 }
 
 .form-field .optional {
