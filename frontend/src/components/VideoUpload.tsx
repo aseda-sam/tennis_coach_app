@@ -378,7 +378,6 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
                 <option value="">Select camera angle</option>
                 <option value="behind">Behind</option>
                 <option value="profile">Profile</option>
-                <option value="diagonal">Diagonal</option>
                 <option value="unknown">Unknown</option>
               </select>
             </div>

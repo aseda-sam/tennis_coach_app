@@ -60,9 +60,7 @@ class Video(Base):
     session_type = Column(
         String(20), nullable=True
     )  # 'serve_practice', 'match', 'other'
-    camera_angle = Column(
-        String(20), nullable=True
-    )  # 'behind', 'profile', 'diagonal', 'unknown'
+    camera_angle = Column(String(20), nullable=True)  # 'behind', 'profile', 'unknown'
     recorded_at = Column(
         DateTime(timezone=True), nullable=True
     )  # When video was recorded (for trends)

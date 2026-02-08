@@ -60,7 +60,7 @@ class VideoInfo(BaseModel):
     )
     camera_angle: Optional[str] = Field(
         default=None,
-        description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'",
+        description="Camera angle: 'behind', 'profile', 'unknown'",
     )
     recorded_at: Optional[datetime] = Field(
         default=None, description="When video was recorded (for trends)"
@@ -90,7 +90,7 @@ class VideoListItem(BaseModel):
     )
     camera_angle: Optional[str] = Field(
         default=None,
-        description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'",
+        description="Camera angle: 'behind', 'profile', 'unknown'",
     )
     primary_player_id: Optional[int] = Field(
         default=None,
@@ -137,7 +137,7 @@ class VideoMetadataUpdateRequest(BaseModel):
     )
     camera_angle: Optional[str] = Field(
         default=None,
-        description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'",
+        description="Camera angle: 'behind', 'profile', 'unknown'",
     )
     player_tag: Optional[Literal["you", "someone_else"]] = Field(
         default=None,

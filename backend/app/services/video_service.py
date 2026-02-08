@@ -56,7 +56,7 @@ def create_video_record(
         frame_count: Total number of frames
         is_demo: Whether this is a demo video
         session_type: Session type ('serve_practice', 'match', 'other')
-        camera_angle: Camera angle ('behind', 'profile', 'diagonal', 'unknown')
+        camera_angle: Camera angle ('behind', 'profile', 'unknown')
         recorded_at: When video was recorded (for trends)
     """
     db_video = Video(
@@ -391,7 +391,7 @@ def update_video_metadata(
         db: Database session
         video_id: Video ID to update
         session_type: Session type ('serve_practice', 'match', 'other')
-        camera_angle: Camera angle ('behind', 'profile', 'diagonal', 'unknown')
+        camera_angle: Camera angle ('behind', 'profile', 'unknown')
         primary_player_id: Default player ID for serves from this video
 
     Returns:

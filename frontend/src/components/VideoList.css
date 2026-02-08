@@ -652,6 +652,12 @@
   color: var(--color-text);
 }
 
+.edit-video-field label.edit-video-checkbox {
+  display: flex;
+  margin-bottom: 0;
+  font-weight: var(--font-weight-normal);
+}
+
 .edit-video-field select {
   width: 100%;
   padding: var(--spacing-md);
@@ -692,9 +698,25 @@
 .edit-video-checkbox {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   font-size: var(--font-size-sm);
   color: var(--color-text);
+  cursor: pointer;
+  margin: 0;
+}
+
+.edit-video-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+}
+
+.edit-video-checkbox span {
+  line-height: 1.5;
+  user-select: none;
 }
 
 .edit-video-error {

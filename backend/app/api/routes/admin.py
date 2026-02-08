@@ -192,7 +192,7 @@ async def upload_video_for_user(
         None, description="Session type: 'serve_practice', 'match', 'other'"
     ),
     camera_angle: Optional[str] = Query(
-        None, description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'"
+        None, description="Camera angle: 'behind', 'profile', 'unknown'"
     ),
     recorded_at: Optional[datetime] = Query(
         None, description="When video was recorded (UTC; optional override)"

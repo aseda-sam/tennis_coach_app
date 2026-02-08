@@ -14,7 +14,7 @@ export interface VideoMetadata {
   status: string; // NEW: processing status
   error_message?: string; // NEW: error message if processing failed
   session_type?: string; // Session type: 'serve_practice', 'match', 'other'
-  camera_angle?: string; // Camera angle: 'behind', 'profile', 'diagonal', 'unknown'
+  camera_angle?: string; // Camera angle: 'behind', 'profile', 'unknown'
   primary_player_id?: number | null; // Default player for serves from this video
 }
 

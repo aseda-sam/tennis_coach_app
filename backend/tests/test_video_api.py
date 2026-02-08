@@ -583,6 +583,37 @@ class TestVideoAPI:
         assert data["session_type"] == "match"
         assert data["camera_angle"] == "profile"  # Should remain unchanged
 
+    def test_update_video_metadata_valid_camera_angles(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test that valid camera angles are accepted (behind, profile, unknown)."""
+        from app.models.video import Video
+
+        # Create a video
+        video = Video(
+            filename="test_video_camera.mp4",
+            file_path="raw/test_video_camera.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+        )
+        db_session.add(video)
+        db_session.commit()
+        video_id = video.id
+
+        # Test valid camera angles
+        valid_angles = ["behind", "profile", "unknown"]
+        for angle in valid_angles:
+            update_data = {"camera_angle": angle}
+            response = client.patch(f"/v0/videos/{video_id}/metadata", json=update_data)
+            assert response.status_code == 200
+            data = response.json()
+            assert data["camera_angle"] == angle
+
     def test_update_video_metadata_not_found(self, client: TestClient) -> None:
         """Test updating metadata for non-existent video."""
         update_data = {"session_type": "serve_practice"}
