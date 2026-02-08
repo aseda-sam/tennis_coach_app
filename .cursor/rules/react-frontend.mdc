@@ -21,6 +21,13 @@ alwaysApply: false
 - **Follow the design system** in `frontend/DESIGN.md`.
 - **Prefer component-scoped CSS** (import `./Component.css`) and consistent class naming.
 
+### Focus States (Accessibility)
+
+- **Preserve keyboard navigation**: Focus indicators are required for accessibility. Don't remove them without providing alternative visual feedback.
+- **For custom-styled form controls**: When native inputs are wrapped in styled containers (e.g., radio buttons in custom cards), remove the native input's focus outline (`input:focus { outline: none; }`) and ensure the container provides clear visual feedback (e.g., `.container.selected` with border/background changes).
+- **For standard inputs**: Keep or style focus indicators appropriately. Use design tokens (`--focus-outline-width`, `--focus-outline-color`) when customizing.
+- **Pattern**: If removing a focus outline, verify the element or its container has clear selected/active states for keyboard users.
+
 ## Data Fetching (Required)
 
 - **Use React Query** for server state (`useQuery`/`useMutation`); don’t hand-roll fetch state machines.

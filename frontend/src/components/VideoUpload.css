@@ -429,6 +429,10 @@
   margin-top: 3px;
 }
 
+.player-tag-option input:focus {
+  outline: none;
+}
+
 .player-tag-option strong {
   display: block;
   font-size: var(--font-size-sm);
