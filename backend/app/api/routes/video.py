@@ -37,6 +37,7 @@ from app.core.database import get_db
 from app.dependencies.auth import get_current_user, get_optional_user
 from app.services import (
     analysis_status_service,
+    player_service,
     video_job_enqueue_service,
     video_job_service,
     video_service,
@@ -602,7 +603,7 @@ async def update_video_metadata(
     db: Session = Depends(get_db),
 ) -> VideoInfo:
     """
-    Update video metadata (session_type and camera_angle).
+    Update video metadata (session_type, camera_angle, default player).
 
     Args:
         video_id: Unique video identifier
@@ -621,12 +622,25 @@ async def update_video_metadata(
         # Check authorization (only owner can update)
         require_video_access(db_video, current_user)
 
+        primary_player_id = None
+        if metadata_update.player_tag == "you":
+            default_player = player_service.get_or_create_default_player(
+                db, current_user["id"]
+            )
+            primary_player_id = default_player.id
+        elif metadata_update.player_tag == "someone_else":
+            other_player = player_service.get_or_create_other_player(
+                db, current_user["id"]
+            )
+            primary_player_id = other_player.id
+
         # Update metadata
         updated_video = video_service.update_video_metadata(
             db=db,
             video_id=video_id,
             session_type=metadata_update.session_type,
             camera_angle=metadata_update.camera_angle,
+            primary_player_id=primary_player_id,
         )
 
         if not updated_video:

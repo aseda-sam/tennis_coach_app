@@ -20,6 +20,8 @@ ALLOWED_PLAYER_FIELDS = {
     "notes",
 }
 
+OTHER_PLAYER_NAME = "Someone Else"
+
 
 def create_player(
     db: Session,
@@ -50,7 +52,10 @@ def create_player(
         Player: The created Player database object.
     """
     logger.info(
-        f"Creating new player: name='{name}', dominant_hand='{dominant_hand}', user_id='{user_id}'"
+        "Creating new player: name='%s', dominant_hand='%s', user_id='%s'",
+        name,
+        dominant_hand,
+        user_id,
     )
 
     # Validate user_id is provided (required)
@@ -63,7 +68,10 @@ def create_player(
     existing_player = query.first()
     if existing_player:
         logger.warning(
-            f"Player creation failed: player with name '{name}' already exists for user '{user_id}' (ID: {existing_player.id})"
+            "Player creation failed: player with name '%s' already exists for user '%s' (ID: %s)",
+            name,
+            user_id,
+            existing_player.id,
         )
         raise ValueError(f"Player with name '{name}' already exists")
 
@@ -83,7 +91,11 @@ def create_player(
     db.refresh(db_player)
 
     logger.info(
-        f"✅ Successfully created player: ID={db_player.id}, name='{name}', dominant_hand='{dominant_hand}', user_id='{user_id}'"
+        "✅ Successfully created player: ID=%s, name='%s', dominant_hand='%s', user_id='%s'",
+        db_player.id,
+        name,
+        dominant_hand,
+        user_id,
     )
     return db_player
 
@@ -336,12 +348,17 @@ def get_or_create_default_player(
 
     if default_player:
         logger.debug(
-            f"Found existing default player for user {user_id}: ID={default_player.id}, name='{default_player.name}'"
+            "Found existing default player for user %s: ID=%s, name='%s'",
+            user_id,
+            default_player.id,
+            default_player.name,
         )
         # Update it if new data provided
         if name and name != default_player.name:
             logger.info(
-                f"Updating default player name from '{default_player.name}' to '{name}'"
+                "Updating default player name from '%s' to '%s'",
+                default_player.name,
+                name,
             )
             default_player.name = name
         if dominant_hand and dominant_hand != default_player.dominant_hand:
@@ -365,7 +382,10 @@ def get_or_create_default_player(
     player_name = name or "Me"
     player_dominant_hand = dominant_hand or "right"
     logger.info(
-        f"Creating default player '{player_name}' for user {user_id} (dominant_hand={player_dominant_hand})"
+        "Creating default player '%s' for user %s (dominant_hand=%s)",
+        player_name,
+        user_id,
+        player_dominant_hand,
     )
     default_player = Player(
         name=player_name,
@@ -380,6 +400,32 @@ def get_or_create_default_player(
     db.commit()
     db.refresh(default_player)
     logger.info(
-        f"✅ Created default player for user {user_id}: ID={default_player.id}, name='{player_name}'"
+        "✅ Created default player for user %s: ID=%s, name='%s'",
+        user_id,
+        default_player.id,
+        player_name,
     )
     return default_player
+
+
+def get_or_create_other_player(db: Session, user_id: str) -> Player:
+    """
+    Get or create a dedicated "Someone Else" player for a user.
+
+    This is used as the default attribution for videos tagged as "Someone Else"
+    without overwriting the user's primary profile.
+    """
+    other_player = (
+        db.query(Player)
+        .filter(Player.user_id == user_id, Player.name == OTHER_PLAYER_NAME)
+        .first()
+    )
+    if other_player:
+        return other_player
+
+    return create_player(
+        db=db,
+        name=OTHER_PLAYER_NAME,
+        dominant_hand="right",
+        user_id=user_id,
+    )

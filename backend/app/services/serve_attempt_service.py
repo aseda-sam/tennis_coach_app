@@ -117,9 +117,15 @@ def create_serve_attempt(
     # Auto-assign default player if not provided
     player_id = serve_attempt_data.player_id
     if not player_id:
-        default_player = player_service.get_or_create_default_player(db, user_id)
-        player_id = default_player.id
-        logger.debug("Auto-assigned default player %s for serve attempt", player_id)
+        if video.primary_player_id:
+            player_id = video.primary_player_id
+            logger.debug(
+                "Auto-assigned video primary player %s for serve attempt", player_id
+            )
+        else:
+            default_player = player_service.get_or_create_default_player(db, user_id)
+            player_id = default_player.id
+            logger.debug("Auto-assigned default player %s for serve attempt", player_id)
 
     # Validate player ownership
     validate_player_ownership(db, player_id, user_id)
