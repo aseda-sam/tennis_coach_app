@@ -84,6 +84,18 @@ class VideoListItem(BaseModel):
     height: Optional[int] = Field(default=None, description="Height in pixels")
     created_at: datetime = Field(description="Upload timestamp")
     status: str = Field(description="Video processing status")
+    session_type: Optional[str] = Field(
+        default=None,
+        description="Session type: 'serve_practice', 'match', 'other'",
+    )
+    camera_angle: Optional[str] = Field(
+        default=None,
+        description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'",
+    )
+    primary_player_id: Optional[int] = Field(
+        default=None,
+        description="Default player ID for serves created from this video",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
