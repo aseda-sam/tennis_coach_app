@@ -320,68 +320,70 @@ const VideoList: React.FC<VideoListProps> = ({
                 <div className="video-card-content">
                   <h3 className="video-card-filename">{video.filename}</h3>
 
-                  <div className="video-card-meta">
-                    <div className="video-card-user-date">
-                      <span className="user-info">
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          className="user-icon"
-                        >
-                          <path
-                            d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-                            fill="currentColor"
-                          />
-                        </svg>
-                        {getPlayerLabel(video)}
-                      </span>
-                      <span className="date-info">
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          className="calendar-icon"
-                        >
-                          <path
-                            d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"
-                            fill="currentColor"
-                          />
-                        </svg>
-                        {formatDate(video.created_at)}
-                      </span>
-                      <button
-                        className="edit-card-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditModal(video);
-                        }}
-                        disabled={updateMetadataMutation.isPending}
-                        title="Edit"
-                        type="button"
+                  <div className="video-card-meta-row">
+                    <span className="user-info">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className="user-icon"
                       >
-                        Edit
-                      </button>
-                      <button
-                        className="delete-card-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(video.id);
-                        }}
-                        disabled={deleteVideoMutation.isPending}
-                        title="Delete"
-                        type="button"
+                        <path
+                          d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                      {getPlayerLabel(video)}
+                    </span>
+                    <span className="meta-separator">•</span>
+                    <span className="date-info">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className="calendar-icon"
                       >
-                        <DeleteIcon size={16} />
-                      </button>
-                    </div>
+                        <path
+                          d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                      {formatDate(video.created_at)}
+                    </span>
+                    <span className="meta-separator">•</span>
+                    <span className="video-card-size">
+                      {formatFileSize(video.file_size)}
+                    </span>
                   </div>
 
-                  {/* File Size */}
-                  <div className="video-card-size">
-                    {formatFileSize(video.file_size)}
+                  {/* Action Buttons */}
+                  <div className="video-card-actions">
+                    <button
+                      className="edit-card-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditModal(video);
+                      }}
+                      disabled={updateMetadataMutation.isPending}
+                      title="Edit"
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="delete-card-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(video.id);
+                      }}
+                      disabled={deleteVideoMutation.isPending}
+                      title="Delete"
+                      type="button"
+                    >
+                      <DeleteIcon size={18} />
+                    </button>
                   </div>
                 </div>
               </div>

@@ -44,6 +44,15 @@ alwaysApply: false
 - **Use React Query** for server state (`useQuery`/`useMutation`); don’t hand-roll fetch state machines.
 - **Invalidate queries** after mutations (don’t manually “sync” caches).
 
+## Button Patterns (Required)
+
+- **Action buttons**: Use clear visual hierarchy with background, border, and shadow. Minimum touch target size: 36px height.
+- **Primary actions**: Use primary color with sufficient contrast. Include hover states with subtle transform (`translateY(-1px)`) and shadow elevation.
+- **Secondary actions**: Use neutral backgrounds with borders. On hover, show color change and elevation.
+- **Destructive actions**: Use error color scheme (red) on hover, with soft background. Always provide clear visual feedback.
+- **Button states**: Include hover, active, and disabled states. Use transitions for smooth interactions.
+- **Card actions**: Group action buttons together in a dedicated `.card-actions` section at the bottom of cards. Separate from information content with a border-top divider. Limit to 3 actions per card. Align actions to the right (or left for RTL). Use consistent spacing between grouped buttons.
+
 ## Typescript
 
 - **Avoid `any`**; type API responses and error surfaces.
