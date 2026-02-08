@@ -296,6 +296,8 @@ export const videoApi = {
     metadata: {
       session_type?: string;
       camera_angle?: string;
+      player_tag?: 'you' | 'someone_else';
+      apply_to_existing_serves?: boolean;
     }
   ): Promise<VideoMetadata> => {
     try {

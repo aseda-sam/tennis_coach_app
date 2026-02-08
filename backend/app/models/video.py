@@ -1,6 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    text,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -50,12 +60,18 @@ class Video(Base):
     session_type = Column(
         String(20), nullable=True
     )  # 'serve_practice', 'match', 'other'
-    camera_angle = Column(
-        String(20), nullable=True
-    )  # 'behind', 'profile', 'diagonal', 'unknown'
+    camera_angle = Column(String(20), nullable=True)  # 'behind', 'profile', 'unknown'
     recorded_at = Column(
         DateTime(timezone=True), nullable=True
     )  # When video was recorded (for trends)
+
+    # Default player attribution for serves created from this video
+    primary_player_id = Column(
+        Integer,
+        ForeignKey("players.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Transcoding metadata
     is_transcoded = Column(Boolean, nullable=False, server_default=text("false"))

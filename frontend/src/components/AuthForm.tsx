@@ -11,6 +11,9 @@ export function AuthForm() {
   const [playerName, setPlayerName] = useState('');
   const [dominantHand, setDominantHand] = useState('right');
   const [backhandStyle, setBackhandStyle] = useState('');
+  const [heightCm, setHeightCm] = useState('');
+  const [ageGroup, setAgeGroup] = useState('');
+  const [gender, setGender] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,6 +21,22 @@ export function AuthForm() {
   const { signIn, signInWithMagicLink, signUp, resendConfirmationEmail } =
     useAuth();
   const pendingProfileKey = 'pendingPlayerProfile';
+
+  const getParsedHeight = () => {
+    const trimmedHeight = heightCm.trim();
+    if (!trimmedHeight) {
+      return { value: null, error: null };
+    }
+
+    const numericHeight = Number(trimmedHeight);
+    if (Number.isNaN(numericHeight)) {
+      return { value: null, error: 'Height must be a number' };
+    }
+    if (numericHeight < 0) {
+      return { value: null, error: 'Height must be positive' };
+    }
+    return { value: numericHeight, error: null };
+  };
 
   const upsertPlayerProfile = async () => {
     // Name is required, so ensure it's always sent
@@ -27,10 +46,19 @@ export function AuthForm() {
       return;
     }
 
+    const parsedHeight = getParsedHeight();
+    if (parsedHeight.error) {
+      setError(parsedHeight.error);
+      return;
+    }
+
     const profile = {
       name: trimmedName,
       dominant_hand: dominantHand || 'right', // Default to right if not selected
       backhand_style: backhandStyle?.trim() || undefined,
+      height_cm: parsedHeight.value,
+      age_group: ageGroup || null,
+      gender: gender || null,
     };
 
     await playerApi.upsertMe(profile);
@@ -233,6 +261,48 @@ export function AuthForm() {
                 <option value="">Backhand style (optional)</option>
                 <option value="one_handed">One-handed</option>
                 <option value="two_handed">Two-handed</option>
+              </select>
+            </div>
+            <div className="auth-form-field">
+              <input
+                type="number"
+                className="input"
+                placeholder="Height in cm (optional)"
+                value={heightCm}
+                onChange={(e) => setHeightCm(e.target.value)}
+                disabled={loading}
+                min="0"
+                step="0.1"
+              />
+            </div>
+            <div className="auth-form-field">
+              <select
+                className="input"
+                value={ageGroup}
+                onChange={(e) => setAgeGroup(e.target.value)}
+                disabled={loading}
+              >
+                <option value="">Age group (optional)</option>
+                <option value="under_13">Under 13</option>
+                <option value="13_to_17">13-17</option>
+                <option value="18_to_29">18-29</option>
+                <option value="30_to_44">30-44</option>
+                <option value="45_to_59">45-59</option>
+                <option value="60_plus">60+</option>
+              </select>
+            </div>
+            <div className="auth-form-field">
+              <select
+                className="input"
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+                disabled={loading}
+              >
+                <option value="">Gender (optional)</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="non_binary">Non-Binary</option>
+                <option value="prefer_not_to_say">Prefer Not To Say</option>
               </select>
             </div>
           </>

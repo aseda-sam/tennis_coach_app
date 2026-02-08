@@ -29,6 +29,9 @@ def _create_player_info(db: Session, player: Player) -> PlayerInfo:
         name=player.name,
         dominant_hand=player.dominant_hand,
         backhand_style=player.backhand_style,
+        height_cm=player.height_cm,
+        age_group=player.age_group,
+        gender=player.gender,
         notes=player.notes,
         created_at=player.created_at,
         updated_at=player.updated_at,
@@ -49,6 +52,9 @@ def create_player(
             dominant_hand=player.dominant_hand,
             user_id=current_user["id"],
             backhand_style=player.backhand_style,
+            height_cm=player.height_cm,
+            age_group=player.age_group,
+            gender=player.gender,
             notes=player.notes,
         )
 
@@ -125,9 +131,11 @@ def upsert_my_player(
     """Create or update the default player profile for the current user."""
     try:
         # Extract update data, filtering out None values
-        update_data = {
-            k: v for k, v in player_update.model_dump().items() if v is not None
-        }
+        update_data = player_update.model_dump(exclude_unset=True)
+        if update_data.get("name") is None:
+            update_data.pop("name", None)
+        if update_data.get("dominant_hand") is None:
+            update_data.pop("dominant_hand", None)
 
         # Get or create default player, passing provided data for initial creation
         # If name is not provided, use display_name from user metadata
@@ -142,6 +150,9 @@ def upsert_my_player(
             name=player_name,
             dominant_hand=update_data.get("dominant_hand"),
             backhand_style=update_data.get("backhand_style"),
+            height_cm=update_data.get("height_cm"),
+            age_group=update_data.get("age_group"),
+            gender=update_data.get("gender"),
             user_metadata=current_user.get("user_metadata"),
         )
 
@@ -204,9 +215,11 @@ def update_player(
         require_player_access(player, current_user)
 
         # Filter out None values for update
-        update_data = {
-            k: v for k, v in player_update.model_dump().items() if v is not None
-        }
+        update_data = player_update.model_dump(exclude_unset=True)
+        if update_data.get("name") is None:
+            update_data.pop("name", None)
+        if update_data.get("dominant_hand") is None:
+            update_data.pop("dominant_hand", None)
 
         if not update_data:
             # No fields to update, return current player

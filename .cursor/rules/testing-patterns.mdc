@@ -12,9 +12,19 @@ alwaysApply: false
 
 - **Protect contracts** (API response shapes, service behavior) with fast, reliable tests.
 
-## What to Write (Default Order)
+## TDD Workflow (Required)
+
+- **Red**: Write failing test first that defines the contract/behavior you want.
+- **Green**: Implement minimum code to pass the test.
+- **Refactor**: Clean up code while keeping tests green.
+- **Work in small steps**: 5-10 minute cycles, commit after each passing test.
+
+## What to Write (Required - Default Order)
 
 - **Contract tests (API)** for new/changed endpoints: status codes + response shape + auth behavior.
+  - **REQUIRED**: If you change an API schema (add/remove fields), you MUST update/add a test that asserts the response shape includes those fields.
+  - **REQUIRED**: If you add fields needed by UI (e.g., `session_type`, `camera_angle`, `primary_player_id`), list endpoint tests MUST verify those fields are present in the response.
+  - **REQUIRED**: Write the failing test BEFORE implementing the change (TDD).
 - **Unit tests (services/utils)** for business logic with dependencies mocked.
 - **Integration tests** only when the workflow contract needs it (upload → job → results).
 
@@ -23,6 +33,7 @@ alwaysApply: false
 - **Test behavior, not implementation details** (don’t assert internal config/private fields).
 - **Mock external dependencies** (Redis, storage, external APIs) unless the test is explicitly integration.
 - **Prefer stable IDs/contracts** over internal job backend details (e.g. assert `job_id` exists and status transitions, not that RQ stores X).
+- **Assert response shape**: When testing API endpoints, verify all fields that UI depends on are present in the response (especially for list endpoints).
 
 ## Storage-aware pragmatism
 

@@ -104,3 +104,40 @@ export const useDeleteVideo = () => {
     },
   });
 };
+
+export const useUploadVideo = () => {
+  return useMutation({
+    mutationFn: ({
+      file,
+      isDemo,
+      metadata,
+    }: {
+      file: File;
+      isDemo: boolean;
+      metadata?: { session_type?: string; camera_angle?: string };
+    }) => videoApi.uploadVideo(file, isDemo, metadata),
+  });
+};
+
+export const useUpdateVideoMetadata = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      videoId,
+      metadata,
+    }: {
+      videoId: number;
+      metadata: {
+        session_type?: string;
+        camera_angle?: string;
+        player_tag?: 'you' | 'someone_else';
+        apply_to_existing_serves?: boolean;
+      };
+    }) => videoApi.updateVideoMetadata(videoId, metadata),
+    onSuccess: (updatedVideo, { videoId }) => {
+      queryClient.setQueryData(['video', videoId], updatedVideo);
+      queryClient.invalidateQueries({ queryKey: ['videos'] });
+    },
+  });
+};

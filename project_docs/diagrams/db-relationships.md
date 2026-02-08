@@ -36,6 +36,9 @@ erDiagram
     int id PK
     string name
     string dominant_hand
+    float height_cm
+    string age_group
+    string gender
     string user_id FK
   }
 

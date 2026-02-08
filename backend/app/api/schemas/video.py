@@ -1,7 +1,7 @@
 """Video-related API schemas."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -60,10 +60,14 @@ class VideoInfo(BaseModel):
     )
     camera_angle: Optional[str] = Field(
         default=None,
-        description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'",
+        description="Camera angle: 'behind', 'profile', 'unknown'",
     )
     recorded_at: Optional[datetime] = Field(
         default=None, description="When video was recorded (for trends)"
+    )
+    primary_player_id: Optional[int] = Field(
+        default=None,
+        description="Default player ID for serves created from this video",
     )
 
     model_config = ConfigDict(from_attributes=True)
@@ -80,6 +84,18 @@ class VideoListItem(BaseModel):
     height: Optional[int] = Field(default=None, description="Height in pixels")
     created_at: datetime = Field(description="Upload timestamp")
     status: str = Field(description="Video processing status")
+    session_type: Optional[str] = Field(
+        default=None,
+        description="Session type: 'serve_practice', 'match', 'other'",
+    )
+    camera_angle: Optional[str] = Field(
+        default=None,
+        description="Camera angle: 'behind', 'profile', 'unknown'",
+    )
+    primary_player_id: Optional[int] = Field(
+        default=None,
+        description="Default player ID for serves created from this video",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -121,7 +137,15 @@ class VideoMetadataUpdateRequest(BaseModel):
     )
     camera_angle: Optional[str] = Field(
         default=None,
-        description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'",
+        description="Camera angle: 'behind', 'profile', 'unknown'",
+    )
+    player_tag: Optional[Literal["you", "someone_else"]] = Field(
+        default=None,
+        description="Default player for serves: 'you' or 'someone_else'",
+    )
+    apply_to_existing_serves: Optional[bool] = Field(
+        default=False,
+        description="If true, reassign existing serve attempts for this video",
     )
 
 

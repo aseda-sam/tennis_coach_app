@@ -1,7 +1,13 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useAdmin } from '../hooks/useAdmin';
-import { videoApi } from '../services/api';
+import { usePlayerProfile } from '../hooks/usePlayerProfile';
+import {
+  useDeleteVideo,
+  useUpdateVideoMetadata,
+  useUploadVideo,
+} from '../hooks/useVideos';
 import { VideoMetadata } from '../types/video';
 import { UploadIcon } from './Icons';
 import './VideoUpload.css';
@@ -13,8 +19,6 @@ interface VideoUploadProps {
   hideDemoToggle?: boolean;
   demoNoticeText?: string;
 }
-
-type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 
 function formatFileSizeMb(bytes: number) {
   const mb = bytes / (1024 * 1024);
@@ -32,19 +36,27 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadedVideoId, setUploadedVideoId] = useState<number | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDemo, setIsDemo] = useState(defaultIsDemo);
   const [sessionType, setSessionType] = useState<string>('');
   const [cameraAngle, setCameraAngle] = useState<string>('');
-  const [isUpdatingMetadata, setIsUpdatingMetadata] = useState(false);
+  const [playerTag, setPlayerTag] = useState<'you' | 'someone_else'>('you');
   const { config } = useAppConfig();
   const { isAdmin: canUploadDemo } = useAdmin();
+  const { data: playerProfile, isLoading: isPlayerProfileLoading } =
+    usePlayerProfile();
+  const queryClient = useQueryClient();
+  const deleteVideoMutation = useDeleteVideo();
+  const uploadMutation = useUploadVideo();
+  const updateMetadataMutation = useUpdateVideoMetadata();
   const resolvedIsDemo = forceDemo ? true : isDemo;
   const maxSizeBytes = config.upload_limits.max_file_size_bytes;
   const maxSizeLabel = formatFileSizeMb(maxSizeBytes);
+  const playerLabel = isPlayerProfileLoading
+    ? 'Your profile'
+    : playerProfile?.name || 'Your profile';
 
   const handleFileSelect = useCallback(
     async (file: File) => {
@@ -69,16 +81,18 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
 
       setSelectedFile(file);
       setError(null);
-      setUploadStatus('uploading');
       setUploadProgress(0);
 
       try {
         // Upload file immediately without metadata
-        const response = await videoApi.uploadVideo(file, resolvedIsDemo, {});
+        const response = await uploadMutation.mutateAsync({
+          file,
+          isDemo: resolvedIsDemo,
+          metadata: {},
+        });
 
         setUploadedVideoId(response.video_id);
         setUploadProgress(100);
-        setUploadStatus('success');
         setStep(2); // Move to Step 2: Details
       } catch (err: unknown) {
         const axiosError = err as {
@@ -92,10 +106,9 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
 
         const errorMessage = detail || 'Upload failed. Please try again.';
         setError(errorMessage);
-        setUploadStatus('error');
       }
     },
-    [maxSizeBytes, maxSizeLabel, resolvedIsDemo]
+    [maxSizeBytes, maxSizeLabel, resolvedIsDemo, uploadMutation]
   );
 
   const handleFinishUpload = useCallback(async () => {
@@ -103,39 +116,21 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
       return;
     }
 
-    setIsUpdatingMetadata(true);
     setError(null);
 
     try {
       // Update video metadata
-      await videoApi.updateVideoMetadata(uploadedVideoId, {
-        session_type: sessionType,
-        camera_angle: cameraAngle || undefined,
+      const updatedVideo = await updateMetadataMutation.mutateAsync({
+        videoId: uploadedVideoId,
+        metadata: {
+          session_type: sessionType,
+          camera_angle: cameraAngle || undefined,
+          player_tag: playerTag,
+        },
       });
 
-      // Get updated video info
-      const updatedVideo = await videoApi.getVideo(uploadedVideoId);
-
-      // Create VideoMetadata object
-      const video: VideoMetadata = {
-        id: updatedVideo.id,
-        filename: updatedVideo.filename,
-        file_path: updatedVideo.file_path || '',
-        file_size: updatedVideo.file_size,
-        status: updatedVideo.status,
-        created_at: updatedVideo.created_at,
-        session_type: updatedVideo.session_type,
-        camera_angle: updatedVideo.camera_angle,
-        ...(updatedVideo.duration && { duration: updatedVideo.duration }),
-        ...(updatedVideo.fps && { fps: updatedVideo.fps }),
-        ...(updatedVideo.width && { width: updatedVideo.width }),
-        ...(updatedVideo.height && { height: updatedVideo.height }),
-        ...(updatedVideo.frame_count && {
-          frame_count: updatedVideo.frame_count,
-        }),
-      };
-
-      onUploadSuccess(video);
+      queryClient.setQueryData(['video', uploadedVideoId], updatedVideo);
+      onUploadSuccess(updatedVideo as VideoMetadata);
     } catch (err: unknown) {
       const axiosError = err as {
         response?: {
@@ -149,16 +144,22 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
       const errorMessage =
         detail || 'Failed to update video details. Please try again.';
       setError(errorMessage);
-    } finally {
-      setIsUpdatingMetadata(false);
     }
-  }, [uploadedVideoId, sessionType, cameraAngle, onUploadSuccess]);
+  }, [
+    uploadedVideoId,
+    sessionType,
+    cameraAngle,
+    playerTag,
+    onUploadSuccess,
+    updateMetadataMutation,
+    queryClient,
+  ]);
 
   const handleReplaceFile = useCallback(async () => {
     // If a video was already uploaded, delete it from the server to avoid orphaned videos
     if (uploadedVideoId) {
       try {
-        await videoApi.deleteVideo(uploadedVideoId);
+        await deleteVideoMutation.mutateAsync(uploadedVideoId);
       } catch (err) {
         // Log error but don't block the replace action
         // User can manually delete orphaned videos later if needed
@@ -169,16 +170,23 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
     // Reset client state
     setSelectedFile(null);
     setUploadedVideoId(null);
-    setUploadStatus('idle');
     setUploadProgress(0);
     setStep(1);
     setSessionType('');
     setCameraAngle('');
+    setPlayerTag('you');
     setError(null);
+    uploadMutation.reset();
+    updateMetadataMutation.reset();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [uploadedVideoId]);
+  }, [
+    uploadedVideoId,
+    deleteVideoMutation,
+    uploadMutation,
+    updateMetadataMutation,
+  ]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -221,10 +229,10 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
     if (step === 2) {
       return; // Don't allow clicking upload area in Step 2
     }
-    if (uploadStatus !== 'uploading' && fileInputRef.current) {
+    if (!uploadMutation.isPending && fileInputRef.current) {
       fileInputRef.current.click();
     }
-  }, [step, uploadStatus]);
+  }, [step, uploadMutation.isPending]);
 
   return (
     <div className="video-upload">
@@ -245,13 +253,13 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
       {step === 1 && (
         <>
           <div
-            className={`upload-area ${isDragOver ? 'drag-over' : ''} ${uploadStatus === 'uploading' ? 'uploading' : ''}`}
+            className={`upload-area ${isDragOver ? 'drag-over' : ''} ${uploadMutation.isPending ? 'uploading' : ''}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={handleAreaClick}
           >
-            {uploadStatus === 'uploading' ? (
+            {uploadMutation.isPending ? (
               <div className="upload-progress">
                 <div className="progress-bar">
                   <div
@@ -261,10 +269,10 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
                 </div>
                 <p>Uploading... {uploadProgress}%</p>
               </div>
-            ) : uploadStatus === 'success' ? (
+            ) : uploadMutation.isSuccess ? (
               <div className="upload-success">
                 <div className="upload-icon" aria-hidden="true">
-                  <UploadIcon size={48} color="#22c55e" />
+                  <UploadIcon size={48} color="var(--color-success)" />
                 </div>
                 <p className="upload-main-text">
                   Uploaded: {selectedFile?.name}
@@ -274,13 +282,13 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
                   onClick={handleReplaceFile}
                   className="replace-file-btn"
                 >
-                  Replace file
+                  Replace File
                 </button>
               </div>
             ) : (
               <>
                 <div className="upload-icon" aria-hidden="true">
-                  <UploadIcon size={48} color="#64748b" />
+                  <UploadIcon size={48} color="var(--color-text-muted)" />
                 </div>
                 <p className="upload-main-text">
                   Drag and drop your tennis video here
@@ -310,7 +318,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
                   type="checkbox"
                   checked={isDemo}
                   onChange={(e) => setIsDemo(e.target.checked)}
-                  disabled={uploadStatus === 'uploading'}
+                  disabled={uploadMutation.isPending}
                 />
                 <span>
                   Upload as demo video (public, accessible to all users)
@@ -333,7 +341,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
         <div className="upload-details-step">
           <div className="uploaded-file-info">
             <div className="upload-icon" aria-hidden="true">
-              <UploadIcon size={32} color="#22c55e" />
+              <UploadIcon size={32} color="var(--color-success)" />
             </div>
             <div className="uploaded-file-details">
               <p className="uploaded-filename">{selectedFile?.name}</p>
@@ -344,12 +352,12 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
           <div className="details-form">
             <div className={`form-field ${sessionType ? 'selected' : ''}`}>
               <label>
-                Session Type <span className="required">(required)</span>
+                Session Type <span className="required-asterisk" aria-label="required">*</span>
               </label>
               <select
                 value={sessionType}
                 onChange={(e) => setSessionType(e.target.value)}
-                disabled={isUpdatingMetadata}
+                disabled={updateMetadataMutation.isPending}
               >
                 <option value="">Select session type</option>
                 <option value="serve_practice">Serve Practice</option>
@@ -359,20 +367,61 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
             </div>
 
             <div className={`form-field ${cameraAngle ? 'selected' : ''}`}>
-              <label>
-                Camera Angle <span className="optional">(optional)</span>
-              </label>
+              <label>Camera Angle</label>
               <select
                 value={cameraAngle}
                 onChange={(e) => setCameraAngle(e.target.value)}
-                disabled={isUpdatingMetadata}
+                disabled={updateMetadataMutation.isPending}
               >
                 <option value="">Select camera angle</option>
                 <option value="behind">Behind</option>
                 <option value="profile">Profile</option>
-                <option value="diagonal">Diagonal</option>
                 <option value="unknown">Unknown</option>
               </select>
+            </div>
+
+            <div className="player-tag-section">
+              <div className="player-tag-title">Who Is Serving?</div>
+              <div className="player-tag-options">
+                <label
+                  className={`player-tag-option ${
+                    playerTag === 'you' ? 'selected' : ''
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="playerTag"
+                    value="you"
+                    checked={playerTag === 'you'}
+                    onChange={() => setPlayerTag('you')}
+                    disabled={updateMetadataMutation.isPending}
+                  />
+                  <span>
+                    <strong>{playerLabel}</strong>
+                  </span>
+                </label>
+                <label
+                  className={`player-tag-option ${
+                    playerTag === 'someone_else' ? 'selected' : ''
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="playerTag"
+                    value="someone_else"
+                    checked={playerTag === 'someone_else'}
+                    onChange={() => setPlayerTag('someone_else')}
+                    disabled={updateMetadataMutation.isPending}
+                  />
+                  <span>
+                    <strong>Someone Else</strong>
+                  </span>
+                </label>
+              </div>
+              <p className="player-tag-note">
+                New serves detected in this video will be saved under this
+                player.
+              </p>
             </div>
 
             <div className="finish-upload-actions">
@@ -380,17 +429,17 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
                 type="button"
                 onClick={handleReplaceFile}
                 className="replace-file-btn-secondary"
-                disabled={isUpdatingMetadata}
+                disabled={updateMetadataMutation.isPending}
               >
-                Replace file
+                Replace File
               </button>
               <button
                 type="button"
                 onClick={handleFinishUpload}
                 className="finish-upload-btn"
-                disabled={!sessionType || isUpdatingMetadata}
+                disabled={!sessionType || updateMetadataMutation.isPending}
               >
-                {isUpdatingMetadata ? 'Finishing...' : 'Finish upload'}
+                {updateMetadataMutation.isPending ? 'Finishing...' : 'Finish Upload'}
               </button>
             </div>
           </div>

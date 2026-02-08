@@ -37,6 +37,8 @@ from app.core.database import get_db
 from app.dependencies.auth import get_current_user, get_optional_user
 from app.services import (
     analysis_status_service,
+    player_service,
+    serve_attempt_service,
     video_job_enqueue_service,
     video_job_service,
     video_service,
@@ -602,7 +604,7 @@ async def update_video_metadata(
     db: Session = Depends(get_db),
 ) -> VideoInfo:
     """
-    Update video metadata (session_type and camera_angle).
+    Update video metadata (session_type, camera_angle, default player).
 
     Args:
         video_id: Unique video identifier
@@ -621,16 +623,43 @@ async def update_video_metadata(
         # Check authorization (only owner can update)
         require_video_access(db_video, current_user)
 
+        primary_player_id = None
+        if metadata_update.player_tag == "you":
+            default_player = player_service.get_or_create_default_player(
+                db, current_user["id"]
+            )
+            primary_player_id = default_player.id
+        elif metadata_update.player_tag == "someone_else":
+            other_player = player_service.get_or_create_other_player(
+                db, current_user["id"]
+            )
+            primary_player_id = other_player.id
+
         # Update metadata
         updated_video = video_service.update_video_metadata(
             db=db,
             video_id=video_id,
             session_type=metadata_update.session_type,
             camera_angle=metadata_update.camera_angle,
+            primary_player_id=primary_player_id,
         )
 
         if not updated_video:
             raise handle_not_found_error("video", str(video_id))
+
+        if metadata_update.apply_to_existing_serves:
+            target_player_id = updated_video.primary_player_id
+            if not target_player_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Default player must be set before reassigning serves.",
+                )
+            serve_attempt_service.reassign_video_serve_attempts(
+                db=db,
+                video_id=video_id,
+                user_id=current_user["id"],
+                player_id=target_player_id,
+            )
 
         return VideoInfo.model_validate(updated_video)
     except (OSError, ValueError) as e:
@@ -645,7 +674,7 @@ async def upload_video(
         None, description="Session type: 'serve_practice', 'match', 'other'"
     ),
     camera_angle: Optional[str] = Query(
-        None, description="Camera angle: 'behind', 'profile', 'diagonal', 'unknown'"
+        None, description="Camera angle: 'behind', 'profile', 'unknown'"
     ),
     recorded_at: Optional[datetime] = Query(
         None, description="When video was recorded (UTC; optional override)"

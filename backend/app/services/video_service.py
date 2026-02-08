@@ -56,7 +56,7 @@ def create_video_record(
         frame_count: Total number of frames
         is_demo: Whether this is a demo video
         session_type: Session type ('serve_practice', 'match', 'other')
-        camera_angle: Camera angle ('behind', 'profile', 'diagonal', 'unknown')
+        camera_angle: Camera angle ('behind', 'profile', 'unknown')
         recorded_at: When video was recorded (for trends)
     """
     db_video = Video(
@@ -383,14 +383,16 @@ def update_video_metadata(
     video_id: int,
     session_type: Optional[str] = None,
     camera_angle: Optional[str] = None,
+    primary_player_id: Optional[int] = None,
 ) -> Optional[Video]:
-    """Update video metadata (session_type and camera_angle).
+    """Update video metadata (session_type, camera_angle, primary_player_id).
 
     Args:
         db: Database session
         video_id: Video ID to update
         session_type: Session type ('serve_practice', 'match', 'other')
-        camera_angle: Camera angle ('behind', 'profile', 'diagonal', 'unknown')
+        camera_angle: Camera angle ('behind', 'profile', 'unknown')
+        primary_player_id: Default player ID for serves from this video
 
     Returns:
         Updated Video object, or None if video not found
@@ -403,6 +405,8 @@ def update_video_metadata(
         video.session_type = session_type
     if camera_angle is not None:
         video.camera_angle = camera_angle
+    if primary_player_id is not None:
+        video.primary_player_id = primary_player_id
 
     db.commit()
     db.refresh(video)
