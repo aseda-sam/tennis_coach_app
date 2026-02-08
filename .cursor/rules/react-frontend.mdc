@@ -1,5 +1,5 @@
 ---
-description: React frontend patterns (short, prescriptive)
+description: React frontend patterns
 globs:
   - frontend/**/*.{ts,tsx,css}
 alwaysApply: false
