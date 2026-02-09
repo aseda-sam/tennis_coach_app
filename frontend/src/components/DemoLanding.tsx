@@ -1,9 +1,11 @@
 import React from 'react';
 import './DemoLanding.css';
 import {
-  AnalyticsIcon,
+  BodyTrackingIcon,
+  FrameStepIcon,
   PlayIcon,
-  PoseDetectionIcon,
+  ServeBreakdownIcon,
+  TrendUpIcon,
   UploadIcon,
   VideoIcon,
 } from './Icons';
@@ -116,7 +118,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
           <div className="demo-landing__feature-grid">
             <div className="demo-landing__feature-card">
               <div className="demo-landing__feature-icon demo-landing__feature-icon--pose">
-                <PoseDetectionIcon size={20} color="white" />
+                <BodyTrackingIcon size={20} color="white" />
               </div>
               <h4 className="demo-landing__feature-title">Body Tracking</h4>
               <p className="demo-landing__feature-description">
@@ -127,18 +129,17 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
 
             <div className="demo-landing__feature-card">
               <div className="demo-landing__feature-icon demo-landing__feature-icon--contact">
-                <VideoIcon size={20} color="white" />
+                <ServeBreakdownIcon size={20} color="white" />
               </div>
               <h4 className="demo-landing__feature-title">Serve Breakdown</h4>
               <p className="demo-landing__feature-description">
-                Key moments are tagged automatically so you can jump to
-                what matters.
+                Jump to tagged key moments and focus on what matters.
               </p>
             </div>
 
             <div className="demo-landing__feature-card">
               <div className="demo-landing__feature-icon demo-landing__feature-icon--metrics">
-                <AnalyticsIcon size={20} color="white" />
+                <TrendUpIcon size={20} color="white" />
               </div>
               <h4 className="demo-landing__feature-title">
                 Progress Over Time
@@ -150,7 +151,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
 
             <div className="demo-landing__feature-card">
               <div className="demo-landing__feature-icon demo-landing__feature-icon--video">
-                <VideoIcon size={20} color="white" />
+                <FrameStepIcon size={20} color="white" />
               </div>
               <h4 className="demo-landing__feature-title">
                 Frame-by-Frame Control
