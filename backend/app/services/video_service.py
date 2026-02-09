@@ -1,7 +1,7 @@
 import logging
 import tempfile
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -18,7 +18,7 @@ from app.utils.file_validation import (
     get_safe_filename,
     validate_video_file,
 )
-from app.utils.video_utils import get_video_rotation
+from app.utils.video_utils import get_video_creation_time, get_video_rotation
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ def create_video_record(
     session_type: Optional[str] = None,
     camera_angle: Optional[str] = None,
     recorded_at: Optional[datetime] = None,
+    recorded_at_source: Optional[str] = None,
 ) -> Video:
     """Create a new video record in the database.
 
@@ -58,6 +59,7 @@ def create_video_record(
         session_type: Session type ('serve_practice', 'match', 'other')
         camera_angle: Camera angle ('behind', 'profile', 'unknown')
         recorded_at: When video was recorded (for trends)
+        recorded_at_source: Source of recorded_at ('metadata', 'client', 'upload_time')
     """
     db_video = Video(
         filename=filename,
@@ -75,6 +77,7 @@ def create_video_record(
         session_type=session_type,
         camera_angle=camera_angle,
         recorded_at=recorded_at,
+        recorded_at_source=recorded_at_source,
     )
     db.add(db_video)
     db.commit()
@@ -92,8 +95,8 @@ def _create_temp_file_for_processing(file_content: bytes, filename: str) -> Path
     return tmp_path
 
 
-def extract_video_metadata(video_path: Path) -> dict[str, Optional[float | int]]:
-    """Extract metadata from video file using OpenCV."""
+def extract_video_metadata(video_path: Path) -> dict[str, Optional[float | int | datetime]]:
+    """Extract metadata from video file using OpenCV and ffprobe."""
     try:
         cap = cv2.VideoCapture(str(video_path))
         if not cap.isOpened():
@@ -103,6 +106,7 @@ def extract_video_metadata(video_path: Path) -> dict[str, Optional[float | int]]
                 "width": None,
                 "height": None,
                 "frame_count": None,
+                "recorded_at": None,
             }
 
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -120,6 +124,7 @@ def extract_video_metadata(video_path: Path) -> dict[str, Optional[float | int]]
             width, height = raw_width, raw_height
 
         duration = frame_count / fps if fps > 0 else None
+        recorded_at = get_video_creation_time(video_path)
 
         return {
             "duration": duration,
@@ -127,6 +132,7 @@ def extract_video_metadata(video_path: Path) -> dict[str, Optional[float | int]]
             "width": width,
             "height": height,
             "frame_count": frame_count,
+            "recorded_at": recorded_at,
         }
     except (cv2.error, OSError, ValueError):
         return {
@@ -135,6 +141,7 @@ def extract_video_metadata(video_path: Path) -> dict[str, Optional[float | int]]
             "width": None,
             "height": None,
             "frame_count": None,
+            "recorded_at": None,
         }
 
 
@@ -164,7 +171,8 @@ def handle_video_upload(
     session_type: Optional[str],
     camera_angle: Optional[str],
     recorded_at: Optional[datetime],
-) -> tuple[Video, dict[str, Optional[float | int]]]:
+    client_recorded_at: Optional[datetime] = None,
+) -> tuple[Video, dict[str, Optional[float | int | datetime]]]:
     """Handle common upload flow and create video record."""
     if not filename:
         raise handle_file_error("invalid", "", "No file provided")
@@ -214,6 +222,22 @@ def handle_video_upload(
     except (ValueError, RuntimeError, OSError) as e:
         raise handle_file_error("upload_failed", unique_filename, str(e)) from e
 
+    final_recorded_at: Optional[datetime] = None
+    recorded_at_source: Optional[str] = None
+
+    if metadata.get("recorded_at"):
+        final_recorded_at = metadata["recorded_at"]
+        recorded_at_source = "metadata"
+    elif client_recorded_at:
+        final_recorded_at = client_recorded_at
+        recorded_at_source = "client"
+    elif recorded_at:
+        final_recorded_at = recorded_at
+        recorded_at_source = "upload_time"
+    else:
+        final_recorded_at = datetime.now(timezone.utc)
+        recorded_at_source = "upload_time"
+
     db_video = create_video_record(
         db=db,
         filename=unique_filename,
@@ -229,7 +253,8 @@ def handle_video_upload(
         is_demo=is_demo,
         session_type=session_type,
         camera_angle=camera_angle,
-        recorded_at=recorded_at,
+        recorded_at=final_recorded_at,
+        recorded_at_source=recorded_at_source,
     )
 
     return db_video, metadata

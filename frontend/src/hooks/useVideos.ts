@@ -110,12 +110,14 @@ export const useUploadVideo = () => {
     mutationFn: ({
       file,
       isDemo,
+      clientRecordedAt,
       metadata,
     }: {
       file: File;
       isDemo: boolean;
+      clientRecordedAt?: string;
       metadata?: { session_type?: string; camera_angle?: string };
-    }) => videoApi.uploadVideo(file, isDemo, metadata),
+    }) => videoApi.uploadVideo(file, isDemo, clientRecordedAt, metadata),
   });
 };
 

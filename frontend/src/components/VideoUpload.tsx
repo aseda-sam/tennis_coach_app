@@ -84,10 +84,15 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
       setUploadProgress(0);
 
       try {
+        const clientRecordedAt = file.lastModified
+          ? new Date(file.lastModified).toISOString()
+          : undefined;
+
         // Upload file immediately without metadata
         const response = await uploadMutation.mutateAsync({
           file,
           isDemo: resolvedIsDemo,
+          clientRecordedAt,
           metadata: {},
         });
 

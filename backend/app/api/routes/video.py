@@ -679,6 +679,9 @@ async def upload_video(
     recorded_at: Optional[datetime] = Query(
         None, description="When video was recorded (UTC; optional override)"
     ),
+    client_recorded_at: Optional[datetime] = Query(
+        None, description="Client-provided recording timestamp (from File.lastModified)"
+    ),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VideoUploadResponse:
@@ -691,6 +694,7 @@ async def upload_video(
         session_type: Session type for serve-focused workflow
         camera_angle: Camera angle for serve analysis
         recorded_at: When video was recorded (for trends)
+        client_recorded_at: Client-provided recording timestamp
 
     Returns:
         Upload confirmation with video information
@@ -724,6 +728,7 @@ async def upload_video(
             session_type=session_type,
             camera_angle=camera_angle,
             recorded_at=recorded_at,
+            client_recorded_at=client_recorded_at,
         )
 
         # Auto-enqueue transcoding and pose detection (opt-in via setting)

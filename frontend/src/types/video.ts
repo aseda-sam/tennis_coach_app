@@ -41,6 +41,7 @@ export interface VideoUploadResponse {
     width?: number;
     height?: number;
     frame_count?: number;
+    recorded_at?: string;
   };
 }
 

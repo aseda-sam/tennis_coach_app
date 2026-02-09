@@ -64,6 +64,9 @@ class Video(Base):
     recorded_at = Column(
         DateTime(timezone=True), nullable=True
     )  # When video was recorded (for trends)
+    recorded_at_source = Column(
+        String(20), nullable=True
+    )  # 'metadata', 'client', 'upload_time'
 
     # Default player attribution for serves created from this video
     primary_player_id = Column(
