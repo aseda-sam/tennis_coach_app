@@ -1,0 +1,107 @@
+.metric-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--card-border-radius);
+  padding: var(--card-padding);
+  box-shadow: var(--card-shadow);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity var(--duration-slower) var(--ease-out),
+    transform var(--duration-slower) var(--ease-out);
+}
+
+.metric-card-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.metric-card:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.metric-card-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-sm) 0;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.metric-card-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+}
+
+.metric-card-value {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  line-height: var(--line-height-tight);
+}
+
+.metric-card-unit {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.metric-card-trend {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  margin-left: var(--spacing-xs);
+}
+
+.trend-improving {
+  color: var(--color-success);
+}
+
+.trend-declining {
+  color: var(--color-error);
+}
+
+.trend-stable {
+  color: var(--color-text-muted);
+}
+
+.metric-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.metric-card-consistency-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.metric-card-rating {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-full);
+  text-transform: capitalize;
+}
+
+.rating-excellent {
+  background: var(--color-success-light);
+  color: var(--color-success-dark);
+}
+
+.rating-good {
+  background: var(--color-info-light);
+  color: var(--color-info-dark);
+}
+
+.rating-fair {
+  background: var(--color-warning-light);
+  color: var(--color-warning-dark);
+}
+
+.rating-needs_work {
+  background: var(--color-error-light);
+  color: var(--color-error-dark);
+}

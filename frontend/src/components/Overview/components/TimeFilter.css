@@ -1,0 +1,29 @@
+.time-filter {
+  display: flex;
+  gap: var(--spacing-xs);
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xs);
+}
+
+.time-filter-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.time-filter-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.time-filter-btn.active {
+  background: var(--color-primary);
+  color: white;
+}

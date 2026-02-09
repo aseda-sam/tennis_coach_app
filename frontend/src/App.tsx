@@ -10,6 +10,7 @@ import DemoLanding from './components/DemoLanding';
 import LoomVideoModal from './components/LoomVideoModal';
 import { CloseIcon, VideoIcon } from './components/Icons';
 import LoadingIndicator from './components/LoadingIndicator';
+import Overview from './components/Overview/Overview';
 import { QuickSetup } from './components/QuickSetup';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
@@ -24,7 +25,7 @@ function App() {
   const { isAdmin } = useAdmin();
   const queryClient = useQueryClient();
   const [currentView, setCurrentView] = useState<
-    'list' | 'dashboard' | 'demo-landing' | 'demo-dashboard' | 'admin-demo'
+    'list' | 'dashboard' | 'demo-landing' | 'demo-dashboard' | 'admin-demo' | 'overview'
   >('demo-landing');
   const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(
     null
@@ -197,7 +198,7 @@ function App() {
 
   // Show auth form only for protected views (list, dashboard) when not logged in
   // Home (demo-landing) and demo-dashboard are accessible without login
-  const requiresAuth = ['list', 'dashboard'].includes(currentView);
+  const requiresAuth = ['list', 'dashboard', 'overview'].includes(currentView);
   const showAuthForm = profile !== 'local' && !user && requiresAuth;
 
   const renderHeader = () => {
@@ -232,6 +233,15 @@ function App() {
                 aria-selected={currentView === 'demo-landing'}
               >
                 Home
+              </button>
+              <button
+                type="button"
+                role="tab"
+                className={`view-toggle-btn ${currentView === 'overview' ? 'active' : ''}`}
+                onClick={() => setCurrentView('overview')}
+                aria-selected={currentView === 'overview'}
+              >
+                Overview
               </button>
               <button
                 type="button"
@@ -323,6 +333,13 @@ function App() {
               onOpenVideo={handleViewAnalysis}
               onNavigateToDemo={() => setCurrentView('demo-dashboard')}
             />
+          </div>
+        );
+
+      case 'overview':
+        return (
+          <div className="app-container">
+            <Overview />
           </div>
         );
 
