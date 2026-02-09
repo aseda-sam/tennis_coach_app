@@ -7,7 +7,6 @@ import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
 import DemoDashboard from './components/DemoDashboard';
 import DemoLanding from './components/DemoLanding';
-import FloatingHelpButton from './components/FloatingHelpButton';
 import LoomVideoModal from './components/LoomVideoModal';
 import { CloseIcon, VideoIcon } from './components/Icons';
 import LoadingIndicator from './components/LoadingIndicator';
@@ -215,7 +214,7 @@ function App() {
               <div className="app-logo">
                 <VideoIcon size={20} color="white" />
               </div>
-              <h1 className="app-title">Tennis Coach</h1>
+              <h1 className="app-title">Serve Tennis Coach</h1>
             </button>
           </div>
 
@@ -414,8 +413,6 @@ function App() {
         videoId="4e50fe345c664fdca497c2ca884a52e3"
       />
 
-      {/* Floating Help Button - Persistent access to tutorial */}
-      <FloatingHelpButton onClick={() => setIsVideoModalOpen(true)} />
     </div>
   );
 }

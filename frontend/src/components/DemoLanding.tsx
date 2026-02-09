@@ -32,17 +32,13 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
             <h1 className="demo-landing__title">
               Tennis Feedback You Can See in Every Frame
             </h1>
-            <p className="demo-landing__subtitle">
-              We break down body and ball positions for serves and
-              groundstrokes to help you understand your technique better.
-            </p>
             <button
               className="demo-landing__watch-tutorial"
               onClick={onWatchTutorial}
               type="button"
             >
               <VideoIcon size={16} color="var(--color-primary)" />
-              Watch How It Works
+              Watch Intro Video
             </button>
           </div>
 
@@ -65,8 +61,8 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
                   </div>
                 </div>
                 <p className="demo-landing__card-body">
-                Start with a real clip and follow each moment. Jump between
-                serve attempts, review timing, and see what stands out.
+                Start with a real clip and follow each moment. Jump between key
+                moments, review timing, and see what stands out.
                 </p>
                 <div className="demo-landing__card-actions">
                   <button
@@ -89,14 +85,13 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
                   </div>
                   <div className="demo-landing__card-title-wrap">
                     <div className="demo-landing__card-eyebrow">
-                      Ready to upload?
+                      Your Turn
                     </div>
-                    <h2 className="demo-landing__card-title">Upload and Analyze</h2>
                   </div>
                 </div>
                 <p className="demo-landing__card-body">
-                  Ready to see your own swing. Upload a rally or serve and we will
-                  map timing, serves, and posture.
+                  Upload a serve clip to get clear feedback on timing, posture,
+                  and key moments.
                 </p>
                 <div className="demo-landing__card-actions">
                   <button
@@ -104,7 +99,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
                     onClick={onUploadVideo}
                     type="button"
                   >
-                    Upload Your Video
+                    Upload Serve Video
                   </button>
                 </div>
               </div>
@@ -123,9 +118,10 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__feature-icon demo-landing__feature-icon--pose">
                 <PoseDetectionIcon size={20} color="white" />
               </div>
-              <h4 className="demo-landing__feature-title">Pose Analysis</h4>
+              <h4 className="demo-landing__feature-title">Body Tracking</h4>
               <p className="demo-landing__feature-description">
-                Track key positions and movements throughout the stroke.
+                See how your body aligns and moves through each phase of
+                the serve.
               </p>
             </div>
 
@@ -133,9 +129,10 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__feature-icon demo-landing__feature-icon--contact">
                 <VideoIcon size={20} color="white" />
               </div>
-              <h4 className="demo-landing__feature-title">Serve Attempts</h4>
+              <h4 className="demo-landing__feature-title">Serve Breakdown</h4>
               <p className="demo-landing__feature-description">
-                Jump to key moments and review timing with timestamps.
+                Key moments are tagged automatically so you can jump to
+                what matters.
               </p>
             </div>
 
@@ -143,9 +140,11 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__feature-icon demo-landing__feature-icon--metrics">
                 <AnalyticsIcon size={20} color="white" />
               </div>
-              <h4 className="demo-landing__feature-title">Performance Metrics</h4>
+              <h4 className="demo-landing__feature-title">
+                Progress Over Time
+              </h4>
               <p className="demo-landing__feature-description">
-                See angles and metrics computed from existing serve attempts.
+                Track how your technique changes across sessions and weeks.
               </p>
             </div>
 
@@ -153,9 +152,11 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__feature-icon demo-landing__feature-icon--video">
                 <VideoIcon size={20} color="white" />
               </div>
-              <h4 className="demo-landing__feature-title">Interactive Video</h4>
+              <h4 className="demo-landing__feature-title">
+                Frame-by-Frame Control
+              </h4>
               <p className="demo-landing__feature-description">
-                Frame-by-frame controls and fast navigation between serve attempts.
+                Step through every frame and zoom in for a closer look.
               </p>
             </div>
           </div>

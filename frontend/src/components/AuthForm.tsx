@@ -198,8 +198,8 @@ export function AuthForm() {
         </h2>
         <p className="auth-form-subtitle">
           {isLogin
-            ? 'Sign in to continue to Tennis Coach App'
-            : 'Join Tennis Coach App to analyze your serve'}
+            ? 'Sign in to continue to Serve Tennis Coach'
+            : 'Join Serve Tennis Coach to analyze your serve'}
         </p>
       </div>
       <form onSubmit={handleSubmit} className="auth-form-form">

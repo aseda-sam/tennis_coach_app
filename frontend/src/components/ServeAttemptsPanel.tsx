@@ -112,7 +112,7 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
     return (
       <div className="analysis-right-panel">
         <div className="analysis-right-panel__card">
-          <LoadingIndicator size="md" label="Loading serve attempts..." />
+          <LoadingIndicator size="md" label="Loading key moments..." />
         </div>
       </div>
     );
@@ -135,7 +135,7 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
         <div className="analysis-right-panel__trajectory-header">
           <div className="analysis-right-panel__trajectory-title-group">
             <h3 className="analysis-right-panel__card-title">
-              Serve Attempts ({sortedServeAttempts.length})
+              Key Moments ({sortedServeAttempts.length})
             </h3>
             {serveAttemptsWithMetrics.length > 0 && (
               <p className="analysis-right-panel__card-subtitle">
@@ -274,9 +274,9 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
             })
           ) : (
             <div className="analysis-right-panel__metrics-empty">
-              <p>No serve attempts tagged yet</p>
+              <p>No key moments tagged yet</p>
               <p className="analysis-right-panel__metrics-hint">
-                Tag serve attempts and run analysis to see metrics
+                Tag key moments and run analysis to see metrics
               </p>
             </div>
           )}

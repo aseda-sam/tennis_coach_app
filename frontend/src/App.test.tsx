@@ -88,9 +88,9 @@ jest.mock('./components/DemoDashboard', () => {
   };
 });
 
-test('renders tennis coach app title', () => {
+test('renders serve tennis coach app title', () => {
   renderWithProviders(<App />);
-  const titleElement = screen.getByText(/Tennis Coach/i);
+  const titleElement = screen.getByText(/Serve Tennis Coach/i);
   expect(titleElement).toBeInTheDocument();
 });
 

@@ -31,7 +31,7 @@ const LoomVideoModal: React.FC<LoomVideoModalProps> = ({
       >
         <div className="loom-video-modal__header">
           <h2 id="loom-video-modal-title" className="loom-video-modal__title">
-            How to Use Tennis Coach
+            How to Use Serve Tennis Coach
           </h2>
           <button
             className="loom-video-modal__close"
@@ -48,7 +48,7 @@ const LoomVideoModal: React.FC<LoomVideoModalProps> = ({
               src={embedUrl}
               frameBorder="0"
               allowFullScreen
-              title="Tennis Coach Tutorial Video"
+              title="Serve Tennis Coach Intro Video"
               className="loom-video-modal__iframe"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             />
