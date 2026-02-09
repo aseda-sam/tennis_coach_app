@@ -7,9 +7,9 @@ import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
 import DemoDashboard from './components/DemoDashboard';
 import DemoLanding from './components/DemoLanding';
-import FloatingHelpButton from './components/FloatingHelpButton';
 import LoomVideoModal from './components/LoomVideoModal';
 import { CloseIcon, VideoIcon } from './components/Icons';
+import LoadingIndicator from './components/LoadingIndicator';
 import { QuickSetup } from './components/QuickSetup';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
@@ -187,7 +187,9 @@ function App() {
     return (
       <div className="App">
         <div className="app-container">
-          <div style={{ textAlign: 'center', padding: '50px' }}>Loading...</div>
+          <div className="app-loading">
+            <LoadingIndicator size="lg" label="Loading..." />
+          </div>
         </div>
       </div>
     );
@@ -212,7 +214,7 @@ function App() {
               <div className="app-logo">
                 <VideoIcon size={20} color="white" />
               </div>
-              <h1 className="app-title">Tennis Coach</h1>
+              <h1 className="app-title">Serve Tennis Coach</h1>
             </button>
           </div>
 
@@ -411,8 +413,6 @@ function App() {
         videoId="4e50fe345c664fdca497c2ca884a52e3"
       />
 
-      {/* Floating Help Button - Persistent access to tutorial */}
-      <FloatingHelpButton onClick={() => setIsVideoModalOpen(true)} />
     </div>
   );
 }

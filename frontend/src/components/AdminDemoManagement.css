@@ -210,7 +210,7 @@
   color: var(--color-text);
 }
 
-.admin-demo-management__action-btn:hover:not(:disabled) {
+.admin-demo-management__action-btn:not(.primary):hover:not(:disabled) {
   background: var(--color-surface-hover);
   border-color: var(--color-border-dark);
 }
@@ -230,6 +230,10 @@
 /* Loading and error states */
 .admin-demo-management__loading,
 .admin-demo-management__error {
+  min-height: 40vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   padding: var(--spacing-4xl);
 }

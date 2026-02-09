@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { videoApi } from '../services/api';
 import { DemoVideoListItem, VideoMetadata } from '../types/video';
 import './AdminDemoManagement.css';
+import LoadingIndicator from './LoadingIndicator';
 import VideoUpload from './VideoUpload';
 
 interface AdminDemoManagementProps {
@@ -91,7 +92,7 @@ const AdminDemoManagement: React.FC<AdminDemoManagementProps> = ({
     return (
       <div className="admin-demo-management">
         <div className="admin-demo-management__loading">
-          Loading demo videos...
+          <LoadingIndicator size="lg" label="Loading demo videos..." />
         </div>
       </div>
     );
@@ -159,8 +160,8 @@ const AdminDemoManagement: React.FC<AdminDemoManagementProps> = ({
                     }
                   >
                     {activeDemo.serve_attempt_count > 0
-                      ? `✓ ${activeDemo.serve_attempt_count} Serve${activeDemo.serve_attempt_count !== 1 ? 's' : ''}`
-                      : '⚠ No Serve Attempts'}
+                      ? `✓ ${activeDemo.serve_attempt_count} Key Moment${activeDemo.serve_attempt_count !== 1 ? 's' : ''}`
+                      : '⚠ No Key Moments'}
                   </span>
                 </div>
                 <span className="admin-demo-management__active-card-hint">
@@ -181,7 +182,7 @@ const AdminDemoManagement: React.FC<AdminDemoManagementProps> = ({
             Upload Demo Video
           </button>
           <span className="admin-demo-management__helper-text">
-            Open a video to tag serve attempts or review analysis.
+            Open a video to tag key moments or review analysis.
           </span>
         </div>
 

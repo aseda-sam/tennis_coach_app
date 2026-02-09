@@ -26,6 +26,7 @@ import {
   VolumeOffIcon,
   WarningIcon,
 } from './Icons';
+import LoadingIndicator from './LoadingIndicator';
 import ProposalRange from './ProposalRange';
 import ServeAttemptModal from './ServeAttemptModal';
 import ServeAttemptRange from './ServeAttemptRange';
@@ -1082,8 +1083,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {/* Loading overlay while resolving URL */}
             {isLoadingUrl && (
               <div className="loading-overlay">
-                <div className="loading-spinner" />
-                <p>Loading video...</p>
+                <LoadingIndicator
+                  size="lg"
+                  tone="light"
+                  label="Loading Video..."
+                />
               </div>
             )}
 

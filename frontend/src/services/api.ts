@@ -106,6 +106,7 @@ export const videoApi = {
   uploadVideo: async (
     file: File,
     isDemo: boolean = false,
+    clientRecordedAt?: string,
     metadata?: {
       session_type?: string;
       camera_angle?: string;
@@ -117,6 +118,9 @@ export const videoApi = {
     const params = new URLSearchParams();
     if (isDemo) {
       params.append('is_demo', 'true');
+    }
+    if (clientRecordedAt) {
+      params.append('client_recorded_at', clientRecordedAt);
     }
     if (metadata?.session_type) {
       params.append('session_type', metadata.session_type);

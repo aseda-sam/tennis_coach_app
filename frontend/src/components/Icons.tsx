@@ -159,3 +159,36 @@ export const AngleIcon: React.FC<IconProps> = ({ size = 24, className = '', colo
     <circle cx="12" cy="12" r="1.5" fill={color} />
   </svg>
 );
+
+export const BodyTrackingIcon: React.FC<IconProps> = ({ size = 24, className = '', color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <circle cx="12" cy="4" r="2" fill={color} />
+    <path d="M20.5 6c-2.61.7-5.67 1-8.5 1s-5.89-.3-8.5-1L3 8c1.86.5 4 .83 6 1v13h2v-6h2v6h2V9c2-.17 4.14-.5 6-1l-.5-2z" fill={color} />
+  </svg>
+);
+
+export const ServeBreakdownIcon: React.FC<IconProps> = ({ size = 24, className = '', color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path
+      d="M4 12c0-.55.45-1 1-1h14a1 1 0 1 1 0 2H5c-.55 0-1-.45-1-1z"
+      fill={color}
+      opacity="0.45"
+    />
+    <circle cx="7" cy="12" r="2" fill={color} opacity="0.75" />
+    <circle cx="12" cy="12" r="2.4" fill={color} />
+    <circle cx="17" cy="12" r="2" fill={color} opacity="0.75" />
+    <path d="M12 4l2.5 3.5h-5L12 4z" fill={color} />
+  </svg>
+);
+
+export const TrendUpIcon: React.FC<IconProps> = ({ size = 24, className = '', color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" fill={color} />
+  </svg>
+);
+
+export const FrameStepIcon: React.FC<IconProps> = ({ size = 24, className = '', color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill={color} />
+  </svg>
+);

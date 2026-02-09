@@ -5,6 +5,7 @@ Basic tests for video API endpoints.
 import os
 import tempfile
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Generator, Optional
 from unittest.mock import MagicMock, patch
 
@@ -507,6 +508,77 @@ class TestVideoAPI:
         video_ids = [v["id"] for v in videos]
         assert regular_video.id in video_ids
         assert demo_video.id not in video_ids
+
+    def test_list_videos_orders_by_recorded_at_with_created_at_fallback(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """List endpoint sorts by recorded_at desc, falling back to created_at."""
+        from app.models.video import Video
+
+        now = datetime.now(timezone.utc)
+
+        video_recorded_newest = Video(
+            filename="recorded_newest.mp4",
+            file_path="raw/recorded_newest.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+            is_demo=False,
+            created_at=now - timedelta(days=10),
+            recorded_at=now - timedelta(days=1),
+        )
+        video_fallback_created = Video(
+            filename="fallback_created.mp4",
+            file_path="raw/fallback_created.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+            is_demo=False,
+            created_at=now - timedelta(days=2),
+            recorded_at=None,
+        )
+        video_recorded_oldest = Video(
+            filename="recorded_oldest.mp4",
+            file_path="raw/recorded_oldest.mp4",
+            file_size=1000000,
+            duration=60.0,
+            width=1920,
+            height=1080,
+            fps=30.0,
+            status="uploaded",
+            user_id=test_user_id,
+            is_demo=False,
+            created_at=now - timedelta(days=1),
+            recorded_at=now - timedelta(days=3),
+        )
+
+        db_session.add_all(
+            [video_recorded_newest, video_fallback_created, video_recorded_oldest]
+        )
+        db_session.commit()
+
+        response = client.get("/v0/videos/")
+        assert response.status_code == 200
+        videos = response.json()
+
+        # Contract: list items include recorded_at field
+        assert "recorded_at" in videos[0]
+
+        ids_in_order = [item["id"] for item in videos]
+        assert ids_in_order.index(video_recorded_newest.id) < ids_in_order.index(
+            video_fallback_created.id
+        )
+        assert ids_in_order.index(video_fallback_created.id) < ids_in_order.index(
+            video_recorded_oldest.id
+        )
 
     def test_update_video_metadata_success(
         self, client: TestClient, db_session: "Session", test_user_id: str

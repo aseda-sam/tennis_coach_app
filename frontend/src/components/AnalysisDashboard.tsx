@@ -8,6 +8,7 @@ import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { serveAttemptApi } from '../services/serveAttemptApi';
 import './AnalysisDashboard.css';
 import AnalysisRightPanel from './AnalysisRightPanel';
+import { ArrowBackIcon } from './Icons';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
 import VideoPlayer from './VideoPlayer';
@@ -261,7 +262,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   const handleAnalyzeServes = useCallback(async () => {
     if (serveAttempts.length === 0) {
-      alert('Please tag serve attempts first before analyzing.');
+      alert('Please tag key moments first before analyzing.');
       return;
     }
 
@@ -303,6 +304,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     <div className="analysis-dashboard">
       {/* Header - Compact title bar */}
       <div className="analysis-dashboard__header">
+        <button
+          className="analysis-dashboard__back-button"
+          onClick={onClose}
+          type="button"
+        >
+          <ArrowBackIcon size={16} />
+          Back to Library
+        </button>
         <h1 className="analysis-dashboard__title">{videoFilename}</h1>
       </div>
 
@@ -404,11 +413,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                       className="analysis-dashboard__action-btn analysis-dashboard__action-btn--accept-all"
                       onClick={handleAcceptAll}
                       disabled={isAcceptingAll || proposals.length === 0}
-                      title="Accept all proposals and create serve attempts"
+                      title="Accept all proposals and create key moments"
                     >
                       {isAcceptingAll
                         ? 'Accepting…'
-                        : `Accept All Serve Proposals (${proposals.length})`}
+                        : `Accept All Key Moment Proposals (${proposals.length})`}
                     </button>
 
                     {/* Secondary actions row */}

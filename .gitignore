@@ -60,6 +60,7 @@ venv.bak/
 
 # Claude AI
 .claude/
+CLAUDE.md
 
 # Ruff
 .ruff_cache/

@@ -48,10 +48,24 @@ alwaysApply: false
 
 - **Action buttons**: Use clear visual hierarchy with background, border, and shadow. Minimum touch target size: 36px height.
 - **Primary actions**: Use primary color with sufficient contrast. Include hover states with subtle transform (`translateY(-1px)`) and shadow elevation.
+- **Primary hover consistency**: Never allow generic button hover selectors to override primary button styles (avoid white-out/contrast loss). Scope generic hovers with exclusions like `:not(.primary)` when needed.
 - **Secondary actions**: Use neutral backgrounds with borders. On hover, show color change and elevation.
 - **Destructive actions**: Use error color scheme (red) on hover, with soft background. Always provide clear visual feedback.
 - **Button states**: Include hover, active, and disabled states. Use transitions for smooth interactions.
 - **Card actions**: Group action buttons together in a dedicated `.card-actions` section at the bottom of cards. Separate from information content with a border-top divider. Limit to 3 actions per card. Align actions to the right (or left for RTL). Use consistent spacing between grouped buttons.
+
+## Loading States (Required)
+
+- **Use one shared loader pattern**: Prefer `LoadingIndicator` (`frontend/src/components/LoadingIndicator.tsx`) for page-level, panel-level, and overlay loading states.
+- **Avoid ad-hoc spinner classes**: Don’t create new generic `.spinner` / `.loading-spinner` styles unless there is a strong component-specific reason.
+- **Always include user-facing loading text**: Add clear labels (e.g., “Loading videos...”, “Loading Video...”) so users understand what is happening.
+- **Choose the right loading scope**:
+  - Full-page boot/load: centered loader with preserved layout spacing.
+  - Panel/card loading: loader inside the container to avoid layout jump.
+  - Media loading (video/canvas): overlay loader with readable contrast.
+- **Use React Query state intentionally**: Use `isLoading` for first load and `isFetching` for background refreshes; avoid blocking the full UI during background refetch.
+- **Prevent layout shift**: Reserve space (`min-height`/stable containers) for loading regions rather than replacing content with unstyled text.
+- **Accessibility**: Loading components should expose status semantics (`role="status"`, `aria-live="polite"`) and should not remove focus indicators.
 
 ## Typescript
 

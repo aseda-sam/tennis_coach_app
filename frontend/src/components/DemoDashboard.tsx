@@ -8,8 +8,9 @@ import { serveAttemptApi } from '../services/serveAttemptApi';
 import { VideoMetadata } from '../types/video';
 import AnalysisRightPanel from './AnalysisRightPanel';
 import './DemoDashboard.css';
-import { UploadIcon } from './Icons';
+import { ArrowBackIcon, UploadIcon } from './Icons';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
+import LoadingIndicator from './LoadingIndicator';
 import Tour, { TourStep } from './Tour';
 import VideoPlayer from './VideoPlayer';
 
@@ -92,15 +93,15 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
       },
       {
         target: 'serve-attempt-ranges',
-        title: 'Serves',
-        content: 'Jump to key moments using the serves on the timeline.',
+        title: 'Key Moments',
+        content: 'Navigate key moments directly from the timeline.',
         placement: 'top',
       },
       {
         target: 'analysis-panel',
         title: 'Metrics & Analysis',
         content:
-          'Review metrics derived from existing serve attempts, including elbow angles and shot types.',
+          'Review pose and key-moment metrics to understand your serve mechanics.',
         placement: 'left',
       },
       {
@@ -146,7 +147,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   const handleAnalyzeServes = useCallback(async () => {
     if (!demoVideo?.id) return;
     if (serveAttempts.length === 0) {
-      alert('Please tag serve attempts first before analyzing.');
+      alert('Please tag key moments first before analyzing.');
       return;
     }
 
@@ -188,7 +189,9 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   if (isLoadingDemo) {
     return (
       <div className="demo-dashboard">
-        <div className="demo-dashboard__loading">Loading demo...</div>
+        <div className="demo-dashboard__loading">
+          <LoadingIndicator size="lg" label="Loading demo..." />
+        </div>
       </div>
     );
   }
@@ -219,7 +222,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
             )}
             {!hasServeAttempts && (
               <span className="demo-dashboard__status-item warning">
-                ⚠ No serve attempts
+                ⚠ No key moments tagged
               </span>
             )}
             <span className="demo-dashboard__status-hint">
@@ -257,6 +260,14 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
           {/* Friendly Upload CTA */}
           <div className="demo-dashboard__upload-cta" data-tour="upload-cta">
             <div className="demo-dashboard__upload-cta-content">
+              <button
+                className="demo-dashboard__back-button"
+                onClick={onClose}
+                type="button"
+              >
+                <ArrowBackIcon size={16} />
+                Back to Home
+              </button>
               <h3 className="demo-dashboard__upload-cta-title">
                 Ready to analyze your own video?
               </h3>

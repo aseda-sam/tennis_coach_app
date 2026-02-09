@@ -22,6 +22,9 @@ class VideoMetadata(BaseModel):
     frame_count: Optional[int] = Field(
         default=None, ge=0, description="Total number of frames"
     )
+    recorded_at: Optional[datetime] = Field(
+        default=None, description="Video creation time from metadata, if available"
+    )
 
 
 class VideoInfo(BaseModel):
@@ -65,6 +68,10 @@ class VideoInfo(BaseModel):
     recorded_at: Optional[datetime] = Field(
         default=None, description="When video was recorded (for trends)"
     )
+    recorded_at_source: Optional[str] = Field(
+        default=None,
+        description="Source of recorded_at: metadata, client, or upload_time",
+    )
     primary_player_id: Optional[int] = Field(
         default=None,
         description="Default player ID for serves created from this video",
@@ -83,6 +90,10 @@ class VideoListItem(BaseModel):
     width: Optional[int] = Field(default=None, description="Width in pixels")
     height: Optional[int] = Field(default=None, description="Height in pixels")
     created_at: datetime = Field(description="Upload timestamp")
+    recorded_at: Optional[datetime] = Field(
+        default=None,
+        description="When video was recorded (for trends); may fallback to upload time",
+    )
     status: str = Field(description="Video processing status")
     session_type: Optional[str] = Field(
         default=None,
