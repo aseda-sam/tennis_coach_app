@@ -69,7 +69,8 @@ class VideoInfo(BaseModel):
         default=None, description="When video was recorded (for trends)"
     )
     recorded_at_source: Optional[str] = Field(
-        default=None, description="Source of recorded_at: metadata, client, or upload_time"
+        default=None,
+        description="Source of recorded_at: metadata, client, or upload_time",
     )
     primary_player_id: Optional[int] = Field(
         default=None,

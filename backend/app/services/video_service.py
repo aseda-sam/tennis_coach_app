@@ -96,7 +96,9 @@ def _create_temp_file_for_processing(file_content: bytes, filename: str) -> Path
     return tmp_path
 
 
-def extract_video_metadata(video_path: Path) -> dict[str, Optional[float | int | datetime]]:
+def extract_video_metadata(
+    video_path: Path,
+) -> dict[str, Optional[float | int | datetime]]:
     """Extract metadata from video file using OpenCV and ffprobe."""
     try:
         cap = cv2.VideoCapture(str(video_path))

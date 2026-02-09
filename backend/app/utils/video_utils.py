@@ -134,7 +134,9 @@ def get_video_creation_time(video_path: Path) -> Optional[datetime]:
                 stream_tags = streams[0].get("tags", {})
                 creation_time = stream_tags.get("creation_time")
                 if creation_time:
-                    parsed = datetime.fromisoformat(creation_time.replace("Z", "+00:00"))
+                    parsed = datetime.fromisoformat(
+                        creation_time.replace("Z", "+00:00")
+                    )
                     if parsed.tzinfo is None:
                         parsed = parsed.replace(tzinfo=timezone.utc)
                     return parsed
