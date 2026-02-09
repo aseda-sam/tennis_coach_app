@@ -148,6 +148,7 @@ def get_video_creation_time(video_path: Path) -> Optional[datetime]:
         ValueError,
         AttributeError,
     ):
+        # ffprobe not available or metadata parse failed; fall back to None
         pass
 
     return None
