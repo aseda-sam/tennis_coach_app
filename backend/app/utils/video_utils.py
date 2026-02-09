@@ -5,6 +5,9 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_video_rotation(video_path: Path) -> int:
@@ -148,7 +151,9 @@ def get_video_creation_time(video_path: Path) -> Optional[datetime]:
         ValueError,
         AttributeError,
     ):
-        # ffprobe not available or metadata parse failed; fall back to None
+        logger.exception(
+            "Failed to extract video creation time from %s", video_path
+        )
         pass
 
     return None
