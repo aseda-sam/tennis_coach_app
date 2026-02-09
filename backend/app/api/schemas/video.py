@@ -89,6 +89,10 @@ class VideoListItem(BaseModel):
     width: Optional[int] = Field(default=None, description="Width in pixels")
     height: Optional[int] = Field(default=None, description="Height in pixels")
     created_at: datetime = Field(description="Upload timestamp")
+    recorded_at: Optional[datetime] = Field(
+        default=None,
+        description="When video was recorded (for trends); may fallback to upload time",
+    )
     status: str = Field(description="Video processing status")
     session_type: Optional[str] = Field(
         default=None,

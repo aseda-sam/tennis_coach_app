@@ -350,7 +350,7 @@ const VideoList: React.FC<VideoListProps> = ({
                           fill="currentColor"
                         />
                       </svg>
-                      {formatDate(video.created_at)}
+                      {formatDate(video.recorded_at ?? video.created_at)}
                     </span>
                     <span className="meta-separator">•</span>
                     <span className="video-card-size">

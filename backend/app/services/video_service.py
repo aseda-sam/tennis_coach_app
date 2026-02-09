@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 import cv2
 import numpy as np
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -295,14 +296,19 @@ def list_user_videos(
         limit: Maximum number of videos to return
 
     Returns:
-        List of Video instances ordered by creation date (newest first)
+        List of Video instances ordered by recorded_at (fallback created_at), newest first
     """
     query = db.query(Video).filter(~Video.is_demo)
 
     if not is_admin:
         query = query.filter(Video.user_id == user_id)
 
-    return query.order_by(Video.created_at.desc()).offset(skip).limit(limit).all()
+    return (
+        query.order_by(func.coalesce(Video.recorded_at, Video.created_at).desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_active_demo_video(db: Session) -> Optional[Video]:

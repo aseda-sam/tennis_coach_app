@@ -10,6 +10,7 @@ export interface VideoMetadata {
   fps?: number;
   frame_count?: number;
   created_at: string; // NEW: creation timestamp
+  recorded_at?: string; // When the video was actually recorded
   updated_at?: string; // NEW: update timestamp
   status: string; // NEW: processing status
   error_message?: string; // NEW: error message if processing failed
