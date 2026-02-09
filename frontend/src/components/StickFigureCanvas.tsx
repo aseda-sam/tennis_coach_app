@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { videoApi } from '../services/api';
 import { OverlayData } from '../types/video';
+import LoadingIndicator from './LoadingIndicator';
 import './StickFigureCanvas.css';
 
 interface StickFigureCanvasProps {
@@ -370,8 +371,11 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
   if (isLoading) {
     return (
       <div className="stick-figure-canvas-container stick-figure-loading">
-        <div className="stick-figure-loading-spinner" />
-        <p>Loading pose data...</p>
+        <LoadingIndicator
+          size="md"
+          tone="light"
+          label="Loading pose overlay..."
+        />
       </div>
     );
   }

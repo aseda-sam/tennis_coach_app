@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useServeAttempts } from '../hooks/useServeAttempts';
 import { formatTime } from '../utils/validation';
 import './AnalysisRightPanel.css'; // Reuse styles
+import LoadingIndicator from './LoadingIndicator';
 
 interface ServeAttemptsPanelProps {
   videoId: number;
@@ -111,7 +112,7 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
     return (
       <div className="analysis-right-panel">
         <div className="analysis-right-panel__card">
-          <p>Loading serve attempts...</p>
+          <LoadingIndicator size="md" label="Loading serve attempts..." />
         </div>
       </div>
     );

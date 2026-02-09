@@ -10,6 +10,7 @@ import AnalysisRightPanel from './AnalysisRightPanel';
 import './DemoDashboard.css';
 import { UploadIcon } from './Icons';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
+import LoadingIndicator from './LoadingIndicator';
 import Tour, { TourStep } from './Tour';
 import VideoPlayer from './VideoPlayer';
 
@@ -188,7 +189,9 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   if (isLoadingDemo) {
     return (
       <div className="demo-dashboard">
-        <div className="demo-dashboard__loading">Loading demo...</div>
+        <div className="demo-dashboard__loading">
+          <LoadingIndicator size="lg" label="Loading demo..." />
+        </div>
       </div>
     );
   }

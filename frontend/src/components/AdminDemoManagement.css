@@ -230,6 +230,10 @@
 /* Loading and error states */
 .admin-demo-management__loading,
 .admin-demo-management__error {
+  min-height: 40vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   padding: var(--spacing-4xl);
 }

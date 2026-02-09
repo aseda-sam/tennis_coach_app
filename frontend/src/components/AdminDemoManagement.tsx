@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { videoApi } from '../services/api';
 import { DemoVideoListItem, VideoMetadata } from '../types/video';
 import './AdminDemoManagement.css';
+import LoadingIndicator from './LoadingIndicator';
 import VideoUpload from './VideoUpload';
 
 interface AdminDemoManagementProps {
@@ -91,7 +92,7 @@ const AdminDemoManagement: React.FC<AdminDemoManagementProps> = ({
     return (
       <div className="admin-demo-management">
         <div className="admin-demo-management__loading">
-          Loading demo videos...
+          <LoadingIndicator size="lg" label="Loading demo videos..." />
         </div>
       </div>
     );

@@ -492,6 +492,14 @@
   pointer-events: none;
 }
 
+.app-loading {
+  min-height: 40vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-6xl) var(--spacing-xl);
+}
+
 /* Smooth Transitions */
 .app-container {
   transition: opacity var(--duration-slower) var(--ease-in-out);

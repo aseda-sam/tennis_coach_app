@@ -10,6 +10,7 @@ import DemoLanding from './components/DemoLanding';
 import FloatingHelpButton from './components/FloatingHelpButton';
 import LoomVideoModal from './components/LoomVideoModal';
 import { CloseIcon, VideoIcon } from './components/Icons';
+import LoadingIndicator from './components/LoadingIndicator';
 import { QuickSetup } from './components/QuickSetup';
 import VideoList from './components/VideoList';
 import VideoUpload from './components/VideoUpload';
@@ -187,7 +188,9 @@ function App() {
     return (
       <div className="App">
         <div className="app-container">
-          <div style={{ textAlign: 'center', padding: '50px' }}>Loading...</div>
+          <div className="app-loading">
+            <LoadingIndicator size="lg" label="Loading..." />
+          </div>
         </div>
       </div>
     );

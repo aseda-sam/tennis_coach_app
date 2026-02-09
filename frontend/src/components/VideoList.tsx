@@ -10,6 +10,7 @@ import {
 } from '../hooks/useVideos';
 import { VideoMetadata } from '../types/video';
 import { CloseIcon, DeleteIcon, UploadIcon, VideoIcon } from './Icons';
+import LoadingIndicator from './LoadingIndicator';
 import './VideoList.css';
 import VideoUpload from './VideoUpload';
 
@@ -235,9 +236,8 @@ const VideoList: React.FC<VideoListProps> = ({
   if (loading) {
     return (
       <div className="video-list-container">
-        <div className="loading-spinner">
-          <div className="spinner"></div>
-          <p>Loading videos...</p>
+        <div className="video-list-loading">
+          <LoadingIndicator size="lg" label="Loading videos..." />
         </div>
       </div>
     );
