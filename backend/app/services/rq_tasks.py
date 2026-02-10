@@ -732,6 +732,7 @@ def analyze_pose_detection_scout_refine_rq(
                 scout_pose_detection = pose_service.save_detection_results(
                     db=db, video_id=video_id, detection_results=scout_results
                 )
+                scout_pose_detection_id = scout_pose_detection.id
                 with _stage_span("detect_serves", video_id=video_id, job_id=video_job_id):
                     logger.info("Phase 2: Detecting serve windows from scout data")
                     if video_job_uuid:
@@ -762,7 +763,7 @@ def analyze_pose_detection_scout_refine_rq(
                             "status": "completed",
                             "mode": "scout_only",
                             "serve_windows_found": 0,
-                            "pose_detection_id": scout_pose_detection.id,
+                            "pose_detection_id": scout_pose_detection_id,
                         }
 
                     windows = [
@@ -815,7 +816,7 @@ def analyze_pose_detection_scout_refine_rq(
             with SessionLocal() as db:
                 scout_pose_detection_db = (
                     db.query(PoseDetection)
-                    .filter(PoseDetection.id == scout_pose_detection.id)
+                    .filter(PoseDetection.id == scout_pose_detection_id)
                     .first()
                 )
                 if scout_pose_detection_db:
@@ -859,7 +860,7 @@ def analyze_pose_detection_scout_refine_rq(
                 "status": "completed",
                 "mode": "scout_refine",
                 "serve_windows_found": len(windows),
-                "scout_pose_detection_id": scout_pose_detection.id,
+                "scout_pose_detection_id": scout_pose_detection_id,
             }
 
         except Exception as e:

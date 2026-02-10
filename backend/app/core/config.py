@@ -71,9 +71,9 @@ class Settings(BaseSettings):
     POSE_DETECTION_JOB_TIMEOUT_SECONDS: int = 1800
 
     # Scout mode settings
-    SCOUT_FRAME_SKIP: int = (
-        2  # Process every Nth frame in scout mode (2 = 15fps effective at 30fps)
-    )
+    # Process every Nth frame in scout mode. Higher = faster scout, less temporal detail.
+    # At 60fps: 2 → 30fps effective, 4 → 15fps, 6 → 10fps. 15fps is usually enough for serve detection.
+    SCOUT_FRAME_SKIP: int = 4
 
     # Transcoding settings
     TRANSCODE_ENABLED: bool = True
