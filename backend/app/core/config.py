@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     # ML Models
     ML_MODELS_DIR: str = "ml_models"
 
+    # OpenAI API Key
+    OPENAI_API_KEY: Optional[str] = None
+
     # Pose Detection
     POSE_DETECTION_CONFIDENCE: float = 0.5
     POSE_TRACKING_CONFIDENCE: float = 0.5
