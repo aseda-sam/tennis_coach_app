@@ -3,6 +3,7 @@
 import logging
 from typing import List
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -27,22 +28,34 @@ def list_demo_videos_with_status(db: Session) -> List[dict]:
         List of demo video dictionaries with status information
     """
     demo_videos = db.query(Video).filter(Video.is_demo).order_by(Video.id.desc()).all()
+    if not demo_videos:
+        return []
+
+    video_ids = [video.id for video in demo_videos]
+
+    completed_pose_video_ids = {
+        row[0]
+        for row in db.query(PoseDetection.video_id)
+        .filter(
+            PoseDetection.video_id.in_(video_ids),
+            PoseDetection.status == "completed",
+        )
+        .distinct()
+        .all()
+    }
+
+    serve_count_rows = (
+        db.query(ServeAttempt.video_id, func.count(ServeAttempt.id))
+        .filter(ServeAttempt.video_id.in_(video_ids))
+        .group_by(ServeAttempt.video_id)
+        .all()
+    )
+    serve_counts = {video_id: count for video_id, count in serve_count_rows}
 
     result = []
     for video in demo_videos:
-        pose_detection = (
-            db.query(PoseDetection.id)
-            .filter(
-                PoseDetection.video_id == video.id,
-                PoseDetection.status == "completed",
-            )
-            .first()
-        )
-        has_pose_analysis = pose_detection is not None
-
-        serve_count = (
-            db.query(ServeAttempt).filter(ServeAttempt.video_id == video.id).count()
-        )
+        has_pose_analysis = video.id in completed_pose_video_ids
+        serve_count = serve_counts.get(video.id, 0)
 
         result.append(
             {
@@ -97,18 +110,29 @@ def set_active_demo_video(db: Session, video_id: int) -> Video:
         raise ValueError(f"Video with ID {video_id} not found")
 
     validate_demo_eligibility(video)
+    video_path = video.file_path
+    content_type = video.content_type
+
+    # End any open transaction before external storage I/O.
+    db.rollback()
 
     # Copy to demo bucket if using Supabase and demo bucket is configured
     if settings.STORAGE_TYPE == "supabase" and settings.SUPABASE_DEMO_BUCKET:
-        demo_path = video.file_path
+        demo_path = video_path
         if not storage_service.demo_object_exists(demo_path):
             try:
-                file_content = storage_service.download_private_file(video.file_path)
+                file_content = storage_service.download_private_file(video_path)
                 storage_service.upload_demo_object(
-                    demo_path, file_content, video.content_type
+                    demo_path, file_content, content_type
                 )
             except Exception as e:
                 raise RuntimeError(f"Failed to copy video to demo bucket: {e}") from e
+
+    # Re-load and re-validate before mutating DB state.
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise ValueError(f"Video with ID {video_id} not found")
+    validate_demo_eligibility(video)
 
     # Unset previous active demo
     old_active = db.query(Video).filter(Video.is_active_demo).first()

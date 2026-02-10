@@ -18,6 +18,9 @@ Stores uploaded videos and metadata.
 - `primary_player_id` (FK -> `players.id`, nullable)
   - Default player attribution for serves created from this video.
   - Used when a serve attempt or proposal acceptance does not specify `player_id`.
+- Indexes used by timeline/progress queries:
+  - `ix_videos_recorded_at` on `recorded_at`
+  - `ix_videos_user_recorded_at` on (`user_id`, `recorded_at`)
 
 ## players
 
@@ -40,3 +43,4 @@ Stores serve attempts and metrics derived from video analysis.
 - `start_timestamp`, `end_timestamp`, `contact_timestamp`
 - `analysis_version`, `elbow_angle_at_contact`, `knee_bend_*`, `court_side`,
   `serve_number`, `serve_subtype`, `in_out`
+- `source_proposal_id` (FK -> `serve_window_proposals.id`, nullable, indexed)

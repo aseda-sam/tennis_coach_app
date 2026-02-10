@@ -423,6 +423,13 @@ class ServeAnalysisService:
 
             # Set analysis version
             analysis_version = "v1.0"
+            player_ids = {attempt.player_id for attempt in serve_attempts}
+            players = (
+                db.query(Player).filter(Player.id.in_(player_ids)).all()
+                if player_ids
+                else []
+            )
+            players_by_id = {player.id: player for player in players}
 
             for serve_attempt in serve_attempts:
                 # Compute knee bend metrics (for all serves, not just those with contact)
@@ -482,11 +489,7 @@ class ServeAnalysisService:
                     continue
 
                 # Get player to determine contact hand
-                player = (
-                    db.query(Player)
-                    .filter(Player.id == serve_attempt.player_id)
-                    .first()
-                )
+                player = players_by_id.get(serve_attempt.player_id)
                 if not player:
                     logger.warning(
                         "Player %s not found for serve attempt %s",

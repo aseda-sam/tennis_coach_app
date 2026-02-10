@@ -87,6 +87,7 @@ class ServeAttempt(Base):
         Integer,
         ForeignKey("serve_window_proposals.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
 
     # Original timestamps (if edited from proposal)

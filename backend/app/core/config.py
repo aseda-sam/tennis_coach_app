@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     # Database (auto-detected from PROFILE)
     DATABASE_URL: Optional[str] = None  # Override default PostgreSQL URL if needed
     SUPABASE_DB_URL: Optional[str] = None  # Required if PROFILE=production
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT_SECONDS: int = 30
+    DB_POOL_RECYCLE_SECONDS: int = 1800
+    DB_POOL_PRE_PING: bool = True
 
     # Supabase (only needed if PROFILE=production)
     SUPABASE_URL: Optional[str] = None

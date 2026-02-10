@@ -3,7 +3,7 @@
 import logging
 from typing import Optional
 
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from app.models.player import Player
@@ -68,18 +68,30 @@ def get_orphaned_data_details(
     Returns:
         List of dicts with user_id, video_count, and player_count
     """
-    details = []
-    for user_id in orphaned_user_ids:
-        video_count = db.query(Video).filter(Video.user_id == user_id).count()
-        player_count = db.query(Player).filter(Player.user_id == user_id).count()
-        details.append(
-            {
-                "user_id": user_id,
-                "video_count": video_count,
-                "player_count": player_count,
-            }
-        )
-    return details
+    if not orphaned_user_ids:
+        return []
+
+    video_counts = dict(
+        db.query(Video.user_id, func.count(Video.id))
+        .filter(Video.user_id.in_(orphaned_user_ids))
+        .group_by(Video.user_id)
+        .all()
+    )
+    player_counts = dict(
+        db.query(Player.user_id, func.count(Player.id))
+        .filter(Player.user_id.in_(orphaned_user_ids))
+        .group_by(Player.user_id)
+        .all()
+    )
+
+    return [
+        {
+            "user_id": user_id,
+            "video_count": int(video_counts.get(user_id, 0)),
+            "player_count": int(player_counts.get(user_id, 0)),
+        }
+        for user_id in orphaned_user_ids
+    ]
 
 
 def cleanup_orphaned_data(
@@ -117,14 +129,23 @@ def cleanup_orphaned_data(
         f"{'[DRY RUN] ' if dry_run else ''}Cleaning up {len(orphaned_user_ids)} orphaned users"
     )
 
+    videos_by_user: dict[str, list[Video]] = {user_id: [] for user_id in orphaned_user_ids}
+    players_by_user: dict[str, list[Player]] = {
+        user_id: [] for user_id in orphaned_user_ids
+    }
+    for video in db.query(Video).filter(Video.user_id.in_(orphaned_user_ids)).all():
+        videos_by_user.setdefault(video.user_id, []).append(video)
+    for player in db.query(Player).filter(Player.user_id.in_(orphaned_user_ids)).all():
+        players_by_user.setdefault(player.user_id, []).append(player)
+
     for user_id in orphaned_user_ids:
         try:
             # Find all videos for this user
-            videos = db.query(Video).filter(Video.user_id == user_id).all()
+            videos = videos_by_user.get(user_id, [])
             video_count = len(videos)
 
             # Find all players for this user
-            players = db.query(Player).filter(Player.user_id == user_id).all()
+            players = players_by_user.get(user_id, [])
             player_count = len(players)
 
             logger.info(

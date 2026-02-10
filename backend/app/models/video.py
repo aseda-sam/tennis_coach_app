@@ -6,6 +6,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -92,4 +93,9 @@ class Video(Base):
     )
     jobs = relationship(
         "VideoJob", back_populates="video", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index("ix_videos_recorded_at", "recorded_at"),
+        Index("ix_videos_user_recorded_at", "user_id", "recorded_at"),
     )
