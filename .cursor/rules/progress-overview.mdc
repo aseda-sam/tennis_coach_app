@@ -1,0 +1,27 @@
+---
+description: Progress Overview — design principles when building this feature
+globs:
+  - frontend/src/components/Overview/**/*.{ts,tsx,css}
+  - backend/app/services/progress_service.py
+  - backend/app/api/routes/progress.py
+  - backend/app/api/schemas/progress.py
+alwaysApply: false
+---
+
+# Progress Overview — Principles
+
+When working on the Progress Overview page or its backend, follow these principles. Full API, data model, and implementation details are in `docs/progress-overview-spec.md`.
+
+1. **Visual first.** Prefer court diagrams, pose silhouettes, and animated charts over text and data tables. If a metric can’t be shown visually on this page, question whether it belongs here.
+
+2. **Glanceable, then explorable.** The overview should deliver value in a few seconds of scanning. Deeper detail lives on other tabs/pages. Hierarchy: visual → number → context → deep-dive link.
+
+3. **Personal progress over benchmarks.** The story is “am I getting better?” not “am I good enough?” Show trend and consistency; use healthy ranges as guard rails, not pass/fail grades.
+
+4. **Animated and alive.** Charts draw in; numbers count up; pose viz is stylized and smooth, not raw skeleton dumps. The page shows you something, it doesn’t dump a report.
+
+5. **One video = one session.** Progress is across videos by `recorded_at`. No artificial session grouping; each video is one data point on the timeline.
+
+6. **Court as canvas.** Where it fits, put data on court diagrams (e.g. deuce/ad distribution) rather than abstract charts only.
+
+7. **Low density, high signal.** One page, one story. If a metric competes for attention, move it to a detail page. The overview answers “How am I doing?” — not “Here is everything we know.”
