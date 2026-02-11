@@ -59,6 +59,7 @@ venv.bak/
 !.cursor/skills/
 !.cursor/skills/**
 .cursor/skills/interview-prep/
+.cursor/skills/jd-skill-check/
 
 # Claude AI
 .claude/
