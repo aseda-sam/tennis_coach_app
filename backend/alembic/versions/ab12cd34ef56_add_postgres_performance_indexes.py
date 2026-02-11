@@ -38,7 +38,9 @@ def upgrade() -> None:
 
     video_indexes = _get_indexes("videos")
     if "ix_videos_recorded_at" not in video_indexes:
-        op.create_index("ix_videos_recorded_at", "videos", ["recorded_at"], unique=False)
+        op.create_index(
+            "ix_videos_recorded_at", "videos", ["recorded_at"], unique=False
+        )
     if "ix_videos_user_recorded_at" not in video_indexes:
         op.create_index(
             "ix_videos_user_recorded_at",
@@ -74,7 +76,9 @@ def downgrade() -> None:
 
     serve_attempt_indexes = _get_indexes("serve_attempts")
     if "ix_serve_attempts_source_proposal_id" in serve_attempt_indexes:
-        op.drop_index("ix_serve_attempts_source_proposal_id", table_name="serve_attempts")
+        op.drop_index(
+            "ix_serve_attempts_source_proposal_id", table_name="serve_attempts"
+        )
 
     video_indexes = _get_indexes("videos")
     if "ix_videos_user_recorded_at" in video_indexes:

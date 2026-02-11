@@ -129,7 +129,9 @@ def cleanup_orphaned_data(
         f"{'[DRY RUN] ' if dry_run else ''}Cleaning up {len(orphaned_user_ids)} orphaned users"
     )
 
-    videos_by_user: dict[str, list[Video]] = {user_id: [] for user_id in orphaned_user_ids}
+    videos_by_user: dict[str, list[Video]] = {
+        user_id: [] for user_id in orphaned_user_ids
+    }
     players_by_user: dict[str, list[Player]] = {
         user_id: [] for user_id in orphaned_user_ids
     }

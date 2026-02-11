@@ -26,8 +26,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.models.pose_detection import PoseDetection
 from app.core.redis_config import analysis_queue
+from app.models.pose_detection import PoseDetection
 from app.models.video_job import VideoJob
 from app.services import video_service
 from app.services.storage_service import storage_service
@@ -233,7 +233,9 @@ def transcode_video_rq(
 
             original_file_size = video.file_size
             if video_job_uuid:
-                video_job = db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                video_job = (
+                    db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                )
                 if video_job:
                     video_job.status = "processing"
                     video_job.started_at = datetime.utcnow()
@@ -244,7 +246,9 @@ def transcode_video_rq(
         # Non-DB Stage: download/transcode/upload
         local_path, temp_video_path = _get_temp_video_path(video_path)
 
-        fd, temp_output_name = tempfile.mkstemp(suffix=".mp4", dir=settings.PROCESSED_DIR)
+        fd, temp_output_name = tempfile.mkstemp(
+            suffix=".mp4", dir=settings.PROCESSED_DIR
+        )
         with suppress(OSError):
             os.close(fd)
         temp_output_path = Path(temp_output_name)
@@ -285,7 +289,9 @@ def transcode_video_rq(
 
         cap = cv2.VideoCapture(str(temp_output_path))
         if not cap.isOpened():
-            raise RuntimeError("Could not open transcoded video for metadata extraction")
+            raise RuntimeError(
+                "Could not open transcoded video for metadata extraction"
+            )
         new_fps = cap.get(cv2.CAP_PROP_FPS)
         new_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         raw_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -310,7 +316,9 @@ def transcode_video_rq(
         with SessionLocal() as db:
             video = video_service.get_video_by_id(db, video_id)
             if not video:
-                raise ValueError(f"Video with ID {video_id} was deleted during transcoding")
+                raise ValueError(
+                    f"Video with ID {video_id} was deleted during transcoding"
+                )
 
             video.file_path = new_storage_path
             video.file_size = new_file_size
@@ -356,10 +364,14 @@ def transcode_video_rq(
                             pose_rq_job.id,
                         )
                 except Exception as e:  # noqa: BLE001 - best-effort chaining
-                    logger.warning("Failed to chain scout/refine after transcoding: %s", e)
+                    logger.warning(
+                        "Failed to chain scout/refine after transcoding: %s", e
+                    )
 
             if video_job_uuid:
-                video_job = db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                video_job = (
+                    db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                )
                 if video_job:
                     video_job.status = "completed"
                     video_job.finished_at = datetime.utcnow()
@@ -548,7 +560,9 @@ def analyze_pose_detection_rq(
                     return {"status": "cancelled", "reason": "video_deleted"}
 
                 if video_job_uuid:
-                    video_job = db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                    video_job = (
+                        db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                    )
                     if video_job:
                         video_job.status = "processing"
                         video_job.started_at = datetime.utcnow()
@@ -569,7 +583,9 @@ def analyze_pose_detection_rq(
                 )
 
                 if "error" in pose_results:
-                    raise RuntimeError(f"Pose detection failed: {pose_results['error']}")
+                    raise RuntimeError(
+                        f"Pose detection failed: {pose_results['error']}"
+                    )
 
             # DB Stage 2: persist results and mark completion.
             with SessionLocal() as db:
@@ -578,7 +594,9 @@ def analyze_pose_detection_rq(
                         db=db, video_id=video_id, detection_results=pose_results
                     )
                 if video_job_uuid:
-                    video_job = db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                    video_job = (
+                        db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                    )
                     if video_job:
                         video_job.status = "completed"
                         video_job.finished_at = datetime.utcnow()
@@ -704,7 +722,9 @@ def analyze_pose_detection_scout_refine_rq(
                     return {"status": "cancelled", "reason": "video_deleted"}
                 video_user_id = video.user_id
                 if video_job_uuid:
-                    video_job = db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                    video_job = (
+                        db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                    )
                     if video_job:
                         video_job.status = "processing"
                         video_job.started_at = datetime.utcnow()
@@ -733,10 +753,16 @@ def analyze_pose_detection_scout_refine_rq(
                     db=db, video_id=video_id, detection_results=scout_results
                 )
                 scout_pose_detection_id = scout_pose_detection.id
-                with _stage_span("detect_serves", video_id=video_id, job_id=video_job_id):
+                with _stage_span(
+                    "detect_serves", video_id=video_id, job_id=video_job_id
+                ):
                     logger.info("Phase 2: Detecting serve windows from scout data")
                     if video_job_uuid:
-                        video_job = db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                        video_job = (
+                            db.query(VideoJob)
+                            .filter(VideoJob.id == video_job_uuid)
+                            .first()
+                        )
                         if video_job and hasattr(video_job, "stage"):
                             video_job.stage = "detecting_serves"
                             db.commit()
@@ -752,13 +778,19 @@ def analyze_pose_detection_scout_refine_rq(
                             "No serve windows detected, completing with scout data only"
                         )
                         if video_job_uuid:
-                            video_job = db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                            video_job = (
+                                db.query(VideoJob)
+                                .filter(VideoJob.id == video_job_uuid)
+                                .first()
+                            )
                             if video_job:
                                 video_job.status = "completed"
                                 video_job.finished_at = datetime.utcnow()
                                 db.commit()
                         duration = time.time() - start_time
-                        record_job_succeeded("scout_refine", duration, video_id=video_id)
+                        record_job_succeeded(
+                            "scout_refine", duration, video_id=video_id
+                        )
                         return {
                             "status": "completed",
                             "mode": "scout_only",
@@ -786,7 +818,11 @@ def analyze_pose_detection_scout_refine_rq(
             ):
                 with SessionLocal() as db:
                     if video_job_uuid:
-                        video_job = db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                        video_job = (
+                            db.query(VideoJob)
+                            .filter(VideoJob.id == video_job_uuid)
+                            .first()
+                        )
                         if video_job and hasattr(video_job, "stage"):
                             video_job.stage = "refining"
                             video_job.serve_windows_found = len(windows)
@@ -837,7 +873,9 @@ def analyze_pose_detection_scout_refine_rq(
                     )
 
                 if video_job_uuid:
-                    video_job = db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                    video_job = (
+                        db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                    )
                     if video_job:
                         video_job.status = "completed"
                         if hasattr(video_job, "stage"):
