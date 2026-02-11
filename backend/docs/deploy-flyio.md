@@ -100,4 +100,3 @@ fly ssh console -a tennis-coach-api -C "cd /app/backend && alembic upgrade head"
 ```bash
 fly ssh console -a tennis-coach-api -C "cd /app/backend && alembic current"
 ```
-

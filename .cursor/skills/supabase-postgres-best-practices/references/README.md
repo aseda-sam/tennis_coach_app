@@ -19,4 +19,3 @@ If you want the *entire* upstream `references/` set, you can copy additional `.m
 - `security-rls-basics.md`
 - `lock-short-transactions.md`
 - `monitor-explain-analyze.md`
-

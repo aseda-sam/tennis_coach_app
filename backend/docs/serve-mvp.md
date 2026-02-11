@@ -31,4 +31,3 @@ Core tables (see `app/models/`):
 - Prefer **layman terms** in UI (“outstretched arm”) over raw angles.
 - Keep metrics **legible** and **explain why** they matter.
 - Keep iteration fast: fewer moving parts, fewer features, fewer docs.
-
