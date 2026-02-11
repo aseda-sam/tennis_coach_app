@@ -10,6 +10,7 @@ Source-of-truth diagrams live here as Mermaid blocks in Markdown files.
 
 ## Index
 
+- **`system-overview.md`** - Full architecture in one diagram (context loader for AI sessions)
 - `auth-flow.md` - Auth and session flow
 - `upload-flow.md` - Upload, optional transcode, and scout/refine background pipeline
 - `analysis-pipeline.md` - Transcode, scout/refine pose pipeline, serve windows, and analysis

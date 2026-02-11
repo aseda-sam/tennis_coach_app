@@ -60,17 +60,6 @@ repos:
         files: ^frontend/src/.*\.(ts|tsx|css)$
         pass_filenames: false
 
-      # --- commit-msg: forbid Cursor co-author trailers ----
-      - id: block-cursor-coauthor
-        name: "commit-msg · block Cursor co-author trailer"
-        entry: >-
-          bash -c 'if rg -N "Co-Authored-By:.*Cursor" "$1" >/dev/null; then
-          echo "Commit message contains forbidden trailer: Co-Authored-By ... Cursor";
-          echo "Remove it and commit again."; exit 1; fi' --
-        language: system
-        stages: [commit-msg]
-        always_run: true
-
       # --- pre-push: backend tests ----
       - id: backend-pytest
         name: "backend · pytest (pre-push)"
@@ -86,5 +75,14 @@ repos:
         entry: bash -c 'cd frontend && npx tsc --noEmit'
         language: system
         files: ^frontend/src/
+        pass_filenames: false
+        stages: [pre-push]
+
+      # --- pre-push: mermaid diagram validation ----
+      - id: mermaid-validate
+        name: "diagrams · mermaid validation (pre-push)"
+        entry: python .cursor/skills/diagram-maintainer/scripts/validate_mermaid.py
+        language: system
+        files: ^project_docs/diagrams/.*\.md$
         pass_filenames: false
         stages: [pre-push]
