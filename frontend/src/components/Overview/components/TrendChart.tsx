@@ -52,7 +52,10 @@ function TrendChart({ dataPoints }: TrendChartProps) {
             data={dataPoints}
             margin={{ top: 8, right: 16, left: 8, bottom: 8 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="var(--color-border-light)"
+            />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12, fill: 'var(--color-text-muted)' }}

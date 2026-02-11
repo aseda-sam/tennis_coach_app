@@ -21,7 +21,9 @@ interface UseServeAttemptsResult {
   loading: boolean;
   error: string | null;
   refreshServeAttempts: () => Promise<void>;
-  createServeAttempt: (serveAttempt: ServeAttemptCreate) => Promise<ServeAttempt>;
+  createServeAttempt: (
+    serveAttempt: ServeAttemptCreate
+  ) => Promise<ServeAttempt>;
   updateServeAttempt: (
     serveAttemptId: number,
     updates: ServeAttemptUpdate

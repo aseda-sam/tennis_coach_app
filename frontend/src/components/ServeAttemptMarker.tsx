@@ -67,14 +67,17 @@ const ServeAttemptMarker: React.FC<ServeAttemptMarkerProps> = ({
             </span>
             {serveAttempt.court_side && (
               <span className="stroke-type">
-                {serveAttempt.court_side.charAt(0).toUpperCase() + serveAttempt.court_side.slice(1)} Court
+                {serveAttempt.court_side.charAt(0).toUpperCase() +
+                  serveAttempt.court_side.slice(1)}{' '}
+                Court
               </span>
             )}
           </div>
 
           {serveAttempt.serve_subtype && (
             <div className="stroke-subtype">
-              {serveAttempt.serve_subtype.charAt(0).toUpperCase() + serveAttempt.serve_subtype.slice(1)}
+              {serveAttempt.serve_subtype.charAt(0).toUpperCase() +
+                serveAttempt.serve_subtype.slice(1)}
             </div>
           )}
 
@@ -104,25 +107,19 @@ const ServeAttemptMarker: React.FC<ServeAttemptMarkerProps> = ({
               )}
             </div>
           ) : (
-            <div className="no-analysis">No metrics yet - run serve analysis</div>
+            <div className="no-analysis">
+              No metrics yet - run serve analysis
+            </div>
           )}
 
           <div className="contact-details">
-            <div>
-              Start: {serveAttempt.start_timestamp.toFixed(3)}s
-            </div>
-            <div>
-              End: {serveAttempt.end_timestamp.toFixed(3)}s
-            </div>
+            <div>Start: {serveAttempt.start_timestamp.toFixed(3)}s</div>
+            <div>End: {serveAttempt.end_timestamp.toFixed(3)}s</div>
             {serveAttempt.contact_timestamp && (
-              <div>
-                Contact: {serveAttempt.contact_timestamp.toFixed(3)}s
-              </div>
+              <div>Contact: {serveAttempt.contact_timestamp.toFixed(3)}s</div>
             )}
             {serveAttempt.in_out && (
-              <div>
-                Result: {serveAttempt.in_out.replace('_', ' ')}
-              </div>
+              <div>Result: {serveAttempt.in_out.replace('_', ' ')}</div>
             )}
           </div>
         </div>

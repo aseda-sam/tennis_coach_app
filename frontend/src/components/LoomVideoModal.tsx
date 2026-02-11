@@ -25,10 +25,7 @@ const LoomVideoModal: React.FC<LoomVideoModalProps> = ({
       aria-modal="true"
       aria-labelledby="loom-video-modal-title"
     >
-      <div
-        className="loom-video-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="loom-video-modal" onClick={(e) => e.stopPropagation()}>
         <div className="loom-video-modal__header">
           <h2 id="loom-video-modal-title" className="loom-video-modal__title">
             How to Use Serve Tennis Coach

@@ -93,7 +93,9 @@ describe('Overview', () => {
     });
 
     renderOverview();
-    expect(screen.getByText(/Failed to load progress data/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Failed to load progress data/i)
+    ).toBeInTheDocument();
   });
 
   it('renders empty state when less than 2 videos', () => {
@@ -104,9 +106,7 @@ describe('Overview', () => {
     });
 
     renderOverview();
-    expect(
-      screen.getByText(/Upload a few more serves/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Upload a few more serves/i)).toBeInTheDocument();
   });
 
   it('renders metric cards with data', () => {

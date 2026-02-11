@@ -188,15 +188,15 @@
   .progress-bar-container {
     gap: 6px;
   }
-  
+
   .progress-bar {
     height: 6px;
   }
-  
+
   .status-text {
     font-size: 0.8rem;
   }
-  
+
   .percentage-text {
     font-size: 0.7rem;
   }
@@ -207,19 +207,19 @@
   .progress-bar {
     background: #374151;
   }
-  
+
   .progress-bar.processing {
     background: #451a03;
   }
-  
+
   .progress-bar.completed {
     background: #064e3b;
   }
-  
+
   .progress-bar.error {
     background: #450a0a;
   }
-  
+
   .percentage-text {
     color: #9ca3af;
   }

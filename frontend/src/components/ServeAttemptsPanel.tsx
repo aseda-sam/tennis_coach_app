@@ -58,7 +58,8 @@ const getKneeBendFeedback = (
     return {
       level: 'unavailable',
       pillText: 'Not Available',
-      coachNote: 'Knee bend analysis not available. May need better camera angle or pose data.',
+      coachNote:
+        'Knee bend analysis not available. May need better camera angle or pose data.',
     };
   }
 
@@ -66,7 +67,8 @@ const getKneeBendFeedback = (
     return {
       level: 'unavailable',
       pillText: 'Low Confidence',
-      coachNote: 'Knee bend detected but confidence is low. Camera angle or pose quality may be limiting.',
+      coachNote:
+        'Knee bend detected but confidence is low. Camera angle or pose quality may be limiting.',
     };
   }
 
@@ -74,14 +76,16 @@ const getKneeBendFeedback = (
     return {
       level: 'great',
       pillText: 'Good Bend',
-      coachNote: 'Good knee bend during loading phase. This helps generate power.',
+      coachNote:
+        'Good knee bend during loading phase. This helps generate power.',
     };
   }
 
   return {
     level: 'focus',
     pillText: 'Needs Work',
-    coachNote: 'Limited knee bend detected. Try bending knees more during the loading phase for better power.',
+    coachNote:
+      'Limited knee bend detected. Try bending knees more during the loading phase for better power.',
   };
 };
 
@@ -103,8 +107,7 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
   const serveAttemptsWithMetrics = useMemo(() => {
     return sortedServeAttempts.filter(
       (sa) =>
-        sa.elbow_angle_at_contact !== null ||
-        sa.knee_bend_detected !== null
+        sa.elbow_angle_at_contact !== null || sa.knee_bend_detected !== null
     );
   }, [sortedServeAttempts]);
 
@@ -149,8 +152,7 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
             sortedServeAttempts.map((serveAttempt) => {
               const hasElbowMetrics =
                 serveAttempt.elbow_angle_at_contact !== null;
-              const hasKneeMetrics =
-                serveAttempt.knee_bend_detected !== null;
+              const hasKneeMetrics = serveAttempt.knee_bend_detected !== null;
               const hasMetrics = hasElbowMetrics || hasKneeMetrics;
 
               const displayLabel = serveAttempt.serve_subtype
@@ -204,9 +206,11 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                             <span
                               className={`analysis-right-panel__feedback-pill analysis-right-panel__feedback-pill--${getElbowAngleFeedback(serveAttempt.elbow_angle_at_contact as number).level}`}
                             >
-                              {getElbowAngleFeedback(
-                                serveAttempt.elbow_angle_at_contact as number
-                              ).pillText}
+                              {
+                                getElbowAngleFeedback(
+                                  serveAttempt.elbow_angle_at_contact as number
+                                ).pillText
+                              }
                             </span>
                           </div>
                           <div className="analysis-right-panel__coach-note">
@@ -227,8 +231,9 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                               <span className="analysis-right-panel__angle-value">
                                 {serveAttempt.knee_bend_detected
                                   ? '✓'
-                                  : serveAttempt.knee_bend_confidence !== null &&
-                                    serveAttempt.knee_bend_confidence < 0.5
+                                  : serveAttempt.knee_bend_confidence !==
+                                        null &&
+                                      serveAttempt.knee_bend_confidence < 0.5
                                     ? '?'
                                     : '✗'}
                               </span>

@@ -74,37 +74,17 @@ function CourtSideDiagram({ courtSide }: CourtSideDiagramProps) {
         />
 
         {/* Labels */}
-        <text
-          x="145"
-          y="40"
-          textAnchor="middle"
-          className="court-zone-label"
-        >
+        <text x="145" y="40" textAnchor="middle" className="court-zone-label">
           Deuce
         </text>
-        <text
-          x="145"
-          y="58"
-          textAnchor="middle"
-          className="court-zone-count"
-        >
+        <text x="145" y="58" textAnchor="middle" className="court-zone-count">
           {courtSide.deuce}
         </text>
 
-        <text
-          x="55"
-          y="40"
-          textAnchor="middle"
-          className="court-zone-label"
-        >
+        <text x="55" y="40" textAnchor="middle" className="court-zone-label">
           Ad
         </text>
-        <text
-          x="55"
-          y="58"
-          textAnchor="middle"
-          className="court-zone-count"
-        >
+        <text x="55" y="58" textAnchor="middle" className="court-zone-count">
           {courtSide.ad}
         </text>
       </svg>

@@ -38,7 +38,9 @@ function Overview() {
         <div className="overview-header">
           <div>
             <h2 className="overview-title">Progress Overview</h2>
-            <p className="overview-subtitle">Track your serve improvement over time</p>
+            <p className="overview-subtitle">
+              Track your serve improvement over time
+            </p>
           </div>
         </div>
         <div className="overview-empty">
@@ -60,13 +62,17 @@ function Overview() {
       <div className="overview-header">
         <div>
           <h2 className="overview-title">Progress Overview</h2>
-          <p className="overview-subtitle">Track your serve improvement over time</p>
+          <p className="overview-subtitle">
+            Track your serve improvement over time
+          </p>
         </div>
         <div className="overview-header-right">
           <TimeFilter value={timePeriod} onChange={setTimePeriod} />
           <span className="overview-serve-count">
-            {progress.total_serves} serve{progress.total_serves !== 1 ? 's' : ''} across{' '}
-            {progress.total_videos} video{progress.total_videos !== 1 ? 's' : ''}
+            {progress.total_serves} serve
+            {progress.total_serves !== 1 ? 's' : ''} across{' '}
+            {progress.total_videos} video
+            {progress.total_videos !== 1 ? 's' : ''}
           </span>
         </div>
       </div>

@@ -82,7 +82,10 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
         <div className="simple-timing">
           <div className="timing-stage">
             <div className="stage-info">
-              <span className="stage-icon" data-testid="stage-icon-total_analysis">
+              <span
+                className="stage-icon"
+                data-testid="stage-icon-total_analysis"
+              >
                 {getStageIcon('total_analysis')}
               </span>
               <span className="stage-name">Total Processing</span>

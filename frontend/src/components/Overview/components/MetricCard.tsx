@@ -12,8 +12,16 @@ interface MetricCardProps {
 }
 
 const TREND_CONFIG = {
-  improving: { arrow: '\u2191', className: 'trend-improving', label: 'Improving' },
-  declining: { arrow: '\u2193', className: 'trend-declining', label: 'Declining' },
+  improving: {
+    arrow: '\u2191',
+    className: 'trend-improving',
+    label: 'Improving',
+  },
+  declining: {
+    arrow: '\u2193',
+    className: 'trend-declining',
+    label: 'Declining',
+  },
   stable: { arrow: '\u2192', className: 'trend-stable', label: 'Stable' },
 } as const;
 
@@ -61,13 +69,18 @@ function MetricCard({
       <div className="metric-card-value-row">
         <span className="metric-card-value">{displayValue}</span>
         <span className="metric-card-unit">{unit}</span>
-        <span className={`metric-card-trend ${trendInfo.className}`} title={trendInfo.label}>
+        <span
+          className={`metric-card-trend ${trendInfo.className}`}
+          title={trendInfo.label}
+        >
           {trendInfo.arrow}
         </span>
       </div>
       {consistencyLabel && consistencyRating && (
         <div className="metric-card-footer">
-          <span className="metric-card-consistency-label">{consistencyLabel}</span>
+          <span className="metric-card-consistency-label">
+            {consistencyLabel}
+          </span>
           <span className={`metric-card-rating rating-${consistencyRating}`}>
             {consistencyRating.replace('_', ' ')}
           </span>

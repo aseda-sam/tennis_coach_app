@@ -5,20 +5,25 @@
 }
 
 .demo-landing::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(
+  background:
+    radial-gradient(
       900px 500px at 20% 10%,
       rgba(0, 188, 125, 0.12),
       transparent 60%
     ),
     radial-gradient(
       800px 450px at 90% 30%,
-      rgba(67, 45, 215, 0.10),
+      rgba(67, 45, 215, 0.1),
       transparent 55%
     ),
-    linear-gradient(135deg, var(--color-background-alt) 0%, var(--color-background) 100%);
+    linear-gradient(
+      135deg,
+      var(--color-background-alt) 0%,
+      var(--color-background) 100%
+    );
   z-index: -1;
   width: 100vw;
   left: 50%;
@@ -108,7 +113,7 @@
 }
 
 .demo-landing__features-section::before {
-  content: "";
+  content: '';
   position: absolute;
   top: 0;
   left: 50%;
@@ -135,7 +140,8 @@
   background: linear-gradient(135deg, #00bc7d 0%, #0ea5e9 100%);
   color: white;
   border: none;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.20),
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.2),
     0 0 0 1px rgba(255, 255, 255, 0.1);
   position: relative;
   width: 100%;
@@ -233,7 +239,7 @@
 }
 
 .demo-landing__card--gradient::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -247,7 +253,7 @@
 }
 
 .demo-landing__card--gradient::after {
-  content: "";
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
@@ -300,7 +306,7 @@
 }
 
 .demo-landing__card-icon--outline {
-  background: rgba(0, 188, 125, 0.10);
+  background: rgba(0, 188, 125, 0.1);
   border: 1px solid rgba(0, 188, 125, 0.25);
 }
 
@@ -356,7 +362,8 @@
   font-weight: var(--font-weight-semibold);
   padding: var(--spacing-lg) var(--spacing-2xl);
   width: 100%;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15),
+  box-shadow:
+    0 8px 20px rgba(15, 23, 42, 0.15),
     0 0 0 1px rgba(255, 255, 255, 0.1);
   border-radius: 28px;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -365,7 +372,8 @@
 .demo-landing__card--gradient .demo-landing__cta-primary:hover {
   background: rgba(255, 255, 255, 0.95);
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.20),
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.2),
     0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
@@ -416,7 +424,7 @@
 .demo-landing__cta-secondary {
   background: rgba(15, 23, 42, 0.04);
   color: var(--color-text);
-  border: 1px solid rgba(15, 23, 42, 0.10);
+  border: 1px solid rgba(15, 23, 42, 0.1);
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
 }
 
@@ -509,7 +517,6 @@
   margin: 0;
   line-height: 1.5;
 }
-
 
 /* Animations */
 @keyframes fadeInUp {

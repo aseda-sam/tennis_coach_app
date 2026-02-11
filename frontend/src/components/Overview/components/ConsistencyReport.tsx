@@ -40,7 +40,9 @@ function ConsistencyReport({ elbowAngle }: ConsistencyReportProps) {
         {rows.map((row) => (
           <div key={row.name} className="consistency-report-row">
             <span className="consistency-report-name">{row.name}</span>
-            <span className="consistency-report-deviation">{row.deviation}</span>
+            <span className="consistency-report-deviation">
+              {row.deviation}
+            </span>
             <span className={`consistency-report-badge rating-${row.rating}`}>
               {RATING_LABELS[row.rating]}
             </span>

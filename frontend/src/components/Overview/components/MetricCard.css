@@ -6,7 +6,8 @@
   box-shadow: var(--card-shadow);
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity var(--duration-slower) var(--ease-out),
+  transition:
+    opacity var(--duration-slower) var(--ease-out),
     transform var(--duration-slower) var(--ease-out);
 }
 

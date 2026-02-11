@@ -64,22 +64,29 @@ export interface ServeAnalysisSummary {
 export const serveAttemptApi = {
   // Create a new serve attempt
   create: async (serveAttempt: ServeAttemptCreate): Promise<ServeAttempt> => {
-    const response = await api.post<ServeAttempt>('/serve-attempts/', serveAttempt);
+    const response = await api.post<ServeAttempt>(
+      '/serve-attempts/',
+      serveAttempt
+    );
     return response.data;
   },
 
   // Get a specific serve attempt by ID
   getById: async (serveAttemptId: number): Promise<ServeAttempt> => {
-    const response = await api.get<ServeAttempt>(`/serve-attempts/${serveAttemptId}`);
+    const response = await api.get<ServeAttempt>(
+      `/serve-attempts/${serveAttemptId}`
+    );
     return response.data;
   },
 
   // List serve attempts with optional filters
   list: async (filters?: ServeAttemptFilters): Promise<ServeAttempt[]> => {
     const params = new URLSearchParams();
-    if (filters?.player_id) params.append('player_id', filters.player_id.toString());
+    if (filters?.player_id)
+      params.append('player_id', filters.player_id.toString());
     if (filters?.court_side) params.append('court_side', filters.court_side);
-    if (filters?.video_id) params.append('video_id', filters.video_id.toString());
+    if (filters?.video_id)
+      params.append('video_id', filters.video_id.toString());
     if (filters?.start_date) params.append('start_date', filters.start_date);
     if (filters?.end_date) params.append('end_date', filters.end_date);
 

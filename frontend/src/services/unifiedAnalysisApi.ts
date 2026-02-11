@@ -126,7 +126,6 @@ class UnifiedAnalysisApi {
     );
     return response.data;
   }
-
 }
 
 const unifiedAnalysisApi = new UnifiedAnalysisApi();

@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { playerApi, PlayerInfo, PlayerProfileUpdate } from '../services/playerApi';
+import {
+  playerApi,
+  PlayerInfo,
+  PlayerProfileUpdate,
+} from '../services/playerApi';
 import { useAuth } from './useAuth';
 
 export const usePlayerProfile = () => {

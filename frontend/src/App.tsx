@@ -25,7 +25,12 @@ function App() {
   const { isAdmin } = useAdmin();
   const queryClient = useQueryClient();
   const [currentView, setCurrentView] = useState<
-    'list' | 'dashboard' | 'demo-landing' | 'demo-dashboard' | 'admin-demo' | 'overview'
+    | 'list'
+    | 'dashboard'
+    | 'demo-landing'
+    | 'demo-dashboard'
+    | 'admin-demo'
+    | 'overview'
   >('demo-landing');
   const [selectedVideo, setSelectedVideo] = useState<VideoMetadata | null>(
     null
@@ -429,7 +434,6 @@ function App() {
         onClose={() => setIsVideoModalOpen(false)}
         videoId="4e50fe345c664fdca497c2ca884a52e3"
       />
-
     </div>
   );
 }

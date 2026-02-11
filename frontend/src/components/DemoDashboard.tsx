@@ -52,8 +52,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
 
   const hasPoseAnalysis = analysisStatus?.has_analysis || false;
   const hasServeAttempts = serveAttempts.length > 0;
-  const showStatusWarning =
-    isAdmin && (!hasPoseAnalysis || !hasServeAttempts);
+  const showStatusWarning = isAdmin && (!hasPoseAnalysis || !hasServeAttempts);
 
   const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
     ((serveAttemptId: number) => void) | null

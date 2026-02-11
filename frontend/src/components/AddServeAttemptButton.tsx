@@ -86,7 +86,10 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
       }
 
       const start = Math.max(0, Math.min(rangeStart, rangeEnd));
-      const end = Math.min(videoDuration || rangeEnd, Math.max(rangeStart, rangeEnd));
+      const end = Math.min(
+        videoDuration || rangeEnd,
+        Math.max(rangeStart, rangeEnd)
+      );
       const clampedEnd = Math.max(start + 0.1, end);
 
       setLockedTimestamp(start);
@@ -120,7 +123,10 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
       setFormData((prev) => ({
         ...prev,
         start_timestamp: currentTime,
-        end_timestamp: Math.min(currentTime + 3, videoDuration || currentTime + 3),
+        end_timestamp: Math.min(
+          currentTime + 3,
+          videoDuration || currentTime + 3
+        ),
         contact_timestamp: null,
       }));
       setValidationError(null);
@@ -173,7 +179,13 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, formData.start_timestamp, formData.end_timestamp, currentTime, onSeek]);
+  }, [
+    isOpen,
+    formData.start_timestamp,
+    formData.end_timestamp,
+    currentTime,
+    onSeek,
+  ]);
 
   useEffect(() => {
     if (videoDuration > 0) {
@@ -248,7 +260,10 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
       setFormData({
         video_id: videoId,
         start_timestamp: currentTime,
-        end_timestamp: Math.min(currentTime + 3, videoDuration || currentTime + 3),
+        end_timestamp: Math.min(
+          currentTime + 3,
+          videoDuration || currentTime + 3
+        ),
         contact_timestamp: null,
         court_side: null,
         serve_number: null,
@@ -400,7 +415,10 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
                 {formatTime(formData.start_timestamp)} –{' '}
                 {formatTime(formData.end_timestamp)}
                 {lockedFrameNumber !== null && (
-                  <span className="frame-number"> (frame {lockedFrameNumber})</span>
+                  <span className="frame-number">
+                    {' '}
+                    (frame {lockedFrameNumber})
+                  </span>
                 )}
               </div>
             </div>
@@ -503,7 +521,9 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      serve_number: e.target.value ? parseInt(e.target.value) : null,
+                      serve_number: e.target.value
+                        ? parseInt(e.target.value)
+                        : null,
                     })
                   }
                 >
@@ -554,7 +574,10 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
           </div>
 
           {validationError && (
-            <div className="validation-error" style={{ color: 'red', padding: '8px' }}>
+            <div
+              className="validation-error"
+              style={{ color: 'red', padding: '8px' }}
+            >
               {validationError}
             </div>
           )}
@@ -588,35 +611,36 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
 
   return (
     <div className={containerClassName}>
-      {!isOpen ? (
-        placement !== 'scrubber' && (
-          <button
-            className={buttonClassName}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpen();
-            }}
-            title={
-              isReadOnly
-                ? 'Demo mode: manual serve attempt creation is disabled'
-                : `Tag serve near ${formatTime(currentTime)}`
-            }
-            aria-disabled={isReadOnly}
-          >
-            <span className="add-icon">+</span>
-            <span className="add-text">Tag Serve</span>
-          </button>
-        )
-      ) : (
-        createPortal(
-          <div className="serve-attempt-modal-backdrop" onClick={handleClose}>
-            <div className="serve-attempt-modal-container" onClick={(e) => e.stopPropagation()}>
-              {formContent}
-            </div>
-          </div>,
-          document.body
-        )
-      )}
+      {!isOpen
+        ? placement !== 'scrubber' && (
+            <button
+              className={buttonClassName}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpen();
+              }}
+              title={
+                isReadOnly
+                  ? 'Demo mode: manual serve attempt creation is disabled'
+                  : `Tag serve near ${formatTime(currentTime)}`
+              }
+              aria-disabled={isReadOnly}
+            >
+              <span className="add-icon">+</span>
+              <span className="add-text">Tag Serve</span>
+            </button>
+          )
+        : createPortal(
+            <div className="serve-attempt-modal-backdrop" onClick={handleClose}>
+              <div
+                className="serve-attempt-modal-container"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {formContent}
+              </div>
+            </div>,
+            document.body
+          )}
     </div>
   );
 };
