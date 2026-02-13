@@ -148,8 +148,8 @@ def format_overlay_data(
                         float(det["ball_y"]),
                         float(conf) if conf is not None else 0.0,
                     )
-        except (json.JSONDecodeError, TypeError, KeyError):
-            pass
+        except (json.JSONDecodeError, TypeError, KeyError) as e:
+            logger.debug("Ball data parse failed for video %s: %s", video_id, e)
 
     # Get video FPS (required for timestamp calculation)
     fps = video.fps
