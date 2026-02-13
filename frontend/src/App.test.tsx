@@ -88,12 +88,6 @@ jest.mock('./components/DemoDashboard', () => {
   };
 });
 
-jest.mock('./components/Overview/Overview', () => {
-  return function MockOverview() {
-    return <div data-testid="overview">Progress Overview</div>;
-  };
-});
-
 test('renders serve tennis coach app title', () => {
   renderWithProviders(<App />);
   const titleElement = screen.getByText(/Serve Tennis Coach/i);
