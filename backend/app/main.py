@@ -22,7 +22,6 @@ from app.api.routes import (
     config,
     overlay_data,
     players,
-    progress,
     serve_attempts,
     serve_detection,
     video,
@@ -312,16 +311,6 @@ app.include_router(
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},
         500: {"description": "Internal Error"},
-    },
-)
-
-app.include_router(
-    progress.router,
-    prefix="/v0/progress",
-    tags=["progress"],
-    responses={
-        400: {"description": "Bad Request"},
-        500: {"description": "Internal Server Error"},
     },
 )
 

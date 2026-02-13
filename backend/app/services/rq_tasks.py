@@ -27,6 +27,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.redis_config import analysis_queue
+from app.models.ball_detection import BallDetection
 from app.models.pose_detection import PoseDetection
 from app.models.video_job import VideoJob
 from app.services import video_service
@@ -871,6 +872,58 @@ def analyze_pose_detection_scout_refine_rq(
                         video_id,
                         frames_with_poses,
                     )
+
+                # Ball detection on serve windows (optional: skip if import/runtime fails)
+                with _stage_span(
+                    "ball_detection", video_id=video_id, job_id=video_job_id
+                ):
+                    try:
+                        from app.services.ball_detection import BallDetectionService
+
+                        ball_service = BallDetectionService()
+                        ball_results = ball_service.analyze_serve_windows(
+                            video_path=Path(local_path),
+                            windows=windows,
+                            padding_ms=300,
+                        )
+                        if "error" not in ball_results:
+                            ball_record = BallDetection(
+                                video_id=video_id,
+                                total_frames=ball_results["total_frames"],
+                                frames_with_ball=ball_results["frames_with_ball"],
+                                detection_rate=ball_results["detection_rate"],
+                                ball_data=json.dumps(ball_results["ball_detections"]),
+                                processing_time_seconds=ball_results[
+                                    "processing_time_seconds"
+                                ],
+                                frame_processing_rate=ball_results.get(
+                                    "frame_processing_rate"
+                                ),
+                                status="completed",
+                                time_windows=json.dumps(windows),
+                                completed_at=datetime.utcnow(),
+                            )
+                            db.add(ball_record)
+                            db.commit()
+                            logger.info(
+                                "Ball detection completed for video %s: %s/%s frames with ball",
+                                video_id,
+                                ball_results["frames_with_ball"],
+                                ball_results["total_frames"],
+                            )
+                        else:
+                            logger.warning(
+                                "Ball detection failed for video %s: %s",
+                                video_id,
+                                ball_results.get("error"),
+                            )
+                    except Exception as ball_err:  # noqa: BLE001
+                        logger.warning(
+                            "Ball detection skipped for video %s: %s",
+                            video_id,
+                            ball_err,
+                            exc_info=True,
+                        )
 
                 if video_job_uuid:
                     video_job = (

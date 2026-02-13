@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.api.schemas.overlay_data import PoseFrame, PoseOverlayData
+from app.models.ball_detection import BallDetection
 from app.models.pose_detection import PoseDetection
 from app.services import video_service
 
@@ -120,6 +121,36 @@ def format_overlay_data(
         logger.error("Failed to parse pose data JSON for video %s: %s", video_id, e)
         raise RuntimeError("Failed to parse pose detection data") from e
 
+    # Build frame_index -> ball (x, y, confidence) from ball_detection if available
+    ball_by_frame: Dict[int, tuple] = {}
+    ball_detection = (
+        db.query(BallDetection)
+        .filter(
+            BallDetection.video_id == video_id,
+            BallDetection.status == "completed",
+        )
+        .order_by(BallDetection.created_at.desc())
+        .first()
+    )
+    if ball_detection and ball_detection.ball_data:
+        try:
+            ball_list = json.loads(ball_detection.ball_data)
+            for det in ball_list:
+                idx = det.get("frame_index")
+                if (
+                    idx is not None
+                    and det.get("ball_x") is not None
+                    and det.get("ball_y") is not None
+                ):
+                    conf = det.get("confidence")
+                    ball_by_frame[idx] = (
+                        float(det["ball_x"]),
+                        float(det["ball_y"]),
+                        float(conf) if conf is not None else 0.0,
+                    )
+        except (json.JSONDecodeError, TypeError, KeyError):
+            pass
+
     # Get video FPS (required for timestamp calculation)
     fps = video.fps
     if not fps or fps <= 0:
@@ -159,12 +190,21 @@ def format_overlay_data(
                         float(coordinates[1]),
                     ]
 
+        ball_pos: Optional[List[float]] = None
+        ball_conf: Optional[float] = None
+        if frame_index in ball_by_frame:
+            bx, by, bc = ball_by_frame[frame_index]
+            ball_pos = [bx, by]
+            ball_conf = bc
+
         frames.append(
             PoseFrame(
                 frame_index=frame_index,
                 timestamp=timestamp,
                 keypoints=keypoints_dict,
                 confidence=float(confidence) if confidence is not None else 0.0,
+                ball_position=ball_pos,
+                ball_confidence=ball_conf,
             )
         )
 

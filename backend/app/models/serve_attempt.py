@@ -94,6 +94,10 @@ class ServeAttempt(Base):
     original_start_timestamp = Column(Float, nullable=True)
     original_end_timestamp = Column(Float, nullable=True)
 
+    # Ball tracking (toss metrics from ball detection)
+    toss_peak_height = Column(Float, nullable=True)  # Normalized by player height
+    toss_peak_timestamp = Column(Float, nullable=True)  # Seconds (video time)
+
     # Relationships
     video = relationship("Video", back_populates="serve_attempts")
     player = relationship("Player", back_populates="serve_attempts")

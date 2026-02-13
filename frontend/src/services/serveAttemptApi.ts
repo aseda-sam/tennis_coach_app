@@ -13,6 +13,8 @@ export interface ServeAttempt {
   knee_hip_ratio_min: number | null;
   knee_flexion_min_deg_left: number | null;
   knee_flexion_min_deg_right: number | null;
+  toss_peak_height: number | null;
+  toss_peak_timestamp: number | null;
   analysis_version: string | null;
   court_side: string | null;
   serve_number: number | null;

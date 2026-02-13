@@ -85,6 +85,9 @@ class Video(Base):
     pose_detections = relationship(
         "PoseDetection", back_populates="video", cascade="all, delete-orphan"
     )
+    ball_detections = relationship(
+        "BallDetection", back_populates="video", cascade="all, delete-orphan"
+    )
     serve_attempts = relationship(
         "ServeAttempt", back_populates="video", cascade="all, delete-orphan"
     )

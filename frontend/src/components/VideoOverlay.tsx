@@ -123,6 +123,7 @@ const KNEE_CONNECTIONS = new Set([
 const KNEE_BEND_ANGLE_THRESHOLD = 140;
 const DEFAULT_SKELETON_COLOR = '#00FF00';
 const KNEE_BEND_COLOR = '#A855F7';
+const BALL_TRAIL_LENGTH = 30; // ~1 second at 30fps
 
 function calculateAngle(
   point1: number[],
@@ -178,6 +179,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
   const lastRenderedTimeRef = useRef<number>(-1);
   const animationFrameRef = useRef<number | null>(null);
   const currentTimeRef = useRef<number | undefined>(currentTime);
+  const ballTrailRef = useRef<{ x: number; y: number }[]>([]);
 
   // Fetch overlay data using React Query
   const { data: overlayData } = useQuery<OverlayData>({
@@ -424,6 +426,58 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
         }
       }
 
+      // Ball trail and current position (Supervision-style trailing line)
+      const trail = ballTrailRef.current;
+      if (frame.ball_position && frame.ball_position.length >= 2) {
+        let ballP = { x: frame.ball_position[0], y: frame.ball_position[1] };
+        if (needsRotation) {
+          ballP = rotatePoint90(
+            ballP.x,
+            ballP.y,
+            overlayData.width,
+            overlayData.height
+          );
+        }
+        const ballX = ballP.x * scaleX + contentRect.contentX;
+        const ballY = ballP.y * scaleY + contentRect.contentY;
+        trail.push({ x: ballX, y: ballY });
+        if (trail.length > BALL_TRAIL_LENGTH) {
+          trail.splice(0, trail.length - BALL_TRAIL_LENGTH);
+        }
+      }
+
+      // Draw trailing line (gradient opacity and width: faint/thin at tail, bold at head)
+      ctx.shadowBlur = 0;
+      const trailColor = '#FF1493'; // hot pink / magenta - high contrast on court
+      if (trail.length >= 2) {
+        for (let i = 0; i < trail.length - 1; i++) {
+          const t = (i + 1) / trail.length;
+          const alpha = 0.1 + 0.8 * t;
+          const lineWidth = 1 + 2 * t;
+          ctx.strokeStyle = `rgba(255, 20, 147, ${alpha})`;
+          ctx.lineWidth = lineWidth;
+          ctx.beginPath();
+          ctx.moveTo(trail[i].x, trail[i].y);
+          ctx.lineTo(trail[i + 1].x, trail[i + 1].y);
+          ctx.stroke();
+        }
+      }
+      if (trail.length >= 1) {
+        // Current ball dot at head (bold circle with white border)
+        const head = trail[trail.length - 1];
+        const ballRadius = Math.max(
+          6,
+          (contentRect.contentWidth + contentRect.contentHeight) / 150
+        );
+        ctx.fillStyle = trailColor;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(head.x, head.y, ballRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
       // Reset line dash
       ctx.setLineDash([]);
     };
@@ -451,6 +505,7 @@ const VideoOverlay: React.FC<VideoOverlayProps> = ({
       // Reset both frame and time cache to force redraw
       lastRenderedFrameRef.current = -1;
       lastRenderedTimeRef.current = -1;
+      ballTrailRef.current = []; // Prevent stale trail after seek/scrub
       // Use a small delay to ensure video element's currentTime is updated
       requestAnimationFrame(() => {
         drawFrame();
