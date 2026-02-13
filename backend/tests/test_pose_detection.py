@@ -174,6 +174,9 @@ class TestPoseDetectionService:
         assert retrieved.video_id == video.id
         assert retrieved.total_frames == 50
 
+    @patch(
+        "app.services.pose_detection.detection_service.PoseDetectionService._detect_pose_in_frame_with_detector"
+    )
     @patch("app.services.pose_detection.detection_service.cv2.VideoCapture")
     @patch(
         "app.services.pose_detection.detection_service.PoseDetectionService._initialize_mediapipe"
@@ -182,12 +185,16 @@ class TestPoseDetectionService:
         self,
         mock_init_mediapipe: Mock,
         mock_video_capture: Mock,
+        mock_detect_pose: Mock,
         pose_service: PoseDetectionService,
         mock_video_file: Path,
     ) -> None:
         """Test that scout mode skips frames and includes timestamp_ms."""
         import cv2
         import numpy as np
+
+        # Avoid mediapipe import in test: mock per-frame detection to return None
+        mock_detect_pose.return_value = None
 
         # Mock video capture with multiple frames
         mock_cap = Mock()
@@ -228,6 +235,9 @@ class TestPoseDetectionService:
                 assert "timestamp_ms" in detection
                 assert "frame_index" in detection
 
+    @patch(
+        "app.services.pose_detection.detection_service.PoseDetectionService._detect_pose_in_frame_with_detector"
+    )
     @patch("app.services.pose_detection.detection_service.cv2.VideoCapture")
     @patch(
         "app.services.pose_detection.detection_service.PoseDetectionService._initialize_mediapipe"
@@ -236,12 +246,16 @@ class TestPoseDetectionService:
         self,
         mock_init_mediapipe: Mock,
         mock_video_capture: Mock,
+        mock_detect_pose: Mock,
         pose_service: PoseDetectionService,
         mock_video_file: Path,
     ) -> None:
         """Test that analyze_serve_windows processes only frames within specified windows."""
         import cv2
         import numpy as np
+
+        # Avoid mediapipe import in test: mock per-frame detection to return None
+        mock_detect_pose.return_value = None
 
         # Mock video capture
         mock_cap = Mock()

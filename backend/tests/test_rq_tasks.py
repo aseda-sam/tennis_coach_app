@@ -376,6 +376,7 @@ class TestAnalyzePoseDetectionScoutRefineRq:
         """Test successful scout/refine pipeline merges into single record."""
         import json
 
+        from app.models.pose_detection import PoseDetection
         from app.models.serve_window_proposal import ServeWindowProposal
 
         mock_get_video.return_value = mock_video
@@ -413,6 +414,16 @@ class TestAnalyzePoseDetectionScoutRefineRq:
         scout_pose_detection.frames_with_poses = 700
         scout_pose_detection.detection_rate = 0.78
         mock_pose_service.save_detection_results.return_value = scout_pose_detection
+
+        # So the task's db.query(PoseDetection).filter().first() returns this object
+        # and the task updates it when writing merged data
+        def _query_side_effect(model: type) -> MagicMock:
+            chain = MagicMock()
+            if model is PoseDetection:
+                chain.filter.return_value.first.return_value = scout_pose_detection
+            return chain
+
+        mock_db_session.query.side_effect = _query_side_effect
 
         # Mock proposals found
         proposal1 = MagicMock(spec=ServeWindowProposal)
