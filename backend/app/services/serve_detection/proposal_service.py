@@ -308,8 +308,10 @@ def generate_proposals(
                 f"both_arms={frame_features.get('both_arms_raised', False)}"
             )
 
-    # Detect serve windows
-    proposals_data = detect_serve_windows(features, video.fps)
+    # Detect serve windows (pass camera angle for profile-aware detection)
+    proposals_data = detect_serve_windows(
+        features, video.fps, camera_angle=video.camera_angle
+    )
 
     if not proposals_data:
         logger.info("No serve windows detected for video %s", video_id)

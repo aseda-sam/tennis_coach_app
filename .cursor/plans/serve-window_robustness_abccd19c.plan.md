@@ -4,16 +4,16 @@ overview: Design and implement a robust serve-window detector that handles slow-
 todos:
   - id: adaptive-thresholds
     content: Implement motion-normalized thresholds and bounded dynamic duration/velocity logic in heuristic detection
-    status: pending
+    status: done
   - id: angle-profiles
     content: Add camera-angle profile selection and apply profile-specific detection parameters
-    status: pending
+    status: done
   - id: fallback-pass
     content: Add one-step fallback detection pass when initial proposals are empty
-    status: pending
+    status: done
   - id: tests-detector
     content: Expand detector unit tests for slow-motion-like and angle-specific scenarios
-    status: pending
+    status: done
   - id: metadata-phase2
     content: Optionally add original-vs-transcoded metadata persistence with migration and API exposure
     status: pending
