@@ -38,7 +38,6 @@
   font-weight: var(--font-weight-bold);
 }
 
-
 /* Timeline Track */
 .timeline-markers-track {
   position: relative;
@@ -81,7 +80,11 @@
   top: 50%;
   height: 8px;
   transform: translateY(-50%);
-  background: linear-gradient(90deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  background: linear-gradient(
+    90deg,
+    var(--color-primary-light) 0%,
+    var(--color-primary) 100%
+  );
   border-radius: var(--radius-full);
   opacity: 0.4;
   pointer-events: none;
@@ -220,7 +223,6 @@
   background: var(--color-warning-light, #fef3c7);
 }
 
-
 .timeline-marker-label {
   position: absolute;
   top: 100%;
@@ -261,7 +263,6 @@
   color: var(--color-warning-dark, #d97706);
 }
 
-
 /* Connection line from marker to track */
 .timeline-marker::before {
   content: '';
@@ -290,7 +291,6 @@
 .timeline-marker--contact::before {
   background: var(--color-warning, #f59e0b);
 }
-
 
 /* Actions */
 .timeline-markers-actions {

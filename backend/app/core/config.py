@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     # Database (auto-detected from PROFILE)
     DATABASE_URL: Optional[str] = None  # Override default PostgreSQL URL if needed
     SUPABASE_DB_URL: Optional[str] = None  # Required if PROFILE=production
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT_SECONDS: int = 30
+    DB_POOL_RECYCLE_SECONDS: int = 1800
+    DB_POOL_PRE_PING: bool = True
 
     # Supabase (only needed if PROFILE=production)
     SUPABASE_URL: Optional[str] = None
@@ -66,15 +71,13 @@ class Settings(BaseSettings):
     POSE_DETECTION_JOB_TIMEOUT_SECONDS: int = 1800
 
     # Scout mode settings
-    SCOUT_FRAME_SKIP: int = (
-        2  # Process every Nth frame in scout mode (2 = 15fps effective at 30fps)
-    )
+    # Process every Nth frame in scout mode. Higher = faster scout, less temporal detail.
+    # At 60fps: 2 → 30fps effective, 4 → 15fps, 6 → 10fps. 15fps is usually enough for serve detection.
+    SCOUT_FRAME_SKIP: int = 4
 
     # Transcoding settings
+    # Every upload is transcoded to 720p/30fps H.264 for consistent pose detection input.
     TRANSCODE_ENABLED: bool = True
-    TRANSCODE_THRESHOLD_BYTES: int = (
-        20 * 1024 * 1024
-    )  # 20MB - skip transcoding for smaller files
     TRANSCODE_RESOLUTION: int = 720  # height in pixels
     TRANSCODE_FPS: int = 30
     TRANSCODE_CRF: int = 23  # quality (lower = better, 18-28 typical)

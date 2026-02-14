@@ -264,7 +264,7 @@ class PoseDetectionService:
         fps = cap.get(cv2.CAP_PROP_FPS)
         cap.release()
 
-        # Scout mode: process every Nth frame (configurable, default 2 = 15fps effective at 30fps input)
+        # Scout mode: process every Nth frame (SCOUT_FRAME_SKIP; e.g. 4 → 15fps at 60fps input)
         frame_skip = settings.SCOUT_FRAME_SKIP if is_scout_mode else 1
 
         try:

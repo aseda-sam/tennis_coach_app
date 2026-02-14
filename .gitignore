@@ -36,6 +36,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # Virtual Environment
+.venv/
 venv/
 env/
 ENV/
@@ -57,6 +58,7 @@ venv.bak/
 !.cursor/rules/**
 !.cursor/skills/
 !.cursor/skills/**
+.cursor/skills/interview-prep/
 
 # Claude AI
 .claude/

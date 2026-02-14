@@ -79,7 +79,6 @@ jest.mock('./VideoOverlay', () => {
   };
 });
 
-
 jest.mock('../services/api', () => ({
   videoApi: {
     getVideo: jest.fn(),

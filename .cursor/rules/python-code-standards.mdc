@@ -36,6 +36,14 @@ alwaysApply: false
 
 - Use Ruff: `ruff format .` and `ruff check .` (use `--fix` when safe).
 
+## Dependencies
+
+- **Use `uv`** for all package management (not `pip`).
+- Venv lives at `backend/.venv/` (managed by `uv`).
+- `uv pip install -e ".[dev]"` to sync all deps from `pyproject.toml`.
+- When adding a new dependency: `uv pip install <package>`, then add it to `pyproject.toml` `dependencies` (or the appropriate optional extra).
+- Never use `pip install` or `pip freeze`.
+
 ## Imports
 
 - Keep imports at top-level by default.

@@ -6,6 +6,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -84,6 +85,9 @@ class Video(Base):
     pose_detections = relationship(
         "PoseDetection", back_populates="video", cascade="all, delete-orphan"
     )
+    ball_detections = relationship(
+        "BallDetection", back_populates="video", cascade="all, delete-orphan"
+    )
     serve_attempts = relationship(
         "ServeAttempt", back_populates="video", cascade="all, delete-orphan"
     )
@@ -92,4 +96,9 @@ class Video(Base):
     )
     jobs = relationship(
         "VideoJob", back_populates="video", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index("ix_videos_recorded_at", "recorded_at"),
+        Index("ix_videos_user_recorded_at", "user_id", "recorded_at"),
     )

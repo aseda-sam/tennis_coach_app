@@ -58,7 +58,8 @@ const getKneeBendFeedback = (
     return {
       level: 'unavailable',
       pillText: 'Not Available',
-      coachNote: 'Knee bend analysis not available. May need better camera angle or pose data.',
+      coachNote:
+        'Knee bend analysis not available. May need better camera angle or pose data.',
     };
   }
 
@@ -66,7 +67,8 @@ const getKneeBendFeedback = (
     return {
       level: 'unavailable',
       pillText: 'Low Confidence',
-      coachNote: 'Knee bend detected but confidence is low. Camera angle or pose quality may be limiting.',
+      coachNote:
+        'Knee bend detected but confidence is low. Camera angle or pose quality may be limiting.',
     };
   }
 
@@ -74,14 +76,16 @@ const getKneeBendFeedback = (
     return {
       level: 'great',
       pillText: 'Good Bend',
-      coachNote: 'Good knee bend during loading phase. This helps generate power.',
+      coachNote:
+        'Good knee bend during loading phase. This helps generate power.',
     };
   }
 
   return {
     level: 'focus',
     pillText: 'Needs Work',
-    coachNote: 'Limited knee bend detected. Try bending knees more during the loading phase for better power.',
+    coachNote:
+      'Limited knee bend detected. Try bending knees more during the loading phase for better power.',
   };
 };
 
@@ -104,7 +108,8 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
     return sortedServeAttempts.filter(
       (sa) =>
         sa.elbow_angle_at_contact !== null ||
-        sa.knee_bend_detected !== null
+        sa.knee_bend_detected !== null ||
+        sa.toss_peak_height !== null
     );
   }, [sortedServeAttempts]);
 
@@ -149,9 +154,10 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
             sortedServeAttempts.map((serveAttempt) => {
               const hasElbowMetrics =
                 serveAttempt.elbow_angle_at_contact !== null;
-              const hasKneeMetrics =
-                serveAttempt.knee_bend_detected !== null;
-              const hasMetrics = hasElbowMetrics || hasKneeMetrics;
+              const hasKneeMetrics = serveAttempt.knee_bend_detected !== null;
+              const hasTossMetrics = serveAttempt.toss_peak_height !== null;
+              const hasMetrics =
+                hasElbowMetrics || hasKneeMetrics || hasTossMetrics;
 
               const displayLabel = serveAttempt.serve_subtype
                 ? serveAttempt.serve_subtype.charAt(0).toUpperCase() +
@@ -204,9 +210,11 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                             <span
                               className={`analysis-right-panel__feedback-pill analysis-right-panel__feedback-pill--${getElbowAngleFeedback(serveAttempt.elbow_angle_at_contact as number).level}`}
                             >
-                              {getElbowAngleFeedback(
-                                serveAttempt.elbow_angle_at_contact as number
-                              ).pillText}
+                              {
+                                getElbowAngleFeedback(
+                                  serveAttempt.elbow_angle_at_contact as number
+                                ).pillText
+                              }
                             </span>
                           </div>
                           <div className="analysis-right-panel__coach-note">
@@ -219,6 +227,30 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                         </div>
                       )}
 
+                      {/* Toss Peak Height (from ball detection) */}
+                      {hasTossMetrics && (
+                        <div className="analysis-right-panel__metric-section">
+                          <div className="analysis-right-panel__metric-angle">
+                            <div className="analysis-right-panel__metric-angle-main">
+                              <span className="analysis-right-panel__angle-value">
+                                {(
+                                  serveAttempt.toss_peak_height as number
+                                ).toFixed(2)}
+                              </span>
+                              <span className="analysis-right-panel__angle-label">
+                                Toss Peak (body heights)
+                                {serveAttempt.toss_peak_timestamp != null &&
+                                  ` at ${formatTime(serveAttempt.toss_peak_timestamp as number)}`}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="analysis-right-panel__coach-note">
+                            Toss height at peak, normalized by your height.
+                            Higher values mean a higher toss.
+                          </div>
+                        </div>
+                      )}
+
                       {/* Knee Bend Metric */}
                       {hasKneeMetrics && (
                         <div className="analysis-right-panel__metric-section">
@@ -227,8 +259,9 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                               <span className="analysis-right-panel__angle-value">
                                 {serveAttempt.knee_bend_detected
                                   ? '✓'
-                                  : serveAttempt.knee_bend_confidence !== null &&
-                                    serveAttempt.knee_bend_confidence < 0.5
+                                  : serveAttempt.knee_bend_confidence !==
+                                        null &&
+                                      serveAttempt.knee_bend_confidence < 0.5
                                     ? '?'
                                     : '✗'}
                               </span>

@@ -38,4 +38,3 @@ REDIS_URL=rediss://...  # Upstash in real prod
 
 - Don’t duplicate “API reference” docs: use `http://localhost:8000/docs`.
 - Keep `.env` permissive; the profile decides what’s required.
-

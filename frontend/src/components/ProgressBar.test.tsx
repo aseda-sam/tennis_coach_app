@@ -10,31 +10,39 @@ describe('ProgressBar', () => {
   describe('Rendering', () => {
     it('renders with default props', () => {
       render(<ProgressBar {...defaultProps} />);
-      
+
       expect(screen.getByText('Processing video...')).toBeInTheDocument();
       expect(screen.getByText('50%')).toBeInTheDocument();
     });
 
     it('renders without status text when showStatus is false', () => {
       render(<ProgressBar {...defaultProps} showStatus={false} />);
-      
+
       expect(screen.queryByText('Processing video...')).not.toBeInTheDocument();
       expect(screen.getByText('50%')).toBeInTheDocument();
     });
 
     it('renders without percentage when showPercentage is false', () => {
       render(<ProgressBar {...defaultProps} showPercentage={false} />);
-      
+
       expect(screen.getByText('Processing video...')).toBeInTheDocument();
       expect(screen.queryByText('50%')).not.toBeInTheDocument();
     });
 
     it('renders with different sizes', () => {
-      const { rerender } = render(<ProgressBar {...defaultProps} size="small" />);
-      expect(screen.getByRole('progressbar')).toHaveClass('progress-bar-container', 'small');
+      const { rerender } = render(
+        <ProgressBar {...defaultProps} size="small" />
+      );
+      expect(screen.getByRole('progressbar')).toHaveClass(
+        'progress-bar-container',
+        'small'
+      );
 
       rerender(<ProgressBar {...defaultProps} size="large" />);
-      expect(screen.getByRole('progressbar')).toHaveClass('progress-bar-container', 'large');
+      expect(screen.getByRole('progressbar')).toHaveClass(
+        'progress-bar-container',
+        'large'
+      );
     });
   });
 
@@ -110,25 +118,40 @@ describe('ProgressBar', () => {
 
   describe('CSS Classes', () => {
     it('applies correct status color classes', () => {
-      const { rerender } = render(<ProgressBar progress={50} status="processing" />);
-      expect(screen.getByText('Processing video...')).toHaveClass('status-text', 'processing');
+      const { rerender } = render(
+        <ProgressBar progress={50} status="processing" />
+      );
+      expect(screen.getByText('Processing video...')).toHaveClass(
+        'status-text',
+        'processing'
+      );
 
       rerender(<ProgressBar progress={100} status="completed" />);
-      expect(screen.getByText('Analysis complete!')).toHaveClass('status-text', 'completed');
+      expect(screen.getByText('Analysis complete!')).toHaveClass(
+        'status-text',
+        'completed'
+      );
 
       rerender(<ProgressBar progress={30} status="failed" />);
-      expect(screen.getByText('Analysis failed')).toHaveClass('status-text', 'error');
+      expect(screen.getByText('Analysis failed')).toHaveClass(
+        'status-text',
+        'error'
+      );
     });
 
     it('applies animated class when animated is true', () => {
       render(<ProgressBar {...defaultProps} animated={true} />);
-      expect(screen.getByRole('progressbar')).toHaveClass('progress-bar-container');
+      expect(screen.getByRole('progressbar')).toHaveClass(
+        'progress-bar-container'
+      );
       // The animated class is applied to the inner progress bar element
     });
 
     it('does not apply animated class when animated is false', () => {
       render(<ProgressBar {...defaultProps} animated={false} />);
-      expect(screen.getByRole('progressbar')).toHaveClass('progress-bar-container');
+      expect(screen.getByRole('progressbar')).toHaveClass(
+        'progress-bar-container'
+      );
     });
   });
 
@@ -140,7 +163,9 @@ describe('ProgressBar', () => {
     });
 
     it('handles edge cases', () => {
-      const { rerender } = render(<ProgressBar progress={0} status="processing" />);
+      const { rerender } = render(
+        <ProgressBar progress={0} status="processing" />
+      );
       let progressFill = screen.getByTestId('progress-fill');
       expect(progressFill).toHaveStyle({ width: '0%' });
 

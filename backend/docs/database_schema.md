@@ -18,6 +18,9 @@ Stores uploaded videos and metadata.
 - `primary_player_id` (FK -> `players.id`, nullable)
   - Default player attribution for serves created from this video.
   - Used when a serve attempt or proposal acceptance does not specify `player_id`.
+- Indexes used by timeline/progress queries:
+  - `ix_videos_recorded_at` on `recorded_at`
+  - `ix_videos_user_recorded_at` on (`user_id`, `recorded_at`)
 
 ## players
 
@@ -28,6 +31,19 @@ Stores player profiles (one default per user, with optional additional players).
 - `name` (required)
 - `dominant_hand` (required)
 - `backhand_style`, `height_cm`, `age_group`, `gender`, `notes`
+
+## ball_detections
+
+Stores YOLO ball detection results for a video (serve windows only).
+
+- `id` (PK)
+- `video_id` (FK -> `videos.id`, CASCADE)
+- `total_frames`, `frames_with_ball`, `detection_rate`
+- `ball_data` (JSON text: list of per-frame detections with frame_index, timestamp_ms, ball_x, ball_y, confidence)
+- `processing_time_seconds`, `frame_processing_rate`
+- `status`, `error_message`
+- `time_windows` (JSON: [{"start_ms", "end_ms"}, ...])
+- `created_at`, `completed_at`
 
 ## serve_attempts
 
@@ -40,3 +56,6 @@ Stores serve attempts and metrics derived from video analysis.
 - `start_timestamp`, `end_timestamp`, `contact_timestamp`
 - `analysis_version`, `elbow_angle_at_contact`, `knee_bend_*`, `court_side`,
   `serve_number`, `serve_subtype`, `in_out`
+- `toss_peak_height` (nullable, from ball detection; normalized by player height)
+- `toss_peak_timestamp` (nullable, video time in seconds)
+- `source_proposal_id` (FK -> `serve_window_proposals.id`, nullable, indexed)

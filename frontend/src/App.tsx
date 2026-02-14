@@ -412,7 +412,6 @@ function App() {
         onClose={() => setIsVideoModalOpen(false)}
         videoId="4e50fe345c664fdca497c2ca884a52e3"
       />
-
     </div>
   );
 }

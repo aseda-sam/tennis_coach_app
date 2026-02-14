@@ -4,6 +4,9 @@ primary_region = "lhr"
 [build]
   dockerfile = "Dockerfile"
 
+[deploy]
+  release_command = "alembic upgrade head"
+
 [env]
   SERVICE_TYPE = "api"
   PROFILE = "production"

@@ -87,11 +87,16 @@ class ServeAttempt(Base):
         Integer,
         ForeignKey("serve_window_proposals.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
 
     # Original timestamps (if edited from proposal)
     original_start_timestamp = Column(Float, nullable=True)
     original_end_timestamp = Column(Float, nullable=True)
+
+    # Ball tracking (toss metrics from ball detection)
+    toss_peak_height = Column(Float, nullable=True)  # Normalized by player height
+    toss_peak_timestamp = Column(Float, nullable=True)  # Seconds (video time)
 
     # Relationships
     video = relationship("Video", back_populates="serve_attempts")

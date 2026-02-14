@@ -78,8 +78,17 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
           </div>
 
           <div className="keyboard-modal__section">
-            <h3>Tagging {isDemo && <span className="keyboard-modal__demo-badge">Demo: Disabled</span>}</h3>
-            <div className={`keyboard-modal__shortcuts ${isDemo ? 'keyboard-modal__shortcuts--disabled' : ''}`}>
+            <h3>
+              Tagging{' '}
+              {isDemo && (
+                <span className="keyboard-modal__demo-badge">
+                  Demo: Disabled
+                </span>
+              )}
+            </h3>
+            <div
+              className={`keyboard-modal__shortcuts ${isDemo ? 'keyboard-modal__shortcuts--disabled' : ''}`}
+            >
               <div className="keyboard-modal__shortcut">
                 <kbd>S</kbd>
                 <span>Mark serve start point</span>
@@ -111,7 +120,9 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
         </div>
 
         <div className="keyboard-modal__footer">
-          <span className="keyboard-modal__hint">Press <kbd>?</kbd> anytime to open this</span>
+          <span className="keyboard-modal__hint">
+            Press <kbd>?</kbd> anytime to open this
+          </span>
         </div>
       </div>
     </div>

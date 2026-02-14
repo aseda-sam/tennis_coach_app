@@ -1,5 +1,5 @@
 # Optimized Worker Dockerfile for Fly.io
-# Pose detection only (MediaPipe) - no PyTorch/Ultralytics to reduce image size
+# Pose detection (MediaPipe) + ball detection (Ultralytics YOLO) for RQ worker
 
 # Build stage - for installing dependencies
 FROM python:3.11-slim AS builder
@@ -18,7 +18,7 @@ WORKDIR /app/backend
 # Install opencv-python-headless (no GUI dependencies needed - encoding removed)
 RUN pip install --no-cache-dir opencv-python-headless
 
-# Install worker extras (MediaPipe only - no PyTorch/Ultralytics)
+# Install worker extras (MediaPipe + Ultralytics for pose and ball detection)
 RUN pip install --no-cache-dir -e ".[worker]"
 
 # Development stage - for local development with docker-compose
@@ -48,8 +48,9 @@ COPY backend/ ./backend/
 
 WORKDIR /app/backend
 
-# Create required directories
-RUN mkdir -p ml_models data/videos/raw data/videos/processed data/analysis_cache data/database
+# Create required directories (YOLO_CONFIG_DIR so Ultralytics has a writable config/cache path)
+RUN mkdir -p ml_models data/videos/raw data/videos/processed data/analysis_cache data/database data/analysis_cache/ultralytics
+ENV YOLO_CONFIG_DIR=/app/backend/data/analysis_cache/ultralytics
 
 EXPOSE 8000
 CMD ["python", "scripts/start_rq_worker.py"]
@@ -92,9 +93,10 @@ RUN rm -rf tests/ \
     find . -type f -name "*.pyo" -delete 2>/dev/null || true
 
 # Create required directories (models will be downloaded here at runtime)
-# Set ownership before switching user
-RUN mkdir -p ml_models data/videos/raw data/videos/processed data/analysis_cache data/database && \
+# YOLO_CONFIG_DIR so Ultralytics has a writable config/cache path (no /root/.config warning)
+RUN mkdir -p ml_models data/videos/raw data/videos/processed data/analysis_cache data/database data/analysis_cache/ultralytics && \
     chown -R appuser:appuser /app
+ENV YOLO_CONFIG_DIR=/app/backend/data/analysis_cache/ultralytics
 
 # Switch to non-root user
 USER appuser

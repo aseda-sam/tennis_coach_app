@@ -10,7 +10,12 @@ export type AnalysisState =
   | { status: 'idle' }
   | { status: 'queued'; jobId: string; startedAt: string }
   | { status: 'processing'; jobId: string; startedAt: string }
-  | { status: 'completed'; jobId: string; result: AnalysisData | null; completedAt: string }
+  | {
+      status: 'completed';
+      jobId: string;
+      result: AnalysisData | null;
+      completedAt: string;
+    }
   | { status: 'failed'; jobId: string; error: string; startedAt: string };
 
 export interface UseAnalysisStatusOptions {
@@ -33,7 +38,7 @@ export interface UseAnalysisStatusReturn {
 /**
  * Unified hook for analysis status polling with visibility awareness.
  * Replaces useTaskStatus and useAnalysisProgress hooks.
- * 
+ *
  * Features:
  * - Visibility-aware: pauses when tab hidden, resumes on focus
  * - Slower polling: defaults to 12s interval (was 2s)
@@ -157,7 +162,10 @@ export function useAnalysisStatus(
           return;
         }
       } catch (err: unknown) {
-        const axiosError = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
+        const axiosError = err as {
+          response?: { status?: number; data?: { detail?: string } };
+          message?: string;
+        };
 
         const errorMessage =
           axiosError?.response?.data?.detail ||

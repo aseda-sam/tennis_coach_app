@@ -130,7 +130,10 @@ const VideoList: React.FC<VideoListProps> = ({
       if (!playerProfile?.name) {
         return 'Your Profile';
       }
-      if (!video.primary_player_id || video.primary_player_id === playerProfile.id) {
+      if (
+        !video.primary_player_id ||
+        video.primary_player_id === playerProfile.id
+      ) {
         return playerProfile.name;
       }
       return 'Someone Else';
@@ -473,7 +476,9 @@ const VideoList: React.FC<VideoListProps> = ({
 
                 <div className="edit-video-section">
                   <div className="edit-video-section-header">
-                    <div className="edit-video-section-title">Who Is Serving?</div>
+                    <div className="edit-video-section-title">
+                      Who Is Serving?
+                    </div>
                     <p className="edit-video-section-subtitle">
                       New serves detected in this video will be saved under this
                       player.
@@ -509,10 +514,14 @@ const VideoList: React.FC<VideoListProps> = ({
                       <input
                         type="checkbox"
                         checked={applyToExistingServes}
-                        onChange={(e) => setApplyToExistingServes(e.target.checked)}
+                        onChange={(e) =>
+                          setApplyToExistingServes(e.target.checked)
+                        }
                         disabled={updateMetadataMutation.isPending}
                       />
-                      <span>Also update serves already detected in this video</span>
+                      <span>
+                        Also update serves already detected in this video
+                      </span>
                     </label>
                     <p className="edit-video-note edit-video-note--compact">
                       Only affects serves for this video.
@@ -520,7 +529,9 @@ const VideoList: React.FC<VideoListProps> = ({
                   </div>
                 </div>
 
-                {editError && <div className="edit-video-error">{editError}</div>}
+                {editError && (
+                  <div className="edit-video-error">{editError}</div>
+                )}
               </div>
             </div>
             <div className="edit-video-actions">
@@ -538,7 +549,9 @@ const VideoList: React.FC<VideoListProps> = ({
                 onClick={handleEditSave}
                 disabled={!editSessionType || updateMetadataMutation.isPending}
               >
-                {updateMetadataMutation.isPending ? 'Saving...' : 'Save Changes'}
+                {updateMetadataMutation.isPending
+                  ? 'Saving...'
+                  : 'Save Changes'}
               </button>
             </div>
           </div>

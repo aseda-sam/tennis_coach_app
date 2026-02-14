@@ -3,7 +3,13 @@ import './ProgressBar.css';
 
 interface ProgressBarProps {
   progress?: number; // 0-100 (optional, ignored when indeterminate=true)
-  status: 'starting' | 'processing' | 'finalizing' | 'completed' | 'failed' | 'cancelled';
+  status:
+    | 'starting'
+    | 'processing'
+    | 'finalizing'
+    | 'completed'
+    | 'failed'
+    | 'cancelled';
   showPercentage?: boolean;
   showStatus?: boolean;
   size?: 'small' | 'medium' | 'large';
@@ -72,16 +78,18 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           </span>
         </div>
       )}
-      
-      <div className={`progress-bar ${getStatusColor()} ${animated ? 'animated' : ''} ${indeterminate ? 'indeterminate' : ''}`}>
+
+      <div
+        className={`progress-bar ${getStatusColor()} ${animated ? 'animated' : ''} ${indeterminate ? 'indeterminate' : ''}`}
+      >
         {indeterminate ? (
-          <div 
+          <div
             className="progress-fill indeterminate-fill"
             data-testid="progress-fill"
           />
         ) : (
           <>
-            <div 
+            <div
               className="progress-fill"
               style={{ width: `${progress}%` }}
               data-testid="progress-fill"
@@ -92,7 +100,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           </>
         )}
       </div>
-      
+
       {showPercentage && !indeterminate && (
         <div className="progress-percentage">
           <span className="percentage-text">{getProgressText()}</span>

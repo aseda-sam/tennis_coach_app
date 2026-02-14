@@ -138,11 +138,11 @@
     align-items: flex-start;
     gap: 8px;
   }
-  
+
   .stage-percentage {
     align-self: flex-end;
   }
-  
+
   .stage-progress-container {
     padding: 12px;
   }

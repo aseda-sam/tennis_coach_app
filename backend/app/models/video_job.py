@@ -48,6 +48,7 @@ class VideoJob(Base):
 
     __table_args__ = (
         Index("idx_video_jobs_user_status", "user_id", "status"),
+        Index("idx_video_jobs_user_created", "user_id", "created_at"),
         Index("idx_video_jobs_video_id", "video_id"),
         Index("idx_video_jobs_rq_job_id", "rq_job_id"),
     )

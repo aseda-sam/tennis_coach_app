@@ -344,7 +344,6 @@
   font-weight: 700;
 }
 
-
 /* Legacy styles for backward compatibility */
 .video-list {
   display: flex;
@@ -612,7 +611,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-2xl) var(--spacing-2xl) var(--spacing-lg) var(--spacing-2xl);
+  padding: var(--spacing-2xl) var(--spacing-2xl) var(--spacing-lg)
+    var(--spacing-2xl);
   border-bottom: 2px solid var(--color-border-light);
 }
 
@@ -774,7 +774,7 @@
   margin: 0;
 }
 
-.edit-video-checkbox input[type="checkbox"] {
+.edit-video-checkbox input[type='checkbox'] {
   width: 18px;
   height: 18px;
   margin: 0;
@@ -872,7 +872,8 @@
   }
 
   .upload-modal .modal-header {
-    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md) var(--spacing-lg);
+    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md)
+      var(--spacing-lg);
   }
 
   .upload-modal .modal-content {

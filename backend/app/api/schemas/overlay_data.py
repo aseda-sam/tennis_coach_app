@@ -30,6 +30,13 @@ class PoseFrame(BaseModel):
     confidence: float = Field(
         ..., description="Overall pose detection confidence for this frame"
     )
+    ball_position: Optional[List[float]] = Field(
+        None,
+        description="Ball center [x, y] in video coordinates if detected, else None",
+    )
+    ball_confidence: Optional[float] = Field(
+        None, description="Ball detection confidence (0-1) when ball_position is set"
+    )
 
 
 class PoseOverlayData(BaseModel):

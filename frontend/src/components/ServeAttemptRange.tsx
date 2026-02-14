@@ -29,11 +29,14 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
   const startPercent = (serveAttempt.start_timestamp / duration) * 100;
   const endPercent = (serveAttempt.end_timestamp / duration) * 100;
   const width = endPercent - startPercent;
-  
+
   // Calculate contact marker position relative to the range
-  const contactPercent = serveAttempt.contact_timestamp !== null
-    ? ((serveAttempt.contact_timestamp - serveAttempt.start_timestamp) / (serveAttempt.end_timestamp - serveAttempt.start_timestamp)) * 100
-    : null;
+  const contactPercent =
+    serveAttempt.contact_timestamp !== null
+      ? ((serveAttempt.contact_timestamp - serveAttempt.start_timestamp) /
+          (serveAttempt.end_timestamp - serveAttempt.start_timestamp)) *
+        100
+      : null;
 
   const hasMetrics =
     serveAttempt.elbow_angle_at_contact !== null ||
@@ -124,11 +127,12 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
             )}
           </div>
           <div className="tooltip-details">
-            <div>{serveAttempt.start_timestamp.toFixed(2)}s - {serveAttempt.end_timestamp.toFixed(2)}s</div>
+            <div>
+              {serveAttempt.start_timestamp.toFixed(2)}s -{' '}
+              {serveAttempt.end_timestamp.toFixed(2)}s
+            </div>
             {serveAttempt.contact_timestamp !== null && (
-              <div>
-                Contact: {serveAttempt.contact_timestamp.toFixed(2)}s
-              </div>
+              <div>Contact: {serveAttempt.contact_timestamp.toFixed(2)}s</div>
             )}
             {serveAttempt.elbow_angle_at_contact !== null && (
               <div>
@@ -145,12 +149,16 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
             )}
             {serveAttempt.court_side && (
               <div>
-                Court: {serveAttempt.court_side.charAt(0).toUpperCase() + serveAttempt.court_side.slice(1)}
+                Court:{' '}
+                {serveAttempt.court_side.charAt(0).toUpperCase() +
+                  serveAttempt.court_side.slice(1)}
               </div>
             )}
             {serveAttempt.serve_subtype && (
               <div>
-                Type: {serveAttempt.serve_subtype.charAt(0).toUpperCase() + serveAttempt.serve_subtype.slice(1)}
+                Type:{' '}
+                {serveAttempt.serve_subtype.charAt(0).toUpperCase() +
+                  serveAttempt.serve_subtype.slice(1)}
               </div>
             )}
           </div>

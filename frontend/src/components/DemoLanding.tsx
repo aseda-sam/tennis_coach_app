@@ -55,16 +55,16 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
                   </div>
                   <div className="demo-landing__card-title-wrap">
                     <div className="demo-landing__card-eyebrow">
-                    Interactive Demo
+                      Interactive Demo
                     </div>
                     <h2 className="demo-landing__card-title">
-                    Explore a Sample Analysis
+                      Explore a Sample Analysis
                     </h2>
                   </div>
                 </div>
                 <p className="demo-landing__card-body">
-                Start with a real clip and follow each moment. Jump between key
-                moments, review timing, and see what stands out.
+                  Start with a real clip and follow each moment. Jump between
+                  key moments, review timing, and see what stands out.
                 </p>
                 <div className="demo-landing__card-actions">
                   <button
@@ -86,9 +86,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
                     <UploadIcon size={20} color="var(--color-primary)" />
                   </div>
                   <div className="demo-landing__card-title-wrap">
-                    <div className="demo-landing__card-eyebrow">
-                      Your Turn
-                    </div>
+                    <div className="demo-landing__card-eyebrow">Your Turn</div>
                   </div>
                 </div>
                 <p className="demo-landing__card-body">
@@ -122,8 +120,8 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               </div>
               <h4 className="demo-landing__feature-title">Body Tracking</h4>
               <p className="demo-landing__feature-description">
-                See how your body aligns and moves through each phase of
-                the serve.
+                See how your body aligns and moves through each phase of the
+                serve.
               </p>
             </div>
 
@@ -162,8 +160,6 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
             </div>
           </div>
         </div>
-
-
       </div>
     </div>
   );

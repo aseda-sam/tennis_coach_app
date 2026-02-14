@@ -73,4 +73,3 @@ PROFILE=local      # or production
 
 - The API enqueues; workers must run the **same code + deps**.
 - Prefer keeping job payloads small (IDs + paths), write results to DB.
-

@@ -1,7 +1,88 @@
+# ==============================================================================
+# Pre-commit hooks for Tennis Coach App
+# Runs automatically on:
+# - `git commit` (pre-commit + commit-msg)
+# - `git push` (pre-push)
+#
+# Setup (one-time):
+#   pre-commit install
+#   pre-commit install --hook-type commit-msg
+#   pre-commit install --hook-type pre-push
+#
+# Manual run:
+#   pre-commit run --all-files          # all pre-commit hooks
+#   pre-commit run --all-files --hook-stage pre-push  # pre-push hooks
+#
+# Bypass (emergency):
+#   git commit --no-verify
+#   git push --no-verify
+# ==============================================================================
+
 repos:
+  # ── General file hygiene ────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']  # 1 MB — catches accidental video/model commits
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # ── Python: Ruff lint + format ──────────────────────────────────────────────
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.7
+    rev: v0.15.0
     hooks:
       - id: ruff
         args: ["--fix"]
       - id: ruff-format
+
+  # ── Frontend: ESLint + Prettier (pre-commit) ───────────────────────────────
+  # ── Backend tests + Frontend type-check (pre-push) ─────────────────────────
+  - repo: local
+    hooks:
+      # --- pre-commit: frontend quality ----
+      - id: frontend-eslint
+        name: "frontend · eslint"
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: frontend-prettier
+        name: "frontend · prettier"
+        entry: bash -c 'cd frontend && npm run format:check'
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx|css)$
+        pass_filenames: false
+
+      # --- pre-push: backend tests ----
+      - id: backend-pytest
+        name: "backend · pytest (pre-push)"
+        entry: bash -c 'cd backend && .venv/bin/python -m pytest -x -q --tb=short'
+        language: system
+        files: ^backend/
+        pass_filenames: false
+        stages: [pre-push]
+
+      # --- pre-push: frontend type safety ----
+      - id: frontend-typecheck
+        name: "frontend · tsc --noEmit (pre-push)"
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        language: system
+        files: ^frontend/src/
+        pass_filenames: false
+        stages: [pre-push]
+
+      # --- pre-push: mermaid diagram validation ----
+      - id: mermaid-validate
+        name: "diagrams · mermaid validation (pre-push)"
+        entry: python .cursor/skills/diagram-maintainer/scripts/validate_mermaid.py
+        language: system
+        files: ^project_docs/diagrams/.*\.md$
+        pass_filenames: false
+        stages: [pre-push]

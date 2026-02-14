@@ -1,6 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { usePlayerProfile, useUpsertPlayerProfile } from '../hooks/usePlayerProfile';
+import {
+  usePlayerProfile,
+  useUpsertPlayerProfile,
+} from '../hooks/usePlayerProfile';
 import './AccountMenu.css';
 
 interface AccountMenuProps {
@@ -237,7 +240,9 @@ export function AccountMenu({ onLogout }: AccountMenuProps) {
               className="account-menu-profile account-menu-profile--edit"
               onSubmit={handleSaveProfile}
             >
-              <div className="account-menu-section-title">Edit Player Profile</div>
+              <div className="account-menu-section-title">
+                Edit Player Profile
+              </div>
               <div className="account-menu-field">
                 <label htmlFor="profileName" className="profile-label">
                   Name

@@ -65,6 +65,8 @@ export interface PoseFrame {
   timestamp: number;
   keypoints: { [key: string]: number[] }; // {"left_shoulder": [x, y], ...}
   confidence: number;
+  ball_position?: number[]; // [x, y] when ball detected
+  ball_confidence?: number;
 }
 
 export interface OverlayData {

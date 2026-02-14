@@ -357,7 +357,10 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
           <div className="details-form">
             <div className={`form-field ${sessionType ? 'selected' : ''}`}>
               <label>
-                Session Type <span className="required-asterisk" aria-label="required">*</span>
+                Session Type{' '}
+                <span className="required-asterisk" aria-label="required">
+                  *
+                </span>
               </label>
               <select
                 value={sessionType}
@@ -444,7 +447,9 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
                 className="finish-upload-btn"
                 disabled={!sessionType || updateMetadataMutation.isPending}
               >
-                {updateMetadataMutation.isPending ? 'Finishing...' : 'Finish Upload'}
+                {updateMetadataMutation.isPending
+                  ? 'Finishing...'
+                  : 'Finish Upload'}
               </button>
             </div>
           </div>

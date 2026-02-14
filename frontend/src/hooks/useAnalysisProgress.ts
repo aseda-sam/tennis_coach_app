@@ -50,34 +50,39 @@ export function useAnalysisProgress(
   const currentJobIdRef = useRef<string | null>(null);
   const isVisibleRef = useRef(true);
 
-  const convertJobToProgress = useCallback((job: VideoJob): AnalysisProgress => {
-    const startedAt = job.started_at ? new Date(job.started_at).getTime() : null;
-    const now = Date.now();
-    const elapsed = startedAt ? now - startedAt : 0;
+  const convertJobToProgress = useCallback(
+    (job: VideoJob): AnalysisProgress => {
+      const startedAt = job.started_at
+        ? new Date(job.started_at).getTime()
+        : null;
+      const now = Date.now();
+      const elapsed = startedAt ? now - startedAt : 0;
 
-    // Progress is now indeterminate - always return 0 for processing states
-    // Only show 100% for completed, 0% for failed
-    let progress = 0;
-    if (job.status === 'completed') {
-      progress = 100;
-    } else if (job.status === 'failed') {
-      progress = 0;
-    }
-    // For 'queued' and 'processing', progress remains 0 (indeterminate)
+      // Progress is now indeterminate - always return 0 for processing states
+      // Only show 100% for completed, 0% for failed
+      let progress = 0;
+      if (job.status === 'completed') {
+        progress = 100;
+      } else if (job.status === 'failed') {
+        progress = 0;
+      }
+      // For 'queued' and 'processing', progress remains 0 (indeterminate)
 
-    return {
-      jobId: job.id,
-      videoId: job.video_id,
-      analysisType: 'pose_only',
-      status: job.status,
-      progress,
-      error: job.error || undefined,
-      result: null,
-      startedAt: job.started_at || undefined,
-      completedAt: job.finished_at || undefined,
-      elapsedTime: elapsed,
-    };
-  }, []);
+      return {
+        jobId: job.id,
+        videoId: job.video_id,
+        analysisType: 'pose_only',
+        status: job.status,
+        progress,
+        error: job.error || undefined,
+        result: null,
+        startedAt: job.started_at || undefined,
+        completedAt: job.finished_at || undefined,
+        elapsedTime: elapsed,
+      };
+    },
+    []
+  );
 
   const pollJobStatus = useCallback(
     async (jobId: string) => {

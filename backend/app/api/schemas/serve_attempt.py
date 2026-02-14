@@ -103,6 +103,14 @@ class ServeAttemptInfo(BaseModel):
         le=180,
         description="Minimum right knee flexion angle in degrees",
     )
+    toss_peak_height: Optional[float] = Field(
+        default=None,
+        description="Toss peak height normalized by player height (from ball detection)",
+    )
+    toss_peak_timestamp: Optional[float] = Field(
+        default=None,
+        description="Video timestamp in seconds when toss peaked",
+    )
     analysis_version: Optional[str] = Field(
         default=None, description="Version of analysis heuristics used"
     )
