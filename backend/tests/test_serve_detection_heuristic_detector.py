@@ -1,17 +1,14 @@
 """Unit tests for serve detection heuristic detector."""
 
-import pytest
-
 from app.services.serve_detection.heuristic_detector import (
     ANGLE_PROFILES,
     FALLBACK_CONFIDENCE_PENALTY,
     MAX_SERVE_DURATION,
-    AngleProfile,
+    _build_relaxed_profile,
     compute_adaptive_velocity_threshold,
     compute_motion_stats,
     detect_serve_windows,
     get_angle_profile,
-    _build_relaxed_profile,
 )
 
 
@@ -146,7 +143,7 @@ def test_detect_with_profile_angle_longer_window() -> None:
         features[i]["max_wrist_velocity"] = 150.0
 
     proposals_profile = detect_serve_windows(features, fps, camera_angle="profile")
-    proposals_behind = detect_serve_windows(features, fps, camera_angle="behind")
+    detect_serve_windows(features, fps, camera_angle="behind")
 
     # Profile should accept windows that behind might split differently
     assert len(proposals_profile) >= 1
@@ -311,7 +308,7 @@ def test_no_fallback_when_primary_succeeds() -> None:
 
     proposals = detect_serve_windows(features, fps)
     assert len(proposals) == 1
-    assert proposals[0]["detection_features"]["detection_pass"] == "primary"
+    assert proposals[0]["detection_features"]["detection_pass"] == "primary"  # noqa: S105
 
 
 def test_fallback_tries_alternate_profiles_for_unknown_angle() -> None:
@@ -345,7 +342,10 @@ def test_build_relaxed_profile_widens_parameters() -> None:
     assert relaxed.gap_merge_threshold >= original.gap_merge_threshold
     assert relaxed.max_serve_duration >= original.max_serve_duration
     assert relaxed.min_serve_duration <= original.min_serve_duration
-    assert relaxed.long_cluster_velocity_threshold <= original.long_cluster_velocity_threshold
+    assert (
+        relaxed.long_cluster_velocity_threshold
+        <= original.long_cluster_velocity_threshold
+    )
     assert relaxed.name == "behind_relaxed"
 
 

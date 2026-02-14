@@ -408,7 +408,7 @@ def _run_detection_pass(
     fps: float,
     profile: AngleProfile,
     motion_stats: Dict[str, float],
-    pass_label: str = "primary",
+    detection_label: str = "primary",
 ) -> List[Dict]:
     """
     Core detection logic factored out so it can be called for both
@@ -432,7 +432,7 @@ def _run_detection_pass(
 
     logger.info(
         "[%s] Detection pass with profile=%s, gap=%.2fs, vel_thresh=%.1f, max_dur=%.1fs",
-        pass_label,
+        detection_label,
         profile.name,
         profile.gap_merge_threshold,
         velocity_threshold,
@@ -446,7 +446,7 @@ def _run_detection_pass(
 
     logger.info(
         "[%s] Found %d frames with wrist above shoulder (%.1f%% of video)",
-        pass_label,
+        detection_label,
         len(raised_arm_frames),
         100 * len(raised_arm_frames) / n_frames if n_frames else 0,
     )
@@ -456,7 +456,9 @@ def _run_detection_pass(
 
     # Cluster nearby raised-arm frames
     clusters = cluster_frames(raised_arm_frames, gap_frames)
-    logger.info("[%s] Clustered into %d potential serve windows", pass_label, len(clusters))
+    logger.info(
+        "[%s] Clustered into %d potential serve windows", detection_label, len(clusters)
+    )
 
     # Convert clusters to proposals with padding
     proposals: List[Dict] = []
@@ -480,7 +482,7 @@ def _run_detection_pass(
             if split_clusters:
                 logger.info(
                     "[%s] Split long cluster (%.2fs) into %d motion-focused subcluster(s)",
-                    pass_label,
+                    detection_label,
                     raw_duration,
                     len(split_clusters),
                 )
@@ -502,7 +504,7 @@ def _run_detection_pass(
             if duration < profile.min_serve_duration:
                 logger.debug(
                     "[%s] Skipping cluster: duration %.2fs < %.2fs",
-                    pass_label,
+                    detection_label,
                     duration,
                     profile.min_serve_duration,
                 )
@@ -510,7 +512,7 @@ def _run_detection_pass(
             if duration > profile.max_serve_duration:
                 logger.debug(
                     "[%s] Skipping cluster: duration %.2fs > %.2fs",
-                    pass_label,
+                    detection_label,
                     duration,
                     profile.max_serve_duration,
                 )
@@ -537,7 +539,7 @@ def _run_detection_pass(
 
             logger.info(
                 "[%s] Serve window: %.2fs - %.2fs (duration: %.2fs, confidence: %.2f)",
-                pass_label,
+                detection_label,
                 start_ts,
                 end_ts,
                 duration,
@@ -556,7 +558,7 @@ def _run_detection_pass(
                         "peak_wrist_height": peak_height,
                         "peak_wrist_velocity": peak_velocity,
                         "both_arms_raised": both_arms_ever,
-                        "detection_pass": pass_label,
+                        "detection_pass": detection_label,
                         "profile": profile.name,
                     },
                 }
@@ -664,7 +666,7 @@ def detect_serve_windows(
 
     # --- Primary detection pass ---
     proposals = _run_detection_pass(
-        features, fps, profile, motion_stats, pass_label="primary"
+        features, fps, profile, motion_stats, detection_label="primary"
     )
     merged = merge_overlapping(proposals)
 
@@ -673,7 +675,7 @@ def detect_serve_windows(
         logger.info("Primary pass found no proposals; running fallback pass")
         relaxed_profile = _build_relaxed_profile(profile)
         fallback_proposals = _run_detection_pass(
-            features, fps, relaxed_profile, motion_stats, pass_label="fallback"
+            features, fps, relaxed_profile, motion_stats, detection_label="fallback"
         )
 
         # If camera_angle is unknown, also try the other profiles
@@ -685,7 +687,7 @@ def detect_serve_windows(
                     fps,
                     alt_profile,
                     motion_stats,
-                    pass_label=f"fallback_{alt_angle}",
+                    detection_label=f"fallback_{alt_angle}",
                 )
                 fallback_proposals.extend(alt_proposals)
 
@@ -695,9 +697,7 @@ def detect_serve_windows(
 
         merged = merge_overlapping(fallback_proposals)
         if merged:
-            logger.info(
-                "Fallback pass recovered %d proposal(s)", len(merged)
-            )
+            logger.info("Fallback pass recovered %d proposal(s)", len(merged))
 
     logger.info("Final result: %d serve windows detected", len(merged))
     return merged
