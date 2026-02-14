@@ -1,10 +1,10 @@
 """Heuristic-based serve window detection using pose features."""
 
 import logging
-from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 import numpy as np
+from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -41,24 +41,19 @@ ADAPTIVE_VELOCITY_MIN = 30.0  # pixels/sec - floor for slow-motion clips
 ADAPTIVE_VELOCITY_MAX = 120.0  # pixels/sec - ceiling to avoid over-filtering
 
 
-@dataclass
-class AngleProfile:
+class AngleProfile(BaseModel):
     """Camera-angle-specific detection parameters."""
 
+    model_config = ConfigDict(frozen=True)
+
     name: str
-    # Gap merge tolerance (seconds) - how much gap between arm-raised frames to merge
     gap_merge_threshold: float = GAP_MERGE_THRESHOLD
-    # Padding before/after detected windows (seconds)
     padding_before: float = PADDING_BEFORE
     padding_after: float = PADDING_AFTER
-    # Velocity threshold for splitting long clusters (pixels/sec)
     long_cluster_velocity_threshold: float = LONG_CLUSTER_VELOCITY_THRESHOLD
-    # Expansion around motion bursts (seconds)
     long_cluster_expansion: float = LONG_CLUSTER_EXPANSION
-    # Min/max serve duration (seconds)
     min_serve_duration: float = MIN_SERVE_DURATION
     max_serve_duration: float = MAX_SERVE_DURATION
-    # Whether to use adaptive (motion-normalized) velocity threshold
     use_adaptive_velocity: bool = True
 
 
