@@ -13,6 +13,10 @@ MAX_SERVE_DURATION = 8.0  # seconds - maximum time (includes setup)
 # If there's a brief dip (e.g., 0.3s) between raised arm frames, merge them
 GAP_MERGE_THRESHOLD = 0.5  # seconds
 
+# For very long raised-arm clusters, use velocity to isolate likely serve motion
+LONG_CLUSTER_VELOCITY_THRESHOLD = 80.0  # pixels/sec
+LONG_CLUSTER_EXPANSION = 0.8  # seconds around motion bursts
+
 # Padding to add before/after detected serve windows
 # Captures the setup and follow-through
 PADDING_BEFORE = 0.3  # seconds before first "arm raised" frame
@@ -181,6 +185,76 @@ def merge_overlapping(proposals: List[Dict]) -> List[Dict]:
     return merged
 
 
+def split_long_cluster(
+    cluster: List[int], features: List[Dict[str, float | bool]], fps: float
+) -> List[List[int]]:
+    """
+    Split a very long raised-arm cluster into motion-focused subclusters.
+
+    Strategy:
+    1) keep frames in the cluster with meaningful wrist velocity
+    2) cluster those active frames
+    3) expand each active cluster by a small buffer to include setup/release
+    4) fallback to a centered segment if no active frames are found
+    """
+    if not cluster or fps <= 0:
+        return []
+
+    first_frame = min(cluster)
+    last_frame = max(cluster)
+    max_frames = max(1, int(MAX_SERVE_DURATION * fps))
+    if last_frame - first_frame + 1 <= max_frames:
+        return [cluster]
+
+    active_frames = [
+        i
+        for i in cluster
+        if features[i].get("max_wrist_velocity", 0.0) >= LONG_CLUSTER_VELOCITY_THRESHOLD
+    ]
+
+    if not active_frames:
+        mid = (first_frame + last_frame) // 2
+        half = max_frames // 2
+        start = max(first_frame, mid - half)
+        end = min(last_frame, start + max_frames - 1)
+        start = max(first_frame, end - max_frames + 1)
+        return [list(range(start, end + 1))]
+
+    expansion_frames = int(LONG_CLUSTER_EXPANSION * fps)
+    active_gap_frames = int(GAP_MERGE_THRESHOLD * fps)
+    active_clusters = cluster_frames(active_frames, active_gap_frames)
+
+    ranges: List[tuple[int, int]] = []
+    for active_cluster in active_clusters:
+        start = max(first_frame, min(active_cluster) - expansion_frames)
+        end = min(last_frame, max(active_cluster) + expansion_frames)
+        if end - start + 1 > max_frames:
+            # Center on local peak velocity if expanded segment is still too long
+            peak_frame = max(
+                range(start, end + 1),
+                key=lambda idx: features[idx].get("max_wrist_velocity", 0.0),
+            )
+            half = max_frames // 2
+            start = max(first_frame, peak_frame - half)
+            end = min(last_frame, start + max_frames - 1)
+            start = max(first_frame, end - max_frames + 1)
+        ranges.append((start, end))
+
+    # Merge overlapping ranges to avoid duplicate windows
+    if not ranges:
+        return []
+    ranges.sort(key=lambda x: x[0])
+    merged_ranges = [ranges[0]]
+    for start, end in ranges[1:]:
+        prev_start, prev_end = merged_ranges[-1]
+        if start <= prev_end:
+            merged_ranges[-1] = (prev_start, max(prev_end, end))
+        else:
+            merged_ranges.append((start, end))
+
+    return [list(range(start, end + 1)) for start, end in merged_ranges]
+
+
 def detect_serve_windows(
     features: List[Dict[str, float | bool]], fps: float
 ) -> List[Dict[str, float | str | Dict]]:
@@ -271,68 +345,85 @@ def detect_serve_windows(
         if not cluster:
             continue
 
-        # Get raw boundaries
-        first_raised = min(cluster)
-        last_raised = max(cluster)
+        processing_clusters = [cluster]
+        raw_duration = (max(cluster) - min(cluster)) / fps
+        if raw_duration > MAX_SERVE_DURATION:
+            split_clusters = split_long_cluster(cluster, features, fps)
+            if split_clusters:
+                logger.info(
+                    "Split long cluster (%.2fs) into %s motion-focused subcluster(s)",
+                    raw_duration,
+                    len(split_clusters),
+                )
+                processing_clusters = split_clusters
 
-        # Add padding
-        start_frame = max(0, first_raised - padding_before_frames)
-        end_frame = min(n_frames - 1, last_raised + padding_after_frames)
+        for candidate_cluster in processing_clusters:
+            if not candidate_cluster:
+                continue
+            # Get raw boundaries
+            first_raised = min(candidate_cluster)
+            last_raised = max(candidate_cluster)
 
-        # Convert to timestamps
-        start_ts = start_frame / fps
-        end_ts = end_frame / fps
-        duration = end_ts - start_ts
+            # Add padding
+            start_frame = max(0, first_raised - padding_before_frames)
+            end_frame = min(n_frames - 1, last_raised + padding_after_frames)
 
-        # Skip if too short or too long
-        if duration < MIN_SERVE_DURATION:
-            logger.debug(
-                f"Skipping cluster: duration {duration:.2f}s < {MIN_SERVE_DURATION}s"
+            # Convert to timestamps
+            start_ts = start_frame / fps
+            end_ts = end_frame / fps
+            duration = end_ts - start_ts
+
+            # Skip if too short or too long
+            if duration < MIN_SERVE_DURATION:
+                logger.debug(
+                    f"Skipping cluster: duration {duration:.2f}s < {MIN_SERVE_DURATION}s"
+                )
+                continue
+            if duration > MAX_SERVE_DURATION:
+                logger.debug(
+                    f"Skipping cluster: duration {duration:.2f}s > {MAX_SERVE_DURATION}s"
+                )
+                continue
+
+            # Find peak metrics within the cluster for confidence scoring
+            peak_height = max(
+                features[i].get("max_wrist_height", 0.0) for i in candidate_cluster
             )
-            continue
-        if duration > MAX_SERVE_DURATION:
-            logger.debug(
-                f"Skipping cluster: duration {duration:.2f}s > {MAX_SERVE_DURATION}s"
+            peak_velocity = max(
+                features[i].get("max_wrist_velocity", 0.0)
+                for i in range(start_frame, end_frame + 1)
             )
-            continue
+            both_arms_ever = any(
+                features[i].get("both_arms_raised", False) for i in candidate_cluster
+            )
 
-        # Find peak metrics within the cluster for confidence scoring
-        peak_height = max(features[i].get("max_wrist_height", 0.0) for i in cluster)
-        peak_velocity = max(
-            features[i].get("max_wrist_velocity", 0.0)
-            for i in range(start_frame, end_frame + 1)
-        )
-        both_arms_ever = any(
-            features[i].get("both_arms_raised", False) for i in cluster
-        )
+            confidence = calculate_confidence(
+                peak_height=peak_height,
+                peak_velocity=peak_velocity,
+                both_arms=both_arms_ever,
+                duration=duration,
+            )
 
-        confidence = calculate_confidence(
-            peak_height=peak_height,
-            peak_velocity=peak_velocity,
-            both_arms=both_arms_ever,
-            duration=duration,
-        )
+            logger.info(
+                f"Serve window: {start_ts:.2f}s - {end_ts:.2f}s "
+                f"(duration: {duration:.2f}s, confidence: {confidence:.2f})"
+            )
 
-        logger.info(
-            f"Serve window: {start_ts:.2f}s - {end_ts:.2f}s "
-            f"(duration: {duration:.2f}s, confidence: {confidence:.2f})"
-        )
-
-        proposals.append(
-            {
-                "start_timestamp": start_ts,
-                "end_timestamp": end_ts,
-                "confidence": confidence,
-                "detection_features": {
-                    "first_raised_frame": first_raised,
-                    "last_raised_frame": last_raised,
-                    "raised_frame_count": len(cluster),
-                    "peak_wrist_height": peak_height,
-                    "peak_wrist_velocity": peak_velocity,
-                    "both_arms_raised": both_arms_ever,
-                },
-            }
-        )
+            proposals.append(
+                {
+                    "start_timestamp": start_ts,
+                    "end_timestamp": end_ts,
+                    "confidence": confidence,
+                    "detection_features": {
+                        "first_raised_frame": first_raised,
+                        "last_raised_frame": last_raised,
+                        "raised_frame_count": len(candidate_cluster),
+                        "peak_wrist_height": peak_height,
+                        "peak_wrist_velocity": peak_velocity,
+                        "both_arms_raised": both_arms_ever,
+                    },
+                }
+            )
 
     # Step 4: Merge any overlapping proposals
     merged = merge_overlapping(proposals)

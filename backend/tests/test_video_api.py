@@ -184,14 +184,12 @@ class TestVideoAPI:
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)
 
-    def test_upload_with_auto_enqueue_large_file_enqueues_transcode(
+    def test_upload_with_auto_enqueue_always_enqueues_transcode(
         self, client: TestClient
     ) -> None:
-        """Test that large files trigger transcode job enqueue."""
-        # Create a mock video file larger than threshold
+        """Test that all uploads enqueue a transcode job (regardless of file size)."""
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            # Write enough content to exceed threshold (25MB)
-            tmp_file.write(b"fake video content" * (25 * 1024 * 1024 // 18))
+            tmp_file.write(b"fake video content" * 100)
             tmp_file_path = tmp_file.name
 
         try:
@@ -199,68 +197,24 @@ class TestVideoAPI:
             mock_job.id = "test-transcode-job-id"
             with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
                 settings, "TRANSCODE_ENABLED", True
-            ), patch.object(
-                settings, "TRANSCODE_THRESHOLD_BYTES", 20 * 1024 * 1024
             ), patch(
                 "app.core.redis_config.analysis_queue.enqueue", return_value=mock_job
             ) as mock_enqueue:
                 with open(tmp_file_path, "rb") as f:
-                    files = {"file": ("test_large.mp4", f, "video/mp4")}
+                    files = {"file": ("test_video.mp4", f, "video/mp4")}
                     response = client.post("/v0/videos/upload", files=files)
 
                 assert response.status_code == 200
                 data = response.json()
                 assert "video_id" in data
 
-                # Verify transcode_video_rq was enqueued
+                # Every upload routes through transcode first
                 assert mock_enqueue.called
                 call_args = mock_enqueue.call_args
-                # Check that transcode_video_rq function was passed
                 from app.services.rq_tasks import transcode_video_rq
 
                 assert call_args[0][0] == transcode_video_rq
                 assert call_args[1]["video_id"] == data["video_id"]
-        finally:
-            if os.path.exists(tmp_file_path):
-                os.unlink(tmp_file_path)
-
-    def test_upload_with_auto_enqueue_small_file_enqueues_scout_refine(
-        self, client: TestClient
-    ) -> None:
-        """Test that small files skip transcode and go straight to scout/refine."""
-        # Create a mock video file smaller than threshold
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            # Write small content (10MB)
-            tmp_file.write(b"fake video content" * (10 * 1024 * 1024 // 18))
-            tmp_file_path = tmp_file.name
-
-        try:
-            mock_job = MagicMock()
-            mock_job.id = "test-scout-refine-job-id"
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
-                settings, "TRANSCODE_ENABLED", True
-            ), patch.object(
-                settings, "TRANSCODE_THRESHOLD_BYTES", 20 * 1024 * 1024
-            ), patch(
-                "app.core.redis_config.analysis_queue.enqueue", return_value=mock_job
-            ) as mock_enqueue:
-                with open(tmp_file_path, "rb") as f:
-                    files = {"file": ("test_small.mp4", f, "video/mp4")}
-                    response = client.post("/v0/videos/upload", files=files)
-
-                assert response.status_code == 200
-                data = response.json()
-                assert "video_id" in data
-
-                # Verify analyze_pose_detection_scout_refine_rq was enqueued (not transcode)
-                assert mock_enqueue.called
-                call_args = mock_enqueue.call_args
-                # Check that analyze_pose_detection_scout_refine_rq function was passed
-                from app.services.rq_tasks import analyze_pose_detection_scout_refine_rq
-
-                assert call_args[0][0] == analyze_pose_detection_scout_refine_rq
-                assert call_args[1]["video_id"] == data["video_id"]
-                assert call_args[1]["confidence_threshold"] == 0.7
         finally:
             if os.path.exists(tmp_file_path):
                 os.unlink(tmp_file_path)

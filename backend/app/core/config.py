@@ -76,10 +76,8 @@ class Settings(BaseSettings):
     SCOUT_FRAME_SKIP: int = 4
 
     # Transcoding settings
+    # Every upload is transcoded to 720p/30fps H.264 for consistent pose detection input.
     TRANSCODE_ENABLED: bool = True
-    TRANSCODE_THRESHOLD_BYTES: int = (
-        20 * 1024 * 1024
-    )  # 20MB - skip transcoding for smaller files
     TRANSCODE_RESOLUTION: int = 720  # height in pixels
     TRANSCODE_FPS: int = 30
     TRANSCODE_CRF: int = 23  # quality (lower = better, 18-28 typical)

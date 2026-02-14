@@ -219,19 +219,6 @@ def transcode_video_rq(
                 )
                 return {"status": "cancelled", "reason": "video_deleted"}
 
-            if video.file_size < settings.TRANSCODE_THRESHOLD_BYTES:
-                logger.info(
-                    "Video %s file size (%s bytes) below threshold (%s bytes), skipping transcoding",
-                    video_id,
-                    video.file_size,
-                    settings.TRANSCODE_THRESHOLD_BYTES,
-                )
-                return {
-                    "status": "skipped",
-                    "reason": "file_too_small",
-                    "file_size": video.file_size,
-                }
-
             original_file_size = video.file_size
             if video_job_uuid:
                 video_job = (

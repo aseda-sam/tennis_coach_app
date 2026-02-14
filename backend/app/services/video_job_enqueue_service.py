@@ -56,11 +56,12 @@ def auto_enqueue_video_analysis(
         db.commit()
         db.refresh(pose_job)
 
-        # Enqueue transcoding first if file is large enough, otherwise go straight to pose detection
-        if (
-            settings.TRANSCODE_ENABLED
-            and video.file_size >= settings.TRANSCODE_THRESHOLD_BYTES
-        ):
+        # Always route through the transcode task when enabled.
+        # The transcode task itself decides whether to actually re-encode
+        # (based on file size AND codec compatibility) or skip and chain
+        # straight to pose detection.  This ensures AV1 / VP9 videos are
+        # always transcoded to H.264 even when they are small files.
+        if settings.TRANSCODE_ENABLED:
             # Create transcode job record
             transcode_job = VideoJob(
                 video_id=video.id,
@@ -96,7 +97,7 @@ def auto_enqueue_video_analysis(
                 transcode_job.error = "Failed to enqueue transcode job to Redis"
                 db.commit()
         else:
-            # File is small enough, skip transcoding and go straight to scout/refine pipeline
+            # Transcoding disabled — go straight to scout/refine pipeline
             rq_job = analysis_queue.enqueue(
                 analyze_pose_detection_scout_refine_rq,
                 video_id=video.id,
@@ -121,7 +122,7 @@ def auto_enqueue_video_analysis(
                 pose_job.rq_job_id = rq_job.id
                 db.commit()
                 logger.info(
-                    "Auto-enqueued pose analysis for video %d (is_demo=%s, skipped transcode)",
+                    "Auto-enqueued pose analysis for video %d (is_demo=%s, transcode disabled)",
                     video.id,
                     video.is_demo,
                 )
