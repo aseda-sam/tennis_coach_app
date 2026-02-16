@@ -438,47 +438,6 @@
   color: var(--color-text-muted);
 }
 
-/* Feedback Pill */
-.analysis-right-panel__feedback-pill {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  flex-shrink: 0;
-}
-
-.analysis-right-panel__feedback-pill--great {
-  background: var(--color-success-light);
-  color: var(--color-success-dark);
-}
-
-.analysis-right-panel__feedback-pill--solid {
-  background: var(--color-info-light);
-  color: var(--color-info-dark);
-}
-
-.analysis-right-panel__feedback-pill--focus {
-  background: var(--color-warning-light);
-  color: var(--color-warning-dark);
-}
-
-.analysis-right-panel__feedback-pill--unavailable {
-  background: var(--color-border);
-  color: var(--color-text-muted);
-}
-
-/* Coach Note */
-.analysis-right-panel__coach-note {
-  margin-top: var(--spacing-sm);
-  padding-top: var(--spacing-sm);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
-  font-style: italic;
-}
-
 .analysis-right-panel__angle-desc {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);

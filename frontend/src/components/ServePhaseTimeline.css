@@ -1,0 +1,63 @@
+/* ServePhaseTimeline — horizontal phase scrubber */
+.phase-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) 0;
+}
+
+.phase-timeline__current-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+.phase-timeline__track {
+  position: relative;
+  height: 8px;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.phase-timeline__segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: opacity var(--duration-fast) var(--ease-in-out);
+}
+
+.phase-timeline__segment--active {
+  z-index: 1;
+}
+
+.phase-timeline__playhead {
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 14px;
+  background: var(--color-text);
+  border-radius: var(--radius-full);
+  transform: translateX(-50%);
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.phase-timeline__labels {
+  position: relative;
+  height: 16px;
+}
+
+.phase-timeline__label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}

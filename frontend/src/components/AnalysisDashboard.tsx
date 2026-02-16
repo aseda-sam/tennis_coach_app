@@ -11,6 +11,7 @@ import AnalysisRightPanel from './AnalysisRightPanel';
 import { ArrowBackIcon } from './Icons';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
+import ServeBiomechanicsDetail from './ServeBiomechanicsDetail';
 import VideoPlayer from './VideoPlayer';
 
 interface AnalysisDashboardProps {
@@ -70,6 +71,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
     ((serveAttemptId: number) => void) | null
   >(null);
+  const [selectedServeId, setSelectedServeId] = useState<number | null>(null);
   const [isAnalyzingServes, setIsAnalyzingServes] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(true);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
@@ -249,6 +251,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const handleServeAttemptClick = useCallback(
     (serveAttemptId: number) => {
       videoPlayerNavigate?.(serveAttemptId);
+      // Toggle biomechanics detail — click again to close
+      setSelectedServeId((prev) =>
+        prev === serveAttemptId ? null : serveAttemptId
+      );
     },
     [videoPlayerNavigate]
   );
@@ -485,6 +491,23 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           />
         </div>
       </div>
+
+      {/* Biomechanics Detail Panel — full width below grid; shows whenever a serve is selected */}
+      {selectedServeId !== null &&
+        (() => {
+          const sa = serveAttempts.find((s) => s.id === selectedServeId);
+          if (!sa) return null;
+          return (
+            <ServeBiomechanicsDetail
+              serveAttemptId={sa.id}
+              videoId={videoId}
+              serveStart={sa.start_timestamp}
+              serveEnd={sa.end_timestamp}
+              contactTimestamp={sa.contact_timestamp ?? null}
+              onClose={() => setSelectedServeId(null)}
+            />
+          );
+        })()}
 
       {/* Keyboard Shortcuts Modal */}
       <KeyboardShortcutsModal

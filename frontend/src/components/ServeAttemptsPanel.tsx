@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useServeAttempts } from '../hooks/useServeAttempts';
 import { formatTime } from '../utils/validation';
-import './AnalysisRightPanel.css'; // Reuse styles
+import './AnalysisRightPanel.css';
 import LoadingIndicator from './LoadingIndicator';
 
 interface ServeAttemptsPanelProps {
@@ -9,85 +9,6 @@ interface ServeAttemptsPanelProps {
   onServeAttemptClick?: (serveAttemptId: number) => void;
   isDemo?: boolean;
 }
-
-interface ElbowAngleFeedback {
-  level: 'great' | 'solid' | 'focus';
-  pillText: string;
-  coachNote: string;
-}
-
-interface KneeBendFeedback {
-  level: 'great' | 'solid' | 'focus' | 'unavailable';
-  pillText: string;
-  coachNote: string;
-}
-
-/**
- * Maps elbow angle (in degrees) to feedback level, pill text, and coach note.
- * Frontend-only heuristic for MVP - will be replaced with LLM-based recommendations.
- *
- * Based on tennis biomechanics: a slight bend is natural and allows for good
- * pronation. Only flag very bent arms (closer to 90°) as needing attention.
- */
-const getElbowAngleFeedback = (angleDeg: number): ElbowAngleFeedback => {
-  // Only flag if arm is very bent (closer to 90°)
-  if (angleDeg < 120) {
-    return {
-      level: 'focus',
-      pillText: 'Needs Work',
-      coachNote: 'Arm is quite bent. Try reaching up more at contact.',
-    };
-  }
-  // Everything else is fine - don't over-coach natural arm positions
-  return {
-    level: 'great',
-    pillText: 'Good',
-    coachNote: 'Good arm extension at contact.',
-  };
-};
-
-/**
- * Maps knee bend detection and confidence to feedback level, pill text, and coach note.
- * Frontend-only heuristic for MVP - will be replaced with LLM-based recommendations.
- */
-const getKneeBendFeedback = (
-  detected: boolean | null,
-  confidence: number | null
-): KneeBendFeedback => {
-  if (detected === null || confidence === null) {
-    return {
-      level: 'unavailable',
-      pillText: 'Not Available',
-      coachNote:
-        'Knee bend analysis not available. May need better camera angle or pose data.',
-    };
-  }
-
-  if (confidence < 0.5) {
-    return {
-      level: 'unavailable',
-      pillText: 'Low Confidence',
-      coachNote:
-        'Knee bend detected but confidence is low. Camera angle or pose quality may be limiting.',
-    };
-  }
-
-  if (detected) {
-    return {
-      level: 'great',
-      pillText: 'Good Bend',
-      coachNote:
-        'Good knee bend during loading phase. This helps generate power.',
-    };
-  }
-
-  return {
-    level: 'focus',
-    pillText: 'Needs Work',
-    coachNote:
-      'Limited knee bend detected. Try bending knees more during the loading phase for better power.',
-  };
-};
 
 const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
   videoId,
@@ -135,7 +56,6 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
 
   return (
     <div className="analysis-right-panel">
-      {/* Single consolidated card showing all serve attempts */}
       <div className="analysis-right-panel__card">
         <div className="analysis-right-panel__trajectory-header">
           <div className="analysis-right-panel__trajectory-title-group">
@@ -166,7 +86,6 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                   ? `${serveAttempt.court_side.charAt(0).toUpperCase() + serveAttempt.court_side.slice(1)} Court`
                   : 'Serve';
 
-              // Show contact timestamp if available, otherwise show range
               const timeDisplay =
                 serveAttempt.contact_timestamp !== null
                   ? formatTime(serveAttempt.contact_timestamp)
@@ -192,7 +111,6 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                   </div>
                   {hasMetrics ? (
                     <div className="analysis-right-panel__metrics-group">
-                      {/* Elbow Angle Metric */}
                       {hasElbowMetrics && (
                         <div className="analysis-right-panel__metric-section">
                           <div className="analysis-right-panel__metric-angle">
@@ -207,27 +125,10 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                                 Elbow Angle
                               </span>
                             </div>
-                            <span
-                              className={`analysis-right-panel__feedback-pill analysis-right-panel__feedback-pill--${getElbowAngleFeedback(serveAttempt.elbow_angle_at_contact as number).level}`}
-                            >
-                              {
-                                getElbowAngleFeedback(
-                                  serveAttempt.elbow_angle_at_contact as number
-                                ).pillText
-                              }
-                            </span>
-                          </div>
-                          <div className="analysis-right-panel__coach-note">
-                            {
-                              getElbowAngleFeedback(
-                                serveAttempt.elbow_angle_at_contact as number
-                              ).coachNote
-                            }
                           </div>
                         </div>
                       )}
 
-                      {/* Toss Peak Height (from ball detection) */}
                       {hasTossMetrics && (
                         <div className="analysis-right-panel__metric-section">
                           <div className="analysis-right-panel__metric-angle">
@@ -244,14 +145,9 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                               </span>
                             </div>
                           </div>
-                          <div className="analysis-right-panel__coach-note">
-                            Toss height at peak, normalized by your height.
-                            Higher values mean a higher toss.
-                          </div>
                         </div>
                       )}
 
-                      {/* Knee Bend Metric */}
                       {hasKneeMetrics && (
                         <div className="analysis-right-panel__metric-section">
                           <div className="analysis-right-panel__metric-angle">
@@ -273,24 +169,6 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
                                   )}%)`}
                               </span>
                             </div>
-                            <span
-                              className={`analysis-right-panel__feedback-pill analysis-right-panel__feedback-pill--${getKneeBendFeedback(serveAttempt.knee_bend_detected, serveAttempt.knee_bend_confidence).level}`}
-                            >
-                              {
-                                getKneeBendFeedback(
-                                  serveAttempt.knee_bend_detected,
-                                  serveAttempt.knee_bend_confidence
-                                ).pillText
-                              }
-                            </span>
-                          </div>
-                          <div className="analysis-right-panel__coach-note">
-                            {
-                              getKneeBendFeedback(
-                                serveAttempt.knee_bend_detected,
-                                serveAttempt.knee_bend_confidence
-                              ).coachNote
-                            }
                           </div>
                         </div>
                       )}

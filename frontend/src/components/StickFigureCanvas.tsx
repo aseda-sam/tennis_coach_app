@@ -10,6 +10,10 @@ interface StickFigureCanvasProps {
   currentTime: number;
   fps?: number;
   isPlaying: boolean;
+  /** Override skeleton color (hex). Used for phase-based color-coding. */
+  phaseColor?: string;
+  /** Phase label to display in top-left corner. */
+  phaseLabel?: string;
 }
 
 // Skeleton connections for full body
@@ -41,6 +45,8 @@ const KNEE_CONNECTIONS = new Set([
 const KNEE_BEND_ANGLE_THRESHOLD = 140;
 const DEFAULT_SKELETON_COLOR = '#00ff88';
 const KNEE_BEND_COLOR = '#A855F7';
+const BALL_COLOR = '#FF1493';
+const BALL_TRAIL_LENGTH = 30;
 
 function calculateAngle(
   point1: { x: number; y: number },
@@ -163,11 +169,14 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
   videoId,
   currentTime,
   isPlaying,
+  phaseColor,
+  phaseLabel,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastRenderedTimeRef = useRef<number>(-1);
+  const ballTrailRef = useRef<{ x: number; y: number }[]>([]);
 
   // Fetch overlay data using React Query
   const { data: overlayData, isLoading } = useQuery<OverlayData>({
@@ -246,9 +255,10 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
     }
 
     // Draw skeleton connections with glow effect
-    ctx.shadowColor = DEFAULT_SKELETON_COLOR;
+    const baseColor = phaseColor || DEFAULT_SKELETON_COLOR;
+    ctx.shadowColor = baseColor;
     ctx.shadowBlur = 8;
-    ctx.strokeStyle = DEFAULT_SKELETON_COLOR;
+    ctx.strokeStyle = baseColor;
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
 
@@ -270,10 +280,10 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
           startKey.startsWith('right_');
 
         if (isLeftKneeSegment || isRightKneeSegment) {
-          ctx.strokeStyle = KNEE_BEND_COLOR;
+          ctx.strokeStyle = phaseColor ? baseColor : KNEE_BEND_COLOR;
           ctx.lineWidth = 4;
         } else {
-          ctx.strokeStyle = DEFAULT_SKELETON_COLOR;
+          ctx.strokeStyle = baseColor;
           ctx.lineWidth = 3;
         }
 
@@ -300,6 +310,56 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
     // Reset shadow
     ctx.shadowBlur = 0;
 
+    // Clear ball trail on seek (time jump > 0.1s)
+    const timeDelta = Math.abs(currentTime - lastRenderedTimeRef.current);
+    if (lastRenderedTimeRef.current >= 0 && timeDelta > 0.1) {
+      ballTrailRef.current = [];
+    }
+
+    // Ball trail + current position
+    const trail = ballTrailRef.current;
+    if (frame.ball_position && frame.ball_position.length >= 2) {
+      // Ball positions are in normalized overlay space (0-width, 0-height)
+      // Transform using the same normalization as pose keypoints
+      const ballNorm = normalizePose(
+        { _ball: frame.ball_position },
+        containerWidth,
+        containerHeight
+      );
+      if (ballNorm && ballNorm._ball) {
+        trail.push({ x: ballNorm._ball.x, y: ballNorm._ball.y });
+        if (trail.length > BALL_TRAIL_LENGTH) {
+          trail.splice(0, trail.length - BALL_TRAIL_LENGTH);
+        }
+      }
+    }
+
+    // Draw trailing line
+    if (trail.length >= 2) {
+      for (let i = 0; i < trail.length - 1; i++) {
+        const t = (i + 1) / trail.length;
+        const alpha = 0.1 + 0.8 * t;
+        const lineWidth = 1 + 2 * t;
+        ctx.strokeStyle = `rgba(255, 20, 147, ${alpha})`;
+        ctx.lineWidth = lineWidth;
+        ctx.beginPath();
+        ctx.moveTo(trail[i].x, trail[i].y);
+        ctx.lineTo(trail[i + 1].x, trail[i + 1].y);
+        ctx.stroke();
+      }
+    }
+    // Current ball dot
+    if (trail.length >= 1) {
+      const head = trail[trail.length - 1];
+      ctx.fillStyle = BALL_COLOR;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
     // Draw frame info
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.font = '12px monospace';
@@ -318,8 +378,19 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
       containerHeight - 14
     );
 
+    // Draw phase label in top-left if provided
+    if (phaseLabel) {
+      ctx.fillStyle = baseColor;
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+      ctx.shadowBlur = 4;
+      ctx.fillText(phaseLabel, 12, 24);
+      ctx.shadowBlur = 0;
+    }
+
     lastRenderedTimeRef.current = currentTime;
-  }, [currentTime, overlayData]);
+  }, [currentTime, overlayData, phaseColor, phaseLabel]);
 
   // Handle resize
   useEffect(() => {
@@ -346,6 +417,13 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
     }
     animationFrameRef.current = requestAnimationFrame(drawFrame);
   }, [currentTime, drawFrame]);
+
+  // Clear ball trail when playback stops
+  useEffect(() => {
+    if (!isPlaying) {
+      ballTrailRef.current = [];
+    }
+  }, [isPlaying]);
 
   // Continuous animation loop when playing
   useEffect(() => {
