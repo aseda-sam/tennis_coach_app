@@ -135,11 +135,14 @@ def ensure_test_database() -> Generator[None, None, None]:
         OSError,
         Exception,  # noqa: BLE001 - Need to catch all DB connection errors
     ) as e:
-        # Fail gracefully - tests can still run if database already exists
-        # Catching broad Exception is intentional here to handle any DB connection errors
-        pytest.skip(
+        # Warn but don't skip — pure unit tests (e.g. biomechanics) don't need DB.
+        # Tests that need DB will fail naturally when requesting db_session fixture.
+        import warnings
+
+        warnings.warn(
             f"Could not create test database: {e}. "
-            "Please create manually: CREATE DATABASE tennis_coach_test;"
+            "DB-dependent tests will fail; pure unit tests will still run.",
+            stacklevel=1,
         )
     finally:
         admin_engine.dispose()

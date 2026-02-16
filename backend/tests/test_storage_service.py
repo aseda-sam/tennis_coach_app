@@ -362,9 +362,9 @@ class TestStorageServiceInitialization:
                 # Type annotations use Any to match __import__ signature for mocking
                 def import_side_effect(
                     name: str,
-                    *args: Any,  # noqa: ANN401
-                    **kwargs: Any,  # noqa: ANN401
-                ) -> Any:  # noqa: ANN401
+                    *args: Any,
+                    **kwargs: Any,
+                ) -> Any:
                     if name == "supabase" or name.startswith("supabase."):
                         raise ImportError(f"No module named '{name}'")
                     # For other imports, use the original import function
