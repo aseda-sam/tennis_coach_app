@@ -30,6 +30,12 @@ def _index_exists(table_name: str, index_name: str) -> bool:
     return any(i["name"] == index_name for i in indexes)
 
 
+def _column_exists(table_name: str, column_name: str) -> bool:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    return any(c["name"] == column_name for c in inspector.get_columns(table_name))
+
+
 def _drop_index_if_exists(table_name: str, index_name: str) -> None:
     if _index_exists(table_name, index_name):
         op.drop_index(index_name, table_name=table_name)
@@ -76,9 +82,6 @@ def upgrade() -> None:
     _create_index_if_missing(
         "serve_windows", "ix_serve_windows_video_start", ["video_id", "start_timestamp"]
     )
-    _create_index_if_missing(
-        "serve_windows", "ix_serve_windows_video_status", ["video_id", "status"]
-    )
 
     with op.batch_alter_table("serve_windows") as batch_op:
         batch_op.alter_column("player_id", existing_type=sa.Integer(), nullable=True)
@@ -101,7 +104,13 @@ def upgrade() -> None:
         )
 
         # Legacy two-table link no longer needed.
-        batch_op.drop_column("source_proposal_id")
+        if _column_exists("serve_windows", "source_proposal_id"):
+            batch_op.drop_column("source_proposal_id")
+
+    if _column_exists("serve_windows", "status"):
+        _create_index_if_missing(
+            "serve_windows", "ix_serve_windows_video_status", ["video_id", "status"]
+        )
 
     op.execute(
         "UPDATE serve_windows SET status='accepted' WHERE status IS NULL OR status=''"
