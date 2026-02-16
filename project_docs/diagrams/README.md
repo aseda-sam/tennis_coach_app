@@ -15,6 +15,7 @@ Source-of-truth diagrams live here as Mermaid blocks in Markdown files.
 - `upload-flow.md` - Upload, optional transcode, and scout/refine background pipeline
 - `analysis-pipeline.md` - Transcode, scout/refine pose pipeline, serve windows, and analysis
 - `data-flow.md` - End-to-end data movement
+- `serve-feedback-pipeline.md` - Serve biomechanics pipeline (phases + raw metrics; no scoring)
 - `db-relationships.md` - Conceptual table relationships
 
 ## Validate
