@@ -15,30 +15,7 @@ const ServeAttemptMarker: React.FC<ServeAttemptMarkerProps> = ({
   isSelected = false,
   onClick,
 }) => {
-  const formatElbowAngle = (angle: number | null): string => {
-    if (angle === null || angle === undefined) return 'N/A';
-    return `${Math.round(angle)}°`;
-  };
-
-  const getAngleDescription = (angle: number | null): string => {
-    if (angle === null || angle === undefined) return 'Not analyzed';
-
-    if (angle < 90) return 'Very bent';
-    if (angle < 120) return 'Bent';
-    if (angle < 150) return 'Good range';
-    return 'Straight';
-  };
-
-  const getServeTypeColor = (): string => {
-    // Color coding for serve attempts
-    if (
-      serveAttempt.elbow_angle_at_contact !== null ||
-      serveAttempt.knee_bend_detected !== null
-    ) {
-      return '#3b82f6'; // blue-500 - has metrics
-    }
-    return '#6b7280'; // gray-500 - no metrics yet
-  };
+  const getServeTypeColor = (): string => '#6b7280';
 
   return (
     <div
@@ -78,37 +55,6 @@ const ServeAttemptMarker: React.FC<ServeAttemptMarkerProps> = ({
             <div className="stroke-subtype">
               {serveAttempt.serve_subtype.charAt(0).toUpperCase() +
                 serveAttempt.serve_subtype.slice(1)}
-            </div>
-          )}
-
-          {serveAttempt.elbow_angle_at_contact !== null ||
-          serveAttempt.knee_bend_detected !== null ? (
-            <div className="posture-info">
-              {serveAttempt.elbow_angle_at_contact !== null && (
-                <>
-                  <div className="elbow-angle">
-                    <strong>Elbow Angle:</strong>{' '}
-                    {formatElbowAngle(serveAttempt.elbow_angle_at_contact)}
-                  </div>
-                  <div className="angle-assessment">
-                    {getAngleDescription(serveAttempt.elbow_angle_at_contact)}
-                  </div>
-                </>
-              )}
-              {serveAttempt.knee_bend_detected !== null && (
-                <div className="knee-bend">
-                  <strong>Knee Bend:</strong>{' '}
-                  {serveAttempt.knee_bend_detected
-                    ? 'Detected'
-                    : 'Not Detected'}
-                  {serveAttempt.knee_bend_confidence !== null &&
-                    ` (${Math.round(serveAttempt.knee_bend_confidence * 100)}%)`}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="no-analysis">
-              No metrics yet - run serve analysis
             </div>
           )}
 

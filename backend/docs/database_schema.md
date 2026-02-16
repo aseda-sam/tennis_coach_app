@@ -47,17 +47,14 @@ Stores YOLO ball detection results for a video (serve windows only).
 
 ## serve_attempts
 
-Stores serve attempts and metrics derived from video analysis.
+Stores serve attempts and timing metadata.
 
 - `id` (PK)
 - `video_id` (FK -> `videos.id`)
 - `user_id` (owner)
 - `player_id` (FK -> `players.id`, required)
 - `start_timestamp`, `end_timestamp`, `contact_timestamp`
-- `analysis_version`, `elbow_angle_at_contact`, `knee_bend_*`, `court_side`,
-  `serve_number`, `serve_subtype`, `in_out`
-- `toss_peak_height` (nullable, from ball detection; normalized by player height)
-- `toss_peak_timestamp` (nullable, video time in seconds)
+- `court_side`, `serve_number`, `serve_subtype`, `in_out`
 - `source_proposal_id` (FK -> `serve_window_proposals.id`, nullable, indexed)
 
 ## serve_biomechanics_reports

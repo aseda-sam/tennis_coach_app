@@ -14,7 +14,7 @@ Tests follow TDD principles: **tests define contracts** (behavior), not implemen
 **Integration Tests (Workflow Level)**
 - Location: `test_*_e2e.py`, `test_*_integration.py`
 - Purpose: Test full workflows, database interactions
-- Examples: `test_serve_analysis_e2e.py`, `test_integration.py`
+- Examples: `test_integration.py`
 
 **Unit Tests (Service Level)**
 - Location: `test_*_service.py`, `test_*.py` (service-specific)
@@ -27,22 +27,19 @@ The serve analysis workflow is tested at multiple levels:
 
 1. **POST /v0/videos/upload**
    - Contract: `test_video_api.py::TestVideoAPI::test_upload_video_success`
-   - Integration: `test_serve_analysis_e2e.py::test_complete_serve_analysis_flow`
+   - Integration: Covered in integration tests as needed
 
 2. **POST /v0/serve-attempts/**
-   - Contract: Covered in e2e test
-   - Integration: `test_serve_analysis_e2e.py::test_complete_serve_analysis_flow`
+   - Contract: Covered in serve attempt API tests
 
 3. **POST /v0/analysis/videos/{id}**
    - Contract: `test_pose_detection.py::TestPoseDetectionAPI`
-   - Integration: `test_serve_analysis_e2e.py::test_complete_serve_analysis_flow`
 
-4. **POST /v0/videos/{id}/analyze-serves**
-   - Contract: Covered in e2e test
-   - Integration: `test_serve_analysis_e2e.py::test_complete_serve_analysis_flow`
+4. **GET /v0/serve-attempts/{id}/biomechanics**
+   - Contract: `tests/api/test_serve_biomechanics_routes.py`
 
 5. **GET /v0/serve-attempts/me**
-   - Contract: Covered in e2e test (verified via database query due to routing)
+   - Contract: Covered in serve attempt API tests
 
 ### Running Tests
 
@@ -54,10 +51,7 @@ pytest
 pytest --cov=app --cov-report=html
 
 # Specific test file
-pytest tests/test_serve_analysis_e2e.py
-
-# Specific test
-pytest tests/test_serve_analysis_e2e.py::TestServeAnalysisE2E::test_complete_serve_analysis_flow
+pytest tests/api/test_serve_biomechanics_routes.py
 ```
 
 ### Test Configuration

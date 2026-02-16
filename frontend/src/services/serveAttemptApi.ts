@@ -7,15 +7,6 @@ export interface ServeAttempt {
   start_timestamp: number;
   end_timestamp: number;
   contact_timestamp: number | null;
-  elbow_angle_at_contact: number | null;
-  knee_bend_detected: boolean | null;
-  knee_bend_confidence: number | null;
-  knee_hip_ratio_min: number | null;
-  knee_flexion_min_deg_left: number | null;
-  knee_flexion_min_deg_right: number | null;
-  toss_peak_height: number | null;
-  toss_peak_timestamp: number | null;
-  analysis_version: string | null;
   court_side: string | null;
   serve_number: number | null;
   serve_subtype: string | null;
@@ -52,15 +43,6 @@ export interface ServeAttemptFilters {
   video_id?: number;
   start_date?: string;
   end_date?: string;
-}
-
-export interface ServeAnalysisSummary {
-  video_id: number;
-  total_serves: number;
-  serves_with_contact: number;
-  avg_elbow_angle: number | null;
-  knee_bend_analyzed: number;
-  knee_bend_failed: number;
 }
 
 export const serveAttemptApi = {
@@ -113,13 +95,5 @@ export const serveAttemptApi = {
   // Delete a serve attempt
   delete: async (serveAttemptId: number): Promise<void> => {
     await api.delete(`/serve-attempts/${serveAttemptId}`);
-  },
-
-  // Trigger serve analysis for a video
-  analyzeServes: async (videoId: number): Promise<ServeAnalysisSummary> => {
-    const response = await api.post<ServeAnalysisSummary>(
-      `/videos/${videoId}/analyze-serves`
-    );
-    return response.data;
   },
 };

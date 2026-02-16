@@ -25,7 +25,6 @@ def _mock_serve_attempt() -> MagicMock:
     sa.start_timestamp = 0.0
     sa.end_timestamp = 2.0
     sa.contact_timestamp = 1.33
-    sa.toss_peak_height = None
     return sa
 
 

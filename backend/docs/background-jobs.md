@@ -3,9 +3,8 @@
 We use **Redis Queue (RQ)** for slow work:
 
 - Pose detection (MediaPipe)
-- Serve attempt analysis runs synchronously (not via RQ)
 
-## Data Flow: Serve Analysis Loop
+## Data Flow: Biomechanics Loop
 
 ```mermaid
 sequenceDiagram
@@ -14,7 +13,7 @@ sequenceDiagram
     participant API
     participant RQ
     participant PoseService
-    participant ServeService
+    participant BiomechService
     participant DB
 
     User->>Frontend: Upload serve video
@@ -35,15 +34,12 @@ sequenceDiagram
     RQ->>PoseService: Run pose detection
     PoseService->>DB: Save pose_detections
 
-    User->>Frontend: Trigger serve analysis
-    Frontend->>API: POST /v0/videos/{id}/analyze-serves
-    API->>ServeService: Calculate metrics (sync)
-    ServeService->>DB: Update serve_attempts (elbow_angle_at_contact)
-
-    Frontend->>API: GET /v0/serve-attempts/me
-    API->>DB: Query serve_attempts
-    API->>Frontend: Return metrics + recommendations
-    Frontend->>User: Display metrics + one recommendation
+    User->>Frontend: Open biomechanics panel
+    Frontend->>API: GET /v0/serve-attempts/{id}/biomechanics
+    API->>BiomechService: Compute phases + metrics (lazy if missing)
+    BiomechService->>DB: Store serve_biomechanics_reports
+    API->>Frontend: Return biomechanics report
+    Frontend->>User: Display phases + metrics
 ```
 
 ## Local dev (Docker Compose)

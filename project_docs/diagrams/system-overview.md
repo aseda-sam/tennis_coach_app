@@ -24,12 +24,12 @@ flowchart TD
     FILES[(File storage)]
   end
 
-  subgraph PIPELINE ["Pose & analysis pipeline"]
+  subgraph PIPELINE ["Pose & biomechanics pipeline"]
     TRANSCODE[Transcode 720p/30fps]
     SCOUT[Scout pass — lite model]
     DETECT[Detect serve windows]
     REFINE[Refine pass — full model]
-    ANALYZE[Serve analysis — elbow angle, knee bend]
+    ANALYZE[Biomechanics report — phases + metrics]
   end
 
   %% Client → API
@@ -82,7 +82,7 @@ flowchart TD
 
 | Layer | Tech | What it does |
 |-------|------|--------------|
-| Client | React, TypeScript, React Query | Upload videos, review serve analysis |
+| Client | React, TypeScript, React Query | Upload videos, review biomechanics reports |
 | API | FastAPI, Pydantic v2 | Auth, routes, services — all under `/v0/` |
 | Background | Redis Queue (RQ) | Long-running pose detection and transcode jobs |
 | Storage | PostgreSQL + local disk / Supabase bucket | Structured data + video files |

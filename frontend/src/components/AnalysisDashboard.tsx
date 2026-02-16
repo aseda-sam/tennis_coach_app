@@ -5,7 +5,6 @@ import { useAppConfig } from '../hooks/useAppConfig';
 import { useServeAttempts } from '../hooks/useServeAttempts';
 import { useServeProposals } from '../hooks/useServeProposals';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
-import { serveAttemptApi } from '../services/serveAttemptApi';
 import './AnalysisDashboard.css';
 import AnalysisRightPanel from './AnalysisRightPanel';
 import { ArrowBackIcon } from './Icons';
@@ -72,7 +71,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     ((serveAttemptId: number) => void) | null
   >(null);
   const [selectedServeId, setSelectedServeId] = useState<number | null>(null);
-  const [isAnalyzingServes, setIsAnalyzingServes] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(true);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [isFindingServes, setIsFindingServes] = useState(false);
@@ -266,46 +264,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     []
   );
 
-  const handleAnalyzeServes = useCallback(async () => {
-    if (serveAttempts.length === 0) {
-      alert('Please tag key moments first before analyzing.');
-      return;
-    }
-
-    // Check if any serve attempts already have metrics
-    const hasExistingMetrics = serveAttempts.some(
-      (sa) =>
-        (sa.elbow_angle_at_contact !== null &&
-          sa.elbow_angle_at_contact !== undefined) ||
-        sa.knee_bend_detected !== null
-    );
-
-    setIsAnalyzingServes(true);
-    try {
-      await serveAttemptApi.analyzeServes(videoId);
-      // Invalidate serve attempts query to refresh with metrics
-      queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
-      // Show different message based on whether metrics already existed
-      const message = hasExistingMetrics
-        ? 'Serves re-analyzed! Updated metrics are shown below.'
-        : 'Serve analysis completed! Check the metrics below.';
-      alert(message);
-    } catch (error: unknown) {
-      // Error detail is already normalized to string by axios interceptor
-      const axiosError = error as {
-        response?: { data?: { detail?: string } };
-        message?: string;
-      };
-      const errorMessage =
-        axiosError?.response?.data?.detail ||
-        axiosError?.message ||
-        'Failed to analyze serves. Please try again.';
-      alert(errorMessage);
-    } finally {
-      setIsAnalyzingServes(false);
-    }
-  }, [videoId, serveAttempts, queryClient]);
-
   return (
     <div className="analysis-dashboard">
       {/* Header - Compact title bar */}
@@ -454,25 +412,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   </div>
                 )}
               </>
-            )}
-
-            {analysisStatus?.has_analysis && serveAttempts.length > 0 && (
-              <button
-                className="analysis-dashboard__action-btn analysis-dashboard__action-btn--primary"
-                onClick={handleAnalyzeServes}
-                disabled={isAnalyzingServes}
-              >
-                {isAnalyzingServes
-                  ? 'Analyzing…'
-                  : serveAttempts.some(
-                        (sa) =>
-                          (sa.elbow_angle_at_contact !== null &&
-                            sa.elbow_angle_at_contact !== undefined) ||
-                          sa.knee_bend_detected !== null
-                      )
-                    ? 'Re-Analyze Serves'
-                    : 'Analyze Serves'}
-              </button>
             )}
 
             {findServesMessage && (

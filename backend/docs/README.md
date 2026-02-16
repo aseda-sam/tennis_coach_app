@@ -9,7 +9,7 @@ This folder is for **single-topic** docs that are easy to keep accurate.
 
 - `serve-mvp.md`: MVP scope + “serve loop” workflow (what we’re building now).
 - `config.md`: `PROFILE`-based config (local vs production).
-- `background-jobs.md`: RQ worker + queues (pose + serve analysis).
+- `background-jobs.md`: RQ worker + queues (pose detection + biomechanics on demand).
 - `observability.md`: OpenTelemetry + structured logs plan (traces, IDs, Grafana Cloud).
 - `deploy-flyio.md`: Fly.io deploy notes (optional, only if you deploy).
 - `demo-videos.md`: Demo video setup/rotation (optional).

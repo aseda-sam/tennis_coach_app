@@ -23,7 +23,6 @@ from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy.orm import Session
 
 from app.api.schemas.common import PaginationParams
-from app.api.schemas.serve_attempt import ServeAnalysisSummary
 from app.api.schemas.video import (
     VideoDeleteResponse,
     VideoInfo,
@@ -51,7 +50,6 @@ from app.utils.authorization import (
     require_video_access,
     require_video_access_or_public_demo,
     require_video_deletable,
-    require_video_not_demo,
 )
 from app.utils.error_handling import (
     handle_file_error,
@@ -692,7 +690,7 @@ async def upload_video(
         file: Video file to upload
         is_demo: If True, upload as demo video (requires authorization)
         session_type: Session type for serve-focused workflow
-        camera_angle: Camera angle for serve analysis
+        camera_angle: Camera angle for serve biomechanics
         recorded_at: When video was recorded (for trends)
         client_recorded_at: Client-provided recording timestamp
 
@@ -754,86 +752,4 @@ async def upload_video(
     except (OSError, ValueError) as e:
         log_and_raise_error(
             e, "upload_video", {"filename": file.filename if file else "unknown"}
-        )
-
-
-@router.post("/{video_id}/analyze-serves", response_model=ServeAnalysisSummary)
-async def analyze_serve_attempts(
-    video_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> ServeAnalysisSummary:
-    """
-    Batch analyze all serve attempts for a video.
-    Calculates elbow angles synchronously (no RQ).
-    """
-    try:
-        from app.services import serve_attempt_service
-        from app.services.serve_analysis_service import ServeAnalysisService
-
-        # Get video to check authorization
-        video = video_service.get_video_by_id(db, video_id)
-        if not video:
-            raise handle_not_found_error("video", str(video_id))
-
-        # Check authorization
-        require_video_access(video, current_user)
-
-        # Prevent modification of demo videos
-        require_video_not_demo(video, current_user)
-
-        # Get serve attempts for this video
-        serve_attempts = serve_attempt_service.get_serve_attempts_for_video(
-            db=db,
-            video_id=video_id,
-        )
-
-        if not serve_attempts:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No serve attempts found for this video. Please tag serve attempts first.",
-            )
-
-        # Count serves with contact
-        serves_with_contact = sum(
-            1 for sa in serve_attempts if sa.contact_timestamp is not None
-        )
-
-        # Run analysis inline (fast: uses already-computed pose detections)
-        analysis_service = ServeAnalysisService()
-        results = analysis_service.analyze_serve_attempts(
-            db=db, video_id=video_id, serve_attempts=serve_attempts
-        )
-
-        avg_elbow_angle = results.get("avg_elbow_angle")
-        if avg_elbow_angle is not None and not (0.0 <= avg_elbow_angle <= 180.0):
-            logger.warning(
-                "Serve analysis returned invalid avg_elbow_angle=%s for video_id=%s",
-                avg_elbow_angle,
-                video_id,
-            )
-            avg_elbow_angle = None
-
-        return ServeAnalysisSummary(
-            video_id=video_id,
-            total_serves=len(serve_attempts),
-            serves_with_contact=serves_with_contact,
-            avg_elbow_angle=avg_elbow_angle,
-            knee_bend_analyzed=results.get("knee_bend_analyzed", 0),
-            knee_bend_failed=results.get("knee_bend_failed", 0),
-        )
-
-    except HTTPException:
-        raise
-    except ValueError as e:
-        # Common expected error cases (e.g., missing pose detection)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
-    except Exception as e:  # noqa: BLE001 - Catch all exceptions to ensure proper error handling
-        log_and_raise_error(
-            e,
-            "analyze_serve_attempts",
-            {"video_id": video_id, "user_id": current_user["id"]},
         )

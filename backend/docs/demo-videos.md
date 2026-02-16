@@ -4,7 +4,7 @@ If you use demo videos (public bucket), keep the workflow boring:
 
 1. Upload a demo video
 2. Mark it active (only one active demo at a time)
-3. Run pose detection / serve analysis as needed
+3. Run pose detection and open biomechanics reports as needed
 
 ## Production setup
 

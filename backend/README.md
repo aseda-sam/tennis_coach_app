@@ -364,7 +364,7 @@ backend/
 │   ├── models/              # SQLAlchemy models
 │   │   └── video.py         # Video metadata
 │   ├── services/            # Business logic
-│   │   ├── serve_analysis_service.py  # Serve metrics pipeline
+│   │   ├── pose_data_service.py   # Pose helpers for biomechanics
 │   │   ├── video_service.py     # Video processing utilities
 │   └── main.py              # FastAPI app
 ├── docs/                    # Detailed documentation
@@ -382,9 +382,9 @@ backend/
 
 ## Features (Serve MVP)
 
-- **Serve-focused workflow**: tag serve attempts, compute a small set of metrics
+- **Serve-focused workflow**: tag serve attempts, compute biomechanics on demand
 - **Pose detection**: MediaPipe pose estimation (background job)
-- **Serve metrics**: derived values written onto `serve_attempts`
+- **Biomechanics reports**: phases + metrics stored per serve attempt
 - **User Authentication**: Supabase-backed auth (disabled in `PROFILE=local`)
 - **User-based Data Isolation**: videos/players/serve attempts are scoped per user
 - **REST API**: FastAPI + OpenAPI (`/docs`)

@@ -207,7 +207,7 @@ async def upload_video_for_user(
         target_user_id: Supabase auth user ID to assign video ownership to
         is_demo: If True, upload as demo video
         session_type: Session type for serve-focused workflow
-        camera_angle: Camera angle for serve analysis
+        camera_angle: Camera angle for serve biomechanics
         recorded_at: When video was recorded (for trends)
 
     Returns:

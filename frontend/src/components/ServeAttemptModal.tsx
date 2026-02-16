@@ -343,17 +343,6 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
                 </div>
               )}
 
-              {serveAttempt.elbow_angle_at_contact !== null && (
-                <div className="serve-detail-panel__detail-row">
-                  <span className="serve-detail-panel__detail-label">
-                    Elbow Angle:
-                  </span>
-                  <span className="serve-detail-panel__detail-value">
-                    {Math.round(serveAttempt.elbow_angle_at_contact)}°
-                  </span>
-                </div>
-              )}
-
               {serveAttempt.court_side && (
                 <div className="serve-detail-panel__detail-row">
                   <span className="serve-detail-panel__detail-label">
@@ -590,15 +579,6 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
                   <span className="detail-label">Contact:</span>
                   <span className="detail-value">
                     {formatTime(serveAttempt.contact_timestamp)}
-                  </span>
-                </div>
-              )}
-
-              {serveAttempt.elbow_angle_at_contact !== null && (
-                <div className="detail-row">
-                  <span className="detail-label">Elbow Angle:</span>
-                  <span className="detail-value">
-                    {Math.round(serveAttempt.elbow_angle_at_contact)}°
                   </span>
                 </div>
               )}

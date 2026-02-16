@@ -1,5 +1,5 @@
 """
-Unit tests for serve_analysis_service module.
+Unit tests for pose_data_service module.
 
 Tests the keypoint extraction helper and pose timestamp lookup functions,
 ensuring compatibility with both old and new pose data formats.
@@ -8,7 +8,7 @@ ensuring compatibility with both old and new pose data formats.
 import json
 from unittest.mock import MagicMock
 
-from app.services.serve_analysis_service import (
+from app.services.pose_data_service import (
     _extract_keypoints,
     get_pose_at_timestamp,
 )

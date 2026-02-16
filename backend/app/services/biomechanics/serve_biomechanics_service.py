@@ -20,7 +20,9 @@ from app.services.biomechanics.metrics import (
 from app.services.biomechanics.phase_segmentation import (
     segment_serve_phases,
 )
-from app.services.serve_analysis_service import (
+from app.services.pose_data_service import (
+    _compute_toss_metrics,
+    _get_best_ball_detection,
     _select_best_pose_detection,
     get_pose_frames_in_window,
 )
@@ -120,8 +122,13 @@ class ServeBiomechanicsService:
             phases=phase_result.phases,
         )
 
-        if metrics.toss_peak_height is None and serve_attempt.toss_peak_height:
-            metrics.toss_peak_height = serve_attempt.toss_peak_height
+        ball_detection = _get_best_ball_detection(db, video.id)
+        if ball_detection:
+            toss_metrics = _compute_toss_metrics(
+                serve_attempt, ball_detection, video, pose_detection
+            )
+            if toss_metrics and toss_metrics.get("toss_peak_height") is not None:
+                metrics.toss_peak_height = toss_metrics["toss_peak_height"]
 
         report = ServeBiomechanicsReport(
             serve_attempt_id=serve_attempt_id,

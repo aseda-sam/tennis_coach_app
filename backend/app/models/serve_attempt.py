@@ -3,7 +3,6 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean,
     Column,
     DateTime,
     Float,
@@ -39,33 +38,6 @@ class ServeAttempt(Base):
     end_timestamp = Column(Float, nullable=False)  # When serve attempt ends
     contact_timestamp = Column(Float, nullable=True)  # Optional - may not make contact
 
-    # Metrics - calculated from pose data
-    elbow_angle_at_contact = Column(
-        Float, nullable=True
-    )  # Calculated if contact_timestamp exists
-
-    # Knee bend metrics (pose-based, computed during early serve phase)
-    knee_bend_detected = Column(
-        Boolean, nullable=True
-    )  # Whether knee bend was detected
-    knee_bend_confidence = Column(
-        Float, nullable=True
-    )  # Confidence score (0.0-1.0) for knee bend detection
-    knee_hip_ratio_min = Column(
-        Float, nullable=True
-    )  # Minimum knee-hip ratio (lower = more bend)
-    knee_flexion_min_deg_left = Column(
-        Float, nullable=True
-    )  # Minimum left knee flexion angle (hip-knee-ankle) in degrees
-    knee_flexion_min_deg_right = Column(
-        Float, nullable=True
-    )  # Minimum right knee flexion angle (hip-knee-ankle) in degrees
-
-    # Analysis version tracking
-    analysis_version = Column(
-        String(20), nullable=True
-    )  # Version of analysis heuristics used (e.g., "v1.0")
-
     # Context
     court_side = Column(String(10), nullable=True)  # 'deuce', 'ad'
     serve_number = Column(Integer, nullable=True)  # 1, 2
@@ -93,10 +65,6 @@ class ServeAttempt(Base):
     # Original timestamps (if edited from proposal)
     original_start_timestamp = Column(Float, nullable=True)
     original_end_timestamp = Column(Float, nullable=True)
-
-    # Ball tracking (toss metrics from ball detection)
-    toss_peak_height = Column(Float, nullable=True)  # Normalized by player height
-    toss_peak_timestamp = Column(Float, nullable=True)  # Seconds (video time)
 
     # Relationships
     video = relationship("Video", back_populates="serve_attempts")
@@ -133,6 +101,5 @@ class ServeAttempt(Base):
         """String representation of serve attempt."""
         return (
             f"<ServeAttempt(id={self.id}, video_id={self.video_id}, "
-            f"player_id={self.player_id}, start={self.start_timestamp:.2f}s, "
-            f"elbow_angle={self.elbow_angle_at_contact})>"
+            f"player_id={self.player_id}, start={self.start_timestamp:.2f}s)>"
         )

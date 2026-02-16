@@ -1,10 +1,9 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAdmin } from '../hooks/useAdmin';
 import { useServeAttempts } from '../hooks/useServeAttempts';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { videoApi } from '../services/api';
-import { serveAttemptApi } from '../services/serveAttemptApi';
 import { VideoMetadata } from '../types/video';
 import AnalysisRightPanel from './AnalysisRightPanel';
 import './DemoDashboard.css';
@@ -25,7 +24,6 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
 }) => {
   const { isAdmin } = useAdmin();
   const isDemoReadOnly = !isAdmin;
-  const queryClient = useQueryClient();
 
   // Fetch demo video
   const {
@@ -60,7 +58,6 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
-  const [isAnalyzingServes, setIsAnalyzingServes] = useState(false);
 
   // Keyboard shortcut listener for ?
   useEffect(() => {
@@ -142,46 +139,6 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
     },
     []
   );
-
-  const handleAnalyzeServes = useCallback(async () => {
-    if (!demoVideo?.id) return;
-    if (serveAttempts.length === 0) {
-      alert('Please tag key moments first before analyzing.');
-      return;
-    }
-
-    // Check if any serve attempts already have metrics
-    const hasExistingMetrics = serveAttempts.some(
-      (sa) =>
-        sa.elbow_angle_at_contact !== null &&
-        sa.elbow_angle_at_contact !== undefined
-    );
-
-    setIsAnalyzingServes(true);
-    try {
-      await serveAttemptApi.analyzeServes(demoVideo.id);
-      // Invalidate serve attempts query to refresh with metrics
-      queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
-      // Show different message based on whether metrics already existed
-      const message = hasExistingMetrics
-        ? 'Serves re-analyzed! Updated metrics are shown below.'
-        : 'Serve analysis completed! Check the metrics below.';
-      alert(message);
-    } catch (error: unknown) {
-      // Error detail is already normalized to string by axios interceptor
-      const axiosError = error as {
-        response?: { data?: { detail?: string } };
-        message?: string;
-      };
-      const errorMessage =
-        axiosError?.response?.data?.detail ||
-        axiosError?.message ||
-        'Failed to analyze serves. Please try again.';
-      alert(errorMessage);
-    } finally {
-      setIsAnalyzingServes(false);
-    }
-  }, [demoVideo?.id, serveAttempts, queryClient]);
 
   // Demo mode is read-only for non-admin users.
 
@@ -284,29 +241,6 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
               </button>
             </div>
           </div>
-
-          {/* Admin-only: Serve Analysis Button */}
-          {isAdmin &&
-            analysisStatus?.has_analysis &&
-            serveAttempts.length > 0 && (
-              <div className="demo-dashboard__actions">
-                <button
-                  className="demo-dashboard__action-btn demo-dashboard__action-btn--primary"
-                  onClick={handleAnalyzeServes}
-                  disabled={isAnalyzingServes}
-                >
-                  {isAnalyzingServes
-                    ? 'Analyzing…'
-                    : serveAttempts.some(
-                          (sa) =>
-                            sa.elbow_angle_at_contact !== null &&
-                            sa.elbow_angle_at_contact !== undefined
-                        )
-                      ? 'Re-Analyze Serves'
-                      : 'Analyze Serves'}
-                </button>
-              </div>
-            )}
 
           <div data-tour="analysis-panel">
             <AnalysisRightPanel
