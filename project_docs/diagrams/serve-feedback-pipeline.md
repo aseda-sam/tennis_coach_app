@@ -1,14 +1,14 @@
 # Serve biomechanics pipeline
 
-From serve attempt to phase segmentation and raw metrics. Triggered lazily on the
+From serve window to phase segmentation and raw metrics. Triggered lazily on the
 first GET request for biomechanics, not during the analysis pipeline. No scoring
 or coaching — phases + metrics only.
 
 ```mermaid
 flowchart TD
-  REQ["GET /serve-attempts/{id}/biomechanics"] --> CACHE{Cached report?}
+  REQ["GET /serve-windows/{id}/biomechanics"] --> CACHE{Cached report?}
   CACHE -->|Yes| RET[Return stored report]
-  CACHE -->|No| LOAD[Load serve attempt + video + player + pose data]
+  CACHE -->|No| LOAD[Load serve window + video + player + pose data]
 
   LOAD --> FRAMES["Extract pose frames in serve window"]
 
@@ -45,7 +45,7 @@ flowchart TD
 
 | Input | Source | Table |
 |-------|--------|-------|
-| Serve window (start/end/contact) | User-tagged or auto-suggested | `serve_attempts` |
+| Serve window (start/end/contact) | User-tagged or auto-suggested | `serve_windows` |
 | Pose keypoints per frame | MediaPipe (scout or refine pass) | `pose_detections` |
 | Player dominant hand | User-entered | `players` |
 | Video FPS and dimensions | From transcode metadata | `videos` |

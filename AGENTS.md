@@ -1,8 +1,8 @@
-# CLAUDE.md
+# AGENTS.md
 
 ## Project overview
 
-Tennis Coach App — a serve-analysis MVP. Users upload serve videos, the app runs pose estimation (MediaPipe), tags serve attempts, computes biomechanics metrics, and returns coaching recommendations.
+Tennis Coach App — a serve-analysis MVP. Users upload serve videos, the app runs pose estimation (MediaPipe), tags serve windows, computes biomechanics metrics, and returns coaching recommendations.
 
 **Stack:** FastAPI backend, React/TypeScript frontend, PostgreSQL (Docker local / Supabase prod), Redis Queue (RQ) for background jobs, Docker Compose for local dev.
 

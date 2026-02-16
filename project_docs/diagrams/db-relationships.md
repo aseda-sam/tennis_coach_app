@@ -1,6 +1,6 @@
 # DB relationships
 
-How the main pieces connect: one user has players and videos; videos have pose data, serve windows, and jobs; serve windows can come from suggestions or from you. Conceptual only—see migrations for full schema.
+How the main pieces connect: one user has players and videos; videos have pose data, serve windows, and jobs; serve windows can be manual or auto-detected with workflow status. Conceptual only—see migrations for full schema.
 
 ## Relationship overview
 
@@ -9,16 +9,13 @@ erDiagram
   USER ||--o{ PLAYER : owns
   USER ||--o{ VIDEO : uploads
   USER ||--o{ VIDEO_JOB : runs
-  USER ||--o{ SERVE_ATTEMPT : tags
-  USER ||--o{ SERVE_WINDOW_PROPOSAL : reviews
+  USER ||--o{ SERVE_WINDOW : tags_or_reviews
 
   VIDEO ||--o{ POSE_DETECTION : has
-  VIDEO ||--o{ SERVE_ATTEMPT : contains
-  VIDEO ||--o{ SERVE_WINDOW_PROPOSAL : generates
+  VIDEO ||--o{ SERVE_WINDOW : contains
   VIDEO ||--o{ VIDEO_JOB : queues
 
-  PLAYER ||--o{ SERVE_ATTEMPT : for
-  SERVE_WINDOW_PROPOSAL ||--o| SERVE_ATTEMPT : source
+  PLAYER ||--o{ SERVE_WINDOW : for
 ```
 
 ## Tables and key properties
@@ -68,15 +65,7 @@ erDiagram
     text pose_data
   }
 
-  SERVE_WINDOW_PROPOSAL {
-    int id PK
-    int video_id FK
-    float start_timestamp
-    float end_timestamp
-    string status
-  }
-
-  SERVE_ATTEMPT {
+  SERVE_WINDOW {
     int id PK
     int video_id FK
     int player_id FK
@@ -84,26 +73,24 @@ erDiagram
     float end_timestamp
     float contact_timestamp
     string source
-    int source_proposal_id FK
+    string status
+    float confidence
   }
 
   USER ||--o{ PLAYER : owns
   USER ||--o{ VIDEO : uploads
   USER ||--o{ VIDEO_JOB : runs
-  USER ||--o{ SERVE_ATTEMPT : tags
-  USER ||--o{ SERVE_WINDOW_PROPOSAL : reviews
+  USER ||--o{ SERVE_WINDOW : tags_or_reviews
 
   VIDEO ||--o{ POSE_DETECTION : has
-  VIDEO ||--o{ SERVE_ATTEMPT : contains
-  VIDEO ||--o{ SERVE_WINDOW_PROPOSAL : generates
+  VIDEO ||--o{ SERVE_WINDOW : contains
   VIDEO ||--o{ VIDEO_JOB : queues
 
-  PLAYER ||--o{ SERVE_ATTEMPT : for
-  SERVE_WINDOW_PROPOSAL ||--o| SERVE_ATTEMPT : source
+  PLAYER ||--o{ SERVE_WINDOW : for
 ```
 
 ## Notes
 
 - **Relationship overview** — High-level only; no attributes. `||--o{` = one-to-many; `||--o|` = one-to-zero-or-one.
-- **Tables and key properties** — Entity names match table names (`players`, `videos`, `video_jobs`, `serve_attempts`, `serve_window_proposals`, `pose_detections`). USER is conceptual (no table; id/email from auth). PK = primary key, FK = foreign key; key fields listed for comprehension only.
-- **source** on SERVE_ATTEMPT — A serve window can link to a proposal (accepted/edited suggestion) or be created manually (no proposal).
+- **Tables and key properties** — Entity names match table names (`players`, `videos`, `video_jobs`, `serve_windows`, `pose_detections`). USER is conceptual (no table; id/email from auth). PK = primary key, FK = foreign key; key fields listed for comprehension only.
+- **source/status** on SERVE_WINDOW — One-table workflow: auto-generated rows start `status=pending`, then move to `accepted`/`rejected`/`edited`; manual rows are created as accepted.

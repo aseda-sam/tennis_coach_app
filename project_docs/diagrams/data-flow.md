@@ -16,6 +16,6 @@ flowchart LR
 
 ## Notes
 
-- **Database** — Where we keep videos, jobs, serve attempts, players, etc. (e.g. Postgres).
+- **Database** — Where we keep videos, jobs, serve windows, players, etc. (e.g. Postgres).
 - **File storage** — Where video files live (local disk or cloud bucket).
 - **Job queue** — Redis-backed (RQ); workers run pose detection and other tasks, reading/writing storage and DB as needed.

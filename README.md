@@ -8,12 +8,12 @@
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-4B8BBE.svg)](https://github.com/astral-sh/ruff)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A tennis coaching app (hobby project) focused on a **serve-analysis MVP**: upload a serve video, tag serve attempts, compute a small set of coach-meaningful metrics, and return one recommendation.
+A tennis coaching app (hobby project) focused on a **serve-analysis MVP**: upload a serve video, tag serve windows, compute a small set of coach-meaningful metrics, and return one recommendation.
 
 ## 🎾 What It Does
 
 - **User accounts** with secure authentication
-- **Upload videos** and tag **serve attempts**
+- **Upload videos** and tag **serve windows**
 - **Pose estimation** (MediaPipe) for biomechanics signals
 - **Serve metrics** computed from pose at key timestamps
 - **Background job processing** (Redis Queue / RQ)
