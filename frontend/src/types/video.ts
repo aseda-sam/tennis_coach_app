@@ -25,7 +25,7 @@ export interface DemoVideoListItem {
   file_path: string;
   is_active_demo: boolean;
   has_pose_analysis: boolean;
-  serve_attempt_count: number;
+  serve_window_count: number;
   created_at: string;
 }
 

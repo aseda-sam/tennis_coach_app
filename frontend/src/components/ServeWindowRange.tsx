@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { ServeAttempt } from '../services/serveAttemptApi';
-import './ServeAttemptRange.css';
+import { ServeWindow } from '../services/serveWindowApi';
+import './ServeWindowRange.css';
 
-interface ServeAttemptRangeProps {
-  serveAttempt: ServeAttempt;
+interface ServeWindowRangeProps {
+  serveWindow: ServeWindow;
   duration: number;
   currentTime?: number;
   isSelected?: boolean;
@@ -13,8 +13,8 @@ interface ServeAttemptRangeProps {
   onMarkContact?: (timestamp: number) => void;
 }
 
-const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
-  serveAttempt,
+const ServeWindowRange: React.FC<ServeWindowRangeProps> = ({
+  serveWindow,
   duration,
   currentTime = 0,
   isSelected = false,
@@ -26,31 +26,31 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
   const [showMarkContact, setShowMarkContact] = useState(false);
   if (duration === 0) return null;
 
-  const startPercent = (serveAttempt.start_timestamp / duration) * 100;
-  const endPercent = (serveAttempt.end_timestamp / duration) * 100;
+  const startPercent = (serveWindow.start_timestamp / duration) * 100;
+  const endPercent = (serveWindow.end_timestamp / duration) * 100;
   const width = endPercent - startPercent;
 
   // Calculate contact marker position relative to the range
   const contactPercent =
-    serveAttempt.contact_timestamp !== null
-      ? ((serveAttempt.contact_timestamp - serveAttempt.start_timestamp) /
-          (serveAttempt.end_timestamp - serveAttempt.start_timestamp)) *
+    serveWindow.contact_timestamp !== null
+      ? ((serveWindow.contact_timestamp - serveWindow.start_timestamp) /
+          (serveWindow.end_timestamp - serveWindow.start_timestamp)) *
         100
       : null;
 
   const rangeColor = '#6b7280';
 
-  // Check if current time is within this serve attempt's range
+  // Check if current time is within this serve window's range
   const isCurrentTimeInRange =
-    currentTime >= serveAttempt.start_timestamp &&
-    currentTime <= serveAttempt.end_timestamp;
+    currentTime >= serveWindow.start_timestamp &&
+    currentTime <= serveWindow.end_timestamp;
 
   // Determine if we should show the mark contact button
   const canMarkContact =
     !isDemo &&
     onMarkContact &&
     isCurrentTimeInRange &&
-    serveAttempt.contact_timestamp === null;
+    serveWindow.contact_timestamp === null;
 
   const handleMarkContact = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -61,7 +61,7 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
 
   return (
     <div
-      className={`serve-attempt-range ${isSelected ? 'selected' : ''} ${showMarkContact && canMarkContact ? 'show-mark-contact' : ''}`}
+      className={`serve-window-range ${isSelected ? 'selected' : ''} ${showMarkContact && canMarkContact ? 'show-mark-contact' : ''}`}
       style={{
         left: `${startPercent}%`,
         width: `${width}%`,
@@ -69,11 +69,11 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
       onClick={onClick}
       onMouseEnter={() => setShowMarkContact(true)}
       onMouseLeave={() => setShowMarkContact(false)}
-      title={`Serve: ${serveAttempt.start_timestamp.toFixed(2)}s - ${serveAttempt.end_timestamp.toFixed(2)}s`}
+      title={`Serve: ${serveWindow.start_timestamp.toFixed(2)}s - ${serveWindow.end_timestamp.toFixed(2)}s`}
     >
       {/* Range band */}
       <div
-        className="serve-attempt-range__band"
+        className="serve-window-range__band"
         style={{
           backgroundColor: rangeColor,
           opacity: isSelected ? 0.8 : 0.4,
@@ -81,17 +81,17 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
       />
 
       {/* Start marker */}
-      <div className="serve-attempt-range__start-marker" />
+      <div className="serve-window-range__start-marker" />
 
       {/* End marker */}
-      <div className="serve-attempt-range__end-marker" />
+      <div className="serve-window-range__end-marker" />
 
       {/* Contact marker (if contact timestamp exists) */}
       {contactPercent !== null && (
         <div
-          className="serve-attempt-range__contact-marker"
+          className="serve-window-range__contact-marker"
           style={{ left: `${contactPercent}%` }}
-          title={`Contact: ${serveAttempt.contact_timestamp!.toFixed(2)}s (click to go to contact)`}
+          title={`Contact: ${serveWindow.contact_timestamp!.toFixed(2)}s (click to go to contact)`}
           onClick={(e) => {
             e.stopPropagation();
             onContactClick?.();
@@ -102,7 +102,7 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
       {/* Mark Contact button (shown when hovering and no contact exists) */}
       {canMarkContact && showMarkContact && (
         <button
-          className="serve-attempt-range__mark-contact-btn"
+          className="serve-window-range__mark-contact-btn"
           onClick={handleMarkContact}
           title="Set contact point at current video time"
         >
@@ -111,34 +111,34 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
       )}
 
       {/* Tooltip on hover */}
-      <div className="serve-attempt-range__tooltip">
+      <div className="serve-window-range__tooltip">
         <div className="tooltip-content">
           <div className="tooltip-header">
             <span>Serve</span>
-            {serveAttempt.serve_number && (
-              <span>#{serveAttempt.serve_number}</span>
+            {serveWindow.serve_number && (
+              <span>#{serveWindow.serve_number}</span>
             )}
           </div>
           <div className="tooltip-details">
             <div>
-              {serveAttempt.start_timestamp.toFixed(2)}s -{' '}
-              {serveAttempt.end_timestamp.toFixed(2)}s
+              {serveWindow.start_timestamp.toFixed(2)}s -{' '}
+              {serveWindow.end_timestamp.toFixed(2)}s
             </div>
-            {serveAttempt.contact_timestamp !== null && (
-              <div>Contact: {serveAttempt.contact_timestamp.toFixed(2)}s</div>
+            {serveWindow.contact_timestamp !== null && (
+              <div>Contact: {serveWindow.contact_timestamp.toFixed(2)}s</div>
             )}
-            {serveAttempt.court_side && (
+            {serveWindow.court_side && (
               <div>
                 Court:{' '}
-                {serveAttempt.court_side.charAt(0).toUpperCase() +
-                  serveAttempt.court_side.slice(1)}
+                {serveWindow.court_side.charAt(0).toUpperCase() +
+                  serveWindow.court_side.slice(1)}
               </div>
             )}
-            {serveAttempt.serve_subtype && (
+            {serveWindow.serve_subtype && (
               <div>
                 Type:{' '}
-                {serveAttempt.serve_subtype.charAt(0).toUpperCase() +
-                  serveAttempt.serve_subtype.slice(1)}
+                {serveWindow.serve_subtype.charAt(0).toUpperCase() +
+                  serveWindow.serve_subtype.slice(1)}
               </div>
             )}
           </div>
@@ -148,4 +148,4 @@ const ServeAttemptRange: React.FC<ServeAttemptRangeProps> = ({
   );
 };
 
-export default ServeAttemptRange;
+export default ServeWindowRange;

@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import { useAppConfig } from '../hooks/useAppConfig';
-import { useServeAttempts } from '../hooks/useServeAttempts';
+import { useServeWindows } from '../hooks/useServeWindows';
 import { useServeProposals } from '../hooks/useServeProposals';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import './AnalysisDashboard.css';
@@ -68,7 +68,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   }, [startAnalysis]);
 
   const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
-    ((serveAttemptId: number) => void) | null
+    ((serveWindowId: number) => void) | null
   >(null);
   const [selectedServeId, setSelectedServeId] = useState<number | null>(null);
   const [naturalScroll, setNaturalScroll] = useState(true);
@@ -78,8 +78,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     null
   );
 
-  // Get serve attempts for this video
-  const { serveAttempts } = useServeAttempts({
+  // Get serve windows for this video
+  const { serveWindows } = useServeWindows({
     videoId,
     filters: { video_id: videoId },
     autoRefresh: true,
@@ -139,11 +139,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     const hasExisting =
       detectionStatus &&
       (detectionStatus.pending_proposals > 0 ||
-        detectionStatus.serve_attempts > 0);
+        detectionStatus.serve_windows > 0);
 
     if (hasExisting && detectionStatus) {
       if (
-        detectionStatus.serve_attempts > 0 &&
+        detectionStatus.serve_windows > 0 &&
         detectionStatus.pending_proposals === 0
       ) {
         setFindServesMessage(
@@ -246,19 +246,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     }
   }, [lowConfidenceCount, rejectLowConfidence]);
 
-  const handleServeAttemptClick = useCallback(
-    (serveAttemptId: number) => {
-      videoPlayerNavigate?.(serveAttemptId);
+  const handleServeWindowClick = useCallback(
+    (serveWindowId: number) => {
+      videoPlayerNavigate?.(serveWindowId);
       // Toggle biomechanics detail — click again to close
       setSelectedServeId((prev) =>
-        prev === serveAttemptId ? null : serveAttemptId
+        prev === serveWindowId ? null : serveWindowId
       );
     },
     [videoPlayerNavigate]
   );
 
   const handleNavigateReady = useCallback(
-    (navigateFn: (serveAttemptId: number) => void) => {
+    (navigateFn: (serveWindowId: number) => void) => {
       setVideoPlayerNavigate(() => navigateFn);
     },
     []
@@ -358,8 +358,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   <div className="analysis-dashboard__action-row">
                     <button
                       className={`analysis-dashboard__action-btn ${
-                        detectionStatus?.serve_attempts &&
-                        detectionStatus.serve_attempts > 0
+                        detectionStatus?.serve_windows &&
+                        detectionStatus.serve_windows > 0
                           ? 'analysis-dashboard__action-btn--secondary'
                           : 'analysis-dashboard__action-btn--find'
                       }`}
@@ -425,7 +425,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             videoId={videoId}
             videoFilename={videoFilename}
             analysisStatus={analysisStatus}
-            onContactClick={handleServeAttemptClick}
+            onContactClick={handleServeWindowClick}
             isDemo={false}
           />
         </div>
@@ -434,11 +434,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       {/* Biomechanics Detail Panel — full width below grid; shows whenever a serve is selected */}
       {selectedServeId !== null &&
         (() => {
-          const sa = serveAttempts.find((s) => s.id === selectedServeId);
+          const sa = serveWindows.find((s) => s.id === selectedServeId);
           if (!sa) return null;
           return (
             <ServeBiomechanicsDetail
-              serveAttemptId={sa.id}
+              serveWindowId={sa.id}
               videoId={videoId}
               serveStart={sa.start_timestamp}
               serveEnd={sa.end_timestamp}

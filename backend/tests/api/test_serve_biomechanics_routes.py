@@ -17,11 +17,11 @@ from app.main import app
 from app.models.serve_biomechanics_report import ServeBiomechanicsReport
 
 
-def _make_mock_report(serve_attempt_id: int = 1) -> ServeBiomechanicsReport:
+def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
     """Create a mock ServeBiomechanicsReport DB model."""
     report = MagicMock(spec=ServeBiomechanicsReport)
     report.id = 1
-    report.serve_attempt_id = serve_attempt_id
+    report.serve_window_id = serve_window_id
     report.user_id = "00000000-0000-0000-0000-000000000000"
     report.player_id = 1
     report.analysis_version = "phase-metrics-v1"
@@ -82,17 +82,17 @@ class TestGetServeBiomechanics:
     @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
     def test_returns_200(self, mock_service, biomechanics_client):
         mock_service.get_or_compute_analysis.return_value = _make_mock_report()
-        response = biomechanics_client.get("/v0/serve-attempts/1/biomechanics")
+        response = biomechanics_client.get("/v0/serve-windows/1/biomechanics")
         assert response.status_code == 200
 
     @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
     def test_response_shape(self, mock_service, biomechanics_client):
         """Response must include all fields expected by UI."""
         mock_service.get_or_compute_analysis.return_value = _make_mock_report()
-        response = biomechanics_client.get("/v0/serve-attempts/1/biomechanics")
+        response = biomechanics_client.get("/v0/serve-windows/1/biomechanics")
         data = response.json()
         assert "id" in data
-        assert "serve_attempt_id" in data
+        assert "serve_window_id" in data
         assert "phase_segmentation" in data
         assert "metrics" in data
         assert "analysis_version" in data
@@ -105,7 +105,7 @@ class TestGetServeBiomechanics:
     @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
     def test_phase_segmentation_shape(self, mock_service, biomechanics_client):
         mock_service.get_or_compute_analysis.return_value = _make_mock_report()
-        response = biomechanics_client.get("/v0/serve-attempts/1/biomechanics")
+        response = biomechanics_client.get("/v0/serve-windows/1/biomechanics")
         data = response.json()
         seg = data["phase_segmentation"]
         assert isinstance(seg, list)
@@ -121,7 +121,7 @@ class TestGetServeBiomechanics:
     @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
     def test_metrics_shape(self, mock_service, biomechanics_client):
         mock_service.get_or_compute_analysis.return_value = _make_mock_report()
-        response = biomechanics_client.get("/v0/serve-attempts/1/biomechanics")
+        response = biomechanics_client.get("/v0/serve-windows/1/biomechanics")
         data = response.json()
         metrics = data["metrics"]
         assert isinstance(metrics, list)
@@ -137,7 +137,7 @@ class TestGetServeBiomechanics:
     @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
     def test_not_found_returns_404(self, mock_service, biomechanics_client):
         mock_service.get_or_compute_analysis.side_effect = ValueError("Not found")
-        response = biomechanics_client.get("/v0/serve-attempts/999/biomechanics")
+        response = biomechanics_client.get("/v0/serve-windows/999/biomechanics")
         assert response.status_code == 404
 
 
@@ -145,13 +145,13 @@ class TestComputeServeBiomechanics:
     @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
     def test_returns_201(self, mock_service, biomechanics_client):
         mock_service.compute_analysis.return_value = _make_mock_report()
-        response = biomechanics_client.post("/v0/serve-attempts/1/biomechanics/compute")
+        response = biomechanics_client.post("/v0/serve-windows/1/biomechanics/compute")
         assert response.status_code == 201
 
     @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
     def test_response_has_id(self, mock_service, biomechanics_client):
         mock_service.compute_analysis.return_value = _make_mock_report()
-        response = biomechanics_client.post("/v0/serve-attempts/1/biomechanics/compute")
+        response = biomechanics_client.post("/v0/serve-windows/1/biomechanics/compute")
         data = response.json()
         assert "id" in data
         assert data["id"] == 1

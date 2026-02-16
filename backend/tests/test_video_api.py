@@ -692,7 +692,7 @@ class TestBallContactTimestamps:
     def test_get_ball_contact_timestamps_empty(
         self, client: TestClient, db_session: "Session", test_user_id: str
     ) -> None:
-        """Test returns empty list when no serve attempts exist."""
+        """Test returns empty list when no serve windows exist."""
         from app.models.video import Video
 
         video = Video(
@@ -719,9 +719,9 @@ class TestBallContactTimestamps:
     def test_get_ball_contact_timestamps_with_serves(
         self, client: TestClient, db_session: "Session", test_user_id: str
     ) -> None:
-        """Test returns sorted unique timestamps from serve attempts."""
+        """Test returns sorted unique timestamps from serve windows."""
         from app.models.player import Player
-        from app.models.serve_attempt import ServeAttempt
+        from app.models.serve_window import ServeWindow
         from app.models.video import Video
 
         video = Video(
@@ -746,8 +746,8 @@ class TestBallContactTimestamps:
         db_session.add(player)
         db_session.commit()
 
-        # Create serve attempts with contact timestamps
-        serve1 = ServeAttempt(
+        # Create serve windows with contact timestamps
+        serve1 = ServeWindow(
             video_id=video.id,
             player_id=player.id,
             user_id=test_user_id,
@@ -757,7 +757,7 @@ class TestBallContactTimestamps:
             court_side="deuce",
             serve_number=1,
         )
-        serve2 = ServeAttempt(
+        serve2 = ServeWindow(
             video_id=video.id,
             player_id=player.id,
             user_id=test_user_id,
@@ -768,7 +768,7 @@ class TestBallContactTimestamps:
             serve_number=1,
         )
         # Serve without contact timestamp (should be excluded)
-        serve3 = ServeAttempt(
+        serve3 = ServeWindow(
             video_id=video.id,
             player_id=player.id,
             user_id=test_user_id,
@@ -801,9 +801,9 @@ class TestBallContactTimestamps:
     def test_get_ball_contact_timestamps_excludes_other_users(
         self, client: TestClient, db_session: "Session", test_user_id: str
     ) -> None:
-        """Test only returns timestamps from current user's serve attempts."""
+        """Test only returns timestamps from current user's serve windows."""
         from app.models.player import Player
-        from app.models.serve_attempt import ServeAttempt
+        from app.models.serve_window import ServeWindow
         from app.models.video import Video
 
         video = Video(
@@ -833,8 +833,8 @@ class TestBallContactTimestamps:
         db_session.add_all([player, other_player])
         db_session.commit()
 
-        # User's serve attempt
-        user_serve = ServeAttempt(
+        # User's serve window
+        user_serve = ServeWindow(
             video_id=video.id,
             player_id=player.id,
             user_id=test_user_id,
@@ -844,8 +844,8 @@ class TestBallContactTimestamps:
             court_side="deuce",
             serve_number=1,
         )
-        # Other user's serve attempt (should be excluded)
-        other_serve = ServeAttempt(
+        # Other user's serve window (should be excluded)
+        other_serve = ServeWindow(
             video_id=video.id,
             player_id=other_player.id,
             user_id="other-user-id",

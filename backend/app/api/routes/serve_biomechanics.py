@@ -73,7 +73,7 @@ def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportRe
 
     return BiomechanicsReportResponse(
         id=report.id,
-        serve_attempt_id=report.serve_attempt_id,
+        serve_window_id=report.serve_window_id,
         phase_segmentation=phase_segmentation,
         metrics=metrics,
         analysis_version=report.analysis_version,
@@ -82,51 +82,51 @@ def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportRe
 
 
 @router.get(
-    "/serve-attempts/{serve_attempt_id}/biomechanics",
+    "/serve-windows/{serve_window_id}/biomechanics",
     response_model=BiomechanicsReportResponse,
 )
 async def get_serve_biomechanics(
-    serve_attempt_id: int,
+    serve_window_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BiomechanicsReportResponse:
-    """Get biomechanics report for a serve attempt. Computes lazily on first request."""
+    """Get biomechanics report for a serve window. Computes lazily on first request."""
     user_id = current_user["id"]
     try:
         report = serve_biomechanics_service.get_or_compute_analysis(
-            db, serve_attempt_id, user_id
+            db, serve_window_id, user_id
         )
         return _report_to_response(report)
     except ValueError as e:
-        raise handle_not_found_error("serve_attempt", str(serve_attempt_id)) from e
+        raise handle_not_found_error("serve_window", str(serve_window_id)) from e
     except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(
-            e, "get_serve_biomechanics", {"serve_attempt_id": serve_attempt_id}
+            e, "get_serve_biomechanics", {"serve_window_id": serve_window_id}
         )
 
 
 @router.post(
-    "/serve-attempts/{serve_attempt_id}/biomechanics/compute",
+    "/serve-windows/{serve_window_id}/biomechanics/compute",
     response_model=BiomechanicsReportResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def compute_serve_biomechanics(
-    serve_attempt_id: int,
+    serve_window_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> BiomechanicsReportResponse:
-    """Force (re)compute biomechanics for a serve attempt."""
+    """Force (re)compute biomechanics for a serve window."""
     user_id = current_user["id"]
     try:
         report = serve_biomechanics_service.compute_analysis(
-            db, serve_attempt_id, user_id
+            db, serve_window_id, user_id
         )
         return _report_to_response(report)
     except ValueError as e:
-        raise handle_not_found_error("serve_attempt", str(serve_attempt_id)) from e
+        raise handle_not_found_error("serve_window", str(serve_window_id)) from e
     except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(
-            e, "compute_serve_biomechanics", {"serve_attempt_id": serve_attempt_id}
+            e, "compute_serve_biomechanics", {"serve_window_id": serve_window_id}
         )
 
 

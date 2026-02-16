@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.ball_detection import BallDetection
 from app.models.pose_detection import PoseDetection
-from app.models.serve_attempt import ServeAttempt
+from app.models.serve_window import ServeWindow
 from app.models.video import Video
 
 logger = logging.getLogger(__name__)
@@ -108,13 +108,13 @@ def _get_best_ball_detection(db: Session, video_id: int) -> Optional[BallDetecti
 
 
 def _compute_toss_metrics(
-    serve_attempt: ServeAttempt,
+    serve_window: ServeWindow,
     ball_detection: BallDetection,
     video: Video,
     pose_detection: Optional[PoseDetection],
 ) -> Optional[Dict[str, any]]:
     """
-    Compute toss peak height and timestamp for a serve attempt from ball detection data.
+    Compute toss peak height and timestamp for a serve window from ball detection data.
 
     Toss window: start_timestamp to contact_timestamp (or end_timestamp if no contact).
     Peak = frame with minimum ball_y (highest point in screen coords).
@@ -133,12 +133,12 @@ def _compute_toss_metrics(
         return None
 
     # Toss phase: from serve start until contact (or 80% of window if no contact)
-    start_sec = serve_attempt.start_timestamp
-    if serve_attempt.contact_timestamp is not None:
-        end_sec = serve_attempt.contact_timestamp
+    start_sec = serve_window.start_timestamp
+    if serve_window.contact_timestamp is not None:
+        end_sec = serve_window.contact_timestamp
     else:
-        duration = serve_attempt.end_timestamp - serve_attempt.start_timestamp
-        end_sec = serve_attempt.start_timestamp + duration * 0.8
+        duration = serve_window.end_timestamp - serve_window.start_timestamp
+        end_sec = serve_window.start_timestamp + duration * 0.8
 
     start_ms = start_sec * 1000
     end_ms = end_sec * 1000

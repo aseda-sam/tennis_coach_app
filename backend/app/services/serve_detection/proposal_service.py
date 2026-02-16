@@ -8,8 +8,7 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.models.pose_detection import PoseDetection
-from app.models.serve_attempt import ServeAttempt
-from app.models.serve_window_proposal import ServeWindowProposal
+from app.models.serve_window import ServeWindow
 from app.models.video import Video
 from app.services import player_service
 from app.services.serve_detection.feature_extractor import extract_frame_features
@@ -24,36 +23,38 @@ def check_existing_proposals_or_attempts(
     db: Session, video_id: int, user_id: str
 ) -> Dict:
     """
-    Check if there are existing proposals or serve attempts for a video.
+    Check if there are existing proposals or serve windows for a video.
 
     Returns:
-        Dict with counts of pending_proposals, reviewed_proposals, and serve_attempts
+        Dict with counts of pending_proposals, reviewed_proposals, and serve_windows
     """
     pending_proposals = (
-        db.query(ServeWindowProposal)
+        db.query(ServeWindow)
         .filter(
-            ServeWindowProposal.video_id == video_id,
-            ServeWindowProposal.user_id == user_id,
-            ServeWindowProposal.status == "pending",
+            ServeWindow.video_id == video_id,
+            ServeWindow.user_id == user_id,
+            ServeWindow.status == "pending",
         )
         .count()
     )
 
     reviewed_proposals = (
-        db.query(ServeWindowProposal)
+        db.query(ServeWindow)
         .filter(
-            ServeWindowProposal.video_id == video_id,
-            ServeWindowProposal.user_id == user_id,
-            ServeWindowProposal.status.in_(["accepted", "rejected", "edited"]),
+            ServeWindow.video_id == video_id,
+            ServeWindow.user_id == user_id,
+            ServeWindow.source == "auto",
+            ServeWindow.status.in_(["accepted", "rejected", "edited"]),
         )
         .count()
     )
 
-    serve_attempts = (
-        db.query(ServeAttempt)
+    serve_windows = (
+        db.query(ServeWindow)
         .filter(
-            ServeAttempt.video_id == video_id,
-            ServeAttempt.user_id == user_id,
+            ServeWindow.video_id == video_id,
+            ServeWindow.user_id == user_id,
+            ServeWindow.status.in_(["accepted", "edited"]),
         )
         .count()
     )
@@ -61,7 +62,7 @@ def check_existing_proposals_or_attempts(
     return {
         "pending_proposals": pending_proposals,
         "reviewed_proposals": reviewed_proposals,
-        "serve_attempts": serve_attempts,
+        "serve_windows": serve_windows,
     }
 
 
@@ -69,7 +70,7 @@ def get_pending_proposals(
     db: Session,
     video_id: int,
     user_id: str,
-) -> List[ServeWindowProposal]:
+) -> List[ServeWindow]:
     """Get pending proposals for a video and user.
 
     Args:
@@ -78,16 +79,16 @@ def get_pending_proposals(
         user_id: User ID
 
     Returns:
-        List of pending ServeWindowProposal instances ordered by start_timestamp
+        List of pending auto-detected serve windows ordered by start_timestamp
     """
     return (
-        db.query(ServeWindowProposal)
+        db.query(ServeWindow)
         .filter(
-            ServeWindowProposal.video_id == video_id,
-            ServeWindowProposal.user_id == user_id,
-            ServeWindowProposal.status == "pending",
+            ServeWindow.video_id == video_id,
+            ServeWindow.user_id == user_id,
+            ServeWindow.status == "pending",
         )
-        .order_by(ServeWindowProposal.start_timestamp)
+        .order_by(ServeWindow.start_timestamp)
         .all()
     )
 
@@ -105,11 +106,11 @@ def clear_pending_proposals(db: Session, video_id: int, user_id: str) -> int:
         Number of proposals deleted
     """
     deleted_count = (
-        db.query(ServeWindowProposal)
+        db.query(ServeWindow)
         .filter(
-            ServeWindowProposal.video_id == video_id,
-            ServeWindowProposal.user_id == user_id,
-            ServeWindowProposal.status == "pending",
+            ServeWindow.video_id == video_id,
+            ServeWindow.user_id == user_id,
+            ServeWindow.status == "pending",
         )
         .delete(synchronize_session=False)
     )
@@ -120,7 +121,7 @@ def clear_pending_proposals(db: Session, video_id: int, user_id: str) -> int:
 
 def generate_proposals(
     db: Session, video_id: int, user_id: str, force: bool = False
-) -> List[ServeWindowProposal]:
+) -> List[ServeWindow]:
     """
     Generate serve window proposals for a video using heuristic detection.
 
@@ -131,7 +132,7 @@ def generate_proposals(
         force: If True, clear existing pending proposals before generating new ones
 
     Returns:
-        List of created ServeWindowProposal records
+        List of created pending serve windows
 
     Raises:
         ValueError: If video not found, pose data not available, or proposals already exist
@@ -148,10 +149,10 @@ def generate_proposals(
                 "Review or clear them before running detection again."
             )
 
-    if existing["serve_attempts"] > 0 and not force:
+    if existing["serve_windows"] > 0 and not force:
         raise ValueError(
-            f"Video already has {existing['serve_attempts']} serve attempt(s). "
-            "Clear proposals and serve attempts if you want to re-run detection."
+            f"Video already has {existing['serve_windows']} serve window(s). "
+            "Clear proposals and serve windows if you want to re-run detection."
         )
 
     # Load video
@@ -318,17 +319,19 @@ def generate_proposals(
         return []
 
     # Create proposal records
-    proposals: List[ServeWindowProposal] = []
+    proposals: List[ServeWindow] = []
     for proposal_data in proposals_data:
         detection_features_json = json.dumps(
             proposal_data.get("detection_features", {})
         )
 
-        proposal = ServeWindowProposal(
+        proposal = ServeWindow(
             video_id=video_id,
             user_id=user_id,
+            player_id=None,
             start_timestamp=proposal_data["start_timestamp"],
             end_timestamp=proposal_data["end_timestamp"],
+            source="auto",
             model_version=MODEL_VERSION,
             confidence=proposal_data["confidence"],
             detection_features=detection_features_json,
@@ -347,9 +350,9 @@ def generate_proposals(
 
 def accept_proposal(
     db: Session, proposal_id: int, user_id: str, player_id: Optional[int] = None
-) -> ServeAttempt:
+) -> ServeWindow:
     """
-    Accept a proposal as-is, creating a ServeAttempt.
+    Accept a pending proposal in-place.
 
     Args:
         db: Database session
@@ -358,16 +361,12 @@ def accept_proposal(
         player_id: Optional player ID (defaults to user's default player)
 
     Returns:
-        Created ServeAttempt
+        Updated ServeWindow
 
     Raises:
         ValueError: If proposal not found or unauthorized
     """
-    proposal = (
-        db.query(ServeWindowProposal)
-        .filter(ServeWindowProposal.id == proposal_id)
-        .first()
-    )
+    proposal = db.query(ServeWindow).filter(ServeWindow.id == proposal_id).first()
     if not proposal:
         raise ValueError(f"Proposal {proposal_id} not found")
 
@@ -395,29 +394,14 @@ def accept_proposal(
     if not player or player.user_id != user_id:
         raise ValueError("Player not found or access denied")
 
-    # Create serve attempt
-    serve_attempt = ServeAttempt(
-        video_id=proposal.video_id,
-        user_id=user_id,
-        player_id=player_id,
-        start_timestamp=proposal.start_timestamp,
-        end_timestamp=proposal.end_timestamp,
-        source="auto_accepted",
-        source_proposal_id=proposal.id,
-    )
-    db.add(serve_attempt)
-    db.flush()  # Get serve_attempt.id
-
-    # Update proposal
+    # Update proposal row into an accepted serve window
+    proposal.player_id = player_id
     proposal.status = "accepted"
     proposal.reviewed_at = datetime.utcnow()
-    proposal.serve_attempt_id = serve_attempt.id
     db.commit()
 
-    logger.info(
-        "Accepted proposal %s as serve attempt %s", proposal_id, serve_attempt.id
-    )
-    return serve_attempt
+    logger.info("Accepted proposal %s", proposal_id)
+    return proposal
 
 
 def reject_proposal(db: Session, proposal_id: int, user_id: str) -> None:
@@ -432,11 +416,7 @@ def reject_proposal(db: Session, proposal_id: int, user_id: str) -> None:
     Raises:
         ValueError: If proposal not found or unauthorized
     """
-    proposal = (
-        db.query(ServeWindowProposal)
-        .filter(ServeWindowProposal.id == proposal_id)
-        .first()
-    )
+    proposal = db.query(ServeWindow).filter(ServeWindow.id == proposal_id).first()
     if not proposal:
         raise ValueError(f"Proposal {proposal_id} not found")
 
@@ -457,9 +437,9 @@ def reject_proposal(db: Session, proposal_id: int, user_id: str) -> None:
 
 def accept_all_proposals(
     db: Session, video_id: int, user_id: str, player_id: Optional[int] = None
-) -> List[ServeAttempt]:
+) -> List[ServeWindow]:
     """
-    Accept all pending proposals for a video, creating ServeAttempts.
+    Accept all pending proposals for a video in-place.
 
     Args:
         db: Database session
@@ -468,20 +448,20 @@ def accept_all_proposals(
         player_id: Optional player ID (defaults to user's default player)
 
     Returns:
-        List of created ServeAttempts
+        List of accepted serve windows
 
     Raises:
         ValueError: If no pending proposals found
     """
     # Get all pending proposals for this video and user
     proposals = (
-        db.query(ServeWindowProposal)
+        db.query(ServeWindow)
         .filter(
-            ServeWindowProposal.video_id == video_id,
-            ServeWindowProposal.user_id == user_id,
-            ServeWindowProposal.status == "pending",
+            ServeWindow.video_id == video_id,
+            ServeWindow.user_id == user_id,
+            ServeWindow.status == "pending",
         )
-        .order_by(ServeWindowProposal.start_timestamp)
+        .order_by(ServeWindow.start_timestamp)
         .all()
     )
 
@@ -504,39 +484,23 @@ def accept_all_proposals(
     if not player or player.user_id != user_id:
         raise ValueError("Player not found or access denied")
 
-    serve_attempts: List[ServeAttempt] = []
+    accepted_windows: List[ServeWindow] = []
     now = datetime.utcnow()
 
     for proposal in proposals:
-        # Create serve attempt
-        serve_attempt = ServeAttempt(
-            video_id=proposal.video_id,
-            user_id=user_id,
-            player_id=player_id,
-            start_timestamp=proposal.start_timestamp,
-            end_timestamp=proposal.end_timestamp,
-            source="auto_accepted",
-            source_proposal_id=proposal.id,
-        )
-        db.add(serve_attempt)
-        db.flush()  # Get serve_attempt.id
-
-        # Update proposal
+        proposal.player_id = player_id
         proposal.status = "accepted"
         proposal.reviewed_at = now
-        proposal.serve_attempt_id = serve_attempt.id
-
-        serve_attempts.append(serve_attempt)
+        accepted_windows.append(proposal)
 
     db.commit()
 
     logger.info(
-        "Accepted %d proposals for video %d, created %d serve attempts",
+        "Accepted %d proposals for video %d",
         len(proposals),
         video_id,
-        len(serve_attempts),
     )
-    return serve_attempts
+    return accepted_windows
 
 
 def reject_proposals_by_confidence(
@@ -562,12 +526,12 @@ def reject_proposals_by_confidence(
 
     # Get all pending proposals below threshold
     proposals = (
-        db.query(ServeWindowProposal)
+        db.query(ServeWindow)
         .filter(
-            ServeWindowProposal.video_id == video_id,
-            ServeWindowProposal.user_id == user_id,
-            ServeWindowProposal.status == "pending",
-            ServeWindowProposal.confidence < threshold,
+            ServeWindow.video_id == video_id,
+            ServeWindow.user_id == user_id,
+            ServeWindow.status == "pending",
+            ServeWindow.confidence < threshold,
         )
         .all()
     )
@@ -598,9 +562,9 @@ def accept_with_edits(
     new_start_timestamp: float,
     new_end_timestamp: float,
     player_id: Optional[int] = None,
-) -> ServeAttempt:
+) -> ServeWindow:
     """
-    Accept a proposal with edited timestamps, creating a ServeAttempt.
+    Accept a proposal with edited timestamps in-place.
 
     Args:
         db: Database session
@@ -611,16 +575,12 @@ def accept_with_edits(
         player_id: Optional player ID (defaults to user's default player)
 
     Returns:
-        Created ServeAttempt
+        Updated ServeWindow
 
     Raises:
         ValueError: If proposal not found, unauthorized, or timestamps invalid
     """
-    proposal = (
-        db.query(ServeWindowProposal)
-        .filter(ServeWindowProposal.id == proposal_id)
-        .first()
-    )
+    proposal = db.query(ServeWindow).filter(ServeWindow.id == proposal_id).first()
     if not proposal:
         raise ValueError(f"Proposal {proposal_id} not found")
 
@@ -647,28 +607,14 @@ def accept_with_edits(
     if not player or player.user_id != user_id:
         raise ValueError("Player not found or access denied")
 
-    # Create serve attempt with edited timestamps
-    serve_attempt = ServeAttempt(
-        video_id=proposal.video_id,
-        user_id=user_id,
-        player_id=player_id,
-        start_timestamp=new_start_timestamp,
-        end_timestamp=new_end_timestamp,
-        source="auto_edited",
-        source_proposal_id=proposal.id,
-        original_start_timestamp=proposal.start_timestamp,
-        original_end_timestamp=proposal.end_timestamp,
-    )
-    db.add(serve_attempt)
-    db.flush()  # Get serve_attempt.id
-
-    # Update proposal
+    proposal.player_id = player_id
+    proposal.original_start_timestamp = proposal.start_timestamp
+    proposal.original_end_timestamp = proposal.end_timestamp
+    proposal.start_timestamp = new_start_timestamp
+    proposal.end_timestamp = new_end_timestamp
     proposal.status = "edited"
     proposal.reviewed_at = datetime.utcnow()
-    proposal.serve_attempt_id = serve_attempt.id
     db.commit()
 
-    logger.info(
-        f"Accepted proposal {proposal_id} with edits as serve attempt {serve_attempt.id}"
-    )
-    return serve_attempt
+    logger.info("Accepted proposal %s with edits", proposal_id)
+    return proposal

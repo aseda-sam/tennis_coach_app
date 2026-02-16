@@ -1,4 +1,4 @@
-"""Service for serve attempt operations."""
+"""Service for serve window operations."""
 
 import logging
 from datetime import datetime
@@ -6,21 +6,23 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from app.api.schemas.serve_attempt import ServeAttemptCreate, ServeAttemptUpdate
+from app.api.schemas.serve_window import ServeWindowCreate, ServeWindowUpdate
 from app.core.shot_types import SERVE_SUBTYPES, is_valid_serve_subtype
 from app.models.player import Player
-from app.models.serve_attempt import ServeAttempt
+from app.models.serve_window import ServeWindow
 from app.services import player_service, video_service
 
 logger = logging.getLogger(__name__)
 
+VISIBLE_STATUSES = ("accepted", "edited")
 
-def validate_serve_attempt_timestamps(
+
+def validate_serve_window_timestamps(
     start_timestamp: float,
     end_timestamp: float,
     contact_timestamp: Optional[float] = None,
 ) -> None:
-    """Validate serve attempt timestamps.
+    """Validate serve window timestamps.
 
     Args:
         start_timestamp: Start timestamp
@@ -81,131 +83,134 @@ def validate_player_ownership(
     return player
 
 
-def create_serve_attempt(
+def create_serve_window(
     db: Session,
-    serve_attempt_data: ServeAttemptCreate,
+    serve_window_data: ServeWindowCreate,
     user_id: str,
-) -> ServeAttempt:
-    """Create a new serve attempt.
+) -> ServeWindow:
+    """Create a new serve window.
 
     Args:
         db: Database session
-        serve_attempt_data: Serve attempt creation data
-        user_id: User ID creating the serve attempt
+        serve_window_data: Serve window creation data
+        user_id: User ID creating the serve window
 
     Returns:
-        Created ServeAttempt instance
+        Created ServeWindow instance
 
     Raises:
         ValueError: If video not found, timestamps invalid, or player access denied
     """
     # Get video to check it exists
-    video = video_service.get_video_by_id(db, serve_attempt_data.video_id)
+    video = video_service.get_video_by_id(db, serve_window_data.video_id)
     if not video:
-        raise ValueError(f"Video with ID {serve_attempt_data.video_id} not found")
+        raise ValueError(f"Video with ID {serve_window_data.video_id} not found")
 
     # Validate timestamps
-    validate_serve_attempt_timestamps(
-        serve_attempt_data.start_timestamp,
-        serve_attempt_data.end_timestamp,
-        serve_attempt_data.contact_timestamp,
+    validate_serve_window_timestamps(
+        serve_window_data.start_timestamp,
+        serve_window_data.end_timestamp,
+        serve_window_data.contact_timestamp,
     )
 
     # Validate serve subtype
-    validate_serve_subtype(serve_attempt_data.serve_subtype)
+    validate_serve_subtype(serve_window_data.serve_subtype)
 
     # Auto-assign default player if not provided
-    player_id = serve_attempt_data.player_id
+    player_id = serve_window_data.player_id
     if not player_id:
         if video.primary_player_id:
             player_id = video.primary_player_id
             logger.debug(
-                "Auto-assigned video primary player %s for serve attempt", player_id
+                "Auto-assigned video primary player %s for serve window", player_id
             )
         else:
             default_player = player_service.get_or_create_default_player(db, user_id)
             player_id = default_player.id
-            logger.debug("Auto-assigned default player %s for serve attempt", player_id)
+            logger.debug("Auto-assigned default player %s for serve window", player_id)
 
     # Validate player ownership
     validate_player_ownership(db, player_id, user_id)
 
-    # Create serve attempt
-    db_serve_attempt = ServeAttempt(
-        video_id=serve_attempt_data.video_id,
+    # Create serve window
+    db_serve_window = ServeWindow(
+        video_id=serve_window_data.video_id,
         user_id=user_id,
         player_id=player_id,
-        start_timestamp=serve_attempt_data.start_timestamp,
-        end_timestamp=serve_attempt_data.end_timestamp,
-        contact_timestamp=serve_attempt_data.contact_timestamp,
-        court_side=serve_attempt_data.court_side,
-        serve_number=serve_attempt_data.serve_number,
-        serve_subtype=serve_attempt_data.serve_subtype,
-        in_out=serve_attempt_data.in_out,
+        start_timestamp=serve_window_data.start_timestamp,
+        end_timestamp=serve_window_data.end_timestamp,
+        contact_timestamp=serve_window_data.contact_timestamp,
+        court_side=serve_window_data.court_side,
+        serve_number=serve_window_data.serve_number,
+        serve_subtype=serve_window_data.serve_subtype,
+        in_out=serve_window_data.in_out,
+        source="manual",
+        status="accepted",
+        reviewed_at=datetime.utcnow(),
     )
-    db.add(db_serve_attempt)
+    db.add(db_serve_window)
     db.commit()
-    db.refresh(db_serve_attempt)
+    db.refresh(db_serve_window)
 
     logger.info(
-        f"Created serve attempt {db_serve_attempt.id} for video {serve_attempt_data.video_id}"
+        f"Created serve window {db_serve_window.id} for video {serve_window_data.video_id}"
     )
 
-    return db_serve_attempt
+    return db_serve_window
 
 
-def get_serve_attempt_by_id(
+def get_serve_window_by_id(
     db: Session,
-    serve_attempt_id: int,
+    serve_window_id: int,
     user_id: str,
-) -> ServeAttempt:
-    """Get a serve attempt by ID with authorization check.
+) -> ServeWindow:
+    """Get a serve window by ID with authorization check.
 
     Args:
         db: Database session
-        serve_attempt_id: Serve attempt ID
+        serve_window_id: Serve window ID
         user_id: User ID for authorization
 
     Returns:
-        ServeAttempt instance
+        ServeWindow instance
 
     Raises:
-        ValueError: If serve attempt not found or access denied
+        ValueError: If serve window not found or access denied
     """
-    serve_attempt = (
-        db.query(ServeAttempt).filter(ServeAttempt.id == serve_attempt_id).first()
+    serve_window = (
+        db.query(ServeWindow).filter(ServeWindow.id == serve_window_id).first()
     )
 
-    if not serve_attempt:
-        raise ValueError(f"Serve attempt with ID {serve_attempt_id} not found")
+    if not serve_window:
+        raise ValueError(f"Serve window with ID {serve_window_id} not found")
 
-    if serve_attempt.user_id != user_id:
+    if serve_window.user_id != user_id:
         raise ValueError("Access denied")
 
-    return serve_attempt
+    return serve_window
 
 
-def update_serve_attempt(
+def update_serve_window(
     db: Session,
-    serve_attempt_id: int,
-    updates: ServeAttemptUpdate,
+    serve_window_id: int,
+    updates: ServeWindowUpdate,
     user_id: str,
-) -> ServeAttempt:
-    """Update a serve attempt.
+) -> ServeWindow:
+    """Update a serve window.
 
     Args:
         db: Database session
-        serve_attempt_id: Serve attempt ID to update
+        serve_window_id: Serve window ID to update
         updates: Update data
         user_id: User ID for authorization
 
     Returns:
-        Updated ServeAttempt instance
+        Updated ServeWindow instance
 
     Raises:
-        ValueError: If serve attempt not found, access denied, or validation fails
+        ValueError: If serve window not found, access denied, or validation fails
     """
-    serve_attempt = get_serve_attempt_by_id(db, serve_attempt_id, user_id)
+    serve_window = get_serve_window_by_id(db, serve_window_id, user_id)
 
     # Validate player ownership if player_id is being updated
     if updates.player_id is not None:
@@ -215,20 +220,20 @@ def update_serve_attempt(
     start_ts = (
         updates.start_timestamp
         if updates.start_timestamp is not None
-        else serve_attempt.start_timestamp
+        else serve_window.start_timestamp
     )
     end_ts = (
         updates.end_timestamp
         if updates.end_timestamp is not None
-        else serve_attempt.end_timestamp
+        else serve_window.end_timestamp
     )
     contact_ts = (
         updates.contact_timestamp
         if updates.contact_timestamp is not None
-        else serve_attempt.contact_timestamp
+        else serve_window.contact_timestamp
     )
 
-    validate_serve_attempt_timestamps(start_ts, end_ts, contact_ts)
+    validate_serve_window_timestamps(start_ts, end_ts, contact_ts)
 
     # Validate serve subtype if being updated
     if updates.serve_subtype is not None:
@@ -237,40 +242,40 @@ def update_serve_attempt(
     # Update fields
     update_dict = updates.model_dump(exclude_unset=True)
     for key, value in update_dict.items():
-        setattr(serve_attempt, key, value)
+        setattr(serve_window, key, value)
 
     db.commit()
-    db.refresh(serve_attempt)
+    db.refresh(serve_window)
 
-    logger.info("Updated serve attempt %s", serve_attempt_id)
+    logger.info("Updated serve window %s", serve_window_id)
 
-    return serve_attempt
+    return serve_window
 
 
-def delete_serve_attempt(
+def delete_serve_window(
     db: Session,
-    serve_attempt_id: int,
+    serve_window_id: int,
     user_id: str,
 ) -> None:
-    """Delete a serve attempt.
+    """Delete a serve window.
 
     Args:
         db: Database session
-        serve_attempt_id: Serve attempt ID to delete
+        serve_window_id: Serve window ID to delete
         user_id: User ID for authorization
 
     Raises:
-        ValueError: If serve attempt not found or access denied
+        ValueError: If serve window not found or access denied
     """
-    serve_attempt = get_serve_attempt_by_id(db, serve_attempt_id, user_id)
+    serve_window = get_serve_window_by_id(db, serve_window_id, user_id)
 
-    db.delete(serve_attempt)
+    db.delete(serve_window)
     db.commit()
 
-    logger.info("Deleted serve attempt %s", serve_attempt_id)
+    logger.info("Deleted serve window %s", serve_window_id)
 
 
-def list_user_serve_attempts(
+def list_user_serve_windows(
     db: Session,
     user_id: str,
     player_id: Optional[int] = None,
@@ -278,8 +283,8 @@ def list_user_serve_attempts(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     video_id: Optional[int] = None,
-) -> List[ServeAttempt]:
-    """List serve attempts for a user with optional filters.
+) -> List[ServeWindow]:
+    """List serve windows for a user with optional filters.
 
     Args:
         db: Database session
@@ -291,69 +296,79 @@ def list_user_serve_attempts(
         video_id: Optional video ID filter
 
     Returns:
-        List of ServeAttempt instances ordered by creation date (newest first)
+        List of ServeWindow instances ordered by creation date (newest first)
 
     Raises:
         ValueError: If player_id provided but player not found or access denied
     """
-    query = db.query(ServeAttempt).filter(ServeAttempt.user_id == user_id)
+    query = db.query(ServeWindow).filter(
+        ServeWindow.user_id == user_id,
+        ServeWindow.status.in_(VISIBLE_STATUSES),
+    )
 
     # Apply filters
     if player_id is not None:
         # Validate player ownership
         validate_player_ownership(db, player_id, user_id)
-        query = query.filter(ServeAttempt.player_id == player_id)
+        query = query.filter(ServeWindow.player_id == player_id)
 
     if court_side is not None:
-        query = query.filter(ServeAttempt.court_side == court_side)
+        query = query.filter(ServeWindow.court_side == court_side)
 
     if video_id is not None:
-        query = query.filter(ServeAttempt.video_id == video_id)
+        query = query.filter(ServeWindow.video_id == video_id)
 
     if start_date is not None:
-        query = query.filter(ServeAttempt.created_at >= start_date)
+        query = query.filter(ServeWindow.created_at >= start_date)
 
     if end_date is not None:
-        query = query.filter(ServeAttempt.created_at <= end_date)
+        query = query.filter(ServeWindow.created_at <= end_date)
 
     # Order by creation date (newest first)
-    return query.order_by(ServeAttempt.created_at.desc()).all()
+    return query.order_by(ServeWindow.created_at.desc()).all()
 
 
-def reassign_video_serve_attempts(
+def reassign_video_serve_windows(
     db: Session,
     video_id: int,
     user_id: str,
     player_id: int,
 ) -> int:
-    """Reassign all serve attempts for a video to a new player."""
+    """Reassign all serve windows for a video to a new player."""
     validate_player_ownership(db, player_id, user_id)
     updated_count = (
-        db.query(ServeAttempt)
+        db.query(ServeWindow)
         .filter(
-            ServeAttempt.video_id == video_id,
-            ServeAttempt.user_id == user_id,
+            ServeWindow.video_id == video_id,
+            ServeWindow.user_id == user_id,
         )
-        .update({ServeAttempt.player_id: player_id}, synchronize_session=False)
+        .update({ServeWindow.player_id: player_id}, synchronize_session=False)
     )
     db.commit()
     return updated_count
 
 
-def get_serve_attempts_for_video(
+def get_serve_windows_for_video(
     db: Session,
     video_id: int,
-) -> List[ServeAttempt]:
-    """Get all serve attempts for a video.
+) -> List[ServeWindow]:
+    """Get all serve windows for a video.
 
     Args:
         db: Database session
         video_id: Video ID
 
     Returns:
-        List of ServeAttempt instances for the video
+        List of ServeWindow instances for the video
     """
-    return db.query(ServeAttempt).filter(ServeAttempt.video_id == video_id).all()
+    return (
+        db.query(ServeWindow)
+        .filter(
+            ServeWindow.video_id == video_id,
+            ServeWindow.status.in_(VISIBLE_STATUSES),
+        )
+        .all()
+    )
 
 
 def get_ball_contact_timestamps(
@@ -363,7 +378,7 @@ def get_ball_contact_timestamps(
 ) -> List[float]:
     """Get all ball contact timestamps for serves in a video.
 
-    Returns sorted, unique ball contact timestamps from serve attempts that have a contact point.
+    Returns sorted, unique ball contact timestamps from serve windows that have a contact point.
 
     Args:
         db: Database session
@@ -374,11 +389,11 @@ def get_ball_contact_timestamps(
         Sorted list of unique contact timestamps
     """
     rows = (
-        db.query(ServeAttempt.contact_timestamp)
+        db.query(ServeWindow.contact_timestamp)
         .filter(
-            ServeAttempt.video_id == video_id,
-            ServeAttempt.user_id == user_id,
-            ServeAttempt.contact_timestamp.isnot(None),
+            ServeWindow.video_id == video_id,
+            ServeWindow.user_id == user_id,
+            ServeWindow.contact_timestamp.isnot(None),
         )
         .all()
     )

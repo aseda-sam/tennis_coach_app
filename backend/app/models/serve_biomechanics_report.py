@@ -17,7 +17,7 @@ from app.core.database import Base
 
 
 class ServeBiomechanicsReport(Base):
-    """Computed phase segmentation and biomechanics metrics for a single serve attempt.
+    """Computed phase segmentation and biomechanics metrics for a single serve window.
 
     Stores phases + raw metric values only. No scoring, ratings, or coaching text.
     """
@@ -25,9 +25,9 @@ class ServeBiomechanicsReport(Base):
     __tablename__ = "serve_biomechanics_reports"
 
     id = Column(Integer, primary_key=True, index=True)
-    serve_attempt_id = Column(
+    serve_window_id = Column(
         Integer,
-        ForeignKey("serve_attempts.id", ondelete="CASCADE"),
+        ForeignKey("serve_windows.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -51,7 +51,7 @@ class ServeBiomechanicsReport(Base):
     )
 
     # Relationships
-    serve_attempt = relationship("ServeAttempt", backref="biomechanics_reports")
+    serve_window = relationship("ServeWindow", backref="biomechanics_reports")
     player = relationship("Player")
 
     __table_args__ = (

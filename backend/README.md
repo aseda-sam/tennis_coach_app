@@ -3,7 +3,7 @@
 FastAPI backend for a **serve-focused** tennis coaching MVP:
 
 - Upload a serve video
-- Tag `serve_attempts`
+- Tag `serve_windows`
 - Run pose detection + serve metrics in background jobs
 - Return a small set of coach-meaningful metrics + one recommendation
 
@@ -196,7 +196,7 @@ Each user has a default player profile that is automatically created or retrieve
 
 When a user signs up, they provide their name, dominant hand, and backhand style. This creates their default player profile. The profile can be updated later using the `/me` endpoint.
 
-**Note:** The default player is used for serve attempt tagging when no specific player is selected. Users can create additional players via `POST /v0/players/` if needed.
+**Note:** The default player is used for serve window tagging when no specific player is selected. Users can create additional players via `POST /v0/players/` if needed.
 
 ### Authorization
 
@@ -382,11 +382,11 @@ backend/
 
 ## Features (Serve MVP)
 
-- **Serve-focused workflow**: tag serve attempts, compute biomechanics on demand
+- **Serve-focused workflow**: tag serve windows, compute biomechanics on demand
 - **Pose detection**: MediaPipe pose estimation (background job)
-- **Biomechanics reports**: phases + metrics stored per serve attempt
+- **Biomechanics reports**: phases + metrics stored per serve window
 - **User Authentication**: Supabase-backed auth (disabled in `PROFILE=local`)
-- **User-based Data Isolation**: videos/players/serve attempts are scoped per user
+- **User-based Data Isolation**: videos/players/serve windows are scoped per user
 - **REST API**: FastAPI + OpenAPI (`/docs`)
 - **Background jobs**: RQ + Redis
 - **DB**: PostgreSQL (local Docker + production Supabase)

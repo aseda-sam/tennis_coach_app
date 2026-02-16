@@ -10,12 +10,12 @@ import {
   contactTimestampsQueryKey,
   useContactTimestamps,
 } from '../hooks/useContactTimestamps';
-import { useServeAttempts } from '../hooks/useServeAttempts';
+import { useServeWindows } from '../hooks/useServeWindows';
 import { useServeProposals } from '../hooks/useServeProposals';
 import { useVideoMetadata } from '../hooks/useVideos';
 import { useVideoUrl } from '../hooks/useVideoUrl';
-import { ServeAttempt, ServeAttemptCreate } from '../services/serveAttemptApi';
-import AddServeAttemptButton from './AddServeAttemptButton';
+import { ServeWindow, ServeWindowCreate } from '../services/serveWindowApi';
+import AddServeWindowButton from './AddServeWindowButton';
 import {
   ArrowBackIcon,
   CloseIcon,
@@ -28,8 +28,8 @@ import {
 } from './Icons';
 import LoadingIndicator from './LoadingIndicator';
 import ProposalRange from './ProposalRange';
-import ServeAttemptModal from './ServeAttemptModal';
-import ServeAttemptRange from './ServeAttemptRange';
+import ServeWindowModal from './ServeWindowModal';
+import ServeWindowRange from './ServeWindowRange';
 import StickFigureCanvas from './StickFigureCanvas';
 import VideoOverlay from './VideoOverlay';
 import './VideoPlayer.css';
@@ -43,11 +43,11 @@ interface VideoPlayerProps {
   onClose?: () => void;
   showControls?: boolean;
   aspectRatioMode?: 'cover' | 'contain' | 'auto';
-  videoId?: number; // Video ID for fetching serve attempts
+  videoId?: number; // Video ID for fetching serve windows
   hasPoseData?: boolean; // Whether pose detection data exists
   controlsBelow?: boolean; // Render controls below video instead of overlaying
-  onContactNavigate?: (serveAttemptId: number) => void; // Callback when serve attempt is navigated to
-  onNavigateReady?: (navigateFn: (serveAttemptId: number) => void) => void; // Callback to expose navigate function
+  onContactNavigate?: (serveWindowId: number) => void; // Callback when serve window is navigated to
+  onNavigateReady?: (navigateFn: (serveWindowId: number) => void) => void; // Callback to expose navigate function
   isDemo?: boolean; // If true, disable manual range tagging and editing
   naturalScroll?: boolean; // Scroll direction: false = traditional (scroll down = forward), true = natural (scroll down = backward)
   lowConfidenceThreshold?: number; // Threshold for coloring proposals as "uncertain"
@@ -77,10 +77,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
-  const [selectedServeAttempt, setSelectedServeAttempt] =
-    useState<ServeAttempt | null>(null);
+  const [selectedServeWindow, setSelectedServeWindow] =
+    useState<ServeWindow | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedServeAttemptId, setSelectedServeAttemptId] = useState<
+  const [selectedServeWindowId, setSelectedServeWindowId] = useState<
     number | undefined
   >();
   // View mode: 'video' = no overlay, 'skeleton' = video + overlay, 'stickfigure' = stick figure only
@@ -108,19 +108,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   } | null>(null);
   const [rangeInTime, setRangeInTime] = useState<number | null>(null);
   const [rangeOutTime, setRangeOutTime] = useState<number | null>(null);
-  const isAddServeAttemptVisible = !!videoId && !error && duration > 0;
+  const isAddServeWindowVisible = !!videoId && !error && duration > 0;
   const hasPoseDataForDetection = hasPoseData && !!videoId;
   const [detectionMessage, setDetectionMessage] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
-  // Use serve attempts hook if videoId is provided
+  // Use serve windows hook if videoId is provided
   const {
-    serveAttempts,
-    updateServeAttempt,
-    deleteServeAttempt,
-    createServeAttempt,
-  } = useServeAttempts({
+    serveWindows,
+    updateServeWindow,
+    deleteServeWindow,
+    createServeWindow,
+  } = useServeWindows({
     videoId,
     filters: videoId ? { video_id: videoId } : undefined,
     autoRefresh: !!videoId,
@@ -160,30 +160,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const hasExistingDetections =
     detectionStatus &&
     (detectionStatus.pending_proposals > 0 ||
-      detectionStatus.serve_attempts > 0);
+      detectionStatus.serve_windows > 0);
 
   // Handle auto-detect
   const handleAutoDetect = useCallback(async () => {
     if (!videoId || isRunningDetection) return;
 
-    // If there are existing proposals or serve attempts, ask for confirmation
+    // If there are existing proposals or serve windows, ask for confirmation
     if (hasExistingDetections && detectionStatus) {
-      const hasServeAttempts = detectionStatus.serve_attempts > 0;
+      const hasServeWindows = detectionStatus.serve_windows > 0;
       const hasPendingProposals = detectionStatus.pending_proposals > 0;
 
       let message = 'This video already has ';
       const parts: string[] = [];
-      if (hasServeAttempts) {
-        parts.push(`${detectionStatus.serve_attempts} serve attempt(s)`);
+      if (hasServeWindows) {
+        parts.push(`${detectionStatus.serve_windows} serve window(s)`);
       }
       if (hasPendingProposals) {
         parts.push(`${detectionStatus.pending_proposals} pending proposal(s)`);
       }
       message += parts.join(' and ') + '. ';
 
-      if (hasServeAttempts) {
+      if (hasServeWindows) {
         message +=
-          'Running detection again will only add new proposals. Delete existing serve attempts first if you want to start fresh.';
+          'Running detection again will only add new proposals. Delete existing serve windows first if you want to start fresh.';
         showDetectionMessage(message);
         return;
       }
@@ -557,17 +557,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setOpenRange(null);
   }, []);
 
-  const createServeAttemptFromMarks = useCallback(() => {
+  const createServeWindowFromMarks = useCallback(() => {
     if (!markedRange) return;
     setOpenRange(markedRange);
     setOpenRequestId((prev) => prev + 1);
   }, [markedRange]);
 
-  // Navigate to a specific serve attempt by ID (exposed via callback)
-  const navigateToServeAttemptById = useCallback(
-    (serveAttemptId: number) => {
-      const serveAttempt = serveAttempts.find((sa) => sa.id === serveAttemptId);
-      if (!serveAttempt) return;
+  // Navigate to a specific serve window by ID (exposed via callback)
+  const navigateToServeWindowById = useCallback(
+    (serveWindowId: number) => {
+      const serveWindow = serveWindows.find((sa) => sa.id === serveWindowId);
+      if (!serveWindow) return;
 
       const video = videoRef.current;
       if (!video) return;
@@ -577,78 +577,78 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         video.pause();
       }
 
-      // Navigate to start of serve attempt
-      const targetTime = serveAttempt.start_timestamp;
+      // Navigate to start of serve window
+      const targetTime = serveWindow.start_timestamp;
 
       // Update state first to ensure overlay gets the new time immediately
       setCurrentTime(targetTime);
-      setSelectedServeAttemptId(serveAttempt.id);
+      setSelectedServeWindowId(serveWindow.id);
 
       // Then seek video (this will trigger seeked event which overlay listens to)
       video.currentTime = targetTime;
 
-      onContactNavigate?.(serveAttempt.id);
+      onContactNavigate?.(serveWindow.id);
     },
-    [serveAttempts, isPlaying, onContactNavigate]
+    [serveWindows, isPlaying, onContactNavigate]
   );
 
-  // Get sorted serve attempts for navigation (by start_timestamp)
-  const sortedServeAttempts = useMemo(() => {
-    return [...serveAttempts].sort((a, b) => {
+  // Get sorted serve windows for navigation (by start_timestamp)
+  const sortedServeWindows = useMemo(() => {
+    return [...serveWindows].sort((a, b) => {
       return a.start_timestamp - b.start_timestamp;
     });
-  }, [serveAttempts]);
+  }, [serveWindows]);
 
-  // Navigate to previous/next serve attempt
-  const navigateToPreviousServeAttempt = useCallback(() => {
-    if (sortedServeAttempts.length === 0) return;
+  // Navigate to previous/next serve window
+  const navigateToPreviousServeWindow = useCallback(() => {
+    if (sortedServeWindows.length === 0) return;
 
     const video = videoRef.current;
     const videoTime = video?.currentTime ?? currentTime;
 
-    // Find the serve attempt before current time (with small tolerance)
+    // Find the serve window before current time (with small tolerance)
     const tolerance = 0.1;
-    const previousAttempts = sortedServeAttempts.filter((sa) => {
+    const previousAttempts = sortedServeWindows.filter((sa) => {
       return sa.start_timestamp < videoTime - tolerance;
     });
 
     if (previousAttempts.length > 0) {
       const previousAttempt = previousAttempts[previousAttempts.length - 1];
-      navigateToServeAttemptById(previousAttempt.id);
+      navigateToServeWindowById(previousAttempt.id);
     }
-  }, [sortedServeAttempts, currentTime, navigateToServeAttemptById]);
+  }, [sortedServeWindows, currentTime, navigateToServeWindowById]);
 
-  const navigateToNextServeAttempt = useCallback(() => {
-    if (sortedServeAttempts.length === 0) return;
+  const navigateToNextServeWindow = useCallback(() => {
+    if (sortedServeWindows.length === 0) return;
 
     const video = videoRef.current;
     const videoTime = video?.currentTime ?? currentTime;
 
-    // Find the serve attempt after current time (with small tolerance)
+    // Find the serve window after current time (with small tolerance)
     const tolerance = 0.1;
-    const nextAttempt = sortedServeAttempts.find((sa) => {
+    const nextAttempt = sortedServeWindows.find((sa) => {
       return sa.start_timestamp > videoTime + tolerance;
     });
 
     if (nextAttempt) {
-      navigateToServeAttemptById(nextAttempt.id);
+      navigateToServeWindowById(nextAttempt.id);
     }
-  }, [sortedServeAttempts, currentTime, navigateToServeAttemptById]);
+  }, [sortedServeWindows, currentTime, navigateToServeWindowById]);
 
   // Check if previous/next navigation is available
-  const hasPreviousServeAttempt = useMemo(() => {
+  const hasPreviousServeWindow = useMemo(() => {
     const tolerance = 0.1;
-    return sortedServeAttempts.some((sa) => {
+    return sortedServeWindows.some((sa) => {
       return sa.start_timestamp < currentTime - tolerance;
     });
-  }, [sortedServeAttempts, currentTime]);
+  }, [sortedServeWindows, currentTime]);
 
-  const hasNextServeAttempt = useMemo(() => {
+  const hasNextServeWindow = useMemo(() => {
     const tolerance = 0.1;
-    return sortedServeAttempts.some((sa) => {
+    return sortedServeWindows.some((sa) => {
       return sa.start_timestamp > currentTime + tolerance;
     });
-  }, [sortedServeAttempts, currentTime]);
+  }, [sortedServeWindows, currentTime]);
 
   const hasAnyContact = contactTimestamps.length > 0;
 
@@ -672,7 +672,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const hasPreviousContact = previousContactTimestamp !== undefined;
   const hasNextContact = nextContactTimestamp !== undefined;
 
-  // Navigate to a specific timestamp (for moments within serve attempts)
+  // Navigate to a specific timestamp (for moments within serve windows)
   const navigateToTimestamp = useCallback(
     (timestamp: number) => {
       const video = videoRef.current;
@@ -699,15 +699,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     navigateToTimestamp(nextContactTimestamp);
   }, [nextContactTimestamp, navigateToTimestamp]);
 
-  const navigateRef = useRef(navigateToServeAttemptById);
+  const navigateRef = useRef(navigateToServeWindowById);
 
   useEffect(() => {
-    navigateRef.current = navigateToServeAttemptById;
-  }, [navigateToServeAttemptById]);
+    navigateRef.current = navigateToServeWindowById;
+  }, [navigateToServeWindowById]);
 
-  const stableNavigateToServeAttemptById = useCallback(
-    (serveAttemptId: number) => {
-      navigateRef.current(serveAttemptId);
+  const stableNavigateToServeWindowById = useCallback(
+    (serveWindowId: number) => {
+      navigateRef.current(serveWindowId);
     },
     []
   );
@@ -715,11 +715,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Expose navigate function to parent
   useEffect(() => {
     if (onNavigateReady) {
-      onNavigateReady(stableNavigateToServeAttemptById);
+      onNavigateReady(stableNavigateToServeWindowById);
     }
-  }, [onNavigateReady, stableNavigateToServeAttemptById]);
+  }, [onNavigateReady, stableNavigateToServeWindowById]);
 
-  // Keyboard shortcuts for frame navigation, play/pause, and serve attempt navigation
+  // Keyboard shortcuts for frame navigation, play/pause, and serve window navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Only handle keyboard shortcuts when video player is focused or when not in input fields
@@ -746,11 +746,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           break;
         case '[':
           event.preventDefault();
-          navigateToPreviousServeAttempt();
+          navigateToPreviousServeWindow();
           break;
         case ']':
           event.preventDefault();
-          navigateToNextServeAttempt();
+          navigateToNextServeWindow();
           break;
         case 's':
         case 'S':
@@ -800,8 +800,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     togglePlay,
     navigateToPreviousFrame,
     navigateToNextFrame,
-    navigateToPreviousServeAttempt,
-    navigateToNextServeAttempt,
+    navigateToPreviousServeWindow,
+    navigateToNextServeWindow,
     isDemo,
     currentTime,
     zoomIn,
@@ -1093,13 +1093,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             {/* Add Serve Attempt Button (overlay placement) */}
             {!controlsBelow && (
-              <AddServeAttemptButton
+              <AddServeWindowButton
                 currentTime={currentTime}
                 videoId={videoId || 0}
                 videoDuration={duration}
                 fps={videoMetadata?.fps}
-                onAddServeAttempt={async (serveAttempt: ServeAttemptCreate) => {
-                  await createServeAttempt(serveAttempt);
+                onAddServeWindow={async (serveWindow: ServeWindowCreate) => {
+                  await createServeWindow(serveWindow);
                   if (videoId) {
                     queryClient.invalidateQueries({
                       queryKey: contactTimestampsQueryKey(videoId),
@@ -1109,7 +1109,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     clearRangeMarks();
                   }
                 }}
-                isVisible={isAddServeAttemptVisible}
+                isVisible={isAddServeWindowVisible}
                 isReadOnly={isDemo}
                 placement="overlay"
                 onSeek={seekToTime}
@@ -1175,7 +1175,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       }}
                       step={frameStep}
                     />
-                    {/* Proposal ranges (shown before serve attempts) */}
+                    {/* Proposal ranges (shown before serve windows) */}
                     {proposals.length > 0 && duration > 0 && (
                       <div className="proposal-ranges">
                         {proposals.map((proposal) => (
@@ -1227,37 +1227,37 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         ))}
                       </div>
                     )}
-                    {/* Serve attempt ranges */}
-                    {serveAttempts.length > 0 && duration > 0 && (
+                    {/* Serve window ranges */}
+                    {serveWindows.length > 0 && duration > 0 && (
                       <div
-                        className="serve-attempt-ranges"
-                        data-tour="serve-attempt-ranges"
+                        className="serve-window-ranges"
+                        data-tour="serve-window-ranges"
                       >
-                        {serveAttempts.map((serveAttempt) => {
+                        {serveWindows.map((serveWindow) => {
                           const isSelected =
-                            selectedServeAttemptId === serveAttempt.id;
+                            selectedServeWindowId === serveWindow.id;
 
                           return (
-                            <ServeAttemptRange
-                              key={serveAttempt.id}
-                              serveAttempt={serveAttempt}
+                            <ServeWindowRange
+                              key={serveWindow.id}
+                              serveWindow={serveWindow}
                               duration={duration}
                               currentTime={currentTime}
                               isSelected={isSelected}
                               isDemo={isDemo}
                               onClick={() => {
-                                setSelectedServeAttempt(serveAttempt);
-                                setSelectedServeAttemptId(serveAttempt.id);
+                                setSelectedServeWindow(serveWindow);
+                                setSelectedServeWindowId(serveWindow.id);
                                 setIsModalOpen(true);
                               }}
                               onContactClick={() => {
-                                if (serveAttempt.contact_timestamp) {
-                                  seekToTime(serveAttempt.contact_timestamp);
+                                if (serveWindow.contact_timestamp) {
+                                  seekToTime(serveWindow.contact_timestamp);
                                 }
                               }}
                               onMarkContact={async (timestamp) => {
                                 try {
-                                  await updateServeAttempt(serveAttempt.id, {
+                                  await updateServeWindow(serveWindow.id, {
                                     contact_timestamp: timestamp,
                                   });
                                   if (videoId) {
@@ -1318,15 +1318,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       <div className="range-marked-actions">
                         <button
                           className="range-marked-btn"
-                          onClick={createServeAttemptFromMarks}
+                          onClick={createServeWindowFromMarks}
                           disabled={!markedRange || isDemo}
                           title={
                             isDemo
                               ? 'Demo mode: range tagging is disabled'
-                              : 'Create serve attempt from marked range'
+                              : 'Create serve window from marked range'
                           }
                         >
-                          Create serve attempt
+                          Create serve window
                         </button>
                         <button
                           className="range-marked-btn range-marked-btn--ghost"
@@ -1416,7 +1416,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             )}
           </div>
 
-          {/* Posture Analysis Sidebar - Removed: serve attempts already have metrics via serve analysis */}
+          {/* Posture Analysis Sidebar - Removed: serve windows already have metrics via serve analysis */}
         </div>
       </div>
 
@@ -1429,13 +1429,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               className="video-controls-below__scrubber-track"
               ref={scrubberTrackRef}
             >
-              <AddServeAttemptButton
+              <AddServeWindowButton
                 currentTime={currentTime}
                 videoId={videoId || 0}
                 videoDuration={duration}
                 fps={videoMetadata?.fps}
-                onAddServeAttempt={async (serveAttempt: ServeAttemptCreate) => {
-                  await createServeAttempt(serveAttempt);
+                onAddServeWindow={async (serveWindow: ServeWindowCreate) => {
+                  await createServeWindow(serveWindow);
                   if (videoId) {
                     queryClient.invalidateQueries({
                       queryKey: contactTimestampsQueryKey(videoId),
@@ -1445,7 +1445,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     clearRangeMarks();
                   }
                 }}
-                isVisible={isAddServeAttemptVisible}
+                isVisible={isAddServeWindowVisible}
                 isReadOnly={isDemo}
                 placement="scrubber"
                 onSeek={seekToTime}
@@ -1484,7 +1484,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 onTouchEnd={handleSeekEnd}
                 step={frameStep}
               />
-              {/* Proposal ranges (shown before serve attempts) */}
+              {/* Proposal ranges (shown before serve windows) */}
               {proposals.length > 0 && duration > 0 && (
                 <div className="video-controls-below__proposal-ranges">
                   {proposals.map((proposal) => (
@@ -1527,37 +1527,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   ))}
                 </div>
               )}
-              {/* Serve attempt ranges */}
-              {serveAttempts.length > 0 && duration > 0 && (
+              {/* Serve window ranges */}
+              {serveWindows.length > 0 && duration > 0 && (
                 <div
-                  className="video-controls-below__serve-attempt-ranges"
-                  data-tour="serve-attempt-ranges"
+                  className="video-controls-below__serve-window-ranges"
+                  data-tour="serve-window-ranges"
                 >
-                  {serveAttempts.map((serveAttempt) => {
-                    const isSelected =
-                      selectedServeAttemptId === serveAttempt.id;
+                  {serveWindows.map((serveWindow) => {
+                    const isSelected = selectedServeWindowId === serveWindow.id;
 
                     return (
-                      <ServeAttemptRange
-                        key={serveAttempt.id}
-                        serveAttempt={serveAttempt}
+                      <ServeWindowRange
+                        key={serveWindow.id}
+                        serveWindow={serveWindow}
                         duration={duration}
                         currentTime={currentTime}
                         isSelected={isSelected}
                         isDemo={isDemo}
                         onClick={() => {
-                          setSelectedServeAttempt(serveAttempt);
-                          setSelectedServeAttemptId(serveAttempt.id);
+                          setSelectedServeWindow(serveWindow);
+                          setSelectedServeWindowId(serveWindow.id);
                           setIsModalOpen(true);
                         }}
                         onContactClick={() => {
-                          if (serveAttempt.contact_timestamp) {
-                            seekToTime(serveAttempt.contact_timestamp);
+                          if (serveWindow.contact_timestamp) {
+                            seekToTime(serveWindow.contact_timestamp);
                           }
                         }}
                         onMarkContact={async (timestamp) => {
                           try {
-                            await updateServeAttempt(serveAttempt.id, {
+                            await updateServeWindow(serveWindow.id, {
                               contact_timestamp: timestamp,
                             });
                             if (videoId) {
@@ -1617,15 +1616,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 <div className="range-marked-actions">
                   <button
                     className="range-marked-btn"
-                    onClick={createServeAttemptFromMarks}
+                    onClick={createServeWindowFromMarks}
                     disabled={!markedRange || isDemo}
                     title={
                       isDemo
                         ? 'Demo mode: range tagging is disabled'
-                        : 'Create serve attempt from marked range'
+                        : 'Create serve window from marked range'
                     }
                   >
-                    Create serve attempt
+                    Create serve window
                   </button>
                   <button
                     className="range-marked-btn range-marked-btn--ghost"
@@ -1658,10 +1657,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             )}
             <button
               className="video-controls-below__nav-btn"
-              disabled={!hasPreviousServeAttempt}
-              onClick={navigateToPreviousServeAttempt}
+              disabled={!hasPreviousServeWindow}
+              onClick={navigateToPreviousServeWindow}
               title={
-                hasPreviousServeAttempt
+                hasPreviousServeWindow
                   ? 'Go to previous serve'
                   : 'No previous serve'
               }
@@ -1678,9 +1677,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </button>
             <button
               className="video-controls-below__nav-btn video-controls-below__nav-btn--next"
-              disabled={!hasNextServeAttempt}
-              onClick={navigateToNextServeAttempt}
-              title={hasNextServeAttempt ? 'Go to next serve' : 'No next serve'}
+              disabled={!hasNextServeWindow}
+              onClick={navigateToNextServeWindow}
+              title={hasNextServeWindow ? 'Go to next serve' : 'No next serve'}
             >
               <span>Next Serve</span>
               <ArrowBackIcon size={18} />
@@ -1702,10 +1701,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
 
           {/* Serve Detail Panel (inline, non-blocking) */}
-          {isModalOpen && selectedServeAttempt && (
+          {isModalOpen && selectedServeWindow && (
             <div className="video-controls-below__serve-panel">
-              <ServeAttemptModal
-                serveAttempt={selectedServeAttempt}
+              <ServeWindowModal
+                serveWindow={selectedServeWindow}
                 isOpen={isModalOpen}
                 videoDuration={duration}
                 currentTime={currentTime}
@@ -1713,19 +1712,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 mode="panel"
                 onClose={() => {
                   setIsModalOpen(false);
-                  setSelectedServeAttempt(null);
-                  setSelectedServeAttemptId(undefined);
+                  setSelectedServeWindow(null);
+                  setSelectedServeWindowId(undefined);
                 }}
-                onUpdate={async (serveAttemptId, updates) => {
-                  await updateServeAttempt(serveAttemptId, updates);
+                onUpdate={async (serveWindowId, updates) => {
+                  await updateServeWindow(serveWindowId, updates);
                   if (videoId && updates.contact_timestamp !== undefined) {
                     queryClient.invalidateQueries({
                       queryKey: contactTimestampsQueryKey(videoId),
                     });
                   }
                 }}
-                onDelete={async (serveAttemptId) => {
-                  await deleteServeAttempt(serveAttemptId);
+                onDelete={async (serveWindowId) => {
+                  await deleteServeWindow(serveWindowId);
                   if (videoId) {
                     queryClient.invalidateQueries({
                       queryKey: contactTimestampsQueryKey(videoId),
@@ -1741,8 +1740,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       {/* Serve Attempt Management Modal (overlay mode for non-controlsBelow) */}
       {!controlsBelow && (
-        <ServeAttemptModal
-          serveAttempt={selectedServeAttempt}
+        <ServeWindowModal
+          serveWindow={selectedServeWindow}
           isOpen={isModalOpen}
           videoDuration={duration}
           currentTime={currentTime}
@@ -1750,19 +1749,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           mode="overlay"
           onClose={() => {
             setIsModalOpen(false);
-            setSelectedServeAttempt(null);
-            setSelectedServeAttemptId(undefined);
+            setSelectedServeWindow(null);
+            setSelectedServeWindowId(undefined);
           }}
-          onUpdate={async (serveAttemptId, updates) => {
-            await updateServeAttempt(serveAttemptId, updates);
+          onUpdate={async (serveWindowId, updates) => {
+            await updateServeWindow(serveWindowId, updates);
             if (videoId && updates.contact_timestamp !== undefined) {
               queryClient.invalidateQueries({
                 queryKey: contactTimestampsQueryKey(videoId),
               });
             }
           }}
-          onDelete={async (serveAttemptId) => {
-            await deleteServeAttempt(serveAttemptId);
+          onDelete={async (serveWindowId) => {
+            await deleteServeWindow(serveWindowId);
             if (videoId) {
               queryClient.invalidateQueries({
                 queryKey: contactTimestampsQueryKey(videoId),

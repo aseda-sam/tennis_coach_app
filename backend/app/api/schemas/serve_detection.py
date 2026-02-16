@@ -22,9 +22,6 @@ class ServeWindowProposalInfo(BaseModel):
     status: str = Field(
         description="Proposal status: pending, accepted, rejected, edited"
     )
-    serve_attempt_id: Optional[int] = Field(
-        default=None, description="ID of resulting serve attempt if accepted/edited"
-    )
     created_at: datetime = Field(description="Creation timestamp")
     reviewed_at: Optional[datetime] = Field(
         default=None, description="Review timestamp"
@@ -82,7 +79,7 @@ class DetectionStatusResponse(BaseModel):
     video_id: int = Field(description="Video ID")
     pending_proposals: int = Field(description="Number of pending proposals")
     reviewed_proposals: int = Field(description="Number of reviewed proposals")
-    serve_attempts: int = Field(description="Number of serve attempts")
+    serve_windows: int = Field(description="Number of serve windows")
     can_run_detection: bool = Field(
         description="Whether detection can be run without force flag"
     )
@@ -108,7 +105,7 @@ class BulkAcceptResponse(BaseModel):
 
     video_id: int = Field(description="Video ID")
     accepted_count: int = Field(description="Number of proposals accepted")
-    serve_attempt_ids: List[int] = Field(description="IDs of created serve attempts")
+    serve_window_ids: List[int] = Field(description="IDs of created serve windows")
 
 
 class RejectByConfidenceRequest(BaseModel):

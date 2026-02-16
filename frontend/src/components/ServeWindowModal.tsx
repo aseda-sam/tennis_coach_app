@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ServeAttempt, ServeAttemptUpdate } from '../services/serveAttemptApi';
+import { ServeWindow, ServeWindowUpdate } from '../services/serveWindowApi';
 import {
   formatTime,
   validateContactTimestamp,
@@ -8,25 +8,25 @@ import {
 import './BallContactModal.css'; // Reuse styles
 import TimelineMarkers from './TimelineMarkers';
 
-interface ServeAttemptModalProps {
-  serveAttempt: ServeAttempt | null;
+interface ServeWindowModalProps {
+  serveWindow: ServeWindow | null;
   isOpen: boolean;
   videoDuration: number;
   currentTime?: number;
   onClose: () => void;
   onUpdate: (
-    serveAttemptId: number,
-    updates: ServeAttemptUpdate
+    serveWindowId: number,
+    updates: ServeWindowUpdate
   ) => Promise<void>;
-  onDelete: (serveAttemptId: number) => Promise<void>;
+  onDelete: (serveWindowId: number) => Promise<void>;
   onSeek?: (time: number) => void;
   isDemo?: boolean;
   /** Use panel mode to show as side panel instead of blocking overlay */
   mode?: 'overlay' | 'panel';
 }
 
-const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
-  serveAttempt,
+const ServeWindowModal: React.FC<ServeWindowModalProps> = ({
+  serveWindow,
   isOpen,
   videoDuration,
   currentTime = 0,
@@ -41,35 +41,35 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [formData, setFormData] = useState<
-    ServeAttemptUpdate & {
+    ServeWindowUpdate & {
       start_timestamp: number;
       end_timestamp: number;
       contact_timestamp: number | null;
     }
   >({
-    start_timestamp: serveAttempt?.start_timestamp ?? 0,
-    end_timestamp: serveAttempt?.end_timestamp ?? 0,
-    contact_timestamp: serveAttempt?.contact_timestamp ?? null,
-    court_side: serveAttempt?.court_side ?? null,
-    serve_number: serveAttempt?.serve_number ?? null,
-    serve_subtype: serveAttempt?.serve_subtype ?? null,
-    in_out: serveAttempt?.in_out ?? null,
+    start_timestamp: serveWindow?.start_timestamp ?? 0,
+    end_timestamp: serveWindow?.end_timestamp ?? 0,
+    contact_timestamp: serveWindow?.contact_timestamp ?? null,
+    court_side: serveWindow?.court_side ?? null,
+    serve_number: serveWindow?.serve_number ?? null,
+    serve_subtype: serveWindow?.serve_subtype ?? null,
+    in_out: serveWindow?.in_out ?? null,
   });
 
   useEffect(() => {
-    if (serveAttempt) {
+    if (serveWindow) {
       setFormData({
-        start_timestamp: serveAttempt.start_timestamp,
-        end_timestamp: serveAttempt.end_timestamp,
-        contact_timestamp: serveAttempt.contact_timestamp,
-        court_side: serveAttempt.court_side,
-        serve_number: serveAttempt.serve_number,
-        serve_subtype: serveAttempt.serve_subtype,
-        in_out: serveAttempt.in_out,
+        start_timestamp: serveWindow.start_timestamp,
+        end_timestamp: serveWindow.end_timestamp,
+        contact_timestamp: serveWindow.contact_timestamp,
+        court_side: serveWindow.court_side,
+        serve_number: serveWindow.serve_number,
+        serve_subtype: serveWindow.serve_subtype,
+        in_out: serveWindow.in_out,
       });
     }
     setValidationError(null);
-  }, [serveAttempt]);
+  }, [serveWindow]);
 
   useEffect(() => {
     if (
@@ -106,18 +106,18 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
     }
   }, [formData, videoDuration, isEditing]);
 
-  if (!isOpen || !serveAttempt) return null;
+  if (!isOpen || !serveWindow) return null;
 
   const handleEdit = () => {
     setIsEditing(true);
     setFormData({
-      start_timestamp: serveAttempt.start_timestamp,
-      end_timestamp: serveAttempt.end_timestamp,
-      contact_timestamp: serveAttempt.contact_timestamp,
-      court_side: serveAttempt.court_side,
-      serve_number: serveAttempt.serve_number,
-      serve_subtype: serveAttempt.serve_subtype,
-      in_out: serveAttempt.in_out,
+      start_timestamp: serveWindow.start_timestamp,
+      end_timestamp: serveWindow.end_timestamp,
+      contact_timestamp: serveWindow.contact_timestamp,
+      court_side: serveWindow.court_side,
+      serve_number: serveWindow.serve_number,
+      serve_subtype: serveWindow.serve_subtype,
+      in_out: serveWindow.in_out,
     });
     setValidationError(null);
   };
@@ -160,7 +160,7 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
 
     setIsLoading(true);
     try {
-      await onUpdate(serveAttempt.id, formData);
+      await onUpdate(serveWindow.id, formData);
       setIsEditing(false);
       setValidationError(null);
     } catch (error) {
@@ -177,10 +177,10 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
 
     setIsLoading(true);
     try {
-      await onDelete(serveAttempt.id);
+      await onDelete(serveWindow.id);
       onClose();
     } catch (error) {
-      alert('Failed to delete serve attempt. Please try again.');
+      alert('Failed to delete serve window. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -327,53 +327,53 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
               <div className="serve-detail-panel__detail-row">
                 <span className="serve-detail-panel__detail-label">Range:</span>
                 <span className="serve-detail-panel__detail-value">
-                  {formatTime(serveAttempt.start_timestamp)} -{' '}
-                  {formatTime(serveAttempt.end_timestamp)}
+                  {formatTime(serveWindow.start_timestamp)} -{' '}
+                  {formatTime(serveWindow.end_timestamp)}
                 </span>
               </div>
 
-              {serveAttempt.contact_timestamp !== null && (
+              {serveWindow.contact_timestamp !== null && (
                 <div className="serve-detail-panel__detail-row">
                   <span className="serve-detail-panel__detail-label">
                     Contact:
                   </span>
                   <span className="serve-detail-panel__detail-value">
-                    {formatTime(serveAttempt.contact_timestamp)}
+                    {formatTime(serveWindow.contact_timestamp)}
                   </span>
                 </div>
               )}
 
-              {serveAttempt.court_side && (
+              {serveWindow.court_side && (
                 <div className="serve-detail-panel__detail-row">
                   <span className="serve-detail-panel__detail-label">
                     Court:
                   </span>
                   <span className="serve-detail-panel__detail-value">
-                    {serveAttempt.court_side.charAt(0).toUpperCase() +
-                      serveAttempt.court_side.slice(1)}
+                    {serveWindow.court_side.charAt(0).toUpperCase() +
+                      serveWindow.court_side.slice(1)}
                   </span>
                 </div>
               )}
 
-              {serveAttempt.serve_subtype && (
+              {serveWindow.serve_subtype && (
                 <div className="serve-detail-panel__detail-row">
                   <span className="serve-detail-panel__detail-label">
                     Type:
                   </span>
                   <span className="serve-detail-panel__detail-value">
-                    {serveAttempt.serve_subtype.charAt(0).toUpperCase() +
-                      serveAttempt.serve_subtype.slice(1)}
+                    {serveWindow.serve_subtype.charAt(0).toUpperCase() +
+                      serveWindow.serve_subtype.slice(1)}
                   </span>
                 </div>
               )}
 
-              {serveAttempt.in_out && (
+              {serveWindow.in_out && (
                 <div className="serve-detail-panel__detail-row">
                   <span className="serve-detail-panel__detail-label">
                     Result:
                   </span>
                   <span className="serve-detail-panel__detail-value">
-                    {serveAttempt.in_out.replace('_', ' ')}
+                    {serveWindow.in_out.replace('_', ' ')}
                   </span>
                 </div>
               )}
@@ -569,52 +569,52 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
               <div className="detail-row">
                 <span className="detail-label">Range:</span>
                 <span className="detail-value">
-                  {formatTime(serveAttempt.start_timestamp)} -{' '}
-                  {formatTime(serveAttempt.end_timestamp)}
+                  {formatTime(serveWindow.start_timestamp)} -{' '}
+                  {formatTime(serveWindow.end_timestamp)}
                 </span>
               </div>
 
-              {serveAttempt.contact_timestamp !== null && (
+              {serveWindow.contact_timestamp !== null && (
                 <div className="detail-row">
                   <span className="detail-label">Contact:</span>
                   <span className="detail-value">
-                    {formatTime(serveAttempt.contact_timestamp)}
+                    {formatTime(serveWindow.contact_timestamp)}
                   </span>
                 </div>
               )}
 
-              {serveAttempt.court_side && (
+              {serveWindow.court_side && (
                 <div className="detail-row">
                   <span className="detail-label">Court Side:</span>
                   <span className="detail-value capitalize">
-                    {serveAttempt.court_side}
+                    {serveWindow.court_side}
                   </span>
                 </div>
               )}
 
-              {serveAttempt.serve_number && (
+              {serveWindow.serve_number && (
                 <div className="detail-row">
                   <span className="detail-label">Serve Number:</span>
                   <span className="detail-value">
-                    {serveAttempt.serve_number}
+                    {serveWindow.serve_number}
                   </span>
                 </div>
               )}
 
-              {serveAttempt.serve_subtype && (
+              {serveWindow.serve_subtype && (
                 <div className="detail-row">
                   <span className="detail-label">Serve Type:</span>
                   <span className="detail-value capitalize">
-                    {serveAttempt.serve_subtype}
+                    {serveWindow.serve_subtype}
                   </span>
                 </div>
               )}
 
-              {serveAttempt.in_out && (
+              {serveWindow.in_out && (
                 <div className="detail-row">
                   <span className="detail-label">In/Out:</span>
                   <span className="detail-value capitalize">
-                    {serveAttempt.in_out.replace('_', ' ')}
+                    {serveWindow.in_out.replace('_', ' ')}
                   </span>
                 </div>
               )}
@@ -676,4 +676,4 @@ const ServeAttemptModal: React.FC<ServeAttemptModalProps> = ({
   );
 };
 
-export default ServeAttemptModal;
+export default ServeWindowModal;

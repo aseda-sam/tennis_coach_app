@@ -154,13 +154,13 @@ const AdminDemoManagement: React.FC<AdminDemoManagementProps> = ({
                   </span>
                   <span
                     className={
-                      activeDemo.serve_attempt_count > 0
+                      activeDemo.serve_window_count > 0
                         ? 'status-ok'
                         : 'status-warning'
                     }
                   >
-                    {activeDemo.serve_attempt_count > 0
-                      ? `✓ ${activeDemo.serve_attempt_count} Key Moment${activeDemo.serve_attempt_count !== 1 ? 's' : ''}`
+                    {activeDemo.serve_window_count > 0
+                      ? `✓ ${activeDemo.serve_window_count} Key Moment${activeDemo.serve_window_count !== 1 ? 's' : ''}`
                       : '⚠ No Key Moments'}
                   </span>
                 </div>
@@ -232,13 +232,13 @@ const AdminDemoManagement: React.FC<AdminDemoManagementProps> = ({
                     </span>
                     <span
                       className={
-                        video.serve_attempt_count > 0
+                        video.serve_window_count > 0
                           ? 'status-ok'
                           : 'status-warning'
                       }
                     >
-                      {video.serve_attempt_count > 0
-                        ? `✓ ${video.serve_attempt_count} Serve${video.serve_attempt_count !== 1 ? 's' : ''}`
+                      {video.serve_window_count > 0
+                        ? `✓ ${video.serve_window_count} Serve${video.serve_window_count !== 1 ? 's' : ''}`
                         : '⚠ No Serves'}
                     </span>
                   </div>

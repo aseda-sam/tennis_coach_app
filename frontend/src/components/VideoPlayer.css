@@ -731,7 +731,7 @@
 }
 
 /* Contact Markers */
-.serve-attempt-ranges,
+.serve-window-ranges,
 .proposal-ranges,
 .contact-markers {
   position: absolute;
@@ -1146,7 +1146,7 @@
   box-shadow: var(--shadow-primary-lg);
 }
 
-.video-controls-below__serve-attempt-ranges,
+.video-controls-below__serve-window-ranges,
 .video-controls-below__proposal-ranges,
 .video-controls-below__contact-markers {
   position: absolute;
@@ -1158,14 +1158,14 @@
   z-index: 3;
 }
 
-.video-controls-below__serve-attempt-ranges .serve-attempt-range,
+.video-controls-below__serve-window-ranges .serve-window-range,
 .video-controls-below__proposal-ranges .proposal-range,
 .video-controls-below__contact-markers .ball-contact-marker {
   top: var(--spacing-xs);
 }
 
-.video-controls-below__serve-attempt-ranges .serve-attempt-range,
-.video-controls-below__serve-attempt-ranges .serve-attempt-range *,
+.video-controls-below__serve-window-ranges .serve-window-range,
+.video-controls-below__serve-window-ranges .serve-window-range *,
 .video-controls-below__proposal-ranges .proposal-range,
 .video-controls-below__proposal-ranges .proposal-range *,
 .video-controls-below__contact-markers .ball-contact-marker,

@@ -114,8 +114,8 @@ export const useServeProposals = ({
       // Invalidate and refetch proposals and status
       queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
       queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
-      // Also invalidate serve attempts since accepting creates one
-      queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
+      // Also invalidate serve windows since accepting creates one
+      queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
     },
   });
 
@@ -142,9 +142,9 @@ export const useServeProposals = ({
       request?: AcceptProposalRequest;
     }) => serveProposalApi.accept(proposalId, request),
     onSuccess: () => {
-      // Invalidate proposals and serve attempts
+      // Invalidate proposals and serve windows
       queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
+      queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
       queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
     },
   });
@@ -169,9 +169,9 @@ export const useServeProposals = ({
       request: EditProposalRequest;
     }) => serveProposalApi.edit(proposalId, request),
     onSuccess: () => {
-      // Invalidate proposals and serve attempts
+      // Invalidate proposals and serve windows
       queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
+      queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
       queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
     },
   });
@@ -302,7 +302,7 @@ export const useServeProposals = ({
 
       // Invalidate queries to refresh
       queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
+      queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
       queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
 
       return { accepted: response.accepted_count, failed: 0 };

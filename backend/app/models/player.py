@@ -32,4 +32,4 @@ class Player(Base):
     user_id = Column(String(36), nullable=False, index=True)  # UUID as string
 
     # Relationships
-    serve_attempts = relationship("ServeAttempt", back_populates="player")
+    serve_windows = relationship("ServeWindow", back_populates="player")

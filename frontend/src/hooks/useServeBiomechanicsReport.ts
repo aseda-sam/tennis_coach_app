@@ -4,11 +4,11 @@ import { ServeBiomechanicsReport } from '../types/biomechanics';
 
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
-export function useServeBiomechanicsReport(serveAttemptId: number | null) {
+export function useServeBiomechanicsReport(serveWindowId: number | null) {
   return useQuery<ServeBiomechanicsReport>({
-    queryKey: ['biomechanics-report', serveAttemptId],
-    queryFn: () => biomechanicsApi.getReport(serveAttemptId!),
-    enabled: serveAttemptId !== null && serveAttemptId > 0,
+    queryKey: ['biomechanics-report', serveWindowId],
+    queryFn: () => biomechanicsApi.getReport(serveWindowId!),
+    enabled: serveWindowId !== null && serveWindowId > 0,
     staleTime: STALE_TIME,
     retry: 1,
   });
@@ -18,11 +18,11 @@ export function useRecomputeServeBiomechanics() {
   const queryClient = useQueryClient();
 
   return useMutation<ServeBiomechanicsReport, Error, number>({
-    mutationFn: (serveAttemptId: number) =>
-      biomechanicsApi.computeReport(serveAttemptId),
+    mutationFn: (serveWindowId: number) =>
+      biomechanicsApi.computeReport(serveWindowId),
     onSuccess: (data) => {
       queryClient.invalidateQueries({
-        queryKey: ['biomechanics-report', data.serve_attempt_id],
+        queryKey: ['biomechanics-report', data.serve_window_id],
       });
     },
   });

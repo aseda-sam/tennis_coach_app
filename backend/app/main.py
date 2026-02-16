@@ -22,9 +22,9 @@ from app.api.routes import (
     config,
     overlay_data,
     players,
-    serve_attempts,
     serve_biomechanics,
     serve_detection,
+    serve_windows,
     video,
 )
 from app.core.config import settings
@@ -316,9 +316,9 @@ app.include_router(
 )
 
 app.include_router(
-    serve_attempts.router,
-    prefix="/v0/serve-attempts",
-    tags=["serve-attempts"],
+    serve_windows.router,
+    prefix="/v0/serve-windows",
+    tags=["serve-windows"],
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},
@@ -411,7 +411,7 @@ async def api_info() -> dict[str, str]:
         "version": "0.1.0",
         "status": "alpha",
         "warning": "This API is in alpha stage. Breaking changes may occur without notice.",
-        "endpoints": "videos: /v0/videos, serve-attempts: /v0/serve-attempts, players: /v0/players, overlay-data: /v0/overlay-data, analysis: /v0/analysis",
+        "endpoints": "videos: /v0/videos, serve-windows: /v0/serve-windows, players: /v0/players, overlay-data: /v0/overlay-data, analysis: /v0/analysis",
     }
 
 

@@ -6,7 +6,6 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.schemas.serve_attempt import ServeAttemptInfo
 from app.api.schemas.serve_detection import (
     AcceptProposalRequest,
     BulkAcceptRequest,
@@ -19,6 +18,7 @@ from app.api.schemas.serve_detection import (
     RejectByConfidenceResponse,
     ServeWindowProposalInfo,
 )
+from app.api.schemas.serve_window import ServeWindowInfo
 from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
@@ -44,7 +44,7 @@ async def get_detection_status(
     """
     Get serve detection status for a video.
 
-    Returns counts of existing proposals and serve attempts.
+    Returns counts of existing proposals and serve windows.
     """
     try:
         # Get video to check authorization
@@ -61,14 +61,14 @@ async def get_detection_status(
         )
 
         can_run = (
-            status_data["pending_proposals"] == 0 and status_data["serve_attempts"] == 0
+            status_data["pending_proposals"] == 0 and status_data["serve_windows"] == 0
         )
 
         return DetectionStatusResponse(
             video_id=video_id,
             pending_proposals=status_data["pending_proposals"],
             reviewed_proposals=status_data["reviewed_proposals"],
-            serve_attempts=status_data["serve_attempts"],
+            serve_windows=status_data["serve_windows"],
             can_run_detection=can_run,
         )
 
@@ -94,7 +94,7 @@ async def propose_serve_windows(
     Run serve detection on a video and generate proposals.
 
     Requires pose detection to be completed first.
-    Will fail if pending proposals or serve attempts already exist,
+    Will fail if pending proposals or serve windows already exist,
     unless force=true is specified (which clears pending proposals first).
     """
     try:
@@ -198,7 +198,7 @@ async def get_proposals(
 
 @router.post(
     "/serve-detection/proposals/{proposal_id}/accept",
-    response_model=ServeAttemptInfo,
+    response_model=ServeWindowInfo,
     status_code=status.HTTP_201_CREATED,
 )
 async def accept_proposal(
@@ -206,15 +206,15 @@ async def accept_proposal(
     request: AcceptProposalRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> ServeAttemptInfo:
+) -> ServeWindowInfo:
     """
-    Accept a proposal as-is, creating a ServeAttempt.
+    Accept a proposal as-is, creating a ServeWindow.
     """
     try:
-        serve_attempt = proposal_service.accept_proposal(
+        serve_window = proposal_service.accept_proposal(
             db, proposal_id, current_user["id"], request.player_id
         )
-        return ServeAttemptInfo.model_validate(serve_attempt)
+        return ServeWindowInfo.model_validate(serve_window)
 
     except ValueError as e:
         log_and_raise_error(e, "accept_proposal", {"proposal_id": proposal_id})
@@ -246,7 +246,7 @@ async def reject_proposal(
 
 @router.post(
     "/serve-detection/proposals/{proposal_id}/edit",
-    response_model=ServeAttemptInfo,
+    response_model=ServeWindowInfo,
     status_code=status.HTTP_201_CREATED,
 )
 async def edit_proposal(
@@ -254,12 +254,12 @@ async def edit_proposal(
     request: EditProposalRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> ServeAttemptInfo:
+) -> ServeWindowInfo:
     """
-    Accept a proposal with edited timestamps, creating a ServeAttempt.
+    Accept a proposal with edited timestamps, creating a ServeWindow.
     """
     try:
-        serve_attempt = proposal_service.accept_with_edits(
+        serve_window = proposal_service.accept_with_edits(
             db,
             proposal_id,
             current_user["id"],
@@ -267,7 +267,7 @@ async def edit_proposal(
             request.end_timestamp,
             request.player_id,
         )
-        return ServeAttemptInfo.model_validate(serve_attempt)
+        return ServeWindowInfo.model_validate(serve_window)
 
     except ValueError as e:
         error_msg = str(e).lower()
@@ -295,10 +295,10 @@ async def accept_all_proposals(
     db: Session = Depends(get_db),
 ) -> BulkAcceptResponse:
     """
-    Accept all pending proposals for a video, creating ServeAttempts.
+    Accept all pending proposals for a video, creating ServeWindows.
 
     This is a bulk operation that accepts all pending proposals at once,
-    creating a ServeAttempt for each one.
+    creating a ServeWindow for each one.
     """
     try:
         # Get video to check authorization
@@ -311,14 +311,14 @@ async def accept_all_proposals(
         require_video_not_demo(video, current_user)
 
         # Accept all proposals
-        serve_attempts = proposal_service.accept_all_proposals(
+        serve_windows = proposal_service.accept_all_proposals(
             db, video_id, current_user["id"], request.player_id
         )
 
         return BulkAcceptResponse(
             video_id=video_id,
-            accepted_count=len(serve_attempts),
-            serve_attempt_ids=[sa.id for sa in serve_attempts],
+            accepted_count=len(serve_windows),
+            serve_window_ids=[sa.id for sa in serve_windows],
         )
 
     except ValueError as e:

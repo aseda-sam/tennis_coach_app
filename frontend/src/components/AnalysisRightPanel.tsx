@@ -1,5 +1,5 @@
 import React from 'react';
-import ServeAttemptsPanel from './ServeAttemptsPanel';
+import ServeWindowsPanel from './ServeWindowsPanel';
 import './AnalysisRightPanel.css';
 
 interface AnalysisRightPanelProps {
@@ -8,7 +8,7 @@ interface AnalysisRightPanelProps {
   analysisStatus?: {
     has_analysis?: boolean;
   };
-  onContactClick?: (serveAttemptId: number) => void; // Callback when serve attempt is clicked
+  onContactClick?: (serveWindowId: number) => void; // Callback when serve window is clicked
   isDemo?: boolean; // If true, indicates demo mode (for future use)
 }
 
@@ -22,9 +22,9 @@ const AnalysisRightPanel: React.FC<AnalysisRightPanelProps> = ({
   return (
     <div className="analysis-right-panel">
       {analysisStatus?.has_analysis && (
-        <ServeAttemptsPanel
+        <ServeWindowsPanel
           videoId={videoId}
-          onServeAttemptClick={onContactClick}
+          onServeWindowClick={onContactClick}
           isDemo={isDemo}
         />
       )}

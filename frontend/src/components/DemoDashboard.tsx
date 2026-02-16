@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAdmin } from '../hooks/useAdmin';
-import { useServeAttempts } from '../hooks/useServeAttempts';
+import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
@@ -41,19 +41,19 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
   // Use React Query hook for analysis status
   const { data: analysisStatus } = useVideoAnalysisStatus(demoVideo?.id || 0);
 
-  // Get serve attempts for this video using the hook (for admin analysis functionality)
-  const { serveAttempts } = useServeAttempts({
+  // Get serve windows for this video using the hook (for admin analysis functionality)
+  const { serveWindows } = useServeWindows({
     videoId: demoVideo?.id,
     filters: demoVideo?.id ? { video_id: demoVideo.id } : undefined,
     autoRefresh: true,
   });
 
   const hasPoseAnalysis = analysisStatus?.has_analysis || false;
-  const hasServeAttempts = serveAttempts.length > 0;
-  const showStatusWarning = isAdmin && (!hasPoseAnalysis || !hasServeAttempts);
+  const hasServeWindows = serveWindows.length > 0;
+  const showStatusWarning = isAdmin && (!hasPoseAnalysis || !hasServeWindows);
 
   const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
-    ((serveAttemptId: number) => void) | null
+    ((serveWindowId: number) => void) | null
   >(null);
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(false);
@@ -88,7 +88,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
         placement: 'bottom',
       },
       {
-        target: 'serve-attempt-ranges',
+        target: 'serve-window-ranges',
         title: 'Key Moments',
         content: 'Navigate key moments directly from the timeline.',
         placement: 'top',
@@ -126,15 +126,15 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
     localStorage.setItem('demoTourCompleted', 'true');
   }, []);
 
-  const handleServeAttemptClick = useCallback(
-    (serveAttemptId: number) => {
-      videoPlayerNavigate?.(serveAttemptId);
+  const handleServeWindowClick = useCallback(
+    (serveWindowId: number) => {
+      videoPlayerNavigate?.(serveWindowId);
     },
     [videoPlayerNavigate]
   );
 
   const handleNavigateReady = useCallback(
-    (navigateFn: (serveAttemptId: number) => void) => {
+    (navigateFn: (serveWindowId: number) => void) => {
       setVideoPlayerNavigate(() => navigateFn);
     },
     []
@@ -176,7 +176,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
                 ⚠ Missing pose analysis
               </span>
             )}
-            {!hasServeAttempts && (
+            {!hasServeWindows && (
               <span className="demo-dashboard__status-item warning">
                 ⚠ No key moments tagged
               </span>
@@ -247,7 +247,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
               videoId={demoVideo.id}
               videoFilename={demoVideo.filename}
               analysisStatus={analysisStatus}
-              onContactClick={handleServeAttemptClick}
+              onContactClick={handleServeWindowClick}
               isDemo={isDemoReadOnly}
             />
           </div>

@@ -2,14 +2,12 @@ import api from './api';
 import { ServeBiomechanicsReport } from '../types/biomechanics';
 
 export const biomechanicsApi = {
-  getReport: (serveAttemptId: number): Promise<ServeBiomechanicsReport> =>
-    api
-      .get(`/serve-attempts/${serveAttemptId}/biomechanics`)
-      .then((r) => r.data),
+  getReport: (serveWindowId: number): Promise<ServeBiomechanicsReport> =>
+    api.get(`/serve-windows/${serveWindowId}/biomechanics`).then((r) => r.data),
 
-  computeReport: (serveAttemptId: number): Promise<ServeBiomechanicsReport> =>
+  computeReport: (serveWindowId: number): Promise<ServeBiomechanicsReport> =>
     api
-      .post(`/serve-attempts/${serveAttemptId}/biomechanics/compute`)
+      .post(`/serve-windows/${serveWindowId}/biomechanics/compute`)
       .then((r) => r.data),
 
   getPlayerHistory: (

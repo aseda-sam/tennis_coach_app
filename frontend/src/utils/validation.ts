@@ -90,15 +90,15 @@ export function validateManualTimestamp(
     return basicValidation;
   }
 
-  // No additional restrictions - serve attempts can start from the beginning of the video
+  // No additional restrictions - serve windows can start from the beginning of the video
   return { isValid: true };
 }
 
 /**
  * Validates an optional contact timestamp against a serve range.
  * @param contactTimestamp - The optional contact timestamp in seconds
- * @param startTimestamp - Serve attempt start timestamp in seconds
- * @param endTimestamp - Serve attempt end timestamp in seconds
+ * @param startTimestamp - Serve window start timestamp in seconds
+ * @param endTimestamp - Serve window end timestamp in seconds
  * @param videoDuration - The total duration of the video in seconds
  * @returns Validation result with error message if invalid
  */

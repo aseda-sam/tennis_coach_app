@@ -1,12 +1,16 @@
 import api from './api';
 
-export interface ServeAttempt {
+export interface ServeWindow {
   id: number;
   video_id: number;
   player_id: number;
   start_timestamp: number;
   end_timestamp: number;
   contact_timestamp: number | null;
+  source: string;
+  status: string;
+  confidence: number | null;
+  model_version: string | null;
   court_side: string | null;
   serve_number: number | null;
   serve_subtype: string | null;
@@ -14,7 +18,7 @@ export interface ServeAttempt {
   created_at: string;
 }
 
-export interface ServeAttemptCreate {
+export interface ServeWindowCreate {
   video_id: number;
   player_id?: number | null;
   start_timestamp: number;
@@ -26,7 +30,7 @@ export interface ServeAttemptCreate {
   in_out?: string | null;
 }
 
-export interface ServeAttemptUpdate {
+export interface ServeWindowUpdate {
   player_id?: number | null;
   start_timestamp?: number | null;
   end_timestamp?: number | null;
@@ -37,7 +41,7 @@ export interface ServeAttemptUpdate {
   in_out?: string | null;
 }
 
-export interface ServeAttemptFilters {
+export interface ServeWindowFilters {
   player_id?: number;
   court_side?: string;
   video_id?: number;
@@ -45,26 +49,26 @@ export interface ServeAttemptFilters {
   end_date?: string;
 }
 
-export const serveAttemptApi = {
-  // Create a new serve attempt
-  create: async (serveAttempt: ServeAttemptCreate): Promise<ServeAttempt> => {
-    const response = await api.post<ServeAttempt>(
-      '/serve-attempts/',
-      serveAttempt
+export const serveWindowApi = {
+  // Create a new serve window
+  create: async (serveWindow: ServeWindowCreate): Promise<ServeWindow> => {
+    const response = await api.post<ServeWindow>(
+      '/serve-windows/',
+      serveWindow
     );
     return response.data;
   },
 
-  // Get a specific serve attempt by ID
-  getById: async (serveAttemptId: number): Promise<ServeAttempt> => {
-    const response = await api.get<ServeAttempt>(
-      `/serve-attempts/${serveAttemptId}`
+  // Get a specific serve window by ID
+  getById: async (serveWindowId: number): Promise<ServeWindow> => {
+    const response = await api.get<ServeWindow>(
+      `/serve-windows/${serveWindowId}`
     );
     return response.data;
   },
 
-  // List serve attempts with optional filters
-  list: async (filters?: ServeAttemptFilters): Promise<ServeAttempt[]> => {
+  // List serve windows with optional filters
+  list: async (filters?: ServeWindowFilters): Promise<ServeWindow[]> => {
     const params = new URLSearchParams();
     if (filters?.player_id)
       params.append('player_id', filters.player_id.toString());
@@ -75,25 +79,25 @@ export const serveAttemptApi = {
     if (filters?.end_date) params.append('end_date', filters.end_date);
 
     const queryString = params.toString();
-    const url = `/serve-attempts/me${queryString ? `?${queryString}` : ''}`;
-    const response = await api.get<ServeAttempt[]>(url);
+    const url = `/serve-windows/me${queryString ? `?${queryString}` : ''}`;
+    const response = await api.get<ServeWindow[]>(url);
     return response.data;
   },
 
-  // Update a serve attempt
+  // Update a serve window
   update: async (
-    serveAttemptId: number,
-    updates: ServeAttemptUpdate
-  ): Promise<ServeAttempt> => {
-    const response = await api.put<ServeAttempt>(
-      `/serve-attempts/${serveAttemptId}`,
+    serveWindowId: number,
+    updates: ServeWindowUpdate
+  ): Promise<ServeWindow> => {
+    const response = await api.put<ServeWindow>(
+      `/serve-windows/${serveWindowId}`,
       updates
     );
     return response.data;
   },
 
-  // Delete a serve attempt
-  delete: async (serveAttemptId: number): Promise<void> => {
-    await api.delete(`/serve-attempts/${serveAttemptId}`);
+  // Delete a serve window
+  delete: async (serveWindowId: number): Promise<void> => {
+    await api.delete(`/serve-windows/${serveWindowId}`);
   },
 };

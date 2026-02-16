@@ -1,4 +1,4 @@
-"""Serve attempt API routes."""
+"""Serve window API routes."""
 
 import logging
 from datetime import datetime
@@ -7,40 +7,40 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.schemas.serve_attempt import (
-    ServeAttemptCreate,
-    ServeAttemptDetail,
-    ServeAttemptInfo,
-    ServeAttemptUpdate,
+from app.api.schemas.serve_window import (
+    ServeWindowCreate,
+    ServeWindowDetail,
+    ServeWindowInfo,
+    ServeWindowUpdate,
 )
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
-from app.services import serve_attempt_service, video_service
+from app.services import serve_window_service, video_service
 from app.utils.authorization import require_video_access, require_video_not_demo
 from app.utils.error_handling import handle_not_found_error, log_and_raise_error
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["serve-attempts"])
+router = APIRouter(tags=["serve-windows"])
 
 
-@router.post("/", response_model=ServeAttemptInfo, status_code=status.HTTP_201_CREATED)
-async def create_serve_attempt(
-    serve_attempt: ServeAttemptCreate,
+@router.post("/", response_model=ServeWindowInfo, status_code=status.HTTP_201_CREATED)
+async def create_serve_window(
+    serve_window: ServeWindowCreate,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> ServeAttemptInfo:
+) -> ServeWindowInfo:
     """
-    Create a manually-tagged serve attempt (start/end/optional contact).
+    Create a manually-tagged serve window (start/end/optional contact).
 
     If player_id is omitted, automatically assigns user's default player.
     Validates player ownership (player.user_id == current_user.user_id).
     """
     try:
         # Get video to check authorization
-        video = video_service.get_video_by_id(db, serve_attempt.video_id)
+        video = video_service.get_video_by_id(db, serve_window.video_id)
         if not video:
-            raise handle_not_found_error("video", str(serve_attempt.video_id))
+            raise handle_not_found_error("video", str(serve_window.video_id))
 
         # Check authorization
         require_video_access(video, current_user)
@@ -48,18 +48,18 @@ async def create_serve_attempt(
         # Prevent modification of demo videos
         require_video_not_demo(video, current_user)
 
-        db_serve_attempt = serve_attempt_service.create_serve_attempt(
+        db_serve_window = serve_window_service.create_serve_window(
             db=db,
-            serve_attempt_data=serve_attempt,
+            serve_window_data=serve_window,
             user_id=current_user["id"],
         )
 
-        return ServeAttemptInfo.model_validate(db_serve_attempt)
+        return ServeWindowInfo.model_validate(db_serve_window)
 
     except ValueError as e:
         error_msg = str(e).lower()
         if "not found" in error_msg:
-            raise handle_not_found_error("video", str(serve_attempt.video_id)) from e
+            raise handle_not_found_error("video", str(serve_window.video_id)) from e
         if "access denied" in error_msg or "forbidden" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -73,44 +73,44 @@ async def create_serve_attempt(
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
         log_and_raise_error(
-            e, "create_serve_attempt", {"video_id": serve_attempt.video_id}
+            e, "create_serve_window", {"video_id": serve_window.video_id}
         )
 
 
-@router.put("/{serve_attempt_id}", response_model=ServeAttemptInfo)
-async def update_serve_attempt(
-    serve_attempt_id: int,
-    updates: ServeAttemptUpdate,
+@router.put("/{serve_window_id}", response_model=ServeWindowInfo)
+async def update_serve_window(
+    serve_window_id: int,
+    updates: ServeWindowUpdate,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> ServeAttemptInfo:
-    """Update a serve attempt (e.g., adjust timestamps)."""
+) -> ServeWindowInfo:
+    """Update a serve window (e.g., adjust timestamps)."""
     try:
-        # Get serve attempt to check demo status
-        serve_attempt = serve_attempt_service.get_serve_attempt_by_id(
+        # Get serve window to check demo status
+        serve_window = serve_window_service.get_serve_window_by_id(
             db=db,
-            serve_attempt_id=serve_attempt_id,
+            serve_window_id=serve_window_id,
             user_id=current_user["id"],
         )
 
         # Get video to check demo status
-        video = video_service.get_video_by_id(db, serve_attempt.video_id)
+        video = video_service.get_video_by_id(db, serve_window.video_id)
         if video:
             require_video_not_demo(video, current_user)
 
-        updated_serve_attempt = serve_attempt_service.update_serve_attempt(
+        updated_serve_window = serve_window_service.update_serve_window(
             db=db,
-            serve_attempt_id=serve_attempt_id,
+            serve_window_id=serve_window_id,
             updates=updates,
             user_id=current_user["id"],
         )
 
-        return ServeAttemptInfo.model_validate(updated_serve_attempt)
+        return ServeWindowInfo.model_validate(updated_serve_window)
 
     except ValueError as e:
         error_msg = str(e).lower()
         if "not found" in error_msg:
-            raise handle_not_found_error("serve_attempt", str(serve_attempt_id)) from e
+            raise handle_not_found_error("serve_window", str(serve_window_id)) from e
         if "access denied" in error_msg or "forbidden" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -124,12 +124,12 @@ async def update_serve_attempt(
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
         log_and_raise_error(
-            e, "update_serve_attempt", {"serve_attempt_id": serve_attempt_id}
+            e, "update_serve_window", {"serve_window_id": serve_window_id}
         )
 
 
-@router.get("/me", response_model=List[ServeAttemptInfo])
-async def get_my_serve_attempts(
+@router.get("/me", response_model=List[ServeWindowInfo])
+async def get_my_serve_windows(
     player_id: Optional[int] = Query(None, description="Filter by specific player"),
     court_side: Optional[str] = Query(None, description="Filter by court side"),
     start_date: Optional[datetime] = Query(None, description="Filter by start date"),
@@ -137,15 +137,15 @@ async def get_my_serve_attempts(
     video_id: Optional[int] = Query(None, description="Filter by video ID"),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> List[ServeAttemptInfo]:
+) -> List[ServeWindowInfo]:
     """
-    Get my serve attempts with optional filters (enables analytics).
+    Get my serve windows with optional filters (enables analytics).
 
     If player_id provided, returns serves for that specific player.
     Otherwise returns all serves for user's players.
     """
     try:
-        serve_attempts = serve_attempt_service.list_user_serve_attempts(
+        serve_windows = serve_window_service.list_user_serve_windows(
             db=db,
             user_id=current_user["id"],
             player_id=player_id,
@@ -155,7 +155,7 @@ async def get_my_serve_attempts(
             video_id=video_id,
         )
 
-        return [ServeAttemptInfo.model_validate(sa) for sa in serve_attempts]
+        return [ServeWindowInfo.model_validate(sa) for sa in serve_windows]
 
     except ValueError as e:
         error_msg = str(e).lower()
@@ -171,29 +171,29 @@ async def get_my_serve_attempts(
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
-        log_and_raise_error(e, "get_my_serve_attempts", {})
+        log_and_raise_error(e, "get_my_serve_windows", {})
 
 
-@router.get("/{serve_attempt_id}", response_model=ServeAttemptDetail)
-async def get_serve_attempt(
-    serve_attempt_id: int,
+@router.get("/{serve_window_id}", response_model=ServeWindowDetail)
+async def get_serve_window(
+    serve_window_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> ServeAttemptDetail:
-    """Get details of a specific serve attempt."""
+) -> ServeWindowDetail:
+    """Get details of a specific serve window."""
     try:
-        serve_attempt = serve_attempt_service.get_serve_attempt_by_id(
+        serve_window = serve_window_service.get_serve_window_by_id(
             db=db,
-            serve_attempt_id=serve_attempt_id,
+            serve_window_id=serve_window_id,
             user_id=current_user["id"],
         )
 
-        return ServeAttemptDetail.model_validate(serve_attempt)
+        return ServeWindowDetail.model_validate(serve_window)
 
     except ValueError as e:
         error_msg = str(e).lower()
         if "not found" in error_msg:
-            raise handle_not_found_error("serve_attempt", str(serve_attempt_id)) from e
+            raise handle_not_found_error("serve_window", str(serve_window_id)) from e
         if "access denied" in error_msg or "forbidden" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -206,43 +206,41 @@ async def get_serve_attempt(
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
-        log_and_raise_error(
-            e, "get_serve_attempt", {"serve_attempt_id": serve_attempt_id}
-        )
+        log_and_raise_error(e, "get_serve_window", {"serve_window_id": serve_window_id})
 
 
-@router.delete("/{serve_attempt_id}")
-async def delete_serve_attempt(
-    serve_attempt_id: int,
+@router.delete("/{serve_window_id}")
+async def delete_serve_window(
+    serve_window_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, str]:
-    """Delete a serve attempt."""
+    """Delete a serve window."""
     try:
-        # Get serve attempt to check demo status
-        serve_attempt = serve_attempt_service.get_serve_attempt_by_id(
+        # Get serve window to check demo status
+        serve_window = serve_window_service.get_serve_window_by_id(
             db=db,
-            serve_attempt_id=serve_attempt_id,
+            serve_window_id=serve_window_id,
             user_id=current_user["id"],
         )
 
         # Get video to check demo status
-        video = video_service.get_video_by_id(db, serve_attempt.video_id)
+        video = video_service.get_video_by_id(db, serve_window.video_id)
         if video:
             require_video_not_demo(video, current_user)
 
-        serve_attempt_service.delete_serve_attempt(
+        serve_window_service.delete_serve_window(
             db=db,
-            serve_attempt_id=serve_attempt_id,
+            serve_window_id=serve_window_id,
             user_id=current_user["id"],
         )
 
-        return {"message": f"Serve attempt {serve_attempt_id} deleted successfully"}
+        return {"message": f"Serve window {serve_window_id} deleted successfully"}
 
     except ValueError as e:
         error_msg = str(e).lower()
         if "not found" in error_msg:
-            raise handle_not_found_error("serve_attempt", str(serve_attempt_id)) from e
+            raise handle_not_found_error("serve_window", str(serve_window_id)) from e
         if "access denied" in error_msg or "forbidden" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -256,5 +254,5 @@ async def delete_serve_attempt(
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
         log_and_raise_error(
-            e, "delete_serve_attempt", {"serve_attempt_id": serve_attempt_id}
+            e, "delete_serve_window", {"serve_window_id": serve_window_id}
         )

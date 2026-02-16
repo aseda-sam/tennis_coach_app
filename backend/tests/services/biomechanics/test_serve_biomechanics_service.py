@@ -16,7 +16,7 @@ from app.services.biomechanics.serve_biomechanics_service import (
 from tests.biomechanics_fixtures import _make_serve_sequence
 
 
-def _mock_serve_attempt() -> MagicMock:
+def _mock_serve_window() -> MagicMock:
     sa = MagicMock()
     sa.id = 1
     sa.video_id = 10
@@ -67,20 +67,20 @@ class TestServeBiomechanicsServicePipeline:
 
         db = MagicMock()
         db.query.return_value.filter.return_value.first.side_effect = [
-            _mock_serve_attempt(),
+            _mock_serve_window(),
             _mock_video(),
             _mock_player(),
         ]
         db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
 
         service = ServeBiomechanicsService()
-        service.compute_analysis(db, serve_attempt_id=1, user_id="user-1")
+        service.compute_analysis(db, serve_window_id=1, user_id="user-1")
 
         db.add.assert_called_once()
         db.commit.assert_called_once()
 
         saved = db.add.call_args[0][0]
-        assert saved.serve_attempt_id == 1
+        assert saved.serve_window_id == 1
         assert saved.user_id == "user-1"
         assert saved.phase_segmentation_json is not None
         assert saved.metrics_json is not None
@@ -100,14 +100,14 @@ class TestServeBiomechanicsServicePipeline:
 
         db = MagicMock()
         db.query.return_value.filter.return_value.first.side_effect = [
-            _mock_serve_attempt(),
+            _mock_serve_window(),
             _mock_video(),
             _mock_player(),
         ]
         db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
 
         service = ServeBiomechanicsService()
-        service.compute_analysis(db, serve_attempt_id=1, user_id="user-1")
+        service.compute_analysis(db, serve_window_id=1, user_id="user-1")
 
         saved = db.add.call_args[0][0]
         seg = json.loads(saved.phase_segmentation_json)
@@ -133,14 +133,14 @@ class TestServeBiomechanicsServicePipeline:
 
         db = MagicMock()
         db.query.return_value.filter.return_value.first.side_effect = [
-            _mock_serve_attempt(),
+            _mock_serve_window(),
             _mock_video(),
             _mock_player(),
         ]
         db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
 
         service = ServeBiomechanicsService()
-        service.compute_analysis(db, serve_attempt_id=1, user_id="user-1")
+        service.compute_analysis(db, serve_window_id=1, user_id="user-1")
 
         saved = db.add.call_args[0][0]
         metrics = json.loads(saved.metrics_json)
@@ -154,7 +154,7 @@ class TestServeBiomechanicsServicePipeline:
 
         service = ServeBiomechanicsService()
         with pytest.raises(ValueError, match="not found"):
-            service.compute_analysis(db, serve_attempt_id=999, user_id="user-1")
+            service.compute_analysis(db, serve_window_id=999, user_id="user-1")
 
     @patch(
         "app.services.biomechanics.serve_biomechanics_service._select_best_pose_detection"
@@ -164,11 +164,11 @@ class TestServeBiomechanicsServicePipeline:
 
         db = MagicMock()
         db.query.return_value.filter.return_value.first.side_effect = [
-            _mock_serve_attempt(),
+            _mock_serve_window(),
             _mock_video(),
             _mock_player(),
         ]
 
         service = ServeBiomechanicsService()
         with pytest.raises(ValueError, match="No pose detection"):
-            service.compute_analysis(db, serve_attempt_id=1, user_id="user-1")
+            service.compute_analysis(db, serve_window_id=1, user_id="user-1")

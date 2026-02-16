@@ -13,7 +13,6 @@ export interface ServeWindowProposal {
     peak_wrist_velocity?: number;
   } | null;
   status: 'pending' | 'accepted' | 'rejected' | 'edited';
-  serve_attempt_id?: number | null;
   created_at: string;
   reviewed_at?: string | null;
 }
@@ -38,7 +37,7 @@ export interface DetectionStatusResponse {
   video_id: number;
   pending_proposals: number;
   reviewed_proposals: number;
-  serve_attempts: number;
+  serve_windows: number;
   can_run_detection: boolean;
 }
 
@@ -54,7 +53,7 @@ export interface BulkAcceptRequest {
 export interface BulkAcceptResponse {
   video_id: number;
   accepted_count: number;
-  serve_attempt_ids: number[];
+  serve_window_ids: number[];
 }
 
 export interface RejectByConfidenceRequest {

@@ -29,13 +29,13 @@ Admins can manage demo videos through the web UI:
 2. **Upload Demo Video**: Click "Upload Demo Video" and check "Upload as demo video"
 3. **Set Active Demo**: Click "Set as Active" on any demo video
 4. **Run Pose Analysis**: Click "Run Pose Analysis" to start pose detection
-5. **Create Serve Attempts**: Use the regular video analysis interface to tag serve attempts
+5. **Create Serve Attempts**: Use the regular video analysis interface to tag serve windows
 
 The admin UI shows:
 
 - Active demo status
 - Pose analysis status (✓ or ⚠)
-- Serve attempt count (✓ or ⚠)
+- Serve window count (✓ or ⚠)
 - All demo videos with their status
 
 ## CLI Scripts (Alternative)
@@ -69,7 +69,7 @@ Admin access is controlled by the `ADMIN_USER_IDS` environment variable (comma-s
 - Upload videos on behalf of other users
 - Set active demo
 - Trigger pose analysis for demo videos
-- Create/edit serve attempts for demo videos
+- Create/edit serve windows for demo videos
 - Access the admin UI. The admin UI automatically checks admin status and only shows the "Admin" tab to authorized users.
 
 Set `ADMIN_USER_IDS` via environment variables (e.g., Fly.io secrets in production).

@@ -1,4 +1,4 @@
-"""Biomechanics metrics computation for a single serve attempt.
+"""Biomechanics metrics computation for a single serve window.
 
 Computes all metrics from pose frames + phase boundaries.
 Pure computation — no DB access.
@@ -66,7 +66,7 @@ def metrics_to_flat_list(metrics: "BiomechanicsMetrics") -> List[Dict]:
 
 
 class BiomechanicsMetrics(BaseModel):
-    """All computed metrics for a single serve attempt."""
+    """All computed metrics for a single serve window."""
 
     # Existing metrics
     elbow_angle_at_contact: Optional[float] = None
@@ -108,7 +108,7 @@ def compute_biomechanics_metrics(
     video_height: int,
     phases: Optional[List[PhaseWindow]] = None,
 ) -> BiomechanicsMetrics:
-    """Compute all biomechanics metrics for one serve attempt.
+    """Compute all biomechanics metrics for one serve window.
 
     Args:
         pose_frames: Pose keypoints per frame within serve window.

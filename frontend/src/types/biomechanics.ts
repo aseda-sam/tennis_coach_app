@@ -18,7 +18,7 @@ export interface PhaseWindow {
 
 export interface ServeBiomechanicsReport {
   id: number;
-  serve_attempt_id: number;
+  serve_window_id: number;
   phase_segmentation: PhaseWindow[];
   metrics: MetricValue[];
   analysis_version: string;

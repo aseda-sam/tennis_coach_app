@@ -9,8 +9,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models.player import Player
-from app.models.serve_attempt import ServeAttempt
-from app.models.serve_window_proposal import ServeWindowProposal
+from app.models.serve_window import ServeWindow
 from app.models.video import Video
 
 
@@ -51,10 +50,10 @@ def test_player(db_session: Session, test_user_id: str) -> Player:
 @pytest.fixture
 def test_proposals(
     db_session: Session, test_video: Video, test_user_id: str
-) -> list[ServeWindowProposal]:
+) -> list[ServeWindow]:
     """Create test proposals with varying confidence levels."""
     proposals = [
-        ServeWindowProposal(
+        ServeWindow(
             video_id=test_video.id,
             user_id=test_user_id,
             start_timestamp=0.0,
@@ -63,7 +62,7 @@ def test_proposals(
             confidence=0.85,  # High confidence
             status="pending",
         ),
-        ServeWindowProposal(
+        ServeWindow(
             video_id=test_video.id,
             user_id=test_user_id,
             start_timestamp=3.0,
@@ -72,7 +71,7 @@ def test_proposals(
             confidence=0.72,  # Medium confidence
             status="pending",
         ),
-        ServeWindowProposal(
+        ServeWindow(
             video_id=test_video.id,
             user_id=test_user_id,
             start_timestamp=6.0,
@@ -81,7 +80,7 @@ def test_proposals(
             confidence=0.55,  # Low confidence (below 60%)
             status="pending",
         ),
-        ServeWindowProposal(
+        ServeWindow(
             video_id=test_video.id,
             user_id=test_user_id,
             start_timestamp=9.0,
@@ -102,15 +101,15 @@ def test_proposals(
 class TestBulkAcceptProposals:
     """Tests for POST /videos/{video_id}/serve-detection/proposals/accept-all."""
 
-    def test_accept_all_creates_serve_attempts(
+    def test_accept_all_creates_serve_windows(
         self,
         client: TestClient,
         db_session: Session,
         test_video: Video,
         test_player: Player,
-        test_proposals: list[ServeWindowProposal],
+        test_proposals: list[ServeWindow],
     ) -> None:
-        """Accepting all proposals should create serve attempts for each."""
+        """Accepting all proposals should create serve windows for each."""
         response = client.post(
             f"/v0/videos/{test_video.id}/serve-detection/proposals/accept-all",
             json={},
@@ -120,15 +119,15 @@ class TestBulkAcceptProposals:
         data = response.json()
         assert data["video_id"] == test_video.id
         assert data["accepted_count"] == 4
-        assert len(data["serve_attempt_ids"]) == 4
+        assert len(data["serve_window_ids"]) == 4
 
-        # Verify serve attempts were created
-        serve_attempts = (
-            db_session.query(ServeAttempt)
-            .filter(ServeAttempt.video_id == test_video.id)
+        # Verify serve windows were created
+        serve_windows = (
+            db_session.query(ServeWindow)
+            .filter(ServeWindow.video_id == test_video.id)
             .all()
         )
-        assert len(serve_attempts) == 4
+        assert len(serve_windows) == 4
 
         # Verify proposals are now accepted
         for proposal in test_proposals:
@@ -154,7 +153,7 @@ class TestBulkAcceptProposals:
         db_session: Session,
         test_video: Video,
         test_player: Player,
-        test_proposals: list[ServeWindowProposal],
+        test_proposals: list[ServeWindow],
     ) -> None:
         """Accepting with explicit player_id should use that player."""
         response = client.post(
@@ -164,13 +163,13 @@ class TestBulkAcceptProposals:
 
         assert response.status_code == 200
 
-        # Verify all serve attempts have the specified player
-        serve_attempts = (
-            db_session.query(ServeAttempt)
-            .filter(ServeAttempt.video_id == test_video.id)
+        # Verify all serve windows have the specified player
+        serve_windows = (
+            db_session.query(ServeWindow)
+            .filter(ServeWindow.video_id == test_video.id)
             .all()
         )
-        for sa in serve_attempts:
+        for sa in serve_windows:
             assert sa.player_id == test_player.id
 
 
@@ -182,7 +181,7 @@ class TestRejectByConfidence:
         client: TestClient,
         db_session: Session,
         test_video: Video,
-        test_proposals: list[ServeWindowProposal],
+        test_proposals: list[ServeWindow],
     ) -> None:
         """Should reject only proposals below the confidence threshold."""
         response = client.post(
@@ -209,7 +208,7 @@ class TestRejectByConfidence:
         client: TestClient,
         db_session: Session,
         test_video: Video,
-        test_proposals: list[ServeWindowProposal],
+        test_proposals: list[ServeWindow],
     ) -> None:
         """Should respect custom threshold value."""
         response = client.post(
@@ -227,7 +226,7 @@ class TestRejectByConfidence:
         client: TestClient,
         db_session: Session,
         test_video: Video,
-        test_proposals: list[ServeWindowProposal],
+        test_proposals: list[ServeWindow],
     ) -> None:
         """Should return 0 when no proposals are below threshold."""
         response = client.post(
@@ -243,7 +242,7 @@ class TestRejectByConfidence:
         self,
         client: TestClient,
         test_video: Video,
-        test_proposals: list[ServeWindowProposal],
+        test_proposals: list[ServeWindow],
     ) -> None:
         """Should return error for invalid threshold values."""
         # Threshold > 1
@@ -270,7 +269,7 @@ class TestBulkWorkflow:
         db_session: Session,
         test_video: Video,
         test_player: Player,
-        test_proposals: list[ServeWindowProposal],
+        test_proposals: list[ServeWindow],
     ) -> None:
         """Should be able to reject low confidence, then accept remaining."""
         # Step 1: Reject low confidence proposals
@@ -292,19 +291,20 @@ class TestBulkWorkflow:
         )  # Only high confidence ones
 
         # Verify final state
-        serve_attempts = (
-            db_session.query(ServeAttempt)
-            .filter(ServeAttempt.video_id == test_video.id)
+        serve_windows = (
+            db_session.query(ServeWindow)
+            .filter(ServeWindow.video_id == test_video.id)
             .all()
         )
-        assert len(serve_attempts) == 2
+        # One-table workflow keeps rejected + accepted records in serve_windows
+        assert len(serve_windows) == 4
 
         # Verify all proposals are now reviewed
         pending = (
-            db_session.query(ServeWindowProposal)
+            db_session.query(ServeWindow)
             .filter(
-                ServeWindowProposal.video_id == test_video.id,
-                ServeWindowProposal.status == "pending",
+                ServeWindow.video_id == test_video.id,
+                ServeWindow.status == "pending",
             )
             .count()
         )

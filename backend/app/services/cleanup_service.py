@@ -182,7 +182,7 @@ def cleanup_orphaned_data(
                     logger.error(error_msg)
                     stats["errors"].append(error_msg)
 
-            # Delete players (cascades to serve_attempts)
+            # Delete players (cascades to serve_windows)
             for player in players:
                 try:
                     db.delete(player)

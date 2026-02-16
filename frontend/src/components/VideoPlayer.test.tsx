@@ -46,30 +46,30 @@ jest.mock('../hooks/useVideos', () => ({
   }),
 }));
 
-jest.mock('../hooks/useServeAttempts', () => ({
-  useServeAttempts: () => ({
-    serveAttempts: [],
-    updateServeAttempt: jest.fn(),
-    deleteServeAttempt: jest.fn(),
-    createServeAttempt: jest.fn(),
+jest.mock('../hooks/useServeWindows', () => ({
+  useServeWindows: () => ({
+    serveWindows: [],
+    updateServeWindow: jest.fn(),
+    deleteServeWindow: jest.fn(),
+    createServeWindow: jest.fn(),
   }),
 }));
 
-jest.mock('./AddServeAttemptButton', () => {
-  return function MockAddServeAttemptButton() {
-    return <div data-testid="add-serve-attempt-button">Add Serve Attempt</div>;
+jest.mock('./AddServeWindowButton', () => {
+  return function MockAddServeWindowButton() {
+    return <div data-testid="add-serve-window-button">Add Serve Attempt</div>;
   };
 });
 
-jest.mock('./ServeAttemptRange', () => {
-  return function MockServeAttemptRange() {
-    return <div data-testid="serve-attempt-range">Serve Attempt Range</div>;
+jest.mock('./ServeWindowRange', () => {
+  return function MockServeWindowRange() {
+    return <div data-testid="serve-window-range">Serve Attempt Range</div>;
   };
 });
 
-jest.mock('./ServeAttemptModal', () => {
-  return function MockServeAttemptModal() {
-    return <div data-testid="serve-attempt-modal">Serve Attempt Modal</div>;
+jest.mock('./ServeWindowModal', () => {
+  return function MockServeWindowModal() {
+    return <div data-testid="serve-window-modal">Serve Attempt Modal</div>;
   };
 });
 

@@ -1,4 +1,4 @@
-"""Serve attempt model for storing serve-specific analysis data."""
+"""Serve window model for storing tagged or auto-detected serve windows."""
 
 from datetime import datetime
 
@@ -10,16 +10,17 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
 )
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
 
-class ServeAttempt(Base):
-    """One row = one serve attempt with all key metrics."""
+class ServeWindow(Base):
+    """One row = one serve window (manual or auto-detected)."""
 
-    __tablename__ = "serve_attempts"
+    __tablename__ = "serve_windows"
 
     id = Column(Integer, primary_key=True, index=True)
     video_id = Column(
@@ -29,13 +30,13 @@ class ServeAttempt(Base):
     player_id = Column(
         Integer,
         ForeignKey("players.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
-    )  # Domain identity - REQUIRED for MVP
+    )  # Nullable while pending auto-detected proposals are unassigned
 
     # Timing - manually tagged
-    start_timestamp = Column(Float, nullable=False)  # When serve attempt starts
-    end_timestamp = Column(Float, nullable=False)  # When serve attempt ends
+    start_timestamp = Column(Float, nullable=False)  # When serve window starts
+    end_timestamp = Column(Float, nullable=False)  # When serve window ends
     contact_timestamp = Column(Float, nullable=True)  # Optional - may not make contact
 
     # Context
@@ -53,53 +54,49 @@ class ServeAttempt(Base):
 
     # Provenance tracking
     source = Column(String(20), nullable=False, default="manual")
-    # Values: "manual", "auto_accepted", "auto_edited"
+    # Values: "manual", "auto"
 
-    source_proposal_id = Column(
-        Integer,
-        ForeignKey("serve_window_proposals.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
+    # Proposal metadata (one-table workflow)
+    model_version = Column(String(50), nullable=True)  # e.g., "heuristic-v1"
+    confidence = Column(Float, nullable=True)  # 0.0 - 1.0
+    detection_features = Column(Text, nullable=True)  # JSON string
+    status = Column(String(20), nullable=False, default="accepted")
+    # Values: "pending", "accepted", "rejected", "edited"
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Original timestamps (if edited from proposal)
     original_start_timestamp = Column(Float, nullable=True)
     original_end_timestamp = Column(Float, nullable=True)
 
     # Relationships
-    video = relationship("Video", back_populates="serve_attempts")
-    player = relationship("Player", back_populates="serve_attempts")
-    source_proposal = relationship(
-        "ServeWindowProposal",
-        back_populates="serve_attempt",
-        foreign_keys=[source_proposal_id],
-        uselist=False,  # One-to-one: one serve attempt comes from one proposal
-    )
+    video = relationship("Video", back_populates="serve_windows")
+    player = relationship("Player", back_populates="serve_windows")
 
     # Indexes for common query patterns
     __table_args__ = (
-        Index("ix_serve_attempts_user_created", "user_id", "created_at"),
+        Index("ix_serve_windows_user_created", "user_id", "created_at"),
         Index(
-            "ix_serve_attempts_player_created", "player_id", "created_at"
+            "ix_serve_windows_player_created", "player_id", "created_at"
         ),  # Primary trend index
         Index(
-            "ix_serve_attempts_user_player_created",
+            "ix_serve_windows_user_player_created",
             "user_id",
             "player_id",
             "created_at",
         ),
         Index(
-            "ix_serve_attempts_user_court_created",
+            "ix_serve_windows_user_court_created",
             "user_id",
             "court_side",
             "created_at",
         ),
-        Index("ix_serve_attempts_video_start", "video_id", "start_timestamp"),
+        Index("ix_serve_windows_video_start", "video_id", "start_timestamp"),
+        Index("ix_serve_windows_video_status", "video_id", "status"),
     )
 
     def __repr__(self) -> str:
-        """String representation of serve attempt."""
+        """String representation of serve window."""
         return (
-            f"<ServeAttempt(id={self.id}, video_id={self.video_id}, "
+            f"<ServeWindow(id={self.id}, video_id={self.video_id}, "
             f"player_id={self.player_id}, start={self.start_timestamp:.2f}s)>"
         )

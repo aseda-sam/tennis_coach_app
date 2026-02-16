@@ -14,7 +14,7 @@
 }
 
 /* Modal Backdrop - covers entire viewport */
-.serve-attempt-modal-backdrop {
+.serve-window-modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
@@ -27,7 +27,7 @@
 }
 
 /* Modal Container - centers the form */
-.serve-attempt-modal-container {
+.serve-window-modal-container {
   width: 100%;
   max-width: 600px;
   max-height: calc(100vh - 48px);
@@ -146,7 +146,7 @@
 }
 
 /* Form inside modal - no positioning needed, container handles it */
-.serve-attempt-modal-container .add-contact-form {
+.serve-window-modal-container .add-contact-form {
   position: relative;
   width: 100%;
   top: auto;
@@ -715,11 +715,11 @@
     width: 280px;
   }
 
-  .serve-attempt-modal-backdrop {
+  .serve-window-modal-backdrop {
     padding: 16px;
   }
 
-  .serve-attempt-modal-container {
+  .serve-window-modal-container {
     max-height: calc(100vh - 32px);
   }
 

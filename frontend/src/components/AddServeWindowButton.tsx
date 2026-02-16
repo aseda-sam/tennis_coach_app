@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ServeAttemptCreate } from '../services/serveAttemptApi';
+import { ServeWindowCreate } from '../services/serveWindowApi';
 import {
   formatTime,
   validateContactTimestamp,
@@ -9,12 +9,12 @@ import {
 import TimelineMarkers from './TimelineMarkers';
 import './AddContactButton.css'; // Reuse styles
 
-interface AddServeAttemptButtonProps {
+interface AddServeWindowButtonProps {
   currentTime: number;
   videoId: number;
   videoDuration: number;
   fps?: number;
-  onAddServeAttempt: (serveAttempt: ServeAttemptCreate) => Promise<void>;
+  onAddServeWindow: (serveWindow: ServeWindowCreate) => Promise<void>;
   isVisible: boolean;
   isReadOnly?: boolean;
   placement?: 'overlay' | 'scrubber';
@@ -25,12 +25,12 @@ interface AddServeAttemptButtonProps {
   onSeek?: (time: number) => void;
 }
 
-const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
+const AddServeWindowButton: React.FC<AddServeWindowButtonProps> = ({
   currentTime,
   videoId,
   videoDuration,
   fps,
-  onAddServeAttempt,
+  onAddServeWindow,
   isVisible,
   isReadOnly = false,
   placement = 'overlay',
@@ -45,7 +45,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [lockedTimestamp, setLockedTimestamp] = useState<number | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [formData, setFormData] = useState<ServeAttemptCreate>({
+  const [formData, setFormData] = useState<ServeWindowCreate>({
     video_id: videoId,
     start_timestamp: currentTime,
     end_timestamp: currentTime + 3, // Default 3 second window
@@ -160,7 +160,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
 
       if (event.key === 'c' || event.key === 'C') {
         event.preventDefault();
-        // Set contact timestamp to current time, clamped to serve attempt range
+        // Set contact timestamp to current time, clamped to serve window range
         setFormData((prev) => {
           const clampedTime = Math.max(
             prev.start_timestamp,
@@ -219,7 +219,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
     }
   }, [formData, videoDuration]);
 
-  const handleAddServeAttempt = async () => {
+  const handleAddServeWindow = async () => {
     if (videoDuration > 0) {
       const startValidation = validateManualTimestamp(
         formData.start_timestamp,
@@ -255,7 +255,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
 
     setIsLoading(true);
     try {
-      await onAddServeAttempt(formData);
+      await onAddServeWindow(formData);
       handleClose();
       setFormData({
         video_id: videoId,
@@ -382,7 +382,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
                 className="compact-btn compact-btn--primary"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleAddServeAttempt();
+                  handleAddServeWindow();
                 }}
                 disabled={isLoading || !!validationError}
               >
@@ -597,7 +597,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
               className="btn btn-primary"
               onClick={(e) => {
                 e.stopPropagation();
-                handleAddServeAttempt();
+                handleAddServeWindow();
               }}
               disabled={isLoading || !!validationError}
             >
@@ -621,7 +621,7 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
               }}
               title={
                 isReadOnly
-                  ? 'Demo mode: manual serve attempt creation is disabled'
+                  ? 'Demo mode: manual serve window creation is disabled'
                   : `Tag serve near ${formatTime(currentTime)}`
               }
               aria-disabled={isReadOnly}
@@ -631,9 +631,9 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
             </button>
           )
         : createPortal(
-            <div className="serve-attempt-modal-backdrop" onClick={handleClose}>
+            <div className="serve-window-modal-backdrop" onClick={handleClose}>
               <div
-                className="serve-attempt-modal-container"
+                className="serve-window-modal-container"
                 onClick={(e) => e.stopPropagation()}
               >
                 {formContent}
@@ -645,4 +645,4 @@ const AddServeAttemptButton: React.FC<AddServeAttemptButtonProps> = ({
   );
 };
 
-export default AddServeAttemptButton;
+export default AddServeWindowButton;

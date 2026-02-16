@@ -34,7 +34,7 @@ class BiomechanicsReportResponse(BaseModel):
     """Biomechanics report: phases + raw metrics only."""
 
     id: int = Field(description="Report ID")
-    serve_attempt_id: int = Field(description="Serve attempt ID")
+    serve_window_id: int = Field(description="Serve window ID")
     phase_segmentation: List[PhaseWindowResponse] = Field(
         default_factory=list,
         description="Detected phase windows for timeline",

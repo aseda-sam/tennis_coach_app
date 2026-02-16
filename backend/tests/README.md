@@ -29,17 +29,17 @@ The serve analysis workflow is tested at multiple levels:
    - Contract: `test_video_api.py::TestVideoAPI::test_upload_video_success`
    - Integration: Covered in integration tests as needed
 
-2. **POST /v0/serve-attempts/**
-   - Contract: Covered in serve attempt API tests
+2. **POST /v0/serve-windows/**
+   - Contract: Covered in serve window API tests
 
 3. **POST /v0/analysis/videos/{id}**
    - Contract: `test_pose_detection.py::TestPoseDetectionAPI`
 
-4. **GET /v0/serve-attempts/{id}/biomechanics**
+4. **GET /v0/serve-windows/{id}/biomechanics**
    - Contract: `tests/api/test_serve_biomechanics_routes.py`
 
-5. **GET /v0/serve-attempts/me**
-   - Contract: Covered in serve attempt API tests
+5. **GET /v0/serve-windows/me**
+   - Contract: Covered in serve window API tests
 
 ### Running Tests
 

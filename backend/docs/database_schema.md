@@ -17,7 +17,7 @@ Stores uploaded videos and metadata.
 - `session_type`, `camera_angle`, `recorded_at`
 - `primary_player_id` (FK -> `players.id`, nullable)
   - Default player attribution for serves created from this video.
-  - Used when a serve attempt or proposal acceptance does not specify `player_id`.
+  - Used when a serve window or proposal acceptance does not specify `player_id`.
 - Indexes used by timeline/progress queries:
   - `ix_videos_recorded_at` on `recorded_at`
   - `ix_videos_user_recorded_at` on (`user_id`, `recorded_at`)
@@ -45,26 +45,29 @@ Stores YOLO ball detection results for a video (serve windows only).
 - `time_windows` (JSON: [{"start_ms", "end_ms"}, ...])
 - `created_at`, `completed_at`
 
-## serve_attempts
+## serve_windows
 
-Stores serve attempts and timing metadata.
+Stores serve windows (manual or auto-detected) and review metadata.
 
 - `id` (PK)
 - `video_id` (FK -> `videos.id`)
 - `user_id` (owner)
-- `player_id` (FK -> `players.id`, required)
+- `player_id` (FK -> `players.id`, nullable while pending)
 - `start_timestamp`, `end_timestamp`, `contact_timestamp`
 - `court_side`, `serve_number`, `serve_subtype`, `in_out`
-- `source_proposal_id` (FK -> `serve_window_proposals.id`, nullable, indexed)
+- `source` (`manual` or `auto`)
+- `status` (`pending`, `accepted`, `rejected`, `edited`)
+- `model_version`, `confidence`, `detection_features` (nullable; for auto detection)
+- `reviewed_at`, `original_start_timestamp`, `original_end_timestamp`
 
 ## serve_biomechanics_reports
 
 Computed phase segmentation and raw biomechanics metrics for a single serve
-attempt. Separate from `serve_attempts` because it's a computed artifact.
+window. Separate from `serve_windows` because it's a computed artifact.
 No scoring, ratings, or coaching text — phases + metrics only.
 
 - `id` (PK)
-- `serve_attempt_id` (FK -> `serve_attempts.id`, CASCADE)
+- `serve_window_id` (FK -> `serve_windows.id`, CASCADE)
 - `user_id` (owner)
 - `player_id` (FK -> `players.id`, CASCADE)
 - `phase_segmentation_json` (TEXT, JSON-serialized phase boundaries)

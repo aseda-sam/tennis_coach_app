@@ -21,10 +21,10 @@ sequenceDiagram
     API->>DB: Create video record
     API->>Frontend: Return video_id
 
-    User->>Frontend: Tag serve attempts
-    Frontend->>API: POST /v0/serve-attempts/
-    API->>DB: Create serve_attempt records
-    API->>Frontend: Return serve_attempt_ids
+    User->>Frontend: Tag serve windows
+    Frontend->>API: POST /v0/serve-windows/
+    API->>DB: Create serve_window records
+    API->>Frontend: Return serve_window_ids
 
     User->>Frontend: Trigger pose analysis
     Frontend->>API: POST /v0/analysis/videos/{id}
@@ -35,7 +35,7 @@ sequenceDiagram
     PoseService->>DB: Save pose_detections
 
     User->>Frontend: Open biomechanics panel
-    Frontend->>API: GET /v0/serve-attempts/{id}/biomechanics
+    Frontend->>API: GET /v0/serve-windows/{id}/biomechanics
     API->>BiomechService: Compute phases + metrics (lazy if missing)
     BiomechService->>DB: Store serve_biomechanics_reports
     API->>Frontend: Return biomechanics report

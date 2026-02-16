@@ -37,7 +37,7 @@ from app.dependencies.auth import get_current_user, get_optional_user
 from app.services import (
     analysis_status_service,
     player_service,
-    serve_attempt_service,
+    serve_window_service,
     video_job_enqueue_service,
     video_job_service,
     video_service,
@@ -275,16 +275,16 @@ async def get_video_ball_contact_timestamps(
     """
     Get all ball contact timestamps for serves in a video (for prev/next contact navigation).
 
-    Returns sorted, unique ball contact timestamps from serve attempts that have a contact point.
+    Returns sorted, unique ball contact timestamps from serve windows that have a contact point.
     """
-    from app.services import serve_attempt_service
+    from app.services import serve_window_service
 
     db_video = video_service.get_video_by_id(db, video_id)
     if not db_video:
         raise handle_not_found_error("video", str(video_id))
     require_video_access(db_video, current_user)
 
-    timestamps = serve_attempt_service.get_ball_contact_timestamps(
+    timestamps = serve_window_service.get_ball_contact_timestamps(
         db=db,
         video_id=video_id,
         user_id=current_user["id"],
@@ -652,7 +652,7 @@ async def update_video_metadata(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Default player must be set before reassigning serves.",
                 )
-            serve_attempt_service.reassign_video_serve_attempts(
+            serve_window_service.reassign_video_serve_windows(
                 db=db,
                 video_id=video_id,
                 user_id=current_user["id"],

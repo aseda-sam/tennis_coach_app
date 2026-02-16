@@ -9,12 +9,12 @@ The cascade delete trigger (`e2e9e9d5b092_add_cascade_delete_trigger_for_auth_.p
 When a user is deleted from `auth.users`, the trigger deletes:
 
 1. **Videos** (which automatically cascade to):
-   - `serve_attempts` (via foreign key `ondelete="CASCADE"`)
+   - `serve_windows` (via foreign key `ondelete="CASCADE"`)
    - `pose_detections` (via foreign key `ondelete="CASCADE"`)
    - `video_jobs` (via foreign key `ondelete="CASCADE"`)
 
 2. **Players** (which automatically cascade to):
-   - `serve_attempts` (via foreign key `ondelete="CASCADE"`)
+   - `serve_windows` (via foreign key `ondelete="CASCADE"`)
 
 **Note**: Only `videos` and `players` need explicit deletion in the trigger. All other tables cascade automatically via foreign key constraints.
 
@@ -80,7 +80,7 @@ When a user is deleted from `auth.users`, the trigger deletes:
 
 - A Supabase project with the migration applied
 - A test user account (create via Supabase Auth UI or API)
-- Some test data for that user (videos, players, serve attempts, etc.)
+- Some test data for that user (videos, players, serve windows, etc.)
 
 ### Test Steps
 
@@ -88,13 +88,13 @@ When a user is deleted from `auth.users`, the trigger deletes:
    - Sign up/login as test user
    - Upload a video
    - Create a player
-   - Create some serve attempts
+   - Create some serve windows
    - Verify data exists:
      ```sql
      -- Replace 'test-user-id' with actual user ID
      SELECT COUNT(*) FROM videos WHERE user_id = 'test-user-id';
      SELECT COUNT(*) FROM players WHERE user_id = 'test-user-id';
-     SELECT COUNT(*) FROM serve_attempts WHERE user_id = 'test-user-id';
+     SELECT COUNT(*) FROM serve_windows WHERE user_id = 'test-user-id';
      ```
 
 2. **Delete the user from Supabase Auth**:
@@ -107,7 +107,7 @@ When a user is deleted from `auth.users`, the trigger deletes:
    -- Should return 0 rows for all queries
    SELECT COUNT(*) FROM videos WHERE user_id = 'test-user-id';
    SELECT COUNT(*) FROM players WHERE user_id = 'test-user-id';
-   SELECT COUNT(*) FROM serve_attempts WHERE user_id = 'test-user-id';
+   SELECT COUNT(*) FROM serve_windows WHERE user_id = 'test-user-id';
    SELECT COUNT(*) FROM video_jobs WHERE user_id = 'test-user-id';
    SELECT COUNT(*) FROM pose_detections
    WHERE video_id IN (SELECT id FROM videos WHERE user_id = 'test-user-id');
@@ -200,7 +200,7 @@ JOIN information_schema.constraint_column_usage AS ccu
 JOIN information_schema.referential_constraints AS rc
     ON rc.constraint_name = tc.constraint_name
 WHERE tc.constraint_type = 'FOREIGN KEY'
-    AND tc.table_name IN ('serve_attempts', 'video_jobs', 'pose_detections');
+    AND tc.table_name IN ('serve_windows', 'video_jobs', 'pose_detections');
 ```
 
 ## Rollback

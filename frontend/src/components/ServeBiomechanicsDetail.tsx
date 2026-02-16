@@ -13,7 +13,7 @@ import StickFigureCanvas from './StickFigureCanvas';
 import './ServeBiomechanicsDetail.css';
 
 interface ServeBiomechanicsDetailProps {
-  serveAttemptId: number;
+  serveWindowId: number;
   videoId: number;
   serveStart: number;
   serveEnd: number;
@@ -190,7 +190,7 @@ const MetricsByPhasePanel: React.FC<MetricsByPhasePanelProps> = ({
 const NEUTRAL_SKELETON_COLOR = '#00ff88';
 
 const ServeBiomechanicsDetail: React.FC<ServeBiomechanicsDetailProps> = ({
-  serveAttemptId,
+  serveWindowId,
   videoId,
   serveStart,
   serveEnd,
@@ -201,7 +201,7 @@ const ServeBiomechanicsDetail: React.FC<ServeBiomechanicsDetailProps> = ({
     data: report,
     isLoading,
     error,
-  } = useServeBiomechanicsReport(serveAttemptId);
+  } = useServeBiomechanicsReport(serveWindowId);
   const [currentTime, setCurrentTime] = useState(serveStart);
   const [isPlaying, setIsPlaying] = useState(false);
   const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);

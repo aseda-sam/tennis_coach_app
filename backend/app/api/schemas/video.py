@@ -156,7 +156,7 @@ class VideoMetadataUpdateRequest(BaseModel):
     )
     apply_to_existing_serves: Optional[bool] = Field(
         default=False,
-        description="If true, reassign existing serve attempts for this video",
+        description="If true, reassign existing serve windows for this video",
     )
 
 

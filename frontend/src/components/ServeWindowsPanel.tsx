@@ -1,29 +1,29 @@
 import React, { useMemo } from 'react';
-import { useServeAttempts } from '../hooks/useServeAttempts';
+import { useServeWindows } from '../hooks/useServeWindows';
 import { formatTime } from '../utils/validation';
 import './AnalysisRightPanel.css';
 import LoadingIndicator from './LoadingIndicator';
 
-interface ServeAttemptsPanelProps {
+interface ServeWindowsPanelProps {
   videoId: number;
-  onServeAttemptClick?: (serveAttemptId: number) => void;
+  onServeWindowClick?: (serveWindowId: number) => void;
   isDemo?: boolean;
 }
 
-const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
+const ServeWindowsPanel: React.FC<ServeWindowsPanelProps> = ({
   videoId,
-  onServeAttemptClick,
+  onServeWindowClick,
   isDemo = false,
 }) => {
-  const { serveAttempts, loading, error } = useServeAttempts({
+  const { serveWindows, loading, error } = useServeWindows({
     videoId,
     filters: { video_id: videoId },
     autoRefresh: true,
   });
 
-  const sortedServeAttempts = useMemo(() => {
-    return serveAttempts.sort((a, b) => a.start_timestamp - b.start_timestamp);
-  }, [serveAttempts]);
+  const sortedServeWindows = useMemo(() => {
+    return serveWindows.sort((a, b) => a.start_timestamp - b.start_timestamp);
+  }, [serveWindows]);
 
   if (loading) {
     return (
@@ -51,32 +51,32 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
         <div className="analysis-right-panel__trajectory-header">
           <div className="analysis-right-panel__trajectory-title-group">
             <h3 className="analysis-right-panel__card-title">
-              Key Moments ({sortedServeAttempts.length})
+              Key Moments ({sortedServeWindows.length})
             </h3>
           </div>
         </div>
         <div className="analysis-right-panel__metrics-list">
-          {sortedServeAttempts.length > 0 ? (
-            sortedServeAttempts.map((serveAttempt) => {
-              const displayLabel = serveAttempt.serve_subtype
-                ? serveAttempt.serve_subtype.charAt(0).toUpperCase() +
-                  serveAttempt.serve_subtype.slice(1)
-                : serveAttempt.court_side
-                  ? `${serveAttempt.court_side.charAt(0).toUpperCase() + serveAttempt.court_side.slice(1)} Court`
+          {sortedServeWindows.length > 0 ? (
+            sortedServeWindows.map((serveWindow) => {
+              const displayLabel = serveWindow.serve_subtype
+                ? serveWindow.serve_subtype.charAt(0).toUpperCase() +
+                  serveWindow.serve_subtype.slice(1)
+                : serveWindow.court_side
+                  ? `${serveWindow.court_side.charAt(0).toUpperCase() + serveWindow.court_side.slice(1)} Court`
                   : 'Serve';
 
               const timeDisplay =
-                serveAttempt.contact_timestamp !== null
-                  ? formatTime(serveAttempt.contact_timestamp)
-                  : `${formatTime(serveAttempt.start_timestamp)} - ${formatTime(serveAttempt.end_timestamp)}`;
+                serveWindow.contact_timestamp !== null
+                  ? formatTime(serveWindow.contact_timestamp)
+                  : `${formatTime(serveWindow.start_timestamp)} - ${formatTime(serveWindow.end_timestamp)}`;
 
               return (
                 <div
-                  key={serveAttempt.id}
+                  key={serveWindow.id}
                   className="analysis-right-panel__metric-item"
-                  onClick={() => onServeAttemptClick?.(serveAttempt.id)}
+                  onClick={() => onServeWindowClick?.(serveWindow.id)}
                   style={{
-                    cursor: onServeAttemptClick ? 'pointer' : 'default',
+                    cursor: onServeWindowClick ? 'pointer' : 'default',
                   }}
                 >
                   <div className="analysis-right-panel__metric-header">
@@ -105,4 +105,4 @@ const ServeAttemptsPanel: React.FC<ServeAttemptsPanelProps> = ({
   );
 };
 
-export default ServeAttemptsPanel;
+export default ServeWindowsPanel;

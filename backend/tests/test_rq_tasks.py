@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app.models.serve_window import ServeWindow
 from app.services.rq_tasks import (
     analyze_pose_detection_rq,
     analyze_pose_detection_scout_refine_rq,
@@ -342,7 +343,6 @@ class TestAnalyzePoseDetectionScoutRefineRq:
         import json
 
         from app.models.pose_detection import PoseDetection
-        from app.models.serve_window_proposal import ServeWindowProposal
 
         mock_get_video.return_value = mock_video
         mock_get_path.return_value = Path("/local/path/video.mp4")
@@ -391,10 +391,10 @@ class TestAnalyzePoseDetectionScoutRefineRq:
         mock_db_session.query.side_effect = _query_side_effect
 
         # Mock proposals found
-        proposal1 = MagicMock(spec=ServeWindowProposal)
+        proposal1 = MagicMock(spec=ServeWindow)
         proposal1.start_timestamp = 1.0
         proposal1.end_timestamp = 3.0
-        proposal2 = MagicMock(spec=ServeWindowProposal)
+        proposal2 = MagicMock(spec=ServeWindow)
         proposal2.start_timestamp = 5.0
         proposal2.end_timestamp = 7.0
         mock_generate_proposals.return_value = [proposal1, proposal2]

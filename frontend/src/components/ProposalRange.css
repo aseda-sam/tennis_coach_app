@@ -1,10 +1,10 @@
-/* Proposal Range Styles - Distinct from ServeAttemptRange */
+/* Proposal Range Styles - Distinct from ServeWindowRange */
 .proposal-range {
   position: absolute;
   top: 0;
   height: 100%;
   cursor: pointer;
-  z-index: 3; /* Lower than serve attempts (z-index: 5) */
+  z-index: 3; /* Lower than serve windows (z-index: 5) */
   transition: all 0.2s ease;
 }
 

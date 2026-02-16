@@ -47,7 +47,7 @@ class DemoVideoListItem(BaseModel):
     file_path: str
     is_active_demo: bool
     has_pose_analysis: bool
-    serve_attempt_count: int
+    serve_window_count: int
     created_at: datetime
 
     model_config = {"from_attributes": True}
