@@ -59,3 +59,21 @@ Stores serve attempts and metrics derived from video analysis.
 - `toss_peak_height` (nullable, from ball detection; normalized by player height)
 - `toss_peak_timestamp` (nullable, video time in seconds)
 - `source_proposal_id` (FK -> `serve_window_proposals.id`, nullable, indexed)
+
+## serve_biomechanics_reports
+
+Computed phase segmentation and raw biomechanics metrics for a single serve
+attempt. Separate from `serve_attempts` because it's a computed artifact.
+No scoring, ratings, or coaching text — phases + metrics only.
+
+- `id` (PK)
+- `serve_attempt_id` (FK -> `serve_attempts.id`, CASCADE)
+- `user_id` (owner)
+- `player_id` (FK -> `players.id`, CASCADE)
+- `phase_segmentation_json` (TEXT, JSON-serialized phase boundaries)
+- `metrics_json` (TEXT, JSON-serialized BiomechanicsMetrics)
+- `analysis_version`
+- `created_at`
+- Indexes:
+  - `ix_biomechanics_reports_player_created` on (`player_id`, `created_at`)
+  - `ix_biomechanics_reports_user_player` on (`user_id`, `player_id`)

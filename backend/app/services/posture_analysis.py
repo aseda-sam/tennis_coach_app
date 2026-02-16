@@ -160,14 +160,16 @@ def calculate_knee_hip_ratio(
     """
     Calculate knee-hip ratio (normalized by torso length) from pose landmarks.
 
-    Lower ratio = more knee bend (knees further below hips relative to torso).
+    Ratio = (avg_knee_y - avg_hip_y) / torso_length. In image coords Y increases
+    downward, so a larger positive value means knees further below hips (deeper
+    bend). Used by phase segmentation to find the loading frame (deepest bend).
 
     Args:
         pose_landmarks: Dictionary with keypoint coordinates (x, y, confidence)
         frame_shape: Optional frame shape (height, width, channels) for normalization
 
     Returns:
-        Knee-hip ratio (positive = knees below hips), or None if keypoints missing
+        Knee-hip ratio (positive when knees below hips), or None if keypoints missing
     """
     try:
         from app.services.serve_detection.feature_extractor import (

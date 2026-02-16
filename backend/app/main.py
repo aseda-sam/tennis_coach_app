@@ -23,6 +23,7 @@ from app.api.routes import (
     overlay_data,
     players,
     serve_attempts,
+    serve_biomechanics,
     serve_detection,
     video,
 )
@@ -329,6 +330,16 @@ app.include_router(
     serve_detection.router,
     prefix="/v0",
     tags=["serve-detection"],
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
+        500: {"description": "Internal Server Error"},
+    },
+)
+
+app.include_router(
+    serve_biomechanics.router,
+    prefix="/v0",
     responses={
         400: {"description": "Bad Request"},
         404: {"description": "Not Found"},
