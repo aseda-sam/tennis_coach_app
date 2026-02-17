@@ -133,3 +133,7 @@ etc/
 
 # Sensitive documentation (kept locally, do not commit)
 backend/scripts/MIGRATION_GUIDE.md
+
+# Writing
+writing/
+.cursor/skills/dev-story-capture/
