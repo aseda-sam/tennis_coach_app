@@ -140,7 +140,7 @@ class TestSegmentServePhases:
         )
         assert (
             result.total_phases_detected >= 4
-        )  # At least start, trophy, contact, follow-through
+        )  # At least start, cocking, contact, finish
 
     def test_handles_no_contact_timestamp(self):
         """Should still detect some phases without contact timestamp."""

@@ -28,7 +28,10 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.redis_config import analysis_queue
 from app.models.ball_detection import BallDetection
+from app.models.player import Player
 from app.models.pose_detection import PoseDetection
+from app.models.serve_window import ServeWindow
+from app.models.video import Video
 from app.models.video_job import VideoJob
 from app.services import video_service
 from app.services.storage_service import storage_service
@@ -909,6 +912,71 @@ def analyze_pose_detection_scout_refine_rq(
                             "Ball detection skipped for video %s: %s",
                             video_id,
                             ball_err,
+                            exc_info=True,
+                        )
+
+                # Auto-detect contact timestamps from ball + wrist data (only when contact not set)
+                with _stage_span(
+                    "auto_contact", video_id=video_id, job_id=video_job_id
+                ):
+                    try:
+                        from app.services.ball_detection.contact_detector import (
+                            detect_contact_timestamp,
+                        )
+
+                        ball_record = (
+                            db.query(BallDetection)
+                            .filter(
+                                BallDetection.video_id == video_id,
+                                BallDetection.status == "completed",
+                            )
+                            .order_by(BallDetection.created_at.desc())
+                            .first()
+                        )
+                        if ball_record:
+                            video_obj = (
+                                db.query(Video).filter(Video.id == video_id).first()
+                            )
+                            if video_obj:
+                                windows_missing_contact = (
+                                    db.query(ServeWindow)
+                                    .filter(
+                                        ServeWindow.video_id == video_id,
+                                        ServeWindow.contact_timestamp.is_(None),
+                                    )
+                                    .all()
+                                )
+                                for sw in windows_missing_contact:
+                                    player = (
+                                        db.query(Player)
+                                        .filter(Player.id == sw.player_id)
+                                        .first()
+                                        if sw.player_id
+                                        else None
+                                    )
+                                    dominant_hand = (
+                                        player.dominant_hand if player else "right"
+                                    )
+                                    contact_ts = detect_contact_timestamp(
+                                        ball_detection=ball_record,
+                                        pose_detection=scout_pose_detection_db,
+                                        serve_window=sw,
+                                        video=video_obj,
+                                        dominant_hand=dominant_hand,
+                                    )
+                                    if contact_ts is not None:
+                                        sw.contact_timestamp = contact_ts
+                                        logger.info(
+                                            "Auto-detected contact for serve window %s at %.2fs",
+                                            sw.id,
+                                            contact_ts,
+                                        )
+                                db.commit()
+                    except Exception as auto_contact_err:  # noqa: BLE001
+                        logger.warning(
+                            "Auto-contact detection skipped for video %s: %s",
+                            video_id,
+                            auto_contact_err,
                             exc_info=True,
                         )
 

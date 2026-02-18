@@ -32,11 +32,11 @@ class ServePhase(str, Enum):
     START = "start"
     RELEASE = "release"
     LOADING = "loading"
-    TROPHY = "trophy"
+    COCKING = "cocking"
     ACCELERATION = "acceleration"
     CONTACT = "contact"
     DECELERATION = "deceleration"
-    FOLLOW_THROUGH = "follow_through"
+    FINISH = "finish"
 
 
 # Ordered list of phases for monotonic enforcement
@@ -44,11 +44,11 @@ PHASE_ORDER = [
     ServePhase.START,
     ServePhase.RELEASE,
     ServePhase.LOADING,
-    ServePhase.TROPHY,
+    ServePhase.COCKING,
     ServePhase.ACCELERATION,
     ServePhase.CONTACT,
     ServePhase.DECELERATION,
-    ServePhase.FOLLOW_THROUGH,
+    ServePhase.FINISH,
 ]
 
 
@@ -82,7 +82,7 @@ def segment_serve_phases(
     """Segment a serve into Kovacs 8-stage phases using pose keypoint heuristics.
 
     Based on Kovacs & Ellenbecker (2011) 8-stage tennis serve model:
-    Start, Release, Loading, Trophy, Acceleration, Contact, Deceleration, Follow-through.
+    Start, Release, Loading, Cocking, Acceleration, Contact, Deceleration, Finish.
 
     Args:
         pose_frames: List of pose keypoint dicts (one per frame), None for missing.
@@ -126,10 +126,10 @@ def segment_serve_phases(
     if loading_frame is not None:
         detections[ServePhase.LOADING] = (loading_frame, 0.7)
 
-    # 4. Trophy — both wrists above shoulders + peak wrist height
-    trophy_frame = _detect_trophy(pose_frames, features)
-    if trophy_frame is not None:
-        detections[ServePhase.TROPHY] = (trophy_frame, 0.7)
+    # 4. Cocking — both wrists above shoulders + peak wrist height (trophy pose)
+    cocking_frame = _detect_cocking(pose_frames, features)
+    if cocking_frame is not None:
+        detections[ServePhase.COCKING] = (cocking_frame, 0.7)
 
     # 5. Acceleration — dominant wrist velocity spike
     accel_frame = _detect_acceleration(features)
@@ -149,11 +149,11 @@ def segment_serve_phases(
         if decel_frame is not None:
             detections[ServePhase.DECELERATION] = (decel_frame, 0.6)
 
-    # 8. Follow-through — dominant wrist drops below shoulder after contact
+    # 8. Finish — dominant wrist drops below shoulder after contact
     if contact_f is not None:
-        followthrough_frame = _detect_follow_through(pose_frames, dom_side, contact_f)
-        if followthrough_frame is not None:
-            detections[ServePhase.FOLLOW_THROUGH] = (followthrough_frame, 0.7)
+        finish_frame = _detect_finish(pose_frames, dom_side, contact_f)
+        if finish_frame is not None:
+            detections[ServePhase.FINISH] = (finish_frame, 0.7)
 
     # Enforce monotonic ordering: remove out-of-order phases
     phases = _enforce_monotonic(detections, total_frames, fps, serve_start, serve_end)
@@ -198,10 +198,10 @@ def _detect_release(pose_frames: List[Optional[Dict]], toss_side: str) -> Option
     return None
 
 
-def _detect_trophy(
+def _detect_cocking(
     pose_frames: List[Optional[Dict]], features: List[Dict]
 ) -> Optional[int]:
-    """Detect trophy: both arms raised + peak max_wrist_height."""
+    """Detect cocking phase onset: both arms raised + peak max_wrist_height (trophy pose)."""
     # Find frames where both arms are raised
     candidates = []
     for i, feat in enumerate(features):
@@ -285,10 +285,10 @@ def _detect_deceleration(features: List[Dict], contact_frame: int) -> Optional[i
     return None
 
 
-def _detect_follow_through(
+def _detect_finish(
     pose_frames: List[Optional[Dict]], dom_side: str, contact_frame: int
 ) -> Optional[int]:
-    """Detect follow-through: dominant wrist drops below shoulder after contact."""
+    """Detect finish: dominant wrist drops below shoulder after contact."""
     wrist_key = f"{dom_side}_wrist"
     shoulder_key = f"{dom_side}_shoulder"
 

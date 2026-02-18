@@ -88,6 +88,30 @@ class ServeBiomechanicsService:
                 f"No pose detection for video {video.id}. Run analysis first."
             )
 
+        # Lazy fallback: auto-detect contact from ball + wrist if not set (e.g. older videos)
+        if serve_window.contact_timestamp is None:
+            ball_detection = _get_best_ball_detection(db, video.id)
+            if ball_detection:
+                from app.services.ball_detection.contact_detector import (
+                    detect_contact_timestamp,
+                )
+
+                contact_ts = detect_contact_timestamp(
+                    ball_detection=ball_detection,
+                    pose_detection=pose_detection,
+                    serve_window=serve_window,
+                    video=video,
+                    dominant_hand=dominant_hand,
+                )
+                if contact_ts is not None:
+                    serve_window.contact_timestamp = contact_ts
+                    db.commit()
+                    logger.info(
+                        "Auto-detected contact for serve window %s at %.2fs (lazy)",
+                        serve_window_id,
+                        contact_ts,
+                    )
+
         fps = video.fps or 30.0
         pose_frames = get_pose_frames_in_window(
             pose_detection,

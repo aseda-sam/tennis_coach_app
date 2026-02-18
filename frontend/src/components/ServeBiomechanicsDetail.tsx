@@ -25,9 +25,9 @@ const METRIC_DISPLAY_NAMES: Record<string, string> = {
   elbow_angle_at_contact: 'Elbow Extension',
   knee_flexion_min_deg: 'Knee Flexion',
   trunk_rotation_at_contact: 'Trunk Rotation',
-  trunk_rotation_at_trophy: 'Trunk Coil',
+  trunk_rotation_at_cocking: 'Trunk Coil',
   shoulder_abduction_at_contact: 'Shoulder Position',
-  shoulder_abduction_at_trophy: 'Arm Position',
+  shoulder_abduction_at_cocking: 'Arm Position',
   contact_point_height: 'Contact Height',
   hip_shoulder_separation_max: 'Hip-Shoulder Separation',
   hip_shoulder_separation_at_contact: 'Hip-Shoulder Separation (Contact)',
@@ -96,22 +96,22 @@ const MetricsByPhasePanel: React.FC<MetricsByPhasePanelProps> = ({
     'start',
     'release',
     'loading',
-    'trophy',
+    'cocking',
     'acceleration',
     'contact',
     'deceleration',
-    'follow_through',
+    'finish',
     null,
   ];
   const phaseLabelMap: Record<string, string> = {
     start: 'Start',
     release: 'Release',
     loading: 'Loading',
-    trophy: 'Trophy',
+    cocking: 'Cocking',
     acceleration: 'Acceleration',
     contact: 'Contact',
     deceleration: 'Deceleration',
-    follow_through: 'Follow-through',
+    finish: 'Finish',
   };
   const sortedKeys = phaseOrder.filter((k) => grouped.has(k));
 

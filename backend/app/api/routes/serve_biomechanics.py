@@ -31,11 +31,11 @@ PHASE_LABEL_MAP = {
     "start": "Start",
     "release": "Release",
     "loading": "Loading",
-    "trophy": "Trophy",
+    "cocking": "Cocking",
     "acceleration": "Acceleration",
     "contact": "Contact",
     "deceleration": "Deceleration",
-    "follow_through": "Follow-through",
+    "finish": "Finish",
 }
 
 

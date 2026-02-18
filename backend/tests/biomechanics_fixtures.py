@@ -43,11 +43,11 @@ def _make_serve_sequence(
     0-5:   Start — arms at sides
     6-12:  Release — left wrist (toss arm) rises above shoulder
     13-20: Loading — knees bend deeply
-    21-28: Trophy — both wrists above shoulders
+    21-28: Cocking — both wrists above shoulders (trophy pose)
     29-38: Acceleration — right wrist velocity spikes
     39-42: Contact — right wrist at highest point
     43-48: Deceleration — right wrist velocity drops
-    49-59: Follow-through — right wrist drops below shoulder
+    49-59: Finish — right wrist drops below shoulder
     """
     frames: list[dict[str, Any] | None] = []
     for i in range(num_frames):

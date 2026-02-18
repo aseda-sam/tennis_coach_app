@@ -28,9 +28,9 @@ METRIC_META: Dict[str, Dict[str, str]] = {
     "elbow_angle_at_contact": {"unit": "deg", "phase": "contact"},
     "knee_flexion_min_deg": {"unit": "deg", "phase": "loading"},
     "toss_peak_height": {"unit": "normalized", "phase": "release"},
-    "trunk_rotation_at_trophy": {"unit": "deg", "phase": "trophy"},
+    "trunk_rotation_at_cocking": {"unit": "deg", "phase": "cocking"},
     "trunk_rotation_at_contact": {"unit": "deg", "phase": "contact"},
-    "shoulder_abduction_at_trophy": {"unit": "deg", "phase": "trophy"},
+    "shoulder_abduction_at_cocking": {"unit": "deg", "phase": "cocking"},
     "shoulder_abduction_at_contact": {"unit": "deg", "phase": "contact"},
     "racket_drop_depth": {"unit": "normalized", "phase": "acceleration"},
     "contact_point_height": {"unit": "normalized", "phase": "contact"},
@@ -74,11 +74,11 @@ class BiomechanicsMetrics(BaseModel):
     toss_peak_height: Optional[float] = None
 
     # Trunk rotation
-    trunk_rotation_at_trophy: Optional[float] = None
+    trunk_rotation_at_cocking: Optional[float] = None
     trunk_rotation_at_contact: Optional[float] = None
 
     # Shoulder
-    shoulder_abduction_at_trophy: Optional[float] = None
+    shoulder_abduction_at_cocking: Optional[float] = None
     shoulder_abduction_at_contact: Optional[float] = None
 
     # Racket drop
@@ -139,7 +139,7 @@ def compute_biomechanics_metrics(
         contact_frame = max(0, min(contact_frame, len(pose_frames) - 1))
 
     # Get phase frames
-    trophy_frame = _get_phase_frame(phases, ServePhase.TROPHY, serve_start, fps)
+    cocking_frame = _get_phase_frame(phases, ServePhase.COCKING, serve_start, fps)
 
     # Contact-frame metrics
     if contact_frame is not None and contact_frame < len(pose_frames):
@@ -161,18 +161,20 @@ def compute_biomechanics_metrics(
                 calculate_hip_shoulder_separation(pose_at_contact)
             )
 
-    # Trophy-frame metrics
-    if trophy_frame is not None and trophy_frame < len(pose_frames):
-        pose_at_trophy = pose_frames[trophy_frame]
-        if pose_at_trophy is not None:
-            metrics.trunk_rotation_at_trophy = calculate_trunk_rotation(pose_at_trophy)
-            metrics.shoulder_abduction_at_trophy = calculate_shoulder_abduction(
-                pose_at_trophy, dominant_hand
+    # Cocking-frame metrics
+    if cocking_frame is not None and cocking_frame < len(pose_frames):
+        pose_at_cocking = pose_frames[cocking_frame]
+        if pose_at_cocking is not None:
+            metrics.trunk_rotation_at_cocking = calculate_trunk_rotation(
+                pose_at_cocking
+            )
+            metrics.shoulder_abduction_at_cocking = calculate_shoulder_abduction(
+                pose_at_cocking, dominant_hand
             )
 
-    # Racket drop — minimum wrist position between trophy and contact
+    # Racket drop — minimum wrist position between cocking and contact
     metrics.racket_drop_depth = _compute_racket_drop(
-        pose_frames, dominant_hand, trophy_frame, contact_frame
+        pose_frames, dominant_hand, cocking_frame, contact_frame
     )
 
     # Knee flexion — minimum angle from serve start through contact
@@ -210,11 +212,11 @@ def _get_phase_frame(
 def _compute_racket_drop(
     pose_frames: List[Optional[Dict]],
     dominant_hand: str,
-    trophy_frame: Optional[int],
+    cocking_frame: Optional[int],
     contact_frame: Optional[int],
 ) -> Optional[float]:
-    """Compute max racket drop depth between trophy and contact."""
-    start = trophy_frame or 0
+    """Compute max racket drop depth between cocking and contact."""
+    start = cocking_frame or 0
     end = contact_frame or len(pose_frames)
     end = min(end, len(pose_frames))
 
@@ -239,7 +241,7 @@ def _compute_min_knee_flexion(
     Searches from the beginning of the serve window to contact.  The deepest
     knee bend often occurs at or before trophy position, so we cannot rely on
     the loading-phase boundary (which may be dropped by monotonic enforcement
-    when it precedes trophy).  Stopping at contact still excludes
+    when it precedes cocking).  Stopping at contact still excludes
     post-contact landing where a player might crouch.
     """
     start = 0

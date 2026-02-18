@@ -30,7 +30,7 @@ flowchart TD
     S5["Acceleration: wrist velocity > 2x mean"]
     S6["Contact: from tagged contact_timestamp"]
     S7["Deceleration: velocity drops < 50% peak"]
-    S8["Follow-through: wrist drops below shoulder"]
+    S8["Finish: wrist drops below shoulder"]
     S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8
   end
 
