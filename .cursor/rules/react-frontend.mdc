@@ -85,3 +85,14 @@ These constraints apply to every analysis and feedback view. They come from the 
 
 - Design tokens: `frontend/src/design-tokens.css`
 - Design patterns/migration notes: `frontend/DESIGN.md`
+
+## Before Committing Frontend Files (Required)
+
+Pre-commit blocks commits if formatting or linting fails. Always run before staging:
+
+```bash
+cd frontend && npm run format   # Prettier — fixes formatting
+cd frontend && npm run lint     # ESLint — use lint:fix for auto-fixable issues
+```
+
+In Cursor, format-on-save handles this automatically if the Prettier extension is active. If a commit is blocked with "frontend · prettier ... Failed", run `npm run format`, re-stage, and commit again.

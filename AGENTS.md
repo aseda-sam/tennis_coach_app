@@ -21,8 +21,14 @@ docker compose exec frontend npm test
 # Backend lint/format
 cd backend && ruff check . --fix && ruff format .
 
-# Frontend lint
+      # Frontend lint
 cd frontend && npm run lint
+
+# Frontend format (run before committing any frontend file)
+cd frontend && npm run format
+
+# Frontend format (run before committing any frontend file)
+cd frontend && npm run format
 
 # Backend dependency management (uses uv, not pip)
 cd backend && uv pip install -e ".[dev]"   # install/sync all deps
@@ -103,6 +109,35 @@ These constraints apply when building any user-facing feature. They come from ha
 - **App ≠ live coach.** The app gives asynchronous video feedback. It cannot see confusion, adjust in real time, or replace the feel of a human coach. Don't build features that pretend otherwise. Be honest about the medium's limits.
 - **LTA L1 is context, not a pivot.** The coaching course informs design thinking. It does not override the current roadmap or justify new complexity. Real technique-teaching frameworks are LTA L2+ territory.
 - **The app is a coach-prep tool.** Help users identify what to work on, give them language to use with a coach, encourage them to practice. It complements coaches; it doesn't replace them.
+
+## Pre-commit pipeline
+
+A pre-commit hook runs automatically on every `git commit`. If it fails, the commit is blocked. Here is what runs and what to do:
+
+| Hook | Stage | What it does | Auto-fixes? |
+|---|---|---|---|
+| `trailing-whitespace` | commit | Removes trailing whitespace | Yes — re-stage if fixed |
+| `end-of-file-fixer` | commit | Ensures files end with newline | Yes — re-stage if fixed |
+| `check-yaml / check-json` | commit | Validates YAML/JSON syntax | No — fix manually |
+| `check-added-large-files` | commit | Blocks files >1 MB | No — remove the file |
+| `detect-private-key` | commit | Blocks committed secrets | No — remove the secret |
+| `ruff` (Python) | commit | Lints Python, applies safe fixes | Yes — auto-fixed |
+| `ruff-format` (Python) | commit | Formats Python | Yes — auto-fixed |
+| `frontend-eslint` | commit | ESLint on `.ts/.tsx` files | No — run `cd frontend && npm run lint:fix` |
+| `frontend-prettier` | commit | Checks formatting of `.ts/.tsx/.css` | No — run `cd frontend && npm run format` |
+| `backend-pytest` | **push** | Runs backend test suite | No — fix failing tests |
+| `frontend-typecheck` | **push** | TypeScript `tsc --noEmit` | No — fix type errors |
+| `mermaid-validate` | **push** | Validates Mermaid diagrams in `project_docs/` | No — fix broken diagrams |
+
+**If a commit fails:** Read the hook name in the output to know what failed. The most common cause is `frontend-prettier` — fix by running `cd frontend && npm run format`, then re-staging and committing.
+
+**Before committing any frontend file, always run:**
+```bash
+cd frontend && npm run format   # Prettier auto-fix
+cd frontend && npm run lint     # ESLint (use lint:fix for auto-fixable issues)
+```
+
+**Before committing any Python file, ruff runs automatically** and fixes what it can. If ruff modifies files, re-stage them and commit again.
 
 ## Commits
 
