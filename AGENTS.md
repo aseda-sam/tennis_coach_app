@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Tennis Coach App — a serve-analysis MVP. Users upload serve videos, the app runs pose estimation (MediaPipe), tags serve windows, computes biomechanics metrics, and returns coaching recommendations.
+Tennis Coach App — a serve-analysis MVP. Users upload serve videos, the app runs pose estimation (MediaPipe), tags serve windows, segments the serve into biomechanics phases, and returns raw metrics for review.
 
 **Stack:** FastAPI backend, React/TypeScript frontend, PostgreSQL (Docker local / Supabase prod), Redis Queue (RQ) for background jobs, Docker Compose for local dev.
 
@@ -51,8 +51,24 @@ backend/
   tests/              # pytest tests
 frontend/
   src/
+    components/       # React components
+    hooks/            # Custom React hooks
+    services/         # API client calls
+    types/            # TypeScript types
+    utils/            # Shared utilities
+    lib/              # Third-party wrappers
+    constants/        # App-wide constants
     design-tokens.css # Design system tokens
-data/                 # Local SQLite, videos, analysis cache
+data/
+  videos/
+    raw/              # Uploaded user videos
+    processed/        # Transcoded/processed videos
+    demo/             # Curated demo videos (controlled subset visible to users)
+  database/           # Local DB volume mount (empty until docker compose up)
+project_docs/
+  diagrams/           # Mermaid architecture diagrams (system overview, auth, upload,
+                      # analysis pipeline, serve feedback pipeline, data flow, DB relationships)
+writing/              # Substack context, LTA coaching notes, story seeds (gitignored — local only)
 ```
 
 ## Architecture rules
@@ -78,6 +94,16 @@ data/                 # Local SQLite, videos, analysis cache
 - **React:** Use React Query for data fetching. Design tokens for styling (see `frontend/DESIGN.md`). Avoid `any` in TypeScript.
 - **General:** KISS, DRY, YAGNI. No speculative abstractions.
 
+## Product design philosophy
+
+These constraints apply when building any user-facing feature. They come from hard-won lessons about what this app actually is (and isn't).
+
+- **Practice > analysis.** The goal is to get users serving on a court, not spending more time in the app. Every feature should push them toward action, not deeper analysis. If a new UI element could trap a user in a stats-browsing loop, reconsider it.
+- **Progressive disclosure.** Show one thing at a time. Don't front-load metrics, options, or complexity. Unlock detail as users demonstrate understanding.
+- **App ≠ live coach.** The app gives asynchronous video feedback. It cannot see confusion, adjust in real time, or replace the feel of a human coach. Don't build features that pretend otherwise. Be honest about the medium's limits.
+- **LTA L1 is context, not a pivot.** The coaching course informs design thinking. It does not override the current roadmap or justify new complexity. Real technique-teaching frameworks are LTA L2+ territory.
+- **The app is a coach-prep tool.** Help users identify what to work on, give them language to use with a coach, encourage them to practice. It complements coaches; it doesn't replace them.
+
 ## Commits
 
 - Do not add `Co-Authored-By` lines to commit messages.
@@ -85,6 +111,7 @@ data/                 # Local SQLite, videos, analysis cache
 ## Detailed rules
 
 Comprehensive coding conventions, patterns, and examples live in `.cursor/rules/`:
+
 - `api-patterns.mdc` — REST conventions, error contracts, file uploads
 - `backend-patterns.mdc` — Layers, auth, storage, RQ jobs
 - `python-code-standards.mdc` — Python style, Pydantic v2, imports
