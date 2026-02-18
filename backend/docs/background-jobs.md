@@ -28,7 +28,7 @@ sequenceDiagram
 
     User->>Frontend: Trigger pose analysis
     Frontend->>API: POST /v0/analysis/videos/{id}
-    API->>RQ: Enqueue analyze_pose_detection_rq
+    API->>RQ: Enqueue analyze_pose_detection_rq (via enqueue_pose_analysis helper)
     API->>Frontend: Return job_id
 
     RQ->>PoseService: Run pose detection

@@ -6,7 +6,7 @@ The backend uses a **profile-based** config model: set one `PROFILE` and the app
 
 - `PROFILE=local`
   - **Auth**: disabled (mock user)
-  - **DB**: `DATABASE_URL` if set, otherwise PostgreSQL Docker default (`postgresql://tennis:tennis_dev@localhost:5432/tennis_coach`)
+  - **DB**: `DATABASE_URL` if set, otherwise auto-detected: `postgres` host inside Docker, `localhost` outside
   - **Storage**: local filesystem
 - `PROFILE=production`
   - **Auth**: required
@@ -31,7 +31,9 @@ SUPABASE_URL=https://...
 SUPABASE_SECRET_KEY=...
 SUPABASE_STORAGE_BUCKET=...
 
-REDIS_URL=rediss://...  # Upstash in real prod
+REDIS_URL=rediss://...  # optional — defaults to redis://localhost:6379/0; use Upstash in real prod
+ADMIN_USER_IDS=uuid1,uuid2  # optional — required for admin UI and demo video management
+SUPABASE_DEMO_BUCKET=demo-videos  # optional — only needed if using public demo videos
 ```
 
 ## Notes

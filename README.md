@@ -51,10 +51,11 @@ Open:
 
 Use this README for product context and a fast start. Technical depth lives closer to each code area:
 
-- `backend/README.md` - backend setup, environment, API and operations
-- `frontend/README.md` - frontend setup, architecture, and UI implementation notes
-- `backend/docs/README.md` - backend topic docs
+- `docs/serve-mvp.md` - what the app is building now, the serve loop, and what is out of scope
 - `docs/diagrams/README.md` - architecture and flow diagrams
+- `backend/README.md` - backend setup, environment, and operations
+- `backend/docs/README.md` - backend topic docs (config, jobs, observability, deploy)
+- `frontend/README.md` - frontend setup, architecture, and UI implementation notes
 - `CONTRIBUTING.md` - contribution workflow
 
 ## Contributing
@@ -64,7 +65,7 @@ Contributions are welcome, whether that is a bug fix, docs cleanup, a test gap, 
 If you are new here, start with:
 
 1. `CONTRIBUTING.md`
-2. `backend/docs/serve-mvp.md`
+2. `docs/serve-mvp.md`
 3. open an issue with your idea before large changes
 
 ## License

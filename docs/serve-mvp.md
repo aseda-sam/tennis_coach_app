@@ -21,7 +21,7 @@ Out of scope (for now): ball detection/trajectory, multi-shot rally analysis, co
 Core tables (see `app/models/`):
 
 - `videos`: uploaded videos + session metadata (`session_type`, `camera_angle`, etc.)
-- `players` and `video_players`: associate players to videos
+- `players`: player profiles, linked to videos via `primary_player_id` on `videos`
 - `pose_detections`: pose keypoints per video
 - `serve_windows`: user-tagged serve windows + contact timing
 - `serve_biomechanics_reports`: computed phases + raw metrics per serve
