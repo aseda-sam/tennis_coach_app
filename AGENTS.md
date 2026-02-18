@@ -71,9 +71,10 @@ data/
     processed/        # Transcoded/processed videos
     demo/             # Curated demo videos (controlled subset visible to users)
   database/           # Local DB volume mount (empty until docker compose up)
-project_docs/
+docs/
   diagrams/           # Mermaid architecture diagrams (system overview, auth, upload,
                       # analysis pipeline, serve feedback pipeline, data flow, DB relationships)
+  assets/             # Screenshots and images for README/docs
 writing/              # Substack context, LTA coaching notes, story seeds (gitignored — local only)
 ```
 
@@ -127,7 +128,7 @@ A pre-commit hook runs automatically on every `git commit`. If it fails, the com
 | `frontend-prettier` | commit | Checks formatting of `.ts/.tsx/.css` | No — run `cd frontend && npm run format` |
 | `backend-pytest` | **push** | Runs backend test suite | No — fix failing tests |
 | `frontend-typecheck` | **push** | TypeScript `tsc --noEmit` | No — fix type errors |
-| `mermaid-validate` | **push** | Validates Mermaid diagrams in `project_docs/` | No — fix broken diagrams |
+| `mermaid-validate` | **push** | Validates Mermaid diagrams in `docs/diagrams/` | No — fix broken diagrams |
 
 **If a commit fails:** Read the hook name in the output to know what failed. The most common cause is `frontend-prettier` — fix by running `cd frontend && npm run format`, then re-staging and committing.
 

@@ -61,7 +61,7 @@ def validate_file(path: Path) -> list[str]:
 
 def main() -> int:
     root = repo_root()
-    diagrams_dir = root / "project_docs" / "diagrams"
+    diagrams_dir = root / "docs" / "diagrams"
 
     if not diagrams_dir.exists():
         print(f"Missing diagrams directory: {diagrams_dir}")

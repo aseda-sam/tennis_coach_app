@@ -145,7 +145,7 @@ Detailed docs live close to the code they describe:
 | [Backend README](backend/README.md)             | Setup, API, auth, env config, database, troubleshooting |
 | [Frontend README](frontend/README.md)           | Setup, components, routing, API integration             |
 | [Backend docs index](backend/docs/README.md)    | Serve MVP scope, config, background jobs, deployment    |
-| [Architecture diagrams](project_docs/diagrams/) | Mermaid diagrams for auth, upload, analysis, data flows |
+| [Architecture diagrams](docs/diagrams/) | Mermaid diagrams for auth, upload, analysis, data flows |
 | [Design system](frontend/DESIGN.md)             | Design tokens, component patterns, accessibility        |
 | [Contributing guide](CONTRIBUTING.md)           | Workflow, code style, TDD checklist                     |
 | [API reference](http://localhost:8000/docs)     | Auto-generated from code (run the server first)         |

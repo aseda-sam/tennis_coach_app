@@ -7,14 +7,14 @@ description: Maintain Mermaid-only architecture and flow diagrams for this repo.
 
 ## Scope
 
-- Mermaid only (no PNG/SVG sources). Diagrams live in `project_docs/diagrams/`.
+- Mermaid only (no PNG/SVG sources). Diagrams live in `docs/diagrams/`.
 - One diagram per file. Prefer `.md` with a single Mermaid fence.
 - Keep diagrams high-level and stable; avoid ultra-detailed, fast-changing internals.
 - Prefer clarity first; styling (colors, themes) is optional.
 
 ## Default Structure
 
-- `project_docs/diagrams/README.md` is the index.
+- `docs/diagrams/README.md` is the index.
 - Use filenames like `auth-flow.md`, `upload-flow.md`, `analysis-pipeline.md`, `data-flow.md`, `db-relationships.md`.
 
 ## Workflow

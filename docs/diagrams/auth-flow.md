@@ -1,6 +1,6 @@
 # Auth flow
 
-How we check who you are and what you’re allowed to do. Solid arrows = request; dashed = reply. Flows differ by environment (local vs prod).
+How we check who you are and what you're allowed to do. Solid arrows = request; dashed = reply. Flows differ by environment (local vs prod).
 
 ## Local profile
 
@@ -27,7 +27,7 @@ sequenceDiagram
 
 ## Prod / authorized profile
 
-When not local (e.g. production), the API needs a valid login token first, then checks what you’re allowed to do.
+When not local (e.g. production), the API needs a valid login token first, then checks what you're allowed to do.
 
 ```mermaid
 %%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#e3f2fd', 'primaryBorderColor':'#1976d2'} }%%

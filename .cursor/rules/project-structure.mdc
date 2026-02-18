@@ -13,7 +13,7 @@ tennis_coach_app/
 ├── backend/                # FastAPI backend application
 ├── frontend/               # React frontend application
 ├── data/                   # Application data storage
-├── project_docs/           # Project documentation
+├── docs/                    # Project documentation (diagrams, assets)
 ├── ml_models/              # YOLO model files
 └── README.md               # Project overview
 ```
@@ -56,7 +56,7 @@ data/
 
 - **Backend API**: `backend/docs/api.md`
 - **Database Schema**: `backend/docs/database_schema.md`
-- **Project Docs**: `project_docs/` (architecture, plans, guides)
+- **Project docs**: `docs/` (architecture diagrams in `docs/diagrams/`, assets in `docs/assets/`)
 
 ## Key Files
 
