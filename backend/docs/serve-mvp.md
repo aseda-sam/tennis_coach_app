@@ -3,9 +3,8 @@
 This project is currently optimizing for a **focused serve-analysis loop**:
 
 - **One shot type**: serve
-- **One phase**: a single named phase (keep it consistent)
 - **3–5 metrics**: simple + coach-meaningful
-- **One recommendation**: one high-leverage improvement (not 10)
+- **No recommendations or coaching text**: phases + raw metrics only. The user and their coach decide what to do with the data.
 
 Out of scope (for now): ball detection/trajectory, multi-shot rally analysis, complex interaction effects.
 

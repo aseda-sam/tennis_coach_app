@@ -13,4 +13,3 @@ This folder is for **single-topic** docs that are easy to keep accurate.
 - `observability.md`: OpenTelemetry + structured logs plan (traces, IDs, Grafana Cloud).
 - `deploy-flyio.md`: Fly.io deploy notes (optional, only if you deploy).
 - `demo-videos.md`: Demo video setup/rotation (optional).
-- `magic_link_email_template.md`: Magic link email template (optional).
