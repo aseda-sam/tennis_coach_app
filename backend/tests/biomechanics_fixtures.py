@@ -41,9 +41,9 @@ def _make_serve_sequence(
 
     Phases at approximate frames (right-handed serve):
     0-5:   Start — arms at sides
-    6-12:  Wind-up — left wrist (toss arm) rises above shoulder
-    13-20: Cocking — both wrists above shoulders (trophy)
-    21-28: Loading — knees bend deeply
+    6-12:  Release — left wrist (toss arm) rises above shoulder
+    13-20: Loading — knees bend deeply
+    21-28: Trophy — both wrists above shoulders
     29-38: Acceleration — right wrist velocity spikes
     39-42: Contact — right wrist at highest point
     43-48: Deceleration — right wrist velocity drops
@@ -58,13 +58,13 @@ def _make_serve_sequence(
             left_y = 0.6 - progress * 0.4
             frames.append(_make_pose(left_wrist_y=left_y, right_wrist_y=0.5))
         elif i <= 20:
-            frames.append(_make_pose(left_wrist_y=0.15, right_wrist_y=0.1))
-        elif i <= 28:
-            progress = (i - 21) / 7
+            progress = (i - 13) / 7
             knee_y = 0.7 + progress * 0.15
             frames.append(
                 _make_pose(left_wrist_y=0.2, right_wrist_y=0.2, knee_y=knee_y)
             )
+        elif i <= 28:
+            frames.append(_make_pose(left_wrist_y=0.15, right_wrist_y=0.1))
         elif i <= 38:
             progress = (i - 29) / 9
             right_y = 0.4 - progress * 0.35

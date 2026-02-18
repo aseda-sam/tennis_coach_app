@@ -71,6 +71,12 @@ class ServeWindow(Base):
     # Relationships
     video = relationship("Video", back_populates="serve_windows")
     player = relationship("Player", back_populates="serve_windows")
+    biomechanics_reports = relationship(
+        "ServeBiomechanicsReport",
+        back_populates="serve_window",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     # Indexes for common query patterns
     __table_args__ = (

@@ -94,9 +94,9 @@ const MetricsByPhasePanel: React.FC<MetricsByPhasePanelProps> = ({
 
   const phaseOrder = [
     'start',
-    'wind_up',
-    'cocking',
+    'release',
     'loading',
+    'trophy',
     'acceleration',
     'contact',
     'deceleration',
@@ -105,9 +105,9 @@ const MetricsByPhasePanel: React.FC<MetricsByPhasePanelProps> = ({
   ];
   const phaseLabelMap: Record<string, string> = {
     start: 'Start',
-    wind_up: 'Wind-up',
-    cocking: 'Trophy Position',
+    release: 'Release',
     loading: 'Loading',
+    trophy: 'Trophy',
     acceleration: 'Acceleration',
     contact: 'Contact',
     deceleration: 'Deceleration',

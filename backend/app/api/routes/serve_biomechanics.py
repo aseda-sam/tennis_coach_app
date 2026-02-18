@@ -28,14 +28,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["serve-biomechanics"])
 
 PHASE_LABEL_MAP = {
-    "loading": "Loading",
-    "cocking": "Trophy Position",
-    "contact": "Contact",
-    "acceleration": "Acceleration",
-    "follow_through": "Follow-through",
-    "deceleration": "Deceleration",
-    "wind_up": "Wind-up",
     "start": "Start",
+    "release": "Release",
+    "loading": "Loading",
+    "trophy": "Trophy",
+    "acceleration": "Acceleration",
+    "contact": "Contact",
+    "deceleration": "Deceleration",
+    "follow_through": "Follow-through",
 }
 
 
@@ -46,8 +46,6 @@ def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportRe
         seg_data = json.loads(report.phase_segmentation_json)
         for pw in seg_data.get("phases", []):
             phase_name = pw["phase"]
-            if isinstance(phase_name, str) and phase_name.startswith("ServePhase."):
-                phase_name = phase_name.split(".")[-1].lower()
             phase_segmentation.append(
                 PhaseWindowResponse(
                     phase=phase_name,

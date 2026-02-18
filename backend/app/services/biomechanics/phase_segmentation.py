@@ -30,9 +30,9 @@ DECELERATION_VELOCITY_FRACTION = (
 
 class ServePhase(str, Enum):
     START = "start"
-    WIND_UP = "wind_up"
-    COCKING = "cocking"
+    RELEASE = "release"
     LOADING = "loading"
+    TROPHY = "trophy"
     ACCELERATION = "acceleration"
     CONTACT = "contact"
     DECELERATION = "deceleration"
@@ -42,9 +42,9 @@ class ServePhase(str, Enum):
 # Ordered list of phases for monotonic enforcement
 PHASE_ORDER = [
     ServePhase.START,
-    ServePhase.WIND_UP,
-    ServePhase.COCKING,
+    ServePhase.RELEASE,
     ServePhase.LOADING,
+    ServePhase.TROPHY,
     ServePhase.ACCELERATION,
     ServePhase.CONTACT,
     ServePhase.DECELERATION,
@@ -82,7 +82,7 @@ def segment_serve_phases(
     """Segment a serve into Kovacs 8-stage phases using pose keypoint heuristics.
 
     Based on Kovacs & Ellenbecker (2011) 8-stage tennis serve model:
-    Start, Wind-up, Loading, Cocking, Acceleration, Contact, Deceleration, Follow-through.
+    Start, Release, Loading, Trophy, Acceleration, Contact, Deceleration, Follow-through.
 
     Args:
         pose_frames: List of pose keypoint dicts (one per frame), None for missing.
@@ -116,20 +116,20 @@ def segment_serve_phases(
     # 1. Start — first frame
     detections[ServePhase.START] = (0, 1.0)
 
-    # 2. Wind-up — toss arm wrist rises above shoulder
-    windup_frame = _detect_windup(pose_frames, toss_side)
-    if windup_frame is not None:
-        detections[ServePhase.WIND_UP] = (windup_frame, 0.8)
+    # 2. Release — toss arm wrist rises above shoulder
+    release_frame = _detect_release(pose_frames, toss_side)
+    if release_frame is not None:
+        detections[ServePhase.RELEASE] = (release_frame, 0.8)
 
-    # 3. Cocking (Trophy) — both wrists above shoulders + peak wrist height
-    cocking_frame = _detect_cocking(pose_frames, features)
-    if cocking_frame is not None:
-        detections[ServePhase.COCKING] = (cocking_frame, 0.7)
-
-    # 4. Loading — frame with maximum knee-hip ratio (deepest knee bend)
+    # 3. Loading — frame with maximum knee-hip ratio (deepest knee bend)
     loading_frame = _detect_loading(features)
     if loading_frame is not None:
         detections[ServePhase.LOADING] = (loading_frame, 0.7)
+
+    # 4. Trophy — both wrists above shoulders + peak wrist height
+    trophy_frame = _detect_trophy(pose_frames, features)
+    if trophy_frame is not None:
+        detections[ServePhase.TROPHY] = (trophy_frame, 0.7)
 
     # 5. Acceleration — dominant wrist velocity spike
     accel_frame = _detect_acceleration(features)
@@ -182,8 +182,8 @@ def _extract_feature_curves(
     return features
 
 
-def _detect_windup(pose_frames: List[Optional[Dict]], toss_side: str) -> Optional[int]:
-    """Detect wind-up: first frame where toss-arm wrist rises above shoulder."""
+def _detect_release(pose_frames: List[Optional[Dict]], toss_side: str) -> Optional[int]:
+    """Detect release: first frame where toss-arm wrist rises above shoulder."""
     wrist_key = f"{toss_side}_wrist"
     shoulder_key = f"{toss_side}_shoulder"
 
@@ -198,10 +198,10 @@ def _detect_windup(pose_frames: List[Optional[Dict]], toss_side: str) -> Optiona
     return None
 
 
-def _detect_cocking(
+def _detect_trophy(
     pose_frames: List[Optional[Dict]], features: List[Dict]
 ) -> Optional[int]:
-    """Detect cocking/trophy: both arms raised + peak max_wrist_height."""
+    """Detect trophy: both arms raised + peak max_wrist_height."""
     # Find frames where both arms are raised
     candidates = []
     for i, feat in enumerate(features):

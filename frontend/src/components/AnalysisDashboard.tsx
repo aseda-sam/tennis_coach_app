@@ -342,6 +342,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     !analysisStatus?.has_analysis && analysisState.status === 'failed';
 
   const hasServes = sortedServeWindows.length > 0;
+  const analysisJobActive =
+    analysisState.status === 'starting' ||
+    analysisState.status === 'processing';
+  const serveWindowsProcessing =
+    !!analysisStatus?.has_analysis && !hasServes && analysisJobActive;
 
   // Current phase metrics (for phase detail panel)
   const currentPhaseMetrics = useMemo(() => {
@@ -588,6 +593,28 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 Go Practice
               </button>
             </>
+          ) : serveWindowsProcessing ? (
+            <div className="analysis-dashboard__progress-state">
+              <ProgressBar
+                status={
+                  analysisState.status as
+                    | 'starting'
+                    | 'processing'
+                    | 'finalizing'
+                    | 'completed'
+                    | 'failed'
+                    | 'cancelled'
+                }
+                showPercentage={false}
+                showStatus={true}
+                size="medium"
+                animated={true}
+                indeterminate={true}
+              />
+              <p className="analysis-dashboard__progress-text">
+                Processing serve windows...
+              </p>
+            </div>
           ) : (
             <div className="analysis-dashboard__no-serves">
               <p>No serves detected yet.</p>

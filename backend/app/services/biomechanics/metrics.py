@@ -27,10 +27,10 @@ logger = logging.getLogger(__name__)
 METRIC_META: Dict[str, Dict[str, str]] = {
     "elbow_angle_at_contact": {"unit": "deg", "phase": "contact"},
     "knee_flexion_min_deg": {"unit": "deg", "phase": "loading"},
-    "toss_peak_height": {"unit": "normalized", "phase": "wind_up"},
-    "trunk_rotation_at_trophy": {"unit": "deg", "phase": "cocking"},
+    "toss_peak_height": {"unit": "normalized", "phase": "release"},
+    "trunk_rotation_at_trophy": {"unit": "deg", "phase": "trophy"},
     "trunk_rotation_at_contact": {"unit": "deg", "phase": "contact"},
-    "shoulder_abduction_at_trophy": {"unit": "deg", "phase": "cocking"},
+    "shoulder_abduction_at_trophy": {"unit": "deg", "phase": "trophy"},
     "shoulder_abduction_at_contact": {"unit": "deg", "phase": "contact"},
     "racket_drop_depth": {"unit": "normalized", "phase": "acceleration"},
     "contact_point_height": {"unit": "normalized", "phase": "contact"},
@@ -139,7 +139,7 @@ def compute_biomechanics_metrics(
         contact_frame = max(0, min(contact_frame, len(pose_frames) - 1))
 
     # Get phase frames
-    trophy_frame = _get_phase_frame(phases, ServePhase.COCKING, serve_start, fps)
+    trophy_frame = _get_phase_frame(phases, ServePhase.TROPHY, serve_start, fps)
 
     # Contact-frame metrics
     if contact_frame is not None and contact_frame < len(pose_frames):
@@ -239,7 +239,7 @@ def _compute_min_knee_flexion(
     Searches from the beginning of the serve window to contact.  The deepest
     knee bend often occurs at or before trophy position, so we cannot rely on
     the loading-phase boundary (which may be dropped by monotonic enforcement
-    when it precedes cocking/trophy).  Stopping at contact still excludes
+    when it precedes trophy).  Stopping at contact still excludes
     post-contact landing where a player might crouch.
     """
     start = 0

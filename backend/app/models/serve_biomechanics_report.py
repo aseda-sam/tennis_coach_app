@@ -51,7 +51,11 @@ class ServeBiomechanicsReport(Base):
     )
 
     # Relationships
-    serve_window = relationship("ServeWindow", backref="biomechanics_reports")
+    serve_window = relationship(
+        "ServeWindow",
+        back_populates="biomechanics_reports",
+        passive_deletes=True,
+    )
     player = relationship("Player")
 
     __table_args__ = (
