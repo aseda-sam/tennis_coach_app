@@ -7,7 +7,7 @@
 
 Upload a tennis serve. See what your body is actually doing. Take that to the court.
 
-Serve Tennis Coach uses pose estimation to break down your serve into biomechanical phases, surface timing and posture metrics, and give you something concrete to work on — without pretending to be a real coach.
+Serve Tennis Coach uses pose estimation to break down your serve into biomechanical phases, surface timing and posture metrics, and give you something concrete to work on. It doesn't pretend to be a real coach.
 
 <p align="center">
   <img src="docs/assets/analysis-dashboard.png" alt="Analysis dashboard showing video playback with pose overlay and serve breakdown" width="720" />
@@ -17,13 +17,13 @@ Serve Tennis Coach uses pose estimation to break down your serve into biomechani
 
 Most tennis apps either drown you in stats or try to replace a coach. This one does neither.
 
-The idea is simple: record your serve, upload it, and get clear visual feedback on what happened — frame by frame, phase by phase. Then go practice. The app is a **coach-prep tool**: it helps you see what to work on and gives you language to use when you talk to a real coach.
+The idea is simple: record your serve, upload it, and get clear visual feedback on what happened. Frame by frame, phase by phase. Then go practice. The app is a **coach-prep tool**: it helps you see what to work on and gives you language to use when you talk to a real coach.
 
 This started as a side project while taking the LTA Level 1 coaching course. The coaching frameworks inform the design, but the app doesn't try to teach technique. It shows you data and gets out of the way.
 
 ### Design principles
 
-These aren't aspirational — they're constraints that shape every feature decision:
+These aren't aspirational. They're constraints that shape every feature decision:
 
 - **Practice > analysis.** Every feature should push you toward the court, not deeper into the app.
 - **Progressive disclosure.** Show one thing at a time. Unlock detail as users demonstrate understanding.
@@ -31,21 +31,21 @@ These aren't aspirational — they're constraints that shape every feature decis
 
 ## What it does
 
-**Upload and organise** — Drop in serve videos from your phone. The library keeps them organised with metadata and session tracking.
+**Upload and organise.** Drop in serve videos from your phone. The library keeps them organised with metadata and session tracking.
 
 <p align="center">
   <img src="docs/assets/video-library.png" alt="Video library showing uploaded serve sessions" width="720" />
 </p>
 
-**Find serve windows** — The app identifies where serves happen in your video, so you're not scrubbing through warm-up footage.
+**Find serve windows.** The app identifies where serves happen in your video, so you're not scrubbing through warm-up footage.
 
-**Pose estimation** — MediaPipe tracks 33 body landmarks through every frame. Switch between raw video, skeleton overlay, and stick figure views.
+**Pose estimation.** MediaPipe tracks 33 body landmarks through every frame. Switch between raw video, skeleton overlay, and stick figure views.
 
-**Phase segmentation** — Each serve is broken into biomechanical phases (loading, cocking, acceleration, contact, follow-through) based on pose data, not manual tagging.
+**Phase segmentation.** Each serve is broken into biomechanical phases (loading, cocking, acceleration, contact, follow-through) based on pose data, not manual tagging.
 
-**Metrics** — Joint angles, timing between phases, posture alignment. Raw numbers, not scores — you decide what matters with your coach.
+**Metrics.** Joint angles, timing between phases, posture alignment. Raw numbers, not scores. You decide what matters with your coach.
 
-**Background processing** — Video transcoding, pose detection, and biomechanics analysis run as background jobs. Upload and come back when it's done.
+**Background processing.** Video transcoding, pose detection, and biomechanics analysis run as background jobs. Upload and come back when it's done.
 
 ## Quick start
 
@@ -92,10 +92,10 @@ flowchart TD
 
   subgraph PIPELINE ["Pose & biomechanics pipeline"]
     TRANSCODE[Transcode 720p/30fps]
-    SCOUT[Scout pass — lite model]
+    SCOUT[Scout pass, lite model]
     DETECT[Detect serve windows]
-    REFINE[Refine pass — full model]
-    ANALYZE[Biomechanics — phases + metrics]
+    REFINE[Refine pass, full model]
+    ANALYZE[Biomechanics, phases + metrics]
   end
 
   UI -->|upload / review| AUTH
@@ -121,7 +121,7 @@ flowchart TD
 
 ## Project status
 
-This is an active MVP. The serve analysis loop works end-to-end: upload → process → review. Here's where things stand:
+This is an active MVP. The serve analysis loop works end-to-end: upload, process, review. Here's where things stand:
 
 | Area | Status |
 |------|--------|
@@ -129,12 +129,12 @@ This is an active MVP. The serve analysis loop works end-to-end: upload → proc
 | Pose estimation (MediaPipe) | Stable |
 | Serve window detection | Working, improving accuracy |
 | Phase segmentation | Working |
-| Biomechanics metrics | In progress — core metrics done, scoring next |
+| Biomechanics metrics | In progress, core metrics done, scoring next |
 | Ball toss trajectory | Planned |
 | Multi-serve comparison | Planned |
 | Progress tracking over time | Planned |
 
-The API is versioned under `/v0/` — breaking changes are expected while the MVP evolves.
+The API is versioned under `/v0/`. Breaking changes are expected while the MVP evolves.
 
 ## Documentation
 
@@ -152,7 +152,7 @@ Detailed docs live close to the code they describe:
 
 ## Contributing
 
-Contributions are welcome — whether that's fixing a bug, improving the analysis pipeline, or just asking a good question in an issue.
+Contributions are welcome. Bug fixes, pipeline improvements, or just a good question in an issue.
 
 ```bash
 # Fork, clone, then:
@@ -169,4 +169,6 @@ If you're not sure where to start, open an issue. Half the value is in the conve
 
 ## License
 
-[MIT](LICENSE) — use it, fork it, learn from it, build on it.
+[MIT](LICENSE)
+
+Built by [Aseda](https://github.com/aseda-sam). If you find this useful or interesting, I'd genuinely love to hear from you.
