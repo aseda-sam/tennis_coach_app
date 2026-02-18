@@ -56,7 +56,7 @@ pytest tests/api/test_serve_biomechanics_routes.py
 
 ### Test Configuration
 
-- **Database**: SQLite test database (isolated per test)
+- **Database**: PostgreSQL (same as local dev, via `PROFILE=local`)
 - **Profile**: `PROFILE=local` (via `ensure_local_profile` fixture)
 - **Auth**: Mock user (test_user_id fixture)
 - **Storage**: Local filesystem (via PROFILE=local)

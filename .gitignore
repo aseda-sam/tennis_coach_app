@@ -97,21 +97,20 @@ data/videos/raw/*
 data/videos/processed/*
 data/videos/demo/*
 data/analysis_cache/*
-data/database/*.db
 
 # Keep directories but ignore contents
 !data/videos/raw/.gitkeep
 !data/videos/processed/.gitkeep
 !data/videos/demo/.gitkeep
 !data/analysis_cache/.gitkeep
-!data/database/.gitkeep
 
-# Model files
+# Model files (large binaries, downloaded at runtime)
 *.pt
 *.pth
-
-# ML Models directory (large files, should be downloaded separately)
 backend/ml_models/
+
+# Notebooks (local exploration only)
+notebooks/
 
 # Python version management
 .python-version
@@ -130,9 +129,6 @@ test_yolo_fix.py
 
 # Miscellaneous
 etc/
-
-# Sensitive documentation (kept locally, do not commit)
-backend/scripts/MIGRATION_GUIDE.md
 
 # Writing
 writing/

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Dict, List
 import cv2
 import numpy as np
 
+from app.core.config import settings
 from app.utils.video_utils import get_video_rotation
 
 if TYPE_CHECKING:
@@ -46,13 +47,16 @@ class BallDetectionService:
         self._logger = logger
 
     def _get_model(self) -> "YOLO":
-        """Lazy-load YOLO model (yolo11n.pt, auto-downloads on first use)."""
+        """Lazy-load YOLO model, downloading to ML_MODELS_DIR on first use."""
         if self._model is None:
             try:
                 from ultralytics import YOLO
 
-                self._model = YOLO("yolo11n.pt")
-                self._logger.info("Ball detection model (yolo11n) loaded")
+                model_path = Path(settings.ML_MODELS_DIR) / "yolo11n.pt"
+                self._model = YOLO(str(model_path))
+                self._logger.info(
+                    "Ball detection model (yolo11n) loaded from %s", model_path
+                )
             except ImportError as e:
                 self._logger.error("ultralytics not installed: %s", e)
                 raise

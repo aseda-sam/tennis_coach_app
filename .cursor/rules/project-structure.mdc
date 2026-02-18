@@ -46,7 +46,7 @@ backend/
 ```
 data/
 ├── analysis_cache/          # Cached analysis results
-├── database/               # SQLite database files
+├── videos/                 # Video file storage
 └── videos/                 # Video file storage
     ├── processed/          # Processed videos
     └── raw/               # Original videos

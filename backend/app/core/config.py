@@ -194,11 +194,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
-# Create directories (resolve relative paths from backend/ directory)
-_backend_dir = Path(__file__).parent.parent.parent  # backend/
-for d in [settings.UPLOAD_DIR, settings.PROCESSED_DIR, "../data/database"]:
-    dir_path = (_backend_dir / d).resolve() if d.startswith("../") else Path(d)
-    dir_path.mkdir(parents=True, exist_ok=True)
+# Create local storage directories on startup
+for d in [settings.UPLOAD_DIR, settings.PROCESSED_DIR]:
+    Path(d).mkdir(parents=True, exist_ok=True)
 
 
 # Environment limits (for video validation)
