@@ -1,11 +1,15 @@
 # Tennis Coach App - Backend
 
-FastAPI backend for a **serve-focused** tennis coaching MVP:
+Technical backend guide for contributors working in `backend/`.
 
-- Upload a serve video
-- Tag `serve_windows`
-- Run pose detection + serve metrics in background jobs
-- Return a small set of coach-meaningful metrics + one recommendation
+For product context, screenshots, and a quick project intro, start at the root `README.md`.
+
+This service handles:
+
+- Video upload and metadata persistence
+- Serve window workflows (`serve_windows`)
+- Background jobs for transcode and pose processing
+- Biomechanics phases and raw metrics APIs
 
 ## Quick Start
 
@@ -33,13 +37,11 @@ FastAPI backend for a **serve-focused** tennis coaching MVP:
 2. **Setup Python Environment**:
 
    ```bash
-   # Create virtual environment
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-   # Install dependencies
+   # From repo root
    cd backend
-   pip install -e .
+
+   # Create/use uv-managed environment and install deps
+   uv pip install -e ".[dev]"
    ```
 
 3. **Start PostgreSQL Database**:
