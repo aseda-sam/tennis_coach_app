@@ -84,7 +84,12 @@ These constraints apply to every analysis and feedback view. They come from the 
 ## Canonical References
 
 - Design tokens: `frontend/src/design-tokens.css`
-- Design patterns/migration notes: `frontend/DESIGN.md`
+- CSS component patterns: `frontend/DESIGN.md`
+
+## When to update docs
+
+- **If you add a new CSS component pattern** (new class convention, new component structure): add it to `frontend/DESIGN.md`.
+- **If you add a new behavioral rule** (new required pattern, constraint, or anti-pattern): add it here in `react-frontend.mdc`, not in `DESIGN.md`.
 
 ## Before Committing Frontend Files (Required)
 

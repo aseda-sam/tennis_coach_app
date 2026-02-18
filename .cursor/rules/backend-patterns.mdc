@@ -32,6 +32,9 @@ alwaysApply: false
 - **If you change models/relationships**:
   - Update `backend/docs/database_schema.md`
   - Create/adjust Alembic migrations under `backend/alembic/`
+- **If you change env vars or PROFILE behaviour**: update `backend/docs/config.md`.
+- **If you change a background job task or queue**: update `backend/docs/background-jobs.md`.
+- **If you change a script's CLI flags**: update `backend/docs/demo-videos.md` (for demo/admin scripts).
 
 ## Errors
 

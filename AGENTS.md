@@ -88,6 +88,13 @@ writing/              # Substack context, LTA coaching notes, story seeds (gitig
 - **API versioning:** All endpoints under `/v0/` (alpha, breaking changes allowed).
 - **DB changes:** If you modify models, update `backend/docs/database_schema.md` and create an Alembic migration.
 
+## Documentation discipline
+
+- **No standalone docs for one-time work.** Migration runbooks, one-off SQL guides, and per-feature setup notes do not get their own `.md` files. Document inline: in the migration file's docstring, the commit message, or a code comment. Standalone docs only for things that need ongoing reference.
+- **Update docs at the point of change.** If you change a model → update `database_schema.md`. Change a config var → update `config.md`. Change a script's flags → update `demo-videos.md`. Don't defer it.
+- **Docs live close to the code they describe.** Backend operational docs in `backend/docs/`. Product/system-level docs in root `docs/`. Frontend CSS patterns in `frontend/DESIGN.md`. Behavioral rules for AI in `.cursor/rules/`.
+- **Design tokens and CSS patterns are a reference, not a rule.** `frontend/DESIGN.md` is the CSS pattern reference. Behavioral constraints (use tokens, button hierarchy, accessibility) live in `.cursor/rules/react-frontend.mdc`.
+
 ## Testing
 
 - **TDD:** Write failing test first, implement, refactor.

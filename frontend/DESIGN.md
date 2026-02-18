@@ -352,48 +352,7 @@ Example:
 }
 ```
 
-## Best Practices
+## Notes
 
-1. **Always use design tokens** - Never hardcode colors, spacing, or other values
-2. **Follow component patterns** - Use established patterns for consistency
-3. **Maintain hierarchy** - Use typography and spacing to create clear visual hierarchy
-4. **Test accessibility** - Ensure focus states and contrast meet WCAG guidelines
-5. **Keep it simple** - Don't over-engineer; use the simplest solution that works
-
-## Migration Guide
-
-When updating existing components:
-
-1. Replace hardcoded colors with `var(--color-*)` tokens
-2. Replace hardcoded spacing with `var(--spacing-*)` tokens
-3. Replace hardcoded shadows with `var(--shadow-*)` tokens
-4. Replace hardcoded transitions with `var(--transition-*)` tokens
-5. Update border-radius values to use `var(--radius-*)` tokens
-
-Example migration:
-
-```css
-/* Before */
-.button {
-  padding: 12px 24px;
-  background: #00bc7d;
-  border-radius: 12px;
-  box-shadow: 0 6px 14px rgba(0, 188, 125, 0.28);
-  transition: all 0.2s ease;
-}
-
-/* After */
-.button {
-  padding: var(--button-padding-md);
-  background: var(--color-primary);
-  border-radius: var(--button-border-radius);
-  box-shadow: var(--shadow-primary-md);
-  transition: var(--transition-normal);
-}
-```
-
-## Future Enhancements
-
-- Dark mode support (tokens ready, implementation pending)
-- Additional component patterns as needed
-- Icon system documentation (when lucide-react is added)
+- Dark mode: tokens are structured to support it; not yet implemented.
+- Behavioral constraints (token enforcement, loading states, button hierarchy, accessibility) live in `.cursor/rules/react-frontend.mdc`, not here. This file is the CSS pattern reference.
