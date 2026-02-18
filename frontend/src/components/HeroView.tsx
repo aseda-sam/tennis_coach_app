@@ -53,6 +53,14 @@ const HeroView: React.FC<HeroViewProps> = ({
     }
   }, [isPlaying, viewMode]);
 
+  useEffect(() => {
+    if (viewMode !== 'video' || !videoRef.current) return;
+    // Keep native video playback in sync with phase seeks/loop jumps.
+    if (Math.abs(videoRef.current.currentTime - currentTime) > 0.04) {
+      videoRef.current.currentTime = currentTime;
+    }
+  }, [currentTime, viewMode]);
+
   const handleVideoSeek = useCallback(
     (time: number) => {
       if (videoRef.current) {

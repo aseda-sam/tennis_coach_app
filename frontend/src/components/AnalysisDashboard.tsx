@@ -105,6 +105,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [naturalScroll, setNaturalScroll] = useState(true);
   const [showEditMode, setShowEditMode] = useState(false);
   const [phaseDetailExpanded, setPhaseDetailExpanded] = useState(false);
+  const [loopCurrentPhase, setLoopCurrentPhase] = useState(false);
 
   // Edit mode state
   const [isFindingServes, setIsFindingServes] = useState(false);
@@ -200,6 +201,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   const handleTimeUpdate = useCallback((t: number) => {
     setCurrentTime(t);
+  }, []);
+
+  const handlePhaseJump = useCallback((phaseStart: number) => {
+    setCurrentTime(phaseStart);
+    setIsPlaying(false);
   }, []);
 
   const handleServeNavigate = useCallback(
@@ -343,6 +349,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     return metrics.filter((m) => m.phase === currentPhase.phase);
   }, [metrics, currentPhase]);
 
+  // Optional loop playback for current phase window.
+  useEffect(() => {
+    if (!loopCurrentPhase || !isPlaying || !currentPhase) return;
+    if (currentTime >= currentPhase.end_timestamp) {
+      setCurrentTime(currentPhase.start_timestamp);
+    }
+  }, [loopCurrentPhase, isPlaying, currentPhase, currentTime]);
+
   return (
     <div className="analysis-dashboard">
       {/* Header */}
@@ -468,6 +482,49 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   </div>
                 )}
               </div>
+
+              {phases.length > 0 && (
+                <div className="analysis-dashboard__phase-controls">
+                  <div className="analysis-dashboard__current-stage">
+                    <span className="analysis-dashboard__current-stage-label">
+                      Current Stage
+                    </span>
+                    <strong className="analysis-dashboard__current-stage-value">
+                      {currentPhase?.phase_label ?? 'Unknown'}
+                    </strong>
+                  </div>
+                  <div className="analysis-dashboard__phase-chip-row">
+                    {phases.map((phase) => (
+                      <button
+                        key={phase.phase}
+                        type="button"
+                        className={`analysis-dashboard__phase-chip ${
+                          currentPhase?.phase === phase.phase
+                            ? 'analysis-dashboard__phase-chip--active'
+                            : ''
+                        }`}
+                        onClick={() => handlePhaseJump(phase.start_timestamp)}
+                      >
+                        {phase.phase_label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className={`analysis-dashboard__loop-btn ${
+                      loopCurrentPhase
+                        ? 'analysis-dashboard__loop-btn--active'
+                        : ''
+                    }`}
+                    onClick={() => setLoopCurrentPhase((prev) => !prev)}
+                    disabled={!currentPhase}
+                  >
+                    {loopCurrentPhase
+                      ? 'Looping Current Stage'
+                      : 'Loop Current Stage'}
+                  </button>
+                </div>
+              )}
 
               {/* Phase Detail (Progressive Disclosure) */}
               {currentPhase && (
