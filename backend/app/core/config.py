@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     # Background job behavior
     AUTO_ENQUEUE_ON_UPLOAD: bool = False
 
+    # Pipeline automation
+    AUTO_ACCEPT_SERVE_PROPOSALS: bool = True
+    AUTO_ACCEPT_CONFIDENCE_THRESHOLD: float = 0.6
+    AUTO_COMPUTE_BIOMECHANICS: bool = True
+
     # ML Models
     ML_MODELS_DIR: str = "ml_models"
 

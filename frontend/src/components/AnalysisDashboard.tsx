@@ -1,23 +1,58 @@
 import { useQueryClient } from '@tanstack/react-query';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import { useAppConfig } from '../hooks/useAppConfig';
-import { useServeWindows } from '../hooks/useServeWindows';
+import { useServeBiomechanicsReport } from '../hooks/useServeBiomechanicsReport';
 import { useServeProposals } from '../hooks/useServeProposals';
+import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
+import { PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
-import AnalysisRightPanel from './AnalysisRightPanel';
 import { ArrowBackIcon } from './Icons';
+import HeroView from './HeroView';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
-import ServeBiomechanicsDetail from './ServeBiomechanicsDetail';
-import VideoPlayer from './VideoPlayer';
+import ServeNavigator from './ServeNavigator';
+import ServePhaseTimeline from './ServePhaseTimeline';
 
 interface AnalysisDashboardProps {
   videoId: number;
   videoFilename: string;
   videoUrl: string;
   onClose: () => void;
+}
+
+const METRIC_DISPLAY_NAMES: Record<string, string> = {
+  elbow_angle_at_contact: 'Elbow Extension',
+  knee_flexion_min_deg: 'Knee Flexion',
+  trunk_rotation_at_contact: 'Trunk Rotation',
+  trunk_rotation_at_trophy: 'Trunk Coil',
+  shoulder_abduction_at_contact: 'Shoulder Position',
+  shoulder_abduction_at_trophy: 'Arm Position',
+  contact_point_height: 'Contact Height',
+  hip_shoulder_separation_max: 'Hip-Shoulder Separation',
+  hip_shoulder_separation_at_contact: 'Hip-Shoulder Sep. (Contact)',
+  racket_drop_depth: 'Racket Drop',
+  toss_peak_height: 'Toss Peak Height',
+  kinetic_chain_correct: 'Kinetic Chain',
+};
+
+function formatMetricValue(value: number | null, unit: string): string {
+  if (value === null) return 'N/A';
+  if (unit === 'deg' || unit === 'degrees') return `${Math.round(value)}\u00b0`;
+  if (unit === 'normalized') return value.toFixed(2);
+  if (unit === 'ms') return `${value} ms`;
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(2);
+}
+
+function findCurrentPhase(
+  phases: PhaseWindow[],
+  time: number
+): PhaseWindow | undefined {
+  return phases.find(
+    (p) => time >= p.start_timestamp && time <= p.end_timestamp
+  );
 }
 
 const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
@@ -31,21 +66,17 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const lowConfidenceThreshold =
     config.serve_detection.low_confidence_threshold;
 
-  // Use React Query hook for analysis status (with caching)
   const { data: analysisStatus, refetch: refetchAnalysisStatus } =
     useVideoAnalysisStatus(videoId);
 
-  // Memoize the completion callback to prevent infinite re-renders
   const handleAnalysisComplete = useCallback(async () => {
-    // Refresh analysis status after completion without reloading page
     await refetchAnalysisStatus();
-    // Also invalidate the query to ensure fresh data
     queryClient.invalidateQueries({
       queryKey: ['video-analysis-status', videoId],
     });
+    queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
   }, [refetchAnalysisStatus, queryClient, videoId]);
 
-  // Analysis manager for pose analysis
   const {
     analysisState,
     startAnalysis,
@@ -62,52 +93,127 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         analysis_type: 'pose_only',
         confidence_threshold: 0.5,
       });
-    } catch (error) {
-      // Error handling is done by the startAnalysis hook
+    } catch {
+      // Error handling is done by the hook
     }
   }, [startAnalysis]);
 
-  const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
-    ((serveWindowId: number) => void) | null
-  >(null);
-  const [selectedServeId, setSelectedServeId] = useState<number | null>(null);
-  const [naturalScroll, setNaturalScroll] = useState(true);
+  const [currentServeIndex, setCurrentServeIndex] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [naturalScroll, setNaturalScroll] = useState(true);
+  const [showEditMode, setShowEditMode] = useState(false);
+  const [phaseDetailExpanded, setPhaseDetailExpanded] = useState(false);
+
+  // Edit mode state
   const [isFindingServes, setIsFindingServes] = useState(false);
   const [findServesMessage, setFindServesMessage] = useState<string | null>(
     null
   );
+  const [isAcceptingAll, setIsAcceptingAll] = useState(false);
 
-  // Get serve windows for this video
   const { serveWindows } = useServeWindows({
     videoId,
     filters: { video_id: videoId },
     autoRefresh: true,
   });
 
-  // Get serve proposals for detection functionality
   const {
     proposals,
     detectionStatus,
     runDetection,
     clearProposals,
     acceptAllProposals,
-    rejectLowConfidence,
-    lowConfidenceCount,
   } = useServeProposals({
     videoId,
     autoRefresh: true,
     lowConfidenceThreshold,
   });
 
-  // State for bulk operations
-  const [isAcceptingAll, setIsAcceptingAll] = useState(false);
-  const [isRejectingLowConf, setIsRejectingLowConf] = useState(false);
+  const sortedServeWindows = useMemo(
+    () =>
+      [...serveWindows].sort((a, b) => a.start_timestamp - b.start_timestamp),
+    [serveWindows]
+  );
 
-  // Keyboard shortcut listener for ?
+  const currentServe = sortedServeWindows[currentServeIndex] ?? null;
+
+  const { data: biomechanicsReport } = useServeBiomechanicsReport(
+    currentServe?.id ?? null
+  );
+
+  const phases = useMemo(
+    () => biomechanicsReport?.phase_segmentation ?? [],
+    [biomechanicsReport]
+  );
+  const metrics = useMemo(
+    () => biomechanicsReport?.metrics ?? [],
+    [biomechanicsReport]
+  );
+  const currentPhase = currentServe
+    ? findCurrentPhase(phases, currentTime)
+    : undefined;
+
+  // Sync currentTime when switching serves
+  useEffect(() => {
+    if (currentServe) {
+      setCurrentTime(currentServe.start_timestamp);
+      setIsPlaying(false);
+    }
+  }, [currentServe?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Playback timer for stick figure mode
+  useEffect(() => {
+    if (!isPlaying || !currentServe) return;
+
+    const interval = setInterval(() => {
+      setCurrentTime((t) => {
+        const next = t + 1 / 30;
+        if (next > currentServe.end_timestamp) {
+          setIsPlaying(false);
+          return currentServe.start_timestamp;
+        }
+        return next;
+      });
+    }, 1000 / 30);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, currentServe]);
+
+  const handlePlayPause = useCallback(() => {
+    setIsPlaying((p) => !p);
+  }, []);
+
+  const handleSeek = useCallback(
+    (t: number) => {
+      if (!currentServe) return;
+      setCurrentTime(
+        Math.max(
+          currentServe.start_timestamp,
+          Math.min(currentServe.end_timestamp, t)
+        )
+      );
+    },
+    [currentServe]
+  );
+
+  const handleTimeUpdate = useCallback((t: number) => {
+    setCurrentTime(t);
+  }, []);
+
+  const handleServeNavigate = useCallback(
+    (index: number) => {
+      if (index >= 0 && index < sortedServeWindows.length) {
+        setCurrentServeIndex(index);
+      }
+    },
+    [sortedServeWindows.length]
+  );
+
+  // Keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
@@ -116,7 +222,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         return;
       }
 
-      // ? key (with or without shift) opens shortcuts
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault();
         setShowKeyboardShortcuts(true);
@@ -127,7 +232,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Handle find serves
+  // Edit mode handlers
   const handleFindServes = useCallback(async () => {
     if (!analysisStatus?.has_analysis) {
       setFindServesMessage('Please run body tracking first.');
@@ -135,7 +240,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       return;
     }
 
-    // Check for existing detections
     const hasExisting =
       detectionStatus &&
       (detectionStatus.pending_proposals > 0 ||
@@ -184,7 +288,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     }
   }, [analysisStatus, detectionStatus, runDetection]);
 
-  // Handle clear proposals
   const handleClearProposals = useCallback(async () => {
     if (proposals.length === 0) return;
     const confirmed = window.confirm('Clear all pending serve proposals?');
@@ -198,7 +301,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     }
   }, [proposals.length, clearProposals]);
 
-  // Handle accept all proposals
   const handleAcceptAll = useCallback(async () => {
     if (proposals.length === 0) return;
     setIsAcceptingAll(true);
@@ -221,52 +323,29 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     }
   }, [proposals.length, acceptAllProposals]);
 
-  // Handle reject low confidence proposals
-  const handleRejectLowConfidence = useCallback(async () => {
-    if (lowConfidenceCount === 0) return;
-    setIsRejectingLowConf(true);
-    try {
-      const result = await rejectLowConfidence();
-      if (result.failed > 0) {
-        setFindServesMessage(
-          `Removed ${result.rejected}, ${result.failed} failed.`
-        );
-      } else {
-        setFindServesMessage(
-          `Removed ${result.rejected} low-confidence proposals.`
-        );
-      }
-      setTimeout(() => setFindServesMessage(null), 3000);
-    } catch (err) {
-      console.error('Failed to reject low confidence:', err);
-      setFindServesMessage('Failed to remove proposals.');
-      setTimeout(() => setFindServesMessage(null), 3000);
-    } finally {
-      setIsRejectingLowConf(false);
-    }
-  }, [lowConfidenceCount, rejectLowConfidence]);
+  // Analysis in progress — show progress view
+  const analysisInProgress =
+    !analysisStatus?.has_analysis &&
+    (analysisState.status === 'starting' ||
+      analysisState.status === 'processing');
 
-  const handleServeWindowClick = useCallback(
-    (serveWindowId: number) => {
-      videoPlayerNavigate?.(serveWindowId);
-      // Toggle biomechanics detail — click again to close
-      setSelectedServeId((prev) =>
-        prev === serveWindowId ? null : serveWindowId
-      );
-    },
-    [videoPlayerNavigate]
-  );
+  const analysisIdle =
+    !analysisStatus?.has_analysis && analysisState.status === 'idle';
 
-  const handleNavigateReady = useCallback(
-    (navigateFn: (serveWindowId: number) => void) => {
-      setVideoPlayerNavigate(() => navigateFn);
-    },
-    []
-  );
+  const analysisFailed =
+    !analysisStatus?.has_analysis && analysisState.status === 'failed';
+
+  const hasServes = sortedServeWindows.length > 0;
+
+  // Current phase metrics (for phase detail panel)
+  const currentPhaseMetrics = useMemo(() => {
+    if (!currentPhase) return metrics;
+    return metrics.filter((m) => m.phase === currentPhase.phase);
+  }, [metrics, currentPhase]);
 
   return (
     <div className="analysis-dashboard">
-      {/* Header - Compact title bar */}
+      {/* Header */}
       <div className="analysis-dashboard__header">
         <button
           className="analysis-dashboard__back-button"
@@ -276,179 +355,254 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           <ArrowBackIcon size={16} />
           Back to Library
         </button>
-        <h1 className="analysis-dashboard__title">{videoFilename}</h1>
+        <div className="analysis-dashboard__header-right">
+          <h1 className="analysis-dashboard__title">{videoFilename}</h1>
+          {hasServes && (
+            <button
+              className="analysis-dashboard__edit-btn"
+              onClick={() => setShowEditMode(!showEditMode)}
+              type="button"
+            >
+              {showEditMode ? 'Done' : 'Edit Serves'}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="analysis-dashboard__content">
-        {/* Left Column - Video Player */}
-        <div className="analysis-dashboard__video-column">
-          <VideoPlayer
-            videoUrl={videoUrl}
-            title={videoFilename}
-            showControls={true}
-            aspectRatioMode="contain"
-            videoId={videoId}
-            hasPoseData={analysisStatus?.has_analysis || false}
-            controlsBelow={true}
-            onNavigateReady={handleNavigateReady}
-            isDemo={false}
-            naturalScroll={naturalScroll}
-            lowConfidenceThreshold={lowConfidenceThreshold}
-          />
+      {/* Analysis Required State */}
+      {analysisIdle && (
+        <div className="analysis-dashboard__empty-state">
+          <h2 className="analysis-dashboard__empty-title">Ready to Analyze</h2>
+          <p className="analysis-dashboard__empty-desc">
+            Track body movement to detect serves and compute biomechanics
+            automatically.
+          </p>
           <button
-            className="analysis-dashboard__shortcuts-hint"
-            onClick={() => setShowKeyboardShortcuts(true)}
+            className="analysis-dashboard__action-btn analysis-dashboard__action-btn--primary"
+            onClick={handleFocusAnalysis}
+            disabled={isAnalysisLoading}
             type="button"
-            title="Keyboard shortcuts"
           >
-            <kbd>?</kbd> Keyboard shortcuts
+            Track Body Movement
           </button>
         </div>
+      )}
 
-        {/* Right Column - Analysis Panel */}
-        <div className="analysis-dashboard__analysis-column">
-          {/* Action buttons for whole-video operations */}
-          <div className="analysis-dashboard__actions">
-            {!analysisStatus?.has_analysis && (
-              <>
-                {(analysisState.status === 'starting' ||
-                  analysisState.status === 'processing') && (
-                  <div className="analysis-dashboard__progress-card">
-                    <ProgressBar
-                      status={analysisState.status}
-                      showPercentage={false}
-                      showStatus={true}
-                      size="medium"
-                      animated={true}
-                      indeterminate={true}
+      {/* Analysis Failed */}
+      {analysisFailed && (
+        <div className="analysis-dashboard__empty-state analysis-dashboard__empty-state--error">
+          <p className="analysis-dashboard__error-message">
+            {analysisState.error || 'Analysis failed. Please try again.'}
+          </p>
+          <button
+            className="analysis-dashboard__action-btn analysis-dashboard__action-btn--primary"
+            onClick={handleFocusAnalysis}
+            disabled={isAnalysisLoading}
+            type="button"
+          >
+            Retry Body Tracking
+          </button>
+        </div>
+      )}
+
+      {/* Analysis In Progress */}
+      {analysisInProgress && (
+        <div className="analysis-dashboard__progress-state">
+          <ProgressBar
+            status={
+              analysisState.status as
+                | 'starting'
+                | 'processing'
+                | 'finalizing'
+                | 'completed'
+                | 'failed'
+                | 'cancelled'
+            }
+            showPercentage={false}
+            showStatus={true}
+            size="medium"
+            animated={true}
+            indeterminate={true}
+          />
+          <p className="analysis-dashboard__progress-text">
+            Analyzing your serve video...
+          </p>
+        </div>
+      )}
+
+      {/* Main Content: Focus-mode serve viewer */}
+      {analysisStatus?.has_analysis && (
+        <div className="analysis-dashboard__focus-view">
+          {hasServes ? (
+            <>
+              {/* Hero View */}
+              <HeroView
+                videoUrl={videoUrl}
+                videoId={videoId}
+                serveStart={currentServe!.start_timestamp}
+                serveEnd={currentServe!.end_timestamp}
+                currentTime={currentTime}
+                isPlaying={isPlaying}
+                phaseLabel={currentPhase?.phase_label}
+                onTimeUpdate={handleTimeUpdate}
+                onPlayPause={handlePlayPause}
+                onSeek={handleSeek}
+              />
+
+              {/* Serve Nav + Phase Timeline Row */}
+              <div className="analysis-dashboard__nav-row">
+                <ServeNavigator
+                  serveWindows={sortedServeWindows}
+                  currentIndex={currentServeIndex}
+                  onNavigate={handleServeNavigate}
+                />
+                {phases.length > 0 && (
+                  <div className="analysis-dashboard__timeline-wrapper">
+                    <ServePhaseTimeline
+                      phases={phases}
+                      currentTime={currentTime}
+                      serveStart={currentServe!.start_timestamp}
+                      serveEnd={currentServe!.end_timestamp}
+                      onSeek={handleSeek}
                     />
                   </div>
                 )}
-                {analysisState.status === 'idle' && (
-                  <button
-                    className="analysis-dashboard__action-btn analysis-dashboard__action-btn--primary"
-                    onClick={handleFocusAnalysis}
-                    disabled={isAnalysisLoading}
-                  >
-                    Track Body Movement
-                  </button>
-                )}
-                {analysisState.status === 'failed' && (
-                  <div className="analysis-dashboard__error-card">
-                    <p className="analysis-dashboard__error-message">
-                      {analysisState.error ||
-                        'Analysis failed. Please try again.'}
-                    </p>
-                    <button
-                      className="analysis-dashboard__action-btn analysis-dashboard__action-btn--primary"
-                      onClick={handleFocusAnalysis}
-                      disabled={isAnalysisLoading}
-                    >
-                      Retry Body Tracking
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-
-            {analysisStatus?.has_analysis && (
-              <>
-                {proposals.length === 0 ? (
-                  <div className="analysis-dashboard__action-row">
-                    <button
-                      className={`analysis-dashboard__action-btn ${
-                        detectionStatus?.serve_windows &&
-                        detectionStatus.serve_windows > 0
-                          ? 'analysis-dashboard__action-btn--secondary'
-                          : 'analysis-dashboard__action-btn--find'
-                      }`}
-                      onClick={handleFindServes}
-                      disabled={isFindingServes}
-                      title="Detect serve windows in the video"
-                    >
-                      {isFindingServes ? 'Finding…' : 'Find Serve Windows'}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="analysis-dashboard__proposal-actions">
-                    {/* Accept All - primary action */}
-                    <button
-                      className="analysis-dashboard__action-btn analysis-dashboard__action-btn--accept-all"
-                      onClick={handleAcceptAll}
-                      disabled={isAcceptingAll || proposals.length === 0}
-                      title="Accept all proposals and create key moments"
-                    >
-                      {isAcceptingAll
-                        ? 'Accepting…'
-                        : `Accept All Key Moment Proposals (${proposals.length})`}
-                    </button>
-
-                    {/* Secondary actions row */}
-                    <div className="analysis-dashboard__action-row analysis-dashboard__action-row--secondary">
-                      {/* Remove low confidence - only show if there are any */}
-                      {lowConfidenceCount > 0 && (
-                        <button
-                          className="analysis-dashboard__action-btn analysis-dashboard__action-btn--remove-low"
-                          onClick={handleRejectLowConfidence}
-                          disabled={isRejectingLowConf}
-                          title="Remove proposals with less than 60% confidence"
-                        >
-                          {isRejectingLowConf
-                            ? 'Removing…'
-                            : `Remove Uncertain (${lowConfidenceCount})`}
-                        </button>
-                      )}
-
-                      {/* Clear all */}
-                      <button
-                        className="analysis-dashboard__action-btn analysis-dashboard__action-btn--clear-all"
-                        onClick={handleClearProposals}
-                        title="Clear all pending proposals"
-                      >
-                        Clear All
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {findServesMessage && (
-              <div className="analysis-dashboard__toast">
-                {findServesMessage}
               </div>
+
+              {/* Phase Detail (Progressive Disclosure) */}
+              {currentPhase && (
+                <div className="analysis-dashboard__phase-detail">
+                  <button
+                    className="analysis-dashboard__phase-detail-header"
+                    onClick={() => setPhaseDetailExpanded(!phaseDetailExpanded)}
+                    type="button"
+                    aria-expanded={phaseDetailExpanded}
+                  >
+                    <span className="analysis-dashboard__phase-name">
+                      {currentPhase.phase_label}
+                    </span>
+                    {currentPhaseMetrics.length > 0 && !phaseDetailExpanded && (
+                      <span className="analysis-dashboard__phase-summary">
+                        {METRIC_DISPLAY_NAMES[
+                          currentPhaseMetrics[0].metric_name
+                        ] ??
+                          currentPhaseMetrics[0].metric_name.replace(/_/g, ' ')}
+                        :{' '}
+                        {formatMetricValue(
+                          currentPhaseMetrics[0].value,
+                          currentPhaseMetrics[0].unit
+                        )}
+                      </span>
+                    )}
+                    <span
+                      className="analysis-dashboard__phase-chevron"
+                      data-expanded={phaseDetailExpanded}
+                    >
+                      &#9662;
+                    </span>
+                  </button>
+                  {phaseDetailExpanded && currentPhaseMetrics.length > 0 && (
+                    <div className="analysis-dashboard__phase-metrics">
+                      {currentPhaseMetrics.map((m) => (
+                        <div
+                          key={m.metric_name}
+                          className="analysis-dashboard__metric-row"
+                        >
+                          <span className="analysis-dashboard__metric-label">
+                            {METRIC_DISPLAY_NAMES[m.metric_name] ??
+                              m.metric_name.replace(/_/g, ' ')}
+                          </span>
+                          <span className="analysis-dashboard__metric-value">
+                            {formatMetricValue(m.value, m.unit)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Go Practice CTA */}
+              <button
+                className="analysis-dashboard__practice-cta"
+                onClick={onClose}
+                type="button"
+              >
+                Go Practice
+              </button>
+            </>
+          ) : (
+            <div className="analysis-dashboard__no-serves">
+              <p>No serves detected yet.</p>
+              <p className="analysis-dashboard__no-serves-hint">
+                Serves are detected automatically during analysis. If no serves
+                were found, try re-running detection or adding them manually.
+              </p>
+              <button
+                className="analysis-dashboard__action-btn analysis-dashboard__action-btn--find"
+                onClick={handleFindServes}
+                disabled={isFindingServes}
+                type="button"
+              >
+                {isFindingServes ? 'Finding...' : 'Find Serve Windows'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Edit Serves Mode (secondary) */}
+      {showEditMode && (
+        <div className="analysis-dashboard__edit-panel">
+          <h3 className="analysis-dashboard__edit-title">Edit Serves</h3>
+          <div className="analysis-dashboard__edit-actions">
+            {proposals.length === 0 ? (
+              <button
+                className="analysis-dashboard__action-btn analysis-dashboard__action-btn--find"
+                onClick={handleFindServes}
+                disabled={isFindingServes}
+                type="button"
+              >
+                {isFindingServes ? 'Finding...' : 'Re-Detect Serves'}
+              </button>
+            ) : (
+              <>
+                <button
+                  className="analysis-dashboard__action-btn analysis-dashboard__action-btn--accept-all"
+                  onClick={handleAcceptAll}
+                  disabled={isAcceptingAll || proposals.length === 0}
+                  type="button"
+                >
+                  {isAcceptingAll
+                    ? 'Accepting...'
+                    : `Accept All Proposals (${proposals.length})`}
+                </button>
+                <button
+                  className="analysis-dashboard__action-btn analysis-dashboard__action-btn--clear-all"
+                  onClick={handleClearProposals}
+                  type="button"
+                >
+                  Clear All
+                </button>
+              </>
             )}
           </div>
-
-          <AnalysisRightPanel
-            videoId={videoId}
-            videoFilename={videoFilename}
-            analysisStatus={analysisStatus}
-            onContactClick={handleServeWindowClick}
-            isDemo={false}
-          />
+          {findServesMessage && (
+            <div className="analysis-dashboard__toast">{findServesMessage}</div>
+          )}
         </div>
-      </div>
+      )}
 
-      {/* Biomechanics Detail Panel — full width below grid; shows whenever a serve is selected */}
-      {selectedServeId !== null &&
-        (() => {
-          const sa = serveWindows.find((s) => s.id === selectedServeId);
-          if (!sa) return null;
-          return (
-            <ServeBiomechanicsDetail
-              serveWindowId={sa.id}
-              videoId={videoId}
-              serveStart={sa.start_timestamp}
-              serveEnd={sa.end_timestamp}
-              contactTimestamp={sa.contact_timestamp ?? null}
-              onClose={() => setSelectedServeId(null)}
-            />
-          );
-        })()}
+      {/* Keyboard Shortcuts */}
+      <button
+        className="analysis-dashboard__shortcuts-hint"
+        onClick={() => setShowKeyboardShortcuts(true)}
+        type="button"
+        title="Keyboard shortcuts"
+      >
+        <kbd>?</kbd> Keyboard Shortcuts
+      </button>
 
-      {/* Keyboard Shortcuts Modal */}
       <KeyboardShortcutsModal
         isOpen={showKeyboardShortcuts}
         onClose={() => setShowKeyboardShortcuts(false)}

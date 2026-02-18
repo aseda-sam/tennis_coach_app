@@ -172,3 +172,55 @@ class ServeBiomechanicsService:
 
 
 serve_biomechanics_service = ServeBiomechanicsService()
+
+
+def compute_biomechanics_batch(
+    db: Session,
+    video_id: int,
+    user_id: str,
+) -> list[ServeBiomechanicsReport]:
+    """Compute biomechanics for all accepted serve windows in a video.
+
+    Called by the RQ pipeline after auto-accept. Skips windows that
+    already have a report. Errors on individual windows are logged
+    and skipped so one bad window doesn't block the rest.
+
+    Returns:
+        List of successfully computed reports.
+    """
+    windows = (
+        db.query(ServeWindow)
+        .filter(
+            ServeWindow.video_id == video_id,
+            ServeWindow.user_id == user_id,
+            ServeWindow.status.in_(["accepted", "edited"]),
+        )
+        .order_by(ServeWindow.start_timestamp)
+        .all()
+    )
+
+    if not windows:
+        logger.info(
+            "No accepted serve windows for video %s, skipping biomechanics", video_id
+        )
+        return []
+
+    reports: list[ServeBiomechanicsReport] = []
+    for window in windows:
+        try:
+            report = serve_biomechanics_service.compute_analysis(db, window.id, user_id)
+            reports.append(report)
+        except Exception:  # noqa: BLE001 - skip individual failures
+            logger.warning(
+                "Failed to compute biomechanics for serve window %s, skipping",
+                window.id,
+                exc_info=True,
+            )
+
+    logger.info(
+        "Computed biomechanics for %d/%d serve windows in video %d",
+        len(reports),
+        len(windows),
+        video_id,
+    )
+    return reports

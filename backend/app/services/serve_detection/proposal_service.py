@@ -555,6 +555,85 @@ def reject_proposals_by_confidence(
     return len(proposals)
 
 
+def auto_accept_proposals(
+    db: Session,
+    video_id: int,
+    user_id: str,
+    confidence_threshold: float | None = None,
+) -> list[ServeWindow]:
+    """
+    Auto-accept pending proposals above a confidence threshold.
+
+    Called by the RQ pipeline after serve detection to skip manual review.
+    Proposals below threshold are rejected. Uses video's primary_player_id
+    if set, otherwise creates under the user's default player.
+
+    Args:
+        db: Database session
+        video_id: Video ID
+        user_id: User ID (for tenancy)
+        confidence_threshold: Min confidence to accept (None = use config default)
+
+    Returns:
+        List of accepted serve windows
+    """
+    from app.core.config import settings
+
+    threshold = (
+        confidence_threshold
+        if confidence_threshold is not None
+        else settings.AUTO_ACCEPT_CONFIDENCE_THRESHOLD
+    )
+
+    proposals = (
+        db.query(ServeWindow)
+        .filter(
+            ServeWindow.video_id == video_id,
+            ServeWindow.user_id == user_id,
+            ServeWindow.status == "pending",
+        )
+        .order_by(ServeWindow.start_timestamp)
+        .all()
+    )
+
+    if not proposals:
+        logger.info("No pending proposals to auto-accept for video %s", video_id)
+        return []
+
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if video and video.primary_player_id:
+        player_id = video.primary_player_id
+    else:
+        default_player = player_service.get_or_create_default_player(db, user_id)
+        player_id = default_player.id
+
+    now = datetime.utcnow()
+    accepted: list[ServeWindow] = []
+    rejected_count = 0
+
+    for proposal in proposals:
+        if proposal.confidence is not None and proposal.confidence >= threshold:
+            proposal.player_id = player_id
+            proposal.status = "accepted"
+            proposal.reviewed_at = now
+            accepted.append(proposal)
+        else:
+            proposal.status = "rejected"
+            proposal.reviewed_at = now
+            rejected_count += 1
+
+    db.commit()
+
+    logger.info(
+        "Auto-accepted %d proposals, rejected %d (threshold=%.0f%%) for video %d",
+        len(accepted),
+        rejected_count,
+        threshold * 100,
+        video_id,
+    )
+    return accepted
+
+
 def accept_with_edits(
     db: Session,
     proposal_id: int,

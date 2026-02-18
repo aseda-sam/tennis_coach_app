@@ -912,6 +912,82 @@ def analyze_pose_detection_scout_refine_rq(
                             exc_info=True,
                         )
 
+                # Auto-accept proposals and compute biomechanics
+                auto_accepted = []
+                biomechanics_computed = 0
+                with _stage_span("auto_accept", video_id=video_id, job_id=video_job_id):
+                    if settings.AUTO_ACCEPT_SERVE_PROPOSALS:
+                        try:
+                            from app.services.serve_detection.proposal_service import (
+                                auto_accept_proposals,
+                            )
+
+                            if video_job_uuid:
+                                video_job = (
+                                    db.query(VideoJob)
+                                    .filter(VideoJob.id == video_job_uuid)
+                                    .first()
+                                )
+                                if video_job and hasattr(video_job, "stage"):
+                                    video_job.stage = "auto_accepting"
+                                    db.commit()
+
+                            auto_accepted = auto_accept_proposals(
+                                db=db,
+                                video_id=video_id,
+                                user_id=video_user_id,
+                            )
+                            logger.info(
+                                "Auto-accepted %d proposals for video %s",
+                                len(auto_accepted),
+                                video_id,
+                            )
+                        except Exception as accept_err:  # noqa: BLE001
+                            logger.warning(
+                                "Auto-accept failed for video %s: %s",
+                                video_id,
+                                accept_err,
+                                exc_info=True,
+                            )
+
+                if auto_accepted and settings.AUTO_COMPUTE_BIOMECHANICS:
+                    with _stage_span(
+                        "auto_biomechanics", video_id=video_id, job_id=video_job_id
+                    ):
+                        try:
+                            from app.services.biomechanics.serve_biomechanics_service import (
+                                compute_biomechanics_batch,
+                            )
+
+                            if video_job_uuid:
+                                video_job = (
+                                    db.query(VideoJob)
+                                    .filter(VideoJob.id == video_job_uuid)
+                                    .first()
+                                )
+                                if video_job and hasattr(video_job, "stage"):
+                                    video_job.stage = "computing_biomechanics"
+                                    db.commit()
+
+                            reports = compute_biomechanics_batch(
+                                db=db,
+                                video_id=video_id,
+                                user_id=video_user_id,
+                            )
+                            biomechanics_computed = len(reports)
+                            logger.info(
+                                "Computed biomechanics for %d serves in video %s",
+                                biomechanics_computed,
+                                video_id,
+                            )
+                        except Exception as bio_err:  # noqa: BLE001
+                            logger.warning(
+                                "Auto-biomechanics failed for video %s: %s",
+                                video_id,
+                                bio_err,
+                                exc_info=True,
+                            )
+
                 if video_job_uuid:
                     video_job = (
                         db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
@@ -928,9 +1004,11 @@ def analyze_pose_detection_scout_refine_rq(
 
             logger.info(
                 "RQ task: Scout/refine pipeline completed for video %s, "
-                "found %s serve windows",
+                "found %s serve windows, auto-accepted %s, biomechanics %s",
                 video_id,
                 len(windows),
+                len(auto_accepted),
+                biomechanics_computed,
                 extra=get_log_extra(video_id=video_id, job_id=video_job_id),
             )
 
@@ -938,6 +1016,8 @@ def analyze_pose_detection_scout_refine_rq(
                 "status": "completed",
                 "mode": "scout_refine",
                 "serve_windows_found": len(windows),
+                "auto_accepted": len(auto_accepted),
+                "biomechanics_computed": biomechanics_computed,
                 "scout_pose_detection_id": scout_pose_detection_id,
             }
 
