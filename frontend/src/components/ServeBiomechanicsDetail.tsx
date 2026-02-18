@@ -80,7 +80,7 @@ const MetricsByPhasePanel: React.FC<MetricsByPhasePanelProps> = ({
 }) => {
   const grouped = useMemo(() => groupMetricsByPhase(metrics), [metrics]);
   const [expandedPhases, setExpandedPhases] = useState<Set<string | null>>(
-    () => new Set(grouped.keys())
+    () => new Set()
   );
 
   const toggle = (key: string | null) => {
@@ -143,8 +143,17 @@ const MetricsByPhasePanel: React.FC<MetricsByPhasePanelProps> = ({
                 onClick={() => toggle(phaseKey)}
                 aria-expanded={isExpanded}
               >
-                <span className="serve-biomechanics-detail__phase-group-label">
-                  {label}
+                <span className="serve-biomechanics-detail__phase-group-heading">
+                  <span className="serve-biomechanics-detail__phase-group-label">
+                    {label}
+                  </span>
+                  {!isExpanded && list.length > 0 && (
+                    <span className="serve-biomechanics-detail__phase-group-summary">
+                      {METRIC_DISPLAY_NAMES[list[0].metric_name] ??
+                        list[0].metric_name.replace(/_/g, ' ')}
+                      : {formatMetricValue(list[0])}
+                    </span>
+                  )}
                 </span>
                 <span
                   className="serve-biomechanics-detail__phase-group-chevron"
@@ -332,6 +341,15 @@ const ServeBiomechanicsDetail: React.FC<ServeBiomechanicsDetailProps> = ({
         <div className="serve-biomechanics-detail__metrics-scroll">
           <MetricsByPhasePanel metrics={report.metrics} />
         </div>
+      </div>
+      <div className="serve-biomechanics-detail__footer">
+        <button
+          type="button"
+          className="serve-biomechanics-detail__back-btn"
+          onClick={onClose}
+        >
+          Back to Serves
+        </button>
       </div>
     </div>
   );

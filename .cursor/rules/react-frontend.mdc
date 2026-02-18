@@ -7,6 +7,15 @@ alwaysApply: false
 
 # Frontend Patterns (React)
 
+## Product UX Philosophy
+
+These constraints apply to every analysis and feedback view. They come from the app’s design philosophy (see AGENTS.md).
+
+- **Practice > analysis**: Every analysis view must have a clear “what next?” action. Don’t build features that reward staying in the app longer. Dead-end screens are a design failure.
+- **Progressive disclosure**: Never show all metrics or data at once. Default to collapsed or summary. Expand on demand. One teaching point per view when possible.
+- **Honest about the medium**: No coaching language in UI copy. Use “metrics”, “analysis”, “your serve data” — not “your coach recommends” or “we suggest.” Frame information as data, not instruction.
+- **Summary-first pattern**: When displaying multiple metrics, show a single-line summary per group (e.g. one key value), with expand for full detail.
+
 ## Principles
 
 - **KISS/DRY/YAGNI**: keep components small; extract shared logic after it repeats; avoid speculative abstractions.

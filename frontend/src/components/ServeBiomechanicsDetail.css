@@ -197,6 +197,19 @@
   background: var(--color-border);
 }
 
+.serve-biomechanics-detail__phase-group-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+}
+
+.serve-biomechanics-detail__phase-group-summary {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-normal);
+}
+
 .serve-biomechanics-detail__phase-group-chevron {
   display: inline-block;
   transition: transform 0.2s;
@@ -231,6 +244,29 @@
 
 .serve-biomechanics-detail__metrics-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.serve-biomechanics-detail__footer {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--color-border);
+}
+
+.serve-biomechanics-detail__back-btn {
+  padding: var(--spacing-sm) var(--spacing-xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.serve-biomechanics-detail__back-btn:hover {
+  background: var(--color-surface-secondary);
+  border-color: var(--color-border-dark);
 }
 
 @media (max-width: 1024px) {
