@@ -57,12 +57,12 @@ docker compose up --build
 
 That's it. Open [localhost:3000](http://localhost:3000).
 
-| Service | URL |
-|---------|-----|
-| Frontend | [localhost:3000](http://localhost:3000) |
-| Backend API | [localhost:8000](http://localhost:8000) |
-| API docs (Swagger) | [localhost:8000/docs](http://localhost:8000/docs) |
-| Background job dashboard | [localhost:9181](http://localhost:9181) |
+| Service                  | URL                                               |
+| ------------------------ | ------------------------------------------------- |
+| Frontend                 | [localhost:3000](http://localhost:3000)           |
+| Backend API              | [localhost:8000](http://localhost:8000)           |
+| API docs (Swagger)       | [localhost:8000/docs](http://localhost:8000/docs) |
+| Background job dashboard | [localhost:9181](http://localhost:9181)           |
 
 For local development without Docker, or to configure authentication and storage, see the [backend](backend/README.md) and [frontend](frontend/README.md) setup guides.
 
@@ -110,29 +110,29 @@ flowchart TD
   SERVICES -->|JSON| UI
 ```
 
-| Layer | Tech | Role |
-|-------|------|------|
-| Frontend | React, TypeScript, React Query | Video upload, playback, analysis UI |
-| Backend | FastAPI, Pydantic v2, SQLAlchemy | REST API, business logic, auth |
-| Pipeline | MediaPipe (lite + full models) | Pose detection, phase segmentation, metrics |
-| Background | Redis Queue (RQ) | Long-running video and ML jobs |
-| Storage | PostgreSQL, local disk / Supabase | Structured data + video files |
-| CI/CD | GitHub Actions, Docker | Tests, security scans, deployment |
+| Layer      | Tech                             | Role                                        |
+| ---------- | -------------------------------- | ------------------------------------------- |
+| Frontend   | React, TypeScript, React Query   | Video upload, playback, analysis UI         |
+| Backend    | FastAPI, Pydantic v2, SQLAlchemy | REST API, business logic, auth              |
+| Pipeline   | MediaPipe (lite + full models)   | Pose detection, phase segmentation, metrics |
+| Background | Redis Queue (RQ)                 | Long-running video and ML jobs              |
+| Storage    | PostgreSQL, local disk           | Structured data + video files               |
+| CI/CD      | GitHub Actions, Docker           | Tests, security scans, deployment           |
 
 ## Project status
 
 This is an active MVP. The serve analysis loop works end-to-end: upload, process, review. Here's where things stand:
 
-| Area | Status |
-|------|--------|
-| Video upload and management | Stable |
-| Pose estimation (MediaPipe) | Stable |
-| Serve window detection | Working, improving accuracy |
-| Phase segmentation | Working |
-| Biomechanics metrics | In progress, core metrics done, scoring next |
-| Ball toss trajectory | Planned |
-| Multi-serve comparison | Planned |
-| Progress tracking over time | Planned |
+| Area                        | Status                                       |
+| --------------------------- | -------------------------------------------- |
+| Video upload and management | Stable                                       |
+| Pose estimation (MediaPipe) | Stable                                       |
+| Serve window detection      | Working, improving accuracy                  |
+| Phase segmentation          | Working                                      |
+| Biomechanics metrics        | In progress, core metrics done, scoring next |
+| Ball toss trajectory        | Planned                                      |
+| Multi-serve comparison      | Planned                                      |
+| Progress tracking over time | Planned                                      |
 
 The API is versioned under `/v0/`. Breaking changes are expected while the MVP evolves.
 
@@ -140,15 +140,15 @@ The API is versioned under `/v0/`. Breaking changes are expected while the MVP e
 
 Detailed docs live close to the code they describe:
 
-| Doc | What it covers |
-|-----|----------------|
-| [Backend README](backend/README.md) | Setup, API, auth, env config, database, troubleshooting |
-| [Frontend README](frontend/README.md) | Setup, components, routing, API integration |
-| [Backend docs index](backend/docs/README.md) | Serve MVP scope, config, background jobs, deployment |
+| Doc                                             | What it covers                                          |
+| ----------------------------------------------- | ------------------------------------------------------- |
+| [Backend README](backend/README.md)             | Setup, API, auth, env config, database, troubleshooting |
+| [Frontend README](frontend/README.md)           | Setup, components, routing, API integration             |
+| [Backend docs index](backend/docs/README.md)    | Serve MVP scope, config, background jobs, deployment    |
 | [Architecture diagrams](project_docs/diagrams/) | Mermaid diagrams for auth, upload, analysis, data flows |
-| [Design system](frontend/DESIGN.md) | Design tokens, component patterns, accessibility |
-| [Contributing guide](CONTRIBUTING.md) | Workflow, code style, TDD checklist |
-| [API reference](http://localhost:8000/docs) | Auto-generated from code (run the server first) |
+| [Design system](frontend/DESIGN.md)             | Design tokens, component patterns, accessibility        |
+| [Contributing guide](CONTRIBUTING.md)           | Workflow, code style, TDD checklist                     |
+| [API reference](http://localhost:8000/docs)     | Auto-generated from code (run the server first)         |
 
 ## Contributing
 
