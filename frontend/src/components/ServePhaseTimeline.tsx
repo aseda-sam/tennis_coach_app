@@ -8,6 +8,8 @@ interface ServePhaseTimelineProps {
   serveStart: number;
   serveEnd: number;
   onSeek: (timestamp: number) => void;
+  /** When set, show a visible marker for contact (even if Contact is not in phases). */
+  contactTimestamp?: number | null;
 }
 
 const NEUTRAL_SEGMENT_COLOR = 'var(--color-border-dark)';
@@ -19,6 +21,7 @@ const ServePhaseTimeline: React.FC<ServePhaseTimelineProps> = ({
   serveStart,
   serveEnd,
   onSeek,
+  contactTimestamp = null,
 }) => {
   const duration = serveEnd - serveStart;
   if (duration <= 0) return null;
@@ -27,6 +30,12 @@ const ServePhaseTimeline: React.FC<ServePhaseTimelineProps> = ({
     Math.max(0, Math.min(100, ((t - serveStart) / duration) * 100));
 
   const playheadPct = toPercent(currentTime);
+  const contactPct =
+    contactTimestamp != null &&
+    contactTimestamp >= serveStart &&
+    contactTimestamp <= serveEnd
+      ? toPercent(contactTimestamp)
+      : null;
 
   const currentPhase = phases.find(
     (p) => currentTime >= p.start_timestamp && currentTime <= p.end_timestamp
@@ -70,6 +79,26 @@ const ServePhaseTimeline: React.FC<ServePhaseTimelineProps> = ({
           className="phase-timeline__playhead"
           style={{ left: `${playheadPct}%` }}
         />
+        {contactPct != null && (
+          <div
+            className="phase-timeline__contact-marker"
+            style={{ left: `${contactPct}%` }}
+            title={`Contact: ${contactTimestamp!.toFixed(2)}s (click to go)`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSeek(contactTimestamp!);
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSeek(contactTimestamp!);
+              }
+            }}
+            aria-label={`Go to contact at ${contactTimestamp!.toFixed(2)}s`}
+          />
+        )}
       </div>
       <div className="phase-timeline__labels">
         {phases
@@ -88,6 +117,14 @@ const ServePhaseTimeline: React.FC<ServePhaseTimelineProps> = ({
               </span>
             );
           })}
+        {contactPct != null && (
+          <span
+            className="phase-timeline__label phase-timeline__label--contact"
+            style={{ left: `${contactPct}%` }}
+          >
+            Contact
+          </span>
+        )}
       </div>
     </div>
   );

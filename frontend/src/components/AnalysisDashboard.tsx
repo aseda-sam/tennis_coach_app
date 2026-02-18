@@ -106,6 +106,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [showEditMode, setShowEditMode] = useState(false);
   const [phaseDetailExpanded, setPhaseDetailExpanded] = useState(false);
   const [loopCurrentPhase, setLoopCurrentPhase] = useState(false);
+  const [loopPhaseWindow, setLoopPhaseWindow] = useState<PhaseWindow | null>(
+    null
+  );
 
   // Edit mode state
   const [isFindingServes, setIsFindingServes] = useState(false);
@@ -161,16 +164,32 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     if (currentServe) {
       setCurrentTime(currentServe.start_timestamp);
       setIsPlaying(false);
+      setLoopCurrentPhase(false);
+      setLoopPhaseWindow(null);
     }
   }, [currentServe?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Playback timer for stick figure mode
+  // Playback timer for stick figure mode (and video mode sync)
   useEffect(() => {
     if (!isPlaying || !currentServe) return;
 
     const interval = setInterval(() => {
       setCurrentTime((t) => {
         const next = t + 1 / 30;
+        // When looping a phase, keep playback pinned to that phase window.
+        if (loopCurrentPhase && loopPhaseWindow) {
+          if (
+            t < loopPhaseWindow.start_timestamp ||
+            t > loopPhaseWindow.end_timestamp
+          ) {
+            return loopPhaseWindow.start_timestamp;
+          }
+          if (next >= loopPhaseWindow.end_timestamp) {
+            return loopPhaseWindow.start_timestamp;
+          }
+          return next;
+        }
+        // Otherwise use serve bounds and stop at serve end
         if (next > currentServe.end_timestamp) {
           setIsPlaying(false);
           return currentServe.start_timestamp;
@@ -180,7 +199,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     }, 1000 / 30);
 
     return () => clearInterval(interval);
-  }, [isPlaying, currentServe]);
+  }, [isPlaying, currentServe, loopCurrentPhase, loopPhaseWindow]);
 
   const handlePlayPause = useCallback(() => {
     setIsPlaying((p) => !p);
@@ -203,10 +222,40 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     setCurrentTime(t);
   }, []);
 
-  const handlePhaseJump = useCallback((phaseStart: number) => {
-    setCurrentTime(phaseStart);
-    setIsPlaying(false);
-  }, []);
+  const handlePhaseJump = useCallback(
+    (phase: PhaseWindow) => {
+      setCurrentTime(phase.start_timestamp);
+      setIsPlaying(false);
+      if (loopCurrentPhase) {
+        setLoopPhaseWindow(phase);
+      }
+    },
+    [loopCurrentPhase]
+  );
+
+  const handleContactJump = useCallback(
+    (contactTimestamp: number) => {
+      setCurrentTime(contactTimestamp);
+      setIsPlaying(false);
+      if (loopCurrentPhase) {
+        const phaseAtContact = findCurrentPhase(phases, contactTimestamp);
+        setLoopPhaseWindow(phaseAtContact ?? null);
+      }
+    },
+    [loopCurrentPhase, phases]
+  );
+
+  const handleToggleLoopCurrentPhase = useCallback(() => {
+    if (loopCurrentPhase) {
+      setLoopCurrentPhase(false);
+      setLoopPhaseWindow(null);
+      return;
+    }
+    if (!currentPhase) return;
+    setLoopCurrentPhase(true);
+    setLoopPhaseWindow(currentPhase);
+    setCurrentTime(currentPhase.start_timestamp);
+  }, [loopCurrentPhase, currentPhase]);
 
   const handleServeNavigate = useCallback(
     (index: number) => {
@@ -354,14 +403,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     return metrics.filter((m) => m.phase === currentPhase.phase);
   }, [metrics, currentPhase]);
 
-  // Optional loop playback for current phase window.
-  useEffect(() => {
-    if (!loopCurrentPhase || !isPlaying || !currentPhase) return;
-    if (currentTime >= currentPhase.end_timestamp) {
-      setCurrentTime(currentPhase.start_timestamp);
-    }
-  }, [loopCurrentPhase, isPlaying, currentPhase, currentTime]);
-
   return (
     <div className="analysis-dashboard">
       {/* Header */}
@@ -483,6 +524,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                       serveStart={currentServe!.start_timestamp}
                       serveEnd={currentServe!.end_timestamp}
                       onSeek={handleSeek}
+                      contactTimestamp={currentServe?.contact_timestamp ?? null}
                     />
                   </div>
                 )}
@@ -508,26 +550,39 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                             ? 'analysis-dashboard__phase-chip--active'
                             : ''
                         }`}
-                        onClick={() => handlePhaseJump(phase.start_timestamp)}
+                        onClick={() => handlePhaseJump(phase)}
                       >
                         {phase.phase_label}
                       </button>
                     ))}
                   </div>
-                  <button
-                    type="button"
-                    className={`analysis-dashboard__loop-btn ${
-                      loopCurrentPhase
-                        ? 'analysis-dashboard__loop-btn--active'
-                        : ''
-                    }`}
-                    onClick={() => setLoopCurrentPhase((prev) => !prev)}
-                    disabled={!currentPhase}
-                  >
-                    {loopCurrentPhase
-                      ? 'Looping Current Stage'
-                      : 'Loop Current Stage'}
-                  </button>
+                  <div className="analysis-dashboard__phase-actions">
+                    {currentServe?.contact_timestamp != null && (
+                      <button
+                        type="button"
+                        className="analysis-dashboard__goto-contact-btn"
+                        onClick={() =>
+                          handleContactJump(currentServe.contact_timestamp!)
+                        }
+                      >
+                        Go to Contact
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={`analysis-dashboard__loop-btn ${
+                        loopCurrentPhase
+                          ? 'analysis-dashboard__loop-btn--active'
+                          : ''
+                      }`}
+                      onClick={handleToggleLoopCurrentPhase}
+                      disabled={!currentPhase}
+                    >
+                      {loopCurrentPhase
+                        ? 'Looping Current Stage'
+                        : 'Loop Current Stage'}
+                    </button>
+                  </div>
                 </div>
               )}
 

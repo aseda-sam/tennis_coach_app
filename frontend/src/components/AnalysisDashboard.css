@@ -260,6 +260,31 @@
   color: var(--color-primary-darker);
 }
 
+.analysis-dashboard__phase-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.analysis-dashboard__goto-contact-btn {
+  padding: 8px 12px;
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast),
+    color var(--duration-fast);
+}
+
+.analysis-dashboard__goto-contact-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 .analysis-dashboard__loop-btn {
   align-self: flex-start;
   padding: 8px 12px;
