@@ -190,11 +190,11 @@
 }
 
 .analysis-right-panel__measurement-dot--toss {
-  background: #2b7fff;
+  background: var(--color-info);
 }
 
 .analysis-right-panel__measurement-dot--contact {
-  background: #ff6900;
+  background: var(--color-warning);
 }
 
 .analysis-right-panel__measurement-value {
@@ -323,7 +323,7 @@
   height: 10px;
   border-radius: var(--radius-full);
   flex-shrink: 0;
-  background-color: #6b7280; /* neutral grey */
+  background-color: var(--color-text-muted);
 }
 
 .analysis-right-panel__metric-time {

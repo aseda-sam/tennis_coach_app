@@ -7,6 +7,7 @@ import { videoApi } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import AnalysisRightPanel from './AnalysisRightPanel';
 import './DemoDashboard.css';
+import ErrorBoundary from './ErrorBoundary';
 import { ArrowBackIcon, UploadIcon } from './Icons';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import LoadingIndicator from './LoadingIndicator';
@@ -193,18 +194,20 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({
         {/* Left Column - Video Player */}
         <div className="demo-dashboard__video-column">
           <div data-tour="video-player">
-            <VideoPlayer
-              videoUrl={videoUrl}
-              title={demoVideo.filename}
-              showControls={true}
-              aspectRatioMode="contain"
-              videoId={demoVideo.id}
-              hasPoseData={analysisStatus?.has_analysis || false}
-              controlsBelow={true}
-              onNavigateReady={handleNavigateReady}
-              isDemo={isDemoReadOnly}
-              naturalScroll={naturalScroll}
-            />
+            <ErrorBoundary fallbackMessage="Video player encountered an error.">
+              <VideoPlayer
+                videoUrl={videoUrl}
+                title={demoVideo.filename}
+                showControls={true}
+                aspectRatioMode="contain"
+                videoId={demoVideo.id}
+                hasPoseData={analysisStatus?.has_analysis || false}
+                controlsBelow={true}
+                onNavigateReady={handleNavigateReady}
+                isDemo={isDemoReadOnly}
+                naturalScroll={naturalScroll}
+              />
+            </ErrorBoundary>
           </div>
           <div className="demo-dashboard__shortcuts-hint">
             Press <kbd>?</kbd> for keyboard shortcuts

@@ -1,12 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import './App.css';
 import { AccountMenu } from './components/AccountMenu';
-import AdminDemoManagement from './components/AdminDemoManagement';
-import AnalysisDashboard from './components/AnalysisDashboard';
 import { AuthForm } from './components/AuthForm';
-import DemoDashboard from './components/DemoDashboard';
 import DemoLanding from './components/DemoLanding';
+import ErrorBoundary from './components/ErrorBoundary';
 import LoomVideoModal from './components/LoomVideoModal';
 import { CloseIcon, VideoIcon } from './components/Icons';
 import LoadingIndicator from './components/LoadingIndicator';
@@ -17,6 +15,14 @@ import { useAuth } from './hooks/useAuth';
 import { useAdmin } from './hooks/useAdmin';
 import { videoApi } from './services/api';
 import { VideoMetadata } from './types/video';
+
+const AnalysisDashboard = React.lazy(
+  () => import('./components/AnalysisDashboard')
+);
+const AdminDemoManagement = React.lazy(
+  () => import('./components/AdminDemoManagement')
+);
+const DemoDashboard = React.lazy(() => import('./components/DemoDashboard'));
 
 function App() {
   const profile = process.env.REACT_APP_PROFILE || 'local';
@@ -370,48 +376,60 @@ function App() {
 
   return (
     <div className="App">
-      {renderHeader()}
-      {showAuthForm ? (
-        <div className="app-container">
-          <AuthForm />
-        </div>
-      ) : (
-        renderCurrentView()
-      )}
+      <ErrorBoundary>
+        {renderHeader()}
+        {showAuthForm ? (
+          <div className="app-container">
+            <AuthForm />
+          </div>
+        ) : (
+          <Suspense
+            fallback={
+              <div className="app-container">
+                <div className="app-loading">
+                  <LoadingIndicator size="lg" label="Loading..." />
+                </div>
+              </div>
+            }
+          >
+            {renderCurrentView()}
+          </Suspense>
+        )}
 
-      {/* Quick Setup Modal - Shows for invited users */}
-      {showQuickSetup && <QuickSetup onComplete={handleQuickSetupComplete} />}
+        {/* Quick Setup Modal - Shows for invited users */}
+        {showQuickSetup && <QuickSetup onComplete={handleQuickSetupComplete} />}
 
-      {/* Upload Modal - Shared across all views */}
-      {isUploadModalOpen && (
-        <div
-          className="upload-modal-overlay"
-          onClick={() => setIsUploadModalOpen(false)}
-        >
-          <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">Upload Video</h2>
-              <button
-                className="close-btn"
-                onClick={() => setIsUploadModalOpen(false)}
-                aria-label="Close"
-              >
-                <CloseIcon size={18} />
-              </button>
-            </div>
-            <div className="modal-content">
-              <VideoUpload onUploadSuccess={handleVideoUploaded} />
+        {/* Upload Modal - Shared across all views */}
+        {isUploadModalOpen && (
+          <div
+            className="upload-modal-overlay"
+            onClick={() => setIsUploadModalOpen(false)}
+          >
+            <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2 className="modal-title">Upload Video</h2>
+                <button
+                  className="close-btn"
+                  onClick={() => setIsUploadModalOpen(false)}
+                  aria-label="Close"
+                >
+                  <CloseIcon size={18} />
+                </button>
+              </div>
+              <div className="modal-content">
+                <VideoUpload onUploadSuccess={handleVideoUploaded} />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Loom Video Modal - Accessible from anywhere */}
-      <LoomVideoModal
-        isOpen={isVideoModalOpen}
-        onClose={() => setIsVideoModalOpen(false)}
-        videoId="4e50fe345c664fdca497c2ca884a52e3"
-      />
+        {/* Loom Video Modal - Accessible from anywhere */}
+        <LoomVideoModal
+          isOpen={isVideoModalOpen}
+          onClose={() => setIsVideoModalOpen(false)}
+          videoId="4e50fe345c664fdca497c2ca884a52e3"
+        />
+      </ErrorBoundary>
     </div>
   );
 }

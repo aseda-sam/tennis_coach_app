@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect } from 'react';
-import { getApiErrorMessage } from '../utils/apiError';
+import { serveProposalApi } from '../services/serveProposalApi';
 import {
   AcceptProposalRequest,
   ClearProposalsResponse,
   DetectionStatusResponse,
   EditProposalRequest,
   ProposeResponse,
-  serveProposalApi,
   ServeWindowProposal,
-} from '../services/serveProposalApi';
+} from '../types/serveProposal';
+import { getApiErrorMessage } from '../utils/apiError';
 
 // Default threshold - matches backend SERVE_DETECTION_LOW_CONFIDENCE_THRESHOLD
 const DEFAULT_LOW_CONFIDENCE_THRESHOLD = 0.6;
@@ -268,19 +268,15 @@ export const useServeProposals = ({
       return { accepted: 0, failed: 0 };
     }
 
-    try {
-      const response = await serveProposalApi.acceptAll(videoId);
+    const response = await serveProposalApi.acceptAll(videoId);
 
-      // Invalidate queries to refresh
-      queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
+    // Invalidate queries to refresh
+    queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
+    queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
+    queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
 
-      return { accepted: response.accepted_count, failed: 0 };
-    } catch {
-      return { accepted: 0, failed: proposals.length };
-    }
-  }, [videoId, proposals.length, queryClient]);
+    return { accepted: response.accepted_count, failed: 0 };
+  }, [videoId, queryClient]);
 
   // Reject proposals below confidence threshold using batch API
   const rejectLowConfidence = useCallback(
@@ -291,22 +287,18 @@ export const useServeProposals = ({
         return { rejected: 0, failed: 0 };
       }
 
-      try {
-        const response = await serveProposalApi.rejectByConfidence(
-          videoId,
-          threshold
-        );
+      const response = await serveProposalApi.rejectByConfidence(
+        videoId,
+        threshold
+      );
 
-        // Invalidate queries to refresh
-        queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-        queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
+      // Invalidate queries to refresh
+      queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
 
-        return { rejected: response.rejected_count, failed: 0 };
-      } catch {
-        return { rejected: 0, failed: lowConfidenceCount };
-      }
+      return { rejected: response.rejected_count, failed: 0 };
     },
-    [videoId, lowConfidenceCount, lowConfidenceThreshold, queryClient]
+    [videoId, lowConfidenceThreshold, queryClient]
   );
 
   // Extract loading state

@@ -120,13 +120,17 @@
 }
 
 .serve-biomechanics-detail__play-btn {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(
+    135deg,
+    var(--color-success),
+    var(--color-success-dark)
+  );
   color: white;
   border: none;
 }
 
 .serve-biomechanics-detail__play-btn:hover {
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  box-shadow: var(--shadow-primary-md);
 }
 
 .serve-biomechanics-detail__metrics-scroll {
@@ -212,7 +216,7 @@
 
 .serve-biomechanics-detail__phase-group-chevron {
   display: inline-block;
-  transition: transform 0.2s;
+  transition: transform var(--duration-normal);
 }
 
 .serve-biomechanics-detail__phase-group-chevron[data-expanded='true'] {
@@ -267,6 +271,12 @@
 .serve-biomechanics-detail__back-btn:hover {
   background: var(--color-surface-secondary);
   border-color: var(--color-border-dark);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .serve-biomechanics-detail {
+    animation: none;
+  }
 }
 
 @media (max-width: 1024px) {

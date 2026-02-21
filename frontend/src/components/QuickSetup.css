@@ -8,14 +8,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal-backdrop);
   padding: 20px;
 }
 
 .quick-setup-modal {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
   max-width: 480px;
   width: 100%;
   max-height: 90vh;
@@ -25,20 +25,20 @@
 .quick-setup-header {
   padding: 32px 32px 24px;
   text-align: center;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .quick-setup-title {
   margin: 0 0 8px;
   font-size: 24px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--color-text);
 }
 
 .quick-setup-subtitle {
   margin: 0;
   font-size: 15px;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .quick-setup-form {
@@ -54,25 +54,25 @@
   margin-bottom: 8px;
   font-size: 14px;
   font-weight: 500;
-  color: #334155;
+  color: var(--color-text-secondary);
 }
 
 .quick-setup-label .optional {
   font-weight: 400;
-  color: #94a3b8;
+  color: var(--color-text-disabled);
 }
 
 .quick-setup-input {
   width: 100%;
   padding: 10px 12px;
   font-size: 15px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background-color: white;
-  color: #1e293b;
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+  color: var(--color-text);
   transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+    border-color var(--duration-normal),
+    box-shadow var(--duration-normal);
 }
 
 select.quick-setup-input {
@@ -85,22 +85,22 @@ select.quick-setup-input {
 
 .quick-setup-input:focus {
   outline: none;
-  border-color: #00bc7d;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(0, 188, 125, 0.1);
 }
 
 .quick-setup-input:disabled {
-  background-color: #f1f5f9;
+  background-color: var(--color-surface-tertiary);
   cursor: not-allowed;
 }
 
 .quick-setup-error {
   margin-bottom: 16px;
   padding: 12px;
-  background-color: #fee2e2;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
-  color: #991b1b;
+  background-color: var(--color-error-light);
+  border: 1px solid var(--color-error-light);
+  border-radius: var(--radius-sm);
+  color: var(--color-error-dark);
   font-size: 14px;
 }
 
@@ -110,13 +110,17 @@ select.quick-setup-input {
   font-size: 16px;
   font-weight: 600;
   color: white;
-  background: linear-gradient(135deg, #00bc7d 0%, #00a066 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-primary-dark) 100%
+  );
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition:
-    opacity 0.2s,
-    transform 0.1s;
+    opacity var(--duration-normal),
+    transform var(--duration-fast);
 }
 
 .quick-setup-button:hover:not(:disabled) {

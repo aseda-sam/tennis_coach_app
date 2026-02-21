@@ -112,6 +112,13 @@
   border-radius: var(--radius-lg);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .loom-video-modal-overlay,
+  .loom-video-modal {
+    animation: none;
+  }
+}
+
 @media (max-width: 768px) {
   .loom-video-modal {
     width: 95%;

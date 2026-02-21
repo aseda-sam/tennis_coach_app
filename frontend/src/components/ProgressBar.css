@@ -23,19 +23,19 @@
 .status-text {
   font-size: 0.875rem;
   font-weight: 500;
-  transition: color 0.3s ease;
+  transition: color var(--duration-slower) var(--ease-in-out);
 }
 
 .status-text.processing {
-  color: #f59e0b;
+  color: var(--color-warning);
 }
 
 .status-text.completed {
-  color: #10b981;
+  color: var(--color-success);
 }
 
 .status-text.error {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 /* Progress Bar */
@@ -43,10 +43,10 @@
   position: relative;
   width: 100%;
   height: 8px;
-  background: #e5e7eb;
-  border-radius: 4px;
+  background: var(--color-border);
+  border-radius: var(--radius-xs);
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: var(--transition-slower);
 }
 
 .progress-bar.small {
@@ -58,35 +58,47 @@
 }
 
 .progress-bar.processing {
-  background: #fef3c7;
+  background: var(--color-warning-light);
 }
 
 .progress-bar.completed {
-  background: #d1fae5;
+  background: var(--color-success-light);
 }
 
 .progress-bar.error {
-  background: #fee2e2;
+  background: var(--color-error-light);
 }
 
 /* Progress Fill */
 .progress-fill {
   height: 100%;
-  border-radius: 4px;
-  transition: width 0.5s ease;
+  border-radius: var(--radius-xs);
+  transition: width var(--duration-slow) var(--ease-in-out);
   position: relative;
 }
 
 .progress-bar.processing .progress-fill {
-  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  background: linear-gradient(
+    90deg,
+    var(--color-warning),
+    var(--color-warning-dark)
+  );
 }
 
 .progress-bar.completed .progress-fill {
-  background: linear-gradient(90deg, #10b981, #34d399);
+  background: linear-gradient(
+    90deg,
+    var(--color-success),
+    var(--color-success-dark)
+  );
 }
 
 .progress-bar.error .progress-fill {
-  background: linear-gradient(90deg, #ef4444, #f87171);
+  background: linear-gradient(
+    90deg,
+    var(--color-error),
+    var(--color-error-dark)
+  );
 }
 
 /* Shimmer Animation */
@@ -124,8 +136,8 @@
 .percentage-text {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #6b7280;
-  transition: color 0.3s ease;
+  color: var(--color-text-muted);
+  transition: color var(--duration-slower) var(--ease-in-out);
 }
 
 .progress-bar-container.small .percentage-text {
@@ -138,7 +150,7 @@
 
 /* Animated Progress Bar */
 .progress-bar.animated .progress-fill {
-  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.8s var(--ease-in-out);
 }
 
 /* Indeterminate Progress Bar */
@@ -149,20 +161,32 @@
 .progress-bar.indeterminate .indeterminate-fill {
   width: 30%;
   height: 100%;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   animation: indeterminate-slide 1.5s ease-in-out infinite;
 }
 
 .progress-bar.processing.indeterminate .indeterminate-fill {
-  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  background: linear-gradient(
+    90deg,
+    var(--color-warning),
+    var(--color-warning-dark)
+  );
 }
 
 .progress-bar.completed.indeterminate .indeterminate-fill {
-  background: linear-gradient(90deg, #10b981, #34d399);
+  background: linear-gradient(
+    90deg,
+    var(--color-success),
+    var(--color-success-dark)
+  );
 }
 
 .progress-bar.error.indeterminate .indeterminate-fill {
-  background: linear-gradient(90deg, #ef4444, #f87171);
+  background: linear-gradient(
+    90deg,
+    var(--color-error),
+    var(--color-error-dark)
+  );
 }
 
 @keyframes indeterminate-slide {
@@ -180,7 +204,7 @@
 /* Hover Effects */
 .progress-bar:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Responsive Design */
@@ -202,10 +226,17 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .progress-shimmer,
+  .progress-bar.indeterminate .indeterminate-fill {
+    animation: none;
+  }
+}
+
 /* Dark Mode Support */
 @media (prefers-color-scheme: dark) {
   .progress-bar {
-    background: #374151;
+    background: var(--color-text-secondary);
   }
 
   .progress-bar.processing {
@@ -221,6 +252,6 @@
   }
 
   .percentage-text {
-    color: #9ca3af;
+    color: var(--color-text-disabled);
   }
 }

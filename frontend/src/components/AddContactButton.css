@@ -63,15 +63,19 @@
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(
+    135deg,
+    var(--color-info),
+    var(--color-info-dark)
+  );
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
 }
 
 .add-contact-btn:hover {
@@ -80,8 +84,8 @@
 }
 
 .add-contact-btn--readonly {
-  background: #e2e8f0;
-  color: #475569;
+  background: var(--color-surface-tertiary);
+  color: var(--color-text-secondary);
   box-shadow: none;
   cursor: not-allowed;
 }
@@ -134,7 +138,11 @@
   top: 0;
   right: 0;
   width: 300px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-surface) 0%,
+    var(--color-surface-secondary) 100%
+  );
   border-radius: var(--radius-2xl);
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.15),
@@ -185,7 +193,7 @@
   min-width: 300px;
   transform: translateX(-50%);
   z-index: 20;
-  animation: slideUpFade 0.2s ease-out;
+  animation: slideUpFade var(--duration-normal) var(--ease-out);
 }
 
 @keyframes slideUpFade {
@@ -209,7 +217,7 @@
   height: 0;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
-  border-top: 8px solid #f8fafc;
+  border-top: 8px solid var(--color-surface-secondary);
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
@@ -438,22 +446,22 @@
 }
 
 .use-current-time-btn {
-  padding: 8px 12px;
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #374151;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-border-light);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .use-current-time-btn:hover {
-  background: #e5e7eb;
-  border-color: #9ca3af;
+  background: var(--color-border);
+  border-color: var(--color-text-disabled);
 }
 
 .form-group input:hover,
@@ -702,6 +710,12 @@
   color: var(--color-text);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .add-contact-form--scrubber {
+    animation: none;
+  }
 }
 
 /* Responsive adjustments */

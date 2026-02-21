@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { AnalysisStartResponse } from '../types/analysis';
 import { AppConfig } from '../types/config';
 import {
   DemoVideoListItem,
@@ -7,7 +8,7 @@ import {
   VideoMetadata,
   VideoUploadResponse,
 } from '../types/video';
-import { supabase } from './supabaseClient';
+import { createAuthInterceptor } from '../utils/authInterceptor';
 
 // API configuration
 const API_BASE_URL =
@@ -20,22 +21,7 @@ const api = axios.create({
 });
 
 // Add request/response interceptors
-api.interceptors.request.use(async (config) => {
-  const profile = process.env.REACT_APP_PROFILE || 'local';
-
-  // Only add auth headers if profile is not 'local' and supabase is available
-  if (profile !== 'local' && supabase) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (session?.access_token) {
-      config.headers.Authorization = `Bearer ${session.access_token}`;
-    }
-  }
-
-  return config;
-});
+createAuthInterceptor(api);
 
 api.interceptors.response.use(
   (response) => response,
@@ -292,41 +278,5 @@ export const videoApi = {
     }
   },
 };
-
-// Updated to match backend AnalysisStartResponse
-export interface AnalysisStartResponse {
-  analysis_id: number | null;
-  video_filename: string;
-  status: string;
-  message: string;
-  estimated_duration: number | null;
-  task_id: number | null;
-}
-
-export interface AnalysisData {
-  id: number;
-  video_id: number; // Required since all records now have video_id
-  video_filename: string;
-  analysis_type: string;
-  total_frames: number;
-  processing_time: number;
-  model_used?: string;
-  confidence_threshold?: number;
-  include_pose_detection?: boolean;
-  frames_with_pose?: number;
-  pose_detection_rate?: number;
-  pose_detections: unknown[];
-  created_at: string;
-  updated_at?: string;
-  // New timing information
-  timing?: {
-    frame_extraction?: number;
-    pose_detection?: number;
-    frame_annotation?: number;
-    video_creation?: number;
-    total_analysis?: number;
-  };
-  confidence_threshold_used?: number;
-}
 
 export default api;

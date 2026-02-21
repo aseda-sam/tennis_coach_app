@@ -116,7 +116,7 @@
 
 .view-toggle-btn.active {
   color: var(--color-primary-dark);
-  background: #e6faf1;
+  background: var(--color-primary-soft);
   font-weight: 500;
 }
 
@@ -143,10 +143,10 @@
 }
 
 .logout-btn:hover {
-  background: #f8fafc;
+  background: var(--color-surface-secondary);
   color: var(--color-text);
-  border-color: #d1d5db;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  border-color: var(--color-border-dark);
+  box-shadow: var(--shadow-xs);
 }
 
 .sign-in-btn {
@@ -326,7 +326,7 @@
   background: linear-gradient(
     135deg,
     var(--color-primary-dark) 0%,
-    #007a55 100%
+    var(--color-primary-darker) 100%
   );
   transform: translateY(-2px);
   box-shadow: 0 12px 20px rgba(0, 188, 125, 0.3);
@@ -343,7 +343,7 @@
   align-items: center;
   margin-bottom: 30px;
   padding: 20px 0;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .back-to-upload-btn {
@@ -352,18 +352,18 @@
   gap: 8px;
   background: transparent;
   border: none;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   padding: 10px 16px;
   border-radius: 10px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-normal);
 }
 
 .back-to-upload-btn:hover {
-  background: #e2e8f0;
-  color: #374151;
+  background: var(--color-surface-tertiary);
+  color: var(--color-text-secondary);
   transform: translateX(-2px);
 }
 
@@ -393,10 +393,10 @@
 .error-message {
   text-align: center;
   padding: 60px 20px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-error-soft);
+  border: 1px solid var(--color-error-light);
   border-radius: 16px;
-  color: #dc2626;
+  color: var(--color-error);
   max-width: 500px;
   margin: 0 auto;
   box-shadow: 0 4px 6px rgba(220, 38, 38, 0.1);
@@ -409,7 +409,7 @@
 }
 
 .error-message button {
-  background: #dc2626;
+  background: var(--color-error);
   color: white;
   border: none;
   padding: 12px 24px;
@@ -417,11 +417,11 @@
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 600;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-normal);
 }
 
 .error-message button:hover {
-  background: #b91c1c;
+  background: var(--color-error-dark);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
 }

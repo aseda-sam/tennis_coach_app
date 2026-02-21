@@ -61,6 +61,12 @@
   white-space: nowrap;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .floating-help-button {
+    animation: none;
+  }
+}
+
 @media (max-width: 768px) {
   .floating-help-button {
     bottom: var(--spacing-lg);

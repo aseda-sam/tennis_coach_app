@@ -3,38 +3,25 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useServeBiomechanicsReport } from '../hooks/useServeBiomechanicsReport';
+import { useServePlayback } from '../hooks/useServePlayback';
 import { useServeProposals } from '../hooks/useServeProposals';
 import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
-import { ArrowBackIcon } from './Icons';
+import AnalysisDashboardEditPanel from './AnalysisDashboardEditPanel';
+import AnalysisDashboardHeader from './AnalysisDashboardHeader';
+import AnalysisDashboardMetrics from './AnalysisDashboardMetrics';
+import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
-import ServeNavigator from './ServeNavigator';
-import ServePhaseTimeline from './ServePhaseTimeline';
 
 interface AnalysisDashboardProps {
   videoId: number;
   videoFilename: string;
   videoUrl: string;
   onClose: () => void;
-}
-
-const METRIC_DISPLAY_NAMES: Record<string, string> = {
-  knee_flexion_min_deg: 'Knee Flexion',
-  toss_peak_height: 'Toss Peak Height',
-  toss_laterality: 'Toss Position',
-};
-
-function formatMetricValue(value: number | null, unit: string): string {
-  if (value === null) return 'N/A';
-  if (unit === 'deg' || unit === 'degrees') return `${Math.round(value)}\u00b0`;
-  if (unit === 'normalized') return value.toFixed(2);
-  if (unit === 'ms') return `${value} ms`;
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(2);
 }
 
 function findCurrentPhase(
@@ -89,23 +76,12 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     }
   }, [startAnalysis]);
 
-  const [currentServeIndex, setCurrentServeIndex] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(true);
   const [showEditMode, setShowEditMode] = useState(false);
-  const [loopCurrentPhase, setLoopCurrentPhase] = useState(false);
-  const [loopPhaseWindow, setLoopPhaseWindow] = useState<PhaseWindow | null>(
-    null
-  );
 
-  // Edit mode state
+  // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
-  const [findServesMessage, setFindServesMessage] = useState<string | null>(
-    null
-  );
-  const [isAcceptingAll, setIsAcceptingAll] = useState(false);
 
   const { serveWindows } = useServeWindows({
     videoId,
@@ -131,7 +107,20 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     [serveWindows]
   );
 
-  const currentServe = sortedServeWindows[currentServeIndex] ?? null;
+  const {
+    currentServeIndex,
+    currentServe,
+    currentTime,
+    isPlaying,
+    loopCurrentPhase,
+    handlePlayPause,
+    handleSeek,
+    handleTimeUpdate,
+    handlePhaseJump,
+    handleContactJump,
+    handleToggleLoopCurrentPhase,
+    handleServeNavigate,
+  } = useServePlayback({ sortedServeWindows });
 
   const { data: biomechanicsReport } = useServeBiomechanicsReport(
     currentServe?.id ?? null
@@ -155,112 +144,17 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     );
   }, [metrics, currentPhase]);
 
-  // Sync currentTime when switching serves
-  useEffect(() => {
-    if (currentServe) {
-      setCurrentTime(currentServe.start_timestamp);
-      setIsPlaying(false);
-      setLoopCurrentPhase(false);
-      setLoopPhaseWindow(null);
-    }
-  }, [currentServe?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Playback timer for stick figure mode (and video mode sync)
-  useEffect(() => {
-    if (!isPlaying || !currentServe) return;
-
-    const interval = setInterval(() => {
-      setCurrentTime((t) => {
-        const next = t + 1 / 30;
-        // When looping a phase, keep playback pinned to that phase window.
-        if (loopCurrentPhase && loopPhaseWindow) {
-          if (
-            t < loopPhaseWindow.start_timestamp ||
-            t > loopPhaseWindow.end_timestamp
-          ) {
-            return loopPhaseWindow.start_timestamp;
-          }
-          if (next >= loopPhaseWindow.end_timestamp) {
-            return loopPhaseWindow.start_timestamp;
-          }
-          return next;
-        }
-        // Otherwise use serve bounds and stop at serve end
-        if (next > currentServe.end_timestamp) {
-          setIsPlaying(false);
-          return currentServe.start_timestamp;
-        }
-        return next;
-      });
-    }, 1000 / 30);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, currentServe, loopCurrentPhase, loopPhaseWindow]);
-
-  const handlePlayPause = useCallback(() => {
-    setIsPlaying((p) => !p);
-  }, []);
-
-  const handleSeek = useCallback(
-    (t: number) => {
-      if (!currentServe) return;
-      setCurrentTime(
-        Math.max(
-          currentServe.start_timestamp,
-          Math.min(currentServe.end_timestamp, t)
-        )
-      );
-    },
-    [currentServe]
-  );
-
-  const handleTimeUpdate = useCallback((t: number) => {
-    setCurrentTime(t);
-  }, []);
-
-  const handlePhaseJump = useCallback(
-    (phase: PhaseWindow) => {
-      setCurrentTime(phase.start_timestamp);
-      setIsPlaying(false);
-      if (loopCurrentPhase) {
-        setLoopPhaseWindow(phase);
-      }
-    },
-    [loopCurrentPhase]
-  );
-
-  const handleContactJump = useCallback(
+  // Wrap playback handlers that need phases/currentPhase from this scope
+  const handleContactJumpWithPhases = useCallback(
     (contactTimestamp: number) => {
-      setCurrentTime(contactTimestamp);
-      setIsPlaying(false);
-      if (loopCurrentPhase) {
-        const phaseAtContact = findCurrentPhase(phases, contactTimestamp);
-        setLoopPhaseWindow(phaseAtContact ?? null);
-      }
+      handleContactJump(contactTimestamp, phases);
     },
-    [loopCurrentPhase, phases]
+    [handleContactJump, phases]
   );
 
-  const handleToggleLoopCurrentPhase = useCallback(() => {
-    if (loopCurrentPhase) {
-      setLoopCurrentPhase(false);
-      setLoopPhaseWindow(null);
-      return;
-    }
-    if (!currentPhase) return;
-    setLoopCurrentPhase(true);
-    setLoopPhaseWindow(currentPhase);
-    setCurrentTime(currentPhase.start_timestamp);
-  }, [loopCurrentPhase, currentPhase]);
-
-  const handleServeNavigate = useCallback(
-    (index: number) => {
-      if (index >= 0 && index < sortedServeWindows.length) {
-        setCurrentServeIndex(index);
-      }
-    },
-    [sortedServeWindows.length]
-  );
+  const handleToggleLoopWithPhase = useCallback(() => {
+    handleToggleLoopCurrentPhase(currentPhase);
+  }, [handleToggleLoopCurrentPhase, currentPhase]);
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -283,98 +177,24 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Edit mode handlers
+  // Find serves handler for the no-serves fallback state
   const handleFindServes = useCallback(async () => {
-    if (!analysisStatus?.has_analysis) {
-      setFindServesMessage('Please run body tracking first.');
-      setTimeout(() => setFindServesMessage(null), 3000);
-      return;
-    }
-
-    const hasExisting =
-      detectionStatus &&
-      (detectionStatus.pending_proposals > 0 ||
-        detectionStatus.serve_windows > 0);
-
-    if (hasExisting && detectionStatus) {
-      if (
-        detectionStatus.serve_windows > 0 &&
-        detectionStatus.pending_proposals === 0
-      ) {
-        setFindServesMessage(
-          'Serves already tagged. Delete them to re-detect.'
-        );
-        setTimeout(() => setFindServesMessage(null), 4000);
-        return;
-      }
-      if (detectionStatus.pending_proposals > 0) {
-        const confirmed = window.confirm(
-          `You have ${detectionStatus.pending_proposals} pending proposal(s). Clear them and re-detect?`
-        );
-        if (!confirmed) return;
-      }
-    }
+    if (!analysisStatus?.has_analysis) return;
 
     setIsFindingServes(true);
-    setFindServesMessage(null);
     try {
       const force = detectionStatus?.pending_proposals
         ? detectionStatus.pending_proposals > 0
         : false;
-      const response = await runDetection(force);
-      if (response.count === 0) {
-        setFindServesMessage('No serves found in this video.');
-      } else {
-        setFindServesMessage(
-          `Found ${response.count} serve${response.count > 1 ? 's' : ''}!`
-        );
-      }
-      setTimeout(() => setFindServesMessage(null), 4000);
+      await runDetection(force);
     } catch (err) {
       console.error('Failed to find serves:', err);
-      setFindServesMessage('Failed to find serves. Please try again.');
-      setTimeout(() => setFindServesMessage(null), 4000);
     } finally {
       setIsFindingServes(false);
     }
   }, [analysisStatus, detectionStatus, runDetection]);
 
-  const handleClearProposals = useCallback(async () => {
-    if (proposals.length === 0) return;
-    const confirmed = window.confirm('Clear all pending serve proposals?');
-    if (!confirmed) return;
-    try {
-      await clearProposals();
-      setFindServesMessage('Proposals cleared.');
-      setTimeout(() => setFindServesMessage(null), 2000);
-    } catch (err) {
-      console.error('Failed to clear:', err);
-    }
-  }, [proposals.length, clearProposals]);
-
-  const handleAcceptAll = useCallback(async () => {
-    if (proposals.length === 0) return;
-    setIsAcceptingAll(true);
-    try {
-      const result = await acceptAllProposals();
-      if (result.failed > 0) {
-        setFindServesMessage(
-          `Accepted ${result.accepted}, ${result.failed} failed.`
-        );
-      } else {
-        setFindServesMessage(`Accepted ${result.accepted} serves!`);
-      }
-      setTimeout(() => setFindServesMessage(null), 3000);
-    } catch (err) {
-      console.error('Failed to accept all:', err);
-      setFindServesMessage('Failed to accept proposals.');
-      setTimeout(() => setFindServesMessage(null), 3000);
-    } finally {
-      setIsAcceptingAll(false);
-    }
-  }, [proposals.length, acceptAllProposals]);
-
-  // Analysis in progress — show progress view
+  // Analysis in progress -- show progress view
   const analysisInProgress =
     !analysisStatus?.has_analysis &&
     (analysisState.status === 'starting' ||
@@ -396,28 +216,13 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   return (
     <div className="analysis-dashboard">
       {/* Header */}
-      <div className="analysis-dashboard__header">
-        <button
-          className="analysis-dashboard__back-button"
-          onClick={onClose}
-          type="button"
-        >
-          <ArrowBackIcon size={16} />
-          Back to Library
-        </button>
-        <div className="analysis-dashboard__header-right">
-          <h1 className="analysis-dashboard__title">{videoFilename}</h1>
-          {hasServes && (
-            <button
-              className="analysis-dashboard__edit-btn"
-              onClick={() => setShowEditMode(!showEditMode)}
-              type="button"
-            >
-              {showEditMode ? 'Done' : 'Edit Serves'}
-            </button>
-          )}
-        </div>
-      </div>
+      <AnalysisDashboardHeader
+        videoFilename={videoFilename}
+        hasServes={hasServes}
+        showEditMode={showEditMode}
+        onClose={onClose}
+        onToggleEditMode={() => setShowEditMode(!showEditMode)}
+      />
 
       {/* Analysis Required State */}
       {analysisIdle && (
@@ -486,113 +291,38 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           {hasServes ? (
             <>
               {/* Hero View (left column at desktop) */}
-              <HeroView
-                videoUrl={videoUrl}
-                videoId={videoId}
-                serveStart={currentServe!.start_timestamp}
-                serveEnd={currentServe!.end_timestamp}
-                currentTime={currentTime}
-                isPlaying={isPlaying}
-                phaseLabel={currentPhase?.phase_label}
-                onTimeUpdate={handleTimeUpdate}
-                onPlayPause={handlePlayPause}
-                onSeek={handleSeek}
-              />
+              <ErrorBoundary fallbackMessage="Video player encountered an error.">
+                <HeroView
+                  videoUrl={videoUrl}
+                  videoId={videoId}
+                  serveStart={currentServe!.start_timestamp}
+                  serveEnd={currentServe!.end_timestamp}
+                  currentTime={currentTime}
+                  isPlaying={isPlaying}
+                  phaseLabel={currentPhase?.phase_label}
+                  onTimeUpdate={handleTimeUpdate}
+                  onPlayPause={handlePlayPause}
+                  onSeek={handleSeek}
+                />
+              </ErrorBoundary>
 
               {/* Right panel: serve nav, timeline, phases, metrics */}
-              <div className="analysis-dashboard__right-panel">
-                <ServeNavigator
-                  serveWindows={sortedServeWindows}
-                  currentIndex={currentServeIndex}
-                  onNavigate={handleServeNavigate}
-                />
-                {phases.length > 0 && (
-                  <div className="analysis-dashboard__timeline-wrapper">
-                    <ServePhaseTimeline
-                      phases={phases}
-                      currentTime={currentTime}
-                      serveStart={currentServe!.start_timestamp}
-                      serveEnd={currentServe!.end_timestamp}
-                      onSeek={handleSeek}
-                      contactTimestamp={currentServe?.contact_timestamp ?? null}
-                    />
-                  </div>
-                )}
-
-                {phases.length > 0 && (
-                  <div className="analysis-dashboard__phase-controls">
-                    <div className="analysis-dashboard__phase-chip-row">
-                      {phases.map((phase) => (
-                        <button
-                          key={phase.phase}
-                          type="button"
-                          className={`analysis-dashboard__phase-chip ${
-                            currentPhase?.phase === phase.phase
-                              ? 'analysis-dashboard__phase-chip--active'
-                              : ''
-                          }`}
-                          onClick={() => handlePhaseJump(phase)}
-                        >
-                          {phase.phase_label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="analysis-dashboard__phase-actions">
-                      {currentServe?.contact_timestamp != null && (
-                        <button
-                          type="button"
-                          className="analysis-dashboard__goto-contact-btn"
-                          onClick={() =>
-                            handleContactJump(currentServe.contact_timestamp!)
-                          }
-                        >
-                          Go to Contact
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className={`analysis-dashboard__loop-btn ${
-                          loopCurrentPhase
-                            ? 'analysis-dashboard__loop-btn--active'
-                            : ''
-                        }`}
-                        onClick={handleToggleLoopCurrentPhase}
-                        disabled={!currentPhase}
-                      >
-                        {loopCurrentPhase
-                          ? 'Looping Current Stage'
-                          : 'Loop Current Stage'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Metrics Strip — filtered by active phase */}
-                {metrics.length > 0 && (
-                  <div className="analysis-dashboard__metrics-strip">
-                    {filteredMetrics.length > 0 ? (
-                      filteredMetrics.map((m) => (
-                        <div
-                          key={m.metric_name}
-                          className="analysis-dashboard__metric-card"
-                        >
-                          <span className="analysis-dashboard__metric-label">
-                            {METRIC_DISPLAY_NAMES[m.metric_name] ??
-                              m.metric_name.replace(/_/g, ' ')}
-                          </span>
-                          <span className="analysis-dashboard__metric-value">
-                            {formatMetricValue(m.value, m.unit)}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="analysis-dashboard__metrics-empty">
-                        No metrics for this phase
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
+              <AnalysisDashboardMetrics
+                sortedServeWindows={sortedServeWindows}
+                currentServeIndex={currentServeIndex}
+                currentServe={currentServe!}
+                phases={phases}
+                currentPhase={currentPhase}
+                metrics={metrics}
+                filteredMetrics={filteredMetrics}
+                currentTime={currentTime}
+                loopCurrentPhase={loopCurrentPhase}
+                onServeNavigate={handleServeNavigate}
+                onSeek={handleSeek}
+                onPhaseJump={handlePhaseJump}
+                onContactJump={handleContactJumpWithPhases}
+                onToggleLoopCurrentPhase={handleToggleLoopWithPhase}
+              />
             </>
           ) : serveWindowsProcessing ? (
             <div className="analysis-dashboard__progress-state">
@@ -638,44 +368,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
       {/* Edit Serves Mode (secondary) */}
       {showEditMode && (
-        <div className="analysis-dashboard__edit-panel">
-          <h3 className="analysis-dashboard__edit-title">Edit Serves</h3>
-          <div className="analysis-dashboard__edit-actions">
-            {proposals.length === 0 ? (
-              <button
-                className="analysis-dashboard__action-btn analysis-dashboard__action-btn--find"
-                onClick={handleFindServes}
-                disabled={isFindingServes}
-                type="button"
-              >
-                {isFindingServes ? 'Finding...' : 'Re-Detect Serves'}
-              </button>
-            ) : (
-              <>
-                <button
-                  className="analysis-dashboard__action-btn analysis-dashboard__action-btn--accept-all"
-                  onClick={handleAcceptAll}
-                  disabled={isAcceptingAll || proposals.length === 0}
-                  type="button"
-                >
-                  {isAcceptingAll
-                    ? 'Accepting...'
-                    : `Accept All Proposals (${proposals.length})`}
-                </button>
-                <button
-                  className="analysis-dashboard__action-btn analysis-dashboard__action-btn--clear-all"
-                  onClick={handleClearProposals}
-                  type="button"
-                >
-                  Clear All
-                </button>
-              </>
-            )}
-          </div>
-          {findServesMessage && (
-            <div className="analysis-dashboard__toast">{findServesMessage}</div>
-          )}
-        </div>
+        <AnalysisDashboardEditPanel
+          proposals={proposals}
+          detectionStatus={detectionStatus}
+          hasAnalysis={!!analysisStatus?.has_analysis}
+          runDetection={runDetection}
+          clearProposals={clearProposals}
+          acceptAllProposals={acceptAllProposals}
+        />
       )}
 
       <KeyboardShortcutsModal

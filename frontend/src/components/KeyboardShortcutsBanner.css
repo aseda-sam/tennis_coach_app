@@ -30,7 +30,7 @@
 .keyboard-shortcuts__title {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  color: #312c85;
+  color: var(--color-info-dark);
   margin: 0;
   line-height: 1;
 }
@@ -65,12 +65,12 @@
   min-width: fit-content;
   padding: 2px 6px;
   background: var(--color-surface);
-  border: 1px solid #c6d2ff;
+  border: 1px solid var(--color-info-light);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-xs);
   font-size: 10px;
   font-weight: var(--font-weight-medium);
-  color: #432dd7;
+  color: var(--color-info);
   font-family: var(--font-family-sans);
   line-height: 1.2;
 }
@@ -97,7 +97,7 @@
   width: 12px;
   height: 12px;
   cursor: pointer;
-  accent-color: #432dd7;
+  accent-color: var(--color-info);
   margin: 0;
 }
 

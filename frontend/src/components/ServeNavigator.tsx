@@ -1,5 +1,5 @@
 import React from 'react';
-import { ServeWindow } from '../services/serveWindowApi';
+import { ServeWindow } from '../types/serveWindow';
 import './ServeNavigator.css';
 
 interface ServeNavigatorProps {

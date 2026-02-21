@@ -133,18 +133,18 @@
 
 .auto-detect-btn {
   padding: var(--spacing-xs) var(--spacing-md);
-  background-color: #f59e0b; /* orange-500 */
+  background-color: var(--color-warning);
   color: white;
   border: none;
   border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
 }
 
 .auto-detect-btn:hover:not(:disabled) {
-  background-color: #d97706; /* orange-600 */
+  background-color: var(--color-warning-dark);
 }
 
 .auto-detect-btn:disabled {
@@ -159,11 +159,11 @@
 }
 
 .auto-detect-btn--has-detections {
-  background-color: #10b981; /* green-500 - indicates detection already done */
+  background-color: var(--color-success);
 }
 
 .auto-detect-btn--has-detections:hover:not(:disabled) {
-  background-color: #059669; /* green-600 */
+  background-color: var(--color-success-dark);
 }
 
 .auto-detect-clear-btn {
@@ -175,7 +175,7 @@
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
 }
 
 .auto-detect-clear-btn:hover:not(:disabled) {
@@ -543,7 +543,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-slower);
   /* Removed backdrop-filter blur to keep paused frames clear */
   z-index: 15;
 }
@@ -615,7 +615,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-slower);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
@@ -641,8 +641,8 @@
   z-index: 20;
   backdrop-filter: blur(4px);
   transition:
-    opacity 0.3s ease,
-    transform 0.3s ease;
+    opacity var(--duration-slower) var(--ease-in-out),
+    transform var(--duration-slower) var(--ease-in-out);
 }
 
 /* Show controls on hover, when video is paused, or when scrubbing */
@@ -668,17 +668,17 @@
 .progress-bar {
   width: 100%;
   height: 6px;
-  background: #374151;
+  background: var(--color-text-secondary);
   border-radius: 3px;
   outline: none;
   cursor: pointer;
   appearance: none;
   margin-bottom: 8px;
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
 }
 
 .progress-bar:hover {
-  background: #4b5563;
+  background: var(--color-text-muted);
 }
 
 .progress-bar::-webkit-slider-thumb {
@@ -841,7 +841,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.8rem;
-  color: #9ca3af;
+  color: var(--color-text-disabled);
   font-weight: 500;
 }
 
@@ -971,10 +971,10 @@
   appearance: none;
   width: 12px;
   height: 12px;
-  background: #9ca3af;
+  background: var(--color-text-disabled);
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-normal);
 }
 
 .volume-slider::-webkit-slider-thumb:hover {
@@ -985,11 +985,11 @@
 .volume-slider::-moz-range-thumb {
   width: 12px;
   height: 12px;
-  background: #9ca3af;
+  background: var(--color-text-disabled);
   border-radius: 50%;
   cursor: pointer;
   border: none;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-normal);
 }
 
 .volume-slider::-moz-range-thumb:hover {
@@ -1408,18 +1408,18 @@
 
 .video-controls-below__auto-detect-btn {
   padding: var(--spacing-xs) var(--spacing-md);
-  background-color: #f59e0b; /* orange-500 */
+  background-color: var(--color-warning);
   color: white;
   border: none;
   border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
 }
 
 .video-controls-below__auto-detect-btn:hover:not(:disabled) {
-  background-color: #d97706; /* orange-600 */
+  background-color: var(--color-warning-dark);
 }
 
 .video-controls-below__auto-detect-btn:disabled {
@@ -1434,11 +1434,11 @@
 }
 
 .video-controls-below__auto-detect-btn--has-detections {
-  background-color: #10b981; /* green-500 - indicates detection already done */
+  background-color: var(--color-success);
 }
 
 .video-controls-below__auto-detect-btn--has-detections:hover:not(:disabled) {
-  background-color: #059669; /* green-600 */
+  background-color: var(--color-success-dark);
 }
 
 .video-controls-below__auto-detect-clear-btn {
@@ -1450,7 +1450,7 @@
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
 }
 
 .video-controls-below__auto-detect-clear-btn:hover:not(:disabled) {
@@ -1537,4 +1537,11 @@
   font-weight: var(--font-weight-medium);
   color: var(--color-text);
   white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-hint,
+  .video-controls-below__serve-panel {
+    animation: none;
+  }
 }

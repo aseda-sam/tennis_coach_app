@@ -1,6 +1,5 @@
-import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useState } from 'react';
-import { getApiErrorMessage } from '../utils/apiError';
+import { useQueryClient } from '@tanstack/react-query';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import {
   useDeleteVideo,
@@ -11,6 +10,7 @@ import {
 import { VideoMetadata } from '../types/video';
 import { CloseIcon, DeleteIcon, UploadIcon, VideoIcon } from './Icons';
 import LoadingIndicator from './LoadingIndicator';
+import VideoEditModal from './VideoEditModal';
 import './VideoList.css';
 import VideoUpload from './VideoUpload';
 
@@ -25,15 +25,7 @@ const VideoList: React.FC<VideoListProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<VideoMetadata | null>(null);
-  const [editSessionType, setEditSessionType] = useState('');
-  const [editCameraAngle, setEditCameraAngle] = useState('');
-  const [editPlayerTag, setEditPlayerTag] = useState<'you' | 'someone_else'>(
-    'you'
-  );
-  const [applyToExistingServes, setApplyToExistingServes] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
 
   // Use React Query hooks for data fetching
   const {
@@ -63,15 +55,6 @@ const VideoList: React.FC<VideoListProps> = ({
     }
   };
 
-  // Removed handleAnalyze - we now only use pose detection
-  // Removed handlePoseAnalyze - not used in card layout (can be re-added if needed for analyze button)
-
-  // Removed pollTaskStatus - legacy function no longer needed
-
-  // Removed verifyAnalysisData - we now use generic analysis status
-
-  // Removed pollModularAnalysisStatus - we now use pose detection only
-
   const handleViewAnalysis = (videoId: number) => {
     if (onViewAnalysis) {
       const video = videos.find((v: VideoMetadata) => v.id === videoId);
@@ -80,18 +63,6 @@ const VideoList: React.FC<VideoListProps> = ({
       }
     }
   };
-
-  const resolvePlayerTag = useCallback(
-    (video: VideoMetadata) => {
-      if (!video.primary_player_id || !playerProfile?.id) {
-        return 'you';
-      }
-      return video.primary_player_id === playerProfile.id
-        ? 'you'
-        : 'someone_else';
-    },
-    [playerProfile?.id]
-  );
 
   const getPlayerLabel = useCallback(
     (video: VideoMetadata) => {
@@ -109,52 +80,6 @@ const VideoList: React.FC<VideoListProps> = ({
     [playerProfile?.id, playerProfile?.name]
   );
 
-  const openEditModal = useCallback(
-    (video: VideoMetadata) => {
-      setEditingVideo(video);
-      setEditSessionType(video.session_type || '');
-      setEditCameraAngle(video.camera_angle || '');
-      setEditPlayerTag(resolvePlayerTag(video));
-      setApplyToExistingServes(false);
-      setEditError(null);
-      setIsEditModalOpen(true);
-    },
-    [resolvePlayerTag]
-  );
-
-  const handleEditSave = useCallback(async () => {
-    if (!editingVideo) return;
-    setEditError(null);
-
-    try {
-      await updateMetadataMutation.mutateAsync({
-        videoId: editingVideo.id,
-        metadata: {
-          session_type: editSessionType || undefined,
-          camera_angle: editCameraAngle || undefined,
-          player_tag: editPlayerTag,
-          apply_to_existing_serves: applyToExistingServes,
-        },
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['videos'] });
-      setIsEditModalOpen(false);
-      setEditingVideo(null);
-    } catch (err: unknown) {
-      setEditError(
-        getApiErrorMessage(err, 'Failed to update video. Please try again.')
-      );
-    }
-  }, [
-    applyToExistingServes,
-    editCameraAngle,
-    editPlayerTag,
-    editSessionType,
-    editingVideo,
-    queryClient,
-    updateMetadataMutation,
-  ]);
-
   const handleUploadSuccess = useCallback(
     (video: VideoMetadata) => {
       // Invalidate videos cache to refetch the list with the new video
@@ -163,10 +88,6 @@ const VideoList: React.FC<VideoListProps> = ({
     },
     [queryClient]
   );
-
-  // Removed handleCancelAnalysis - we now only use pose detection
-
-  // Removed getAnalysisForVideo - we now only use pose detection
 
   const formatFileSize = (bytes: number): string => {
     const mb = bytes / (1024 * 1024);
@@ -193,8 +114,6 @@ const VideoList: React.FC<VideoListProps> = ({
       });
     }
   };
-
-  // Removed getStatusTag - not used in card layout
 
   if (loading) {
     return (
@@ -314,7 +233,7 @@ const VideoList: React.FC<VideoListProps> = ({
                       className="edit-card-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        openEditModal(video);
+                        setEditingVideo(video);
                       }}
                       disabled={updateMetadataMutation.isPending}
                       title="Edit"
@@ -367,142 +286,11 @@ const VideoList: React.FC<VideoListProps> = ({
       )}
 
       {/* Edit Modal */}
-      {isEditModalOpen && editingVideo && (
-        <div
-          className="upload-modal-overlay"
-          onClick={() => setIsEditModalOpen(false)}
-        >
-          <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">Edit Video Details</h2>
-              <button
-                className="close-btn"
-                onClick={() => setIsEditModalOpen(false)}
-                aria-label="Close"
-                type="button"
-              >
-                <CloseIcon size={18} />
-              </button>
-            </div>
-            <div className="modal-content">
-              <div className="edit-video-form">
-                <div className="edit-video-two-col">
-                  <div className="edit-video-field">
-                    <label>
-                      Session Type{' '}
-                      <span className="required-asterisk" aria-label="required">
-                        *
-                      </span>
-                    </label>
-                    <select
-                      value={editSessionType}
-                      onChange={(e) => setEditSessionType(e.target.value)}
-                      disabled={updateMetadataMutation.isPending}
-                    >
-                      <option value="">Select session type</option>
-                      <option value="serve_practice">Serve Practice</option>
-                      <option value="match">Match</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-
-                  <div className="edit-video-field">
-                    <label>Camera Angle</label>
-                    <select
-                      value={editCameraAngle}
-                      onChange={(e) => setEditCameraAngle(e.target.value)}
-                      disabled={updateMetadataMutation.isPending}
-                    >
-                      <option value="">Select camera angle</option>
-                      <option value="behind">Behind</option>
-                      <option value="profile">Profile</option>
-                      <option value="unknown">Unknown</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="edit-video-section">
-                  <div className="edit-video-section-header">
-                    <div className="edit-video-section-title">
-                      Who Is Serving?
-                    </div>
-                    <p className="edit-video-section-subtitle">
-                      New serves detected in this video will be saved under this
-                      player.
-                    </p>
-                  </div>
-
-                  <div className="edit-video-radio-group edit-video-radio-group--horizontal">
-                    <label>
-                      <input
-                        type="radio"
-                        name="editPlayerTag"
-                        value="you"
-                        checked={editPlayerTag === 'you'}
-                        onChange={() => setEditPlayerTag('you')}
-                        disabled={updateMetadataMutation.isPending}
-                      />
-                      <span>{playerProfile?.name || 'Your Profile'}</span>
-                    </label>
-                    <label>
-                      <input
-                        type="radio"
-                        name="editPlayerTag"
-                        value="someone_else"
-                        checked={editPlayerTag === 'someone_else'}
-                        onChange={() => setEditPlayerTag('someone_else')}
-                        disabled={updateMetadataMutation.isPending}
-                      />
-                      <span>Someone Else</span>
-                    </label>
-                  </div>
-                  <div className="edit-video-checkbox-wrapper">
-                    <label className="edit-video-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={applyToExistingServes}
-                        onChange={(e) =>
-                          setApplyToExistingServes(e.target.checked)
-                        }
-                        disabled={updateMetadataMutation.isPending}
-                      />
-                      <span>
-                        Also update serves already detected in this video
-                      </span>
-                    </label>
-                    <p className="edit-video-note edit-video-note--compact">
-                      Only affects serves for this video.
-                    </p>
-                  </div>
-                </div>
-
-                {editError && (
-                  <div className="edit-video-error">{editError}</div>
-                )}
-              </div>
-            </div>
-            <div className="edit-video-actions">
-              <button
-                type="button"
-                className="edit-video-cancel"
-                onClick={() => setIsEditModalOpen(false)}
-                disabled={updateMetadataMutation.isPending}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="edit-video-save"
-                onClick={handleEditSave}
-                disabled={!editSessionType || updateMetadataMutation.isPending}
-              >
-                {updateMetadataMutation.isPending
-                  ? 'Saving...'
-                  : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {editingVideo && (
+        <VideoEditModal
+          video={editingVideo}
+          onClose={() => setEditingVideo(null)}
+        />
       )}
     </div>
   );

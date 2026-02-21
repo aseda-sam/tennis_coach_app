@@ -1,15 +1,15 @@
 .stage-progress-container {
-  background: #ffffff;
-  border: 1px solid #e1e5e9;
-  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 16px;
   margin: 8px 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease;
+  box-shadow: var(--shadow-xs);
+  transition: var(--transition-normal);
 }
 
 .stage-progress-container:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .stage-progress-container.small {
@@ -33,13 +33,13 @@
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 8px;
-  background: #f8f9fa;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-secondary);
   flex-shrink: 0;
 }
 
 .stage-icon {
-  color: #6c757d;
+  color: var(--color-text-muted);
 }
 
 .stage-info {
@@ -50,13 +50,13 @@
 .stage-name {
   font-weight: 600;
   font-size: 14px;
-  color: #212529;
+  color: var(--color-text);
   margin-bottom: 2px;
 }
 
 .stage-message {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--color-text-muted);
   line-height: 1.4;
 }
 
@@ -71,12 +71,12 @@
 .overall-progress {
   font-weight: 600;
   font-size: 14px;
-  color: #212529;
+  color: var(--color-text);
 }
 
 .stage-progress {
   font-size: 11px;
-  color: #6c757d;
+  color: var(--color-text-muted);
 }
 
 .stage-progress-bars {
@@ -88,8 +88,8 @@
 .overall-progress-bar,
 .stage-progress-bar {
   height: 6px;
-  background: #e9ecef;
-  border-radius: 3px;
+  background: var(--color-border);
+  border-radius: var(--radius-xs);
   overflow: hidden;
   position: relative;
 }
@@ -101,34 +101,46 @@
 
 .progress-fill {
   height: 100%;
-  border-radius: 3px;
-  transition: width 0.3s ease;
+  border-radius: var(--radius-xs);
+  transition: width var(--duration-slower) var(--ease-in-out);
   position: relative;
 }
 
 /* Progress colors */
 .progress-fill.processing {
-  background: linear-gradient(90deg, #007bff, #0056b3);
+  background: linear-gradient(90deg, var(--color-info), var(--color-info-dark));
 }
 
 .progress-fill.info {
-  background: linear-gradient(90deg, #17a2b8, #138496);
+  background: linear-gradient(90deg, var(--color-info), var(--color-info-dark));
 }
 
 .progress-fill.primary {
-  background: linear-gradient(90deg, #007bff, #0056b3);
+  background: linear-gradient(90deg, var(--color-info), var(--color-info-dark));
 }
 
 .progress-fill.secondary {
-  background: linear-gradient(90deg, #6c757d, #545b62);
+  background: linear-gradient(
+    90deg,
+    var(--color-text-muted),
+    var(--color-text-secondary)
+  );
 }
 
 .progress-fill.success {
-  background: linear-gradient(90deg, #28a745, #1e7e34);
+  background: linear-gradient(
+    90deg,
+    var(--color-success),
+    var(--color-success-dark)
+  );
 }
 
 .progress-fill.error {
-  background: linear-gradient(90deg, #dc3545, #c82333);
+  background: linear-gradient(
+    90deg,
+    var(--color-error),
+    var(--color-error-dark)
+  );
 }
 
 /* Responsive design */
@@ -150,13 +162,17 @@
 
 /* Animation for active stages */
 .stage-progress-container.active .stage-icon-container {
-  background: linear-gradient(135deg, #007bff, #0056b3);
+  background: linear-gradient(
+    135deg,
+    var(--color-info),
+    var(--color-info-dark)
+  );
 }
 
 .stage-progress-container.active .stage-icon {
-  color: #ffffff;
+  color: white;
 }
 
 .stage-progress-container.active .stage-name {
-  color: #007bff;
+  color: var(--color-info);
 }

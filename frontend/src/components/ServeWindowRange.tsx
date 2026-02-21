@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ServeWindow } from '../services/serveWindowApi';
+import { ServeWindow } from '../types/serveWindow';
 import './ServeWindowRange.css';
 
 interface ServeWindowRangeProps {

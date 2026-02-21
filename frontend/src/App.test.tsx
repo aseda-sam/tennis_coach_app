@@ -1,7 +1,7 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import React from 'react';
 import App from './App';
+import { renderWithProviders } from './test-utils';
 
 // Mock localStorage BEFORE importing App to prevent demo landing
 const localStorageMock = {
@@ -13,20 +13,6 @@ const localStorageMock = {
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-  },
-});
-
-const renderWithProviders = (ui: React.ReactElement) => {
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
-};
 
 // Mock the useAuth hook to avoid async loading state
 jest.mock('./hooks/useAuth', () => ({

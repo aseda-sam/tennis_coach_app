@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnalysisData } from '../services/api';
+import unifiedAnalysisApi from '../services/unifiedAnalysisApi';
+import { AnalysisData, VideoJob } from '../types/analysis';
 import { getApiErrorMessage } from '../utils/apiError';
-import unifiedAnalysisApi, { VideoJob } from '../services/unifiedAnalysisApi';
 
 export interface AnalysisProgress {
   jobId: string;

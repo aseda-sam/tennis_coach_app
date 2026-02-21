@@ -57,3 +57,9 @@
     transform: rotate(360deg);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-loading__ring {
+    animation: none;
+  }
+}

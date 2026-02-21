@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ServeWindowProposal } from '../services/serveProposalApi';
+import { ServeWindowProposal } from '../types/serveProposal';
 import './ProposalRange.css';
 
 // Default threshold - matches backend config

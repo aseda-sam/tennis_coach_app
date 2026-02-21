@@ -5,7 +5,7 @@
   height: 100%;
   cursor: pointer;
   z-index: 3; /* Lower than serve windows (z-index: 5) */
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
 }
 
 .proposal-range:hover {
@@ -25,7 +25,7 @@
   border: 2px dashed;
   border-radius: 2px;
   background-color: rgba(251, 191, 36, 0.1); /* amber-400 with low opacity */
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-normal) var(--ease-in-out);
 }
 
 .proposal-range.selected .proposal-range__band {
@@ -68,7 +68,7 @@
   top: -8px;
   right: 4px;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 10px;
   font-weight: 600;
   color: white;
@@ -86,7 +86,7 @@
   gap: 4px;
   background: rgba(0, 0, 0, 0.9);
   padding: 4px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   z-index: 20;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
@@ -94,36 +94,36 @@
 .proposal-range__action-btn {
   padding: 4px 8px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition-normal);
   color: white;
 }
 
 .proposal-range__action-btn--accept {
-  background-color: #10b981; /* green-500 */
+  background-color: var(--color-success);
 }
 
 .proposal-range__action-btn--accept:hover {
-  background-color: #059669; /* green-600 */
+  background-color: var(--color-success-dark);
 }
 
 .proposal-range__action-btn--edit {
-  background-color: #3b82f6; /* blue-500 */
+  background-color: var(--color-info);
 }
 
 .proposal-range__action-btn--edit:hover {
-  background-color: #2563eb; /* blue-600 */
+  background-color: var(--color-info-dark);
 }
 
 .proposal-range__action-btn--reject {
-  background-color: #ef4444; /* red-500 */
+  background-color: var(--color-error);
 }
 
 .proposal-range__action-btn--reject:hover {
-  background-color: #dc2626; /* red-600 */
+  background-color: var(--color-error-dark);
 }
 
 /* Tooltip - only visible on hover when actions are NOT visible */
@@ -135,7 +135,7 @@
   margin-bottom: 8px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-normal) var(--ease-in-out);
   z-index: 15; /* Lower than actions (z-index: 20) */
 }
 
@@ -156,7 +156,7 @@
   background: rgba(0, 0, 0, 0.9);
   color: white;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   white-space: nowrap;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
