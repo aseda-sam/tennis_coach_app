@@ -129,47 +129,6 @@ def require_player_access(player: "Player", user: dict) -> None:
         )
 
 
-def can_tag_player_to_video(video: "Video", player: "Player", user: dict) -> bool:
-    """Check if user can tag a player to a video.
-
-    User must own both the video and the player to tag it.
-    This ensures users can only tag players they created themselves.
-
-    Args:
-        video: Video model instance
-        player: Player model instance
-        user: User dict with id, email, user_metadata, etc.
-
-    Returns:
-        True if user can tag player to video, False otherwise
-    """
-    # Admins can tag any player to any video
-    if is_admin(user):
-        return True
-
-    # User must own both the video and the player
-    # (they can only tag players they created to their videos)
-    return video.user_id == user["id"] and player.user_id == user["id"]
-
-
-def require_player_tag_permission(video: "Video", player: "Player", user: dict) -> None:
-    """Raise exception if user can't tag player to video.
-
-    Args:
-        video: Video model instance
-        player: Player model instance
-        user: User dict with id, email, user_metadata, etc.
-
-    Raises:
-        HTTPException: 403 if user can't tag player to video
-    """
-    if not can_tag_player_to_video(video, player, user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only tag players you created to your videos",
-        )
-
-
 def check_daily_upload_limit(
     db: Session, user_id: str, max_uploads: int
 ) -> tuple[bool, int]:
@@ -213,18 +172,6 @@ def require_upload_limit(db: Session, user: dict, max_uploads: int) -> None:
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"You've reached your daily upload limit of {max_uploads} videos ({current_count} uploaded today). Please try again tomorrow.",
         )
-
-
-def is_demo_video(video: "Video") -> bool:
-    """Check if video is a demo video.
-
-    Args:
-        video: Video model instance
-
-    Returns:
-        True if video is a demo video, False otherwise
-    """
-    return video.is_demo
 
 
 def require_video_not_demo(video: "Video", user: Optional[dict] = None) -> None:
