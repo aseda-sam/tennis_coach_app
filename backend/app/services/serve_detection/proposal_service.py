@@ -676,8 +676,12 @@ def accept_with_edits(
 
     # Get or create default player if not provided
     if not player_id:
-        default_player = player_service.get_or_create_default_player(db, user_id)
-        player_id = default_player.id
+        video = db.query(Video).filter(Video.id == proposal.video_id).first()
+        if video and video.primary_player_id:
+            player_id = video.primary_player_id
+        else:
+            default_player = player_service.get_or_create_default_player(db, user_id)
+            player_id = default_player.id
 
     # Validate player ownership
     from app.models.player import Player
