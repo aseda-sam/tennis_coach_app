@@ -71,9 +71,10 @@ async def start_analysis(
             )
 
         logger.info(
-            f"Starting analysis request: video_id={video_id}, "
-            f"analysis_type={request.analysis_type}, "
-            f"confidence_threshold={request.confidence_threshold}"
+            "Starting analysis request: video_id=%s, analysis_type=%s, confidence_threshold=%s",
+            video_id,
+            request.analysis_type,
+            request.confidence_threshold,
         )
 
         # Create VideoJob record BEFORE enqueuing (status='queued')
@@ -107,8 +108,11 @@ async def start_analysis(
         db.commit()
 
         logger.info(
-            f"Successfully enqueued {request.analysis_type} analysis job {job.id} "
-            f"for video {video_id} to queue '{analysis_queue.name}'",
+            "Successfully enqueued %s analysis job %s for video %s to queue '%s'",
+            request.analysis_type,
+            job.id,
+            video_id,
+            analysis_queue.name,
             extra=get_log_extra(
                 request_id=http_request.state.request_id
                 if hasattr(http_request, "state")

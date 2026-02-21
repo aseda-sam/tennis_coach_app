@@ -43,7 +43,7 @@ alwaysApply: false
 
 ## Errors
 
-- **Services**: raise standard Python exceptions (`ValueError`, `RuntimeError`, `FileNotFoundError`).
+- **Services**: raise standard Python exceptions (`ValueError`, `RuntimeError`, `FileNotFoundError`). **Never raise `HTTPException` in a service** — it couples the service to HTTP and bypasses `handle_service_error` silently.
 - **Routes**: translate exceptions using `backend/app/utils/error_handling.py` (`APIError`, `handle_*`, `log_and_raise_error`).
 - **Prefer standardized errors** over ad-hoc `HTTPException`; use `HTTPException` only for simple request validation when it’s truly local to the route.
 

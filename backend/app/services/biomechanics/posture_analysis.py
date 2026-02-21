@@ -122,7 +122,7 @@ def calculate_knee_angle(pose_landmarks: Dict, side: str) -> Optional[float]:
     try:
         # Validate side
         if side not in ["left", "right"]:
-            logger.warning(f"Invalid side: {side}. Expected 'left' or 'right'")
+            logger.warning("Invalid side: %s. Expected 'left' or 'right'", side)
             return None
 
         # Extract keypoint coordinates for the specified side
