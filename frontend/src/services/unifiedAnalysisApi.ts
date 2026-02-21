@@ -42,11 +42,7 @@ analysisApi.interceptors.response.use(
 
 // Types for the new unified analysis API
 export interface AnalysisRequest {
-  analysis_type:
-    | 'pose_only'
-    | 'video_annotation_only'
-    | 'pose_with_annotation'
-    | 'contact_metrics';
+  analysis_type: 'pose_only';
   confidence_threshold?: number;
   force_reanalysis?: boolean;
 }

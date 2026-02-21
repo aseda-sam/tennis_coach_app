@@ -5,11 +5,7 @@ import unifiedAnalysisApi, { VideoJob } from '../services/unifiedAnalysisApi';
 export interface AnalysisProgress {
   jobId: string;
   videoId: number;
-  analysisType:
-    | 'pose_only'
-    | 'video_annotation_only'
-    | 'pose_with_annotation'
-    | 'contact_metrics';
+  analysisType: 'pose_only';
   status: 'queued' | 'processing' | 'completed' | 'failed';
   progress: number;
   error?: string;

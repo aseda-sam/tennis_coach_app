@@ -7,54 +7,17 @@ import {
   VideoMetadata,
   VideoUploadResponse,
 } from '../types/video';
-import { createAuthInterceptor } from '../utils/authInterceptor';
 import { supabase } from './supabaseClient';
 
 // API configuration
 const API_BASE_URL =
   process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
 
-// Create axios instance for analysis API
-const analysisApiInstance = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-});
-
 // Create main API instance
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
 });
-
-// Add auth interceptor to analysisApiInstance (used by analysisApi.startAnalysis)
-createAuthInterceptor(analysisApiInstance, 'Analysis API Instance');
-
-// Normalize errors for analysisApiInstance too
-analysisApiInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Normalize FastAPI error responses to always have string detail
-    if (
-      error.response?.data?.detail &&
-      Array.isArray(error.response.data.detail)
-    ) {
-      const messages = error.response.data.detail
-        .map((err: { type?: string; loc?: unknown[]; msg?: string }) => {
-          if (typeof err === 'object' && err !== null && 'msg' in err) {
-            const loc = Array.isArray(err.loc)
-              ? err.loc.slice(1).join('.')
-              : '';
-            return loc ? `${loc}: ${err.msg}` : err.msg;
-          }
-          return String(err);
-        })
-        .filter(Boolean);
-      error.response.data.detail =
-        messages.length > 0 ? messages.join('; ') : 'Validation error';
-    }
-    return Promise.reject(error);
-  }
-);
 
 // Add request/response interceptors
 api.interceptors.request.use(async (config) => {
@@ -365,33 +328,5 @@ export interface AnalysisData {
   };
   confidence_threshold_used?: number;
 }
-
-export const analysisApi = {
-  // Start analysis for a video - now returns AnalysisStartResponse with task_id
-  startAnalysis: async (
-    videoId: number,
-    analysisRequest: {
-      analysis_type: string;
-      confidence_threshold?: number;
-      include_pose_detection?: boolean;
-    }
-  ): Promise<AnalysisStartResponse> => {
-    const response = await analysisApiInstance.post<AnalysisStartResponse>(
-      `/analysis/videos/${videoId}`,
-      analysisRequest
-    );
-    return response.data;
-  },
-
-  // Cancel a job (RQ)
-  cancelTask: async (
-    jobId: string
-  ): Promise<{ message: string; job_id: string }> => {
-    const response = await api.delete<{ message: string; job_id: string }>(
-      `/analysis/tasks/${jobId}`
-    );
-    return response.data;
-  },
-};
 
 export default api;

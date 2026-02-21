@@ -51,15 +51,6 @@ export interface VideoListResponse {
   total: number;
 }
 
-export interface ApiError {
-  error: {
-    // CHANGED: new error structure
-    code: string;
-    message: string;
-    details?: unknown;
-  };
-}
-
 export interface PoseFrame {
   frame_index: number;
   timestamp: number;
