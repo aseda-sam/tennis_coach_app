@@ -60,8 +60,10 @@ venv.bak/
 !.cursor/skills/**
 .cursor/skills/interview-prep/
 
-# Antigravity agent (symlinks created by skills installer — not used)
+# Antigravity agent (deleted — entry kept as safety net)
 .agent/
+
+# .agents/ — shared cross-tool skills (tracked)
 
 # Claude AI (track skills/commands; ignore local state)
 .claude/*
@@ -139,9 +141,8 @@ test_yolo_fix.py
 # Miscellaneous
 etc/
 
-# Writing
-writing/
-.cursor/skills/dev-story-capture/
+# Writing (root-anchored so it doesn't catch .agents/skills/writing)
+/writing/
 
 # Backend temporary/debug outputs
 backend/tmp/
