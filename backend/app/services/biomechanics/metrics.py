@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel
 
 from app.services.biomechanics.phase_segmentation import PhaseWindow
-from app.services.posture_analysis import calculate_knee_angle
+from app.services.biomechanics.posture_analysis import calculate_knee_angle
 
 logger = logging.getLogger(__name__)
 

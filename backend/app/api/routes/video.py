@@ -35,10 +35,9 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user, get_optional_user
 from app.services import (
-    analysis_status_service,
     player_service,
     serve_window_service,
-    video_job_enqueue_service,
+    video_auto_enqueue_service,
     video_job_service,
     video_service,
     video_streaming_service,
@@ -489,7 +488,7 @@ async def get_video_analysis_status(
 
         require_video_access(db_video, current_user)
 
-        status_dict = analysis_status_service.get_video_analysis_status(db, video_id)
+        status_dict = video_service.get_video_analysis_status(db, video_id)
         return VideoAnalysisStatus(**status_dict)
 
     except ValueError as e:
@@ -527,7 +526,7 @@ async def get_bulk_analysis_status(
     try:
         from app.utils.authorization import is_admin
 
-        status_dicts = analysis_status_service.get_bulk_analysis_status(
+        status_dicts = video_service.get_bulk_analysis_status(
             db=db,
             video_ids=request.video_ids,
             user_id=current_user["id"],
@@ -734,7 +733,7 @@ async def upload_video(
         # or in environments where Redis should not be used.
         # When enabled, ALL uploads (regular and demo) are auto-enqueued.
         # Pytest tests are unaffected because they mock enqueue functions.
-        video_job_enqueue_service.auto_enqueue_video_analysis(
+        video_auto_enqueue_service.auto_enqueue_video_analysis(
             db=db,
             video=db_video,
             user_id=current_user["id"],

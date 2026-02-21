@@ -12,9 +12,10 @@ from app.api.schemas.background_tasks import AnalysisResponse
 from app.api.schemas.video import VideoInfo, VideoMetadata, VideoUploadResponse
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
-from app.services import admin_service, demo_service, video_service
+from app.services import demo_service, video_service
 from app.utils.authorization import is_admin, require_admin
 from app.utils.error_handling import handle_not_found_error, log_and_raise_error
+from app.utils.supabase_auth import get_user_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -205,7 +206,9 @@ async def upload_video_for_user(
 
     try:
         # Validate target user exists in Supabase
-        target_user = admin_service.validate_target_user_exists(target_user_id)
+        target_user = get_user_by_id(target_user_id)
+        if not target_user:
+            raise ValueError(f"Target user {target_user_id} not found in Supabase")
 
         logger.info(
             "Admin %s uploading video for user %s",

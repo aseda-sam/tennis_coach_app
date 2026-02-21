@@ -20,9 +20,11 @@ from app.services.biomechanics.metrics import (
 from app.services.biomechanics.phase_segmentation import (
     segment_serve_phases,
 )
-from app.services.pose_data_service import (
+from app.services.biomechanics.toss_metrics import (
     _compute_toss_metrics,
     _get_best_ball_detection,
+)
+from app.services.pose_data_service import (
     _select_best_pose_detection,
     get_pose_frames_in_window,
 )

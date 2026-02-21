@@ -4,7 +4,7 @@ Tests for posture analysis utilities.
 Serve MVP scope: elbow angle calculation only.
 """
 
-from app.services.posture_analysis import calculate_elbow_angle
+from app.services.biomechanics.posture_analysis import calculate_elbow_angle
 
 
 class TestPostureAnalysisService:
