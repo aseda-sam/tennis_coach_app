@@ -337,7 +337,7 @@ Ball detection is already implemented and integrated:
 
 - **YOLO-based detection** (Ultralytics, COCO class 32 — "sports ball") runs as part of the video analysis job, after pose detection.
 - Per-frame ball positions are stored in the **`ball_detections`** table (`ball_data` JSON: `frame_index`, `timestamp_ms`, `ball_x`, `ball_y`, `confidence`).
-- **Toss metrics** are computed from ball data: `toss_peak_height` (normalized by player height) and `toss_peak_timestamp` (when ball reaches peak), in `pose_data_service._compute_toss_metrics()`.
+- **Toss metrics** are computed from ball data: `toss_peak_height` (normalized by player height) and `toss_peak_timestamp` (when ball reaches peak), in `biomechanics.toss_metrics._compute_toss_metrics()`.
 - The frontend **overlay** displays ball positions and a ball trail (e.g. `VideoOverlay.tsx`, `StickFigureCanvas.tsx`).
 
 Ball data is used today for toss metrics and visualization; it is not yet used to auto-detect contact (see plan for auto-contact from ball + wrist).

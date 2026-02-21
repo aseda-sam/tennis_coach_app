@@ -19,7 +19,7 @@ Tests follow TDD principles: **tests define contracts** (behavior), not implemen
 **Unit Tests (Service Level)**
 - Location: `test_*_service.py`, `test_*.py` (service-specific)
 - Purpose: Test business logic, calculations, pure functions
-- Examples: `test_posture_analysis.py`, `test_storage_service.py`
+- Examples: `services/biomechanics/test_posture_analysis.py`, `test_storage_service.py`
 
 ### Serve MVP Test Map
 
