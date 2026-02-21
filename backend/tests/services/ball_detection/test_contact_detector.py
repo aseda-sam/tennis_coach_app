@@ -1,7 +1,7 @@
 """Tests for auto-detecting contact timestamp from ball + wrist data."""
 
 import json
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from app.services.ball_detection.contact_detector import detect_contact_timestamp
 
@@ -81,9 +81,8 @@ class TestDetectContactFromBallWristProximity:
                 pose_frames.append(_make_pose_frame(640.0, 150.0, "right"))
             else:
                 pose_frames.append(_make_pose_frame(400.0, 400.0, "right"))
-        # Toss peak before contact (e.g. frame 30)
-        ball_list[0]["ball_y"] = 200.0
-        ball_list[contact_frame - 30]["ball_y"] = 100.0  # peak around frame 30
+        # Toss peak before contact (frame 30), so contact at frame 45 is still eligible.
+        ball_list[0]["ball_y"] = 80.0
 
         ball_detection = _make_ball_detection(ball_list)
         pose_detection = _make_pose_detection(pose_frames)
@@ -272,14 +271,10 @@ class TestDetectContactFromBallWristProximity:
             dominant_hand="right",
         )
 
-        # May return None or fall back to velocity reversal; if proximity used, should be None
-        # when distance threshold is not met
-        if result is not None:
-            # If we add velocity fallback, result could be non-None; then just check it's in window
-            assert serve_window.start_timestamp <= result <= serve_window.end_timestamp
+        assert result is None
 
-    def test_falls_back_to_velocity_reversal(self) -> None:
-        """When proximity fails but ball trajectory reverses (struck), use that frame."""
+    def test_returns_none_when_only_velocity_reversal_signal_exists(self) -> None:
+        """When proximity fails, detector should not infer contact from trajectory reversal."""
         fps = 30.0
         # Ball goes up (ball_y decreases) until frame 38, then down (ball_y increases) = contact
         ball_list = []
@@ -296,10 +291,10 @@ class TestDetectContactFromBallWristProximity:
                     "confidence": 0.5,
                 }
             )
-        # Wrist never very close to ball (e.g. 100px away) so proximity might not trigger
+        # Keep wrist far from ball throughout so proximity cannot trigger.
         pose_frames = []
         for _ in range(60):
-            pose_frames.append(_make_pose_frame(640.0, 80.0, "right"))
+            pose_frames.append(_make_pose_frame(760.0, 80.0, "right"))
 
         ball_detection = _make_ball_detection(ball_list)
         pose_detection = _make_pose_detection(pose_frames)
@@ -314,9 +309,7 @@ class TestDetectContactFromBallWristProximity:
             dominant_hand="right",
         )
 
-        # Should detect reversal around frame 38 (1.27s)
-        assert result is not None
-        assert 0.9 <= result <= 1.5
+        assert result is None
 
     def test_does_not_overwrite_existing_contact(self) -> None:
         """Detector does not overwrite DB; when contact already set, caller skips. Detector still returns auto value."""
@@ -353,3 +346,118 @@ class TestDetectContactFromBallWristProximity:
         # Detector is stateless; it returns auto-detected timestamp. Pipeline must only write when contact is None.
         assert result is not None
         assert 0.0 <= result <= 2.0
+
+    def test_v2_phase_gated_search_prefers_post_acceleration_candidate(self) -> None:
+        """v2 should ignore pre-acceleration proximity and pick a later contact candidate."""
+        fps = 30.0
+        ball_list = []
+        for i in range(20, 60):
+            if i == 34:
+                bx, by = 640.0, 140.0
+            elif i == 42:
+                bx, by = 650.0, 140.0
+            else:
+                bx, by = 400.0, 260.0
+            ball_list.append(
+                {
+                    "frame_index": i,
+                    "timestamp_ms": i * 1000.0 / fps,
+                    "ball_x": bx,
+                    "ball_y": by,
+                    "confidence": 0.9,
+                }
+            )
+        # Ensure toss peak happens before both candidate contacts.
+        ball_list[0]["ball_y"] = 80.0
+
+        pose_frames = []
+        for i in range(70):
+            # Big wrist jump at frame 36 to create acceleration onset in v2.
+            if i == 36:
+                pose_frames.append(_make_pose_frame(900.0, 200.0, "right"))
+            elif i == 42:
+                pose_frames.append(_make_pose_frame(650.0, 140.0, "right"))
+            else:
+                pose_frames.append(_make_pose_frame(640.0, 140.0, "right"))
+
+        ball_detection = _make_ball_detection(ball_list)
+        pose_detection = _make_pose_detection(pose_frames)
+        serve_window = _make_serve_window(0.0, 2.5, contact_timestamp=None)
+        video = _make_video(fps)
+
+        with patch(
+            "app.services.ball_detection.contact_detector.settings.AUTO_CONTACT_DETECTOR_VERSION",
+            "v2",
+        ):
+            result = detect_contact_timestamp(
+                ball_detection=ball_detection,
+                pose_detection=pose_detection,
+                serve_window=serve_window,
+                video=video,
+                dominant_hand="right",
+            )
+
+        assert result is not None
+        assert abs(result - (42.0 / fps)) < 0.05
+
+    def test_v2_relaxed_threshold_recovers_when_strict_proximity_misses(self) -> None:
+        """v2 should recover with relaxed threshold in phase-gated window."""
+        fps = 30.0
+        ball_list = []
+        for i in range(20, 70):
+            bx, by = (640.0, 140.0) if i == 50 else (400.0, 260.0)
+            ball_list.append(
+                {
+                    "frame_index": i,
+                    "timestamp_ms": i * 1000.0 / fps,
+                    "ball_x": bx,
+                    "ball_y": by,
+                    "confidence": 0.9,
+                }
+            )
+        # Toss peak before acceleration/contact.
+        ball_list[0]["ball_y"] = 80.0
+
+        pose_frames = []
+        for i in range(90):
+            # Velocity spike around frame 40 => acceleration onset before contact frame 50.
+            if i == 40:
+                pose_frames.append(_make_pose_frame(900.0, 200.0, "right"))
+            elif i == 50:
+                # Distance to ball at contact frame is ~60px (strict 20px fails in tests).
+                pose_frames.append(_make_pose_frame(700.0, 140.0, "right"))
+            else:
+                pose_frames.append(_make_pose_frame(640.0, 140.0, "right"))
+
+        ball_detection = _make_ball_detection(ball_list)
+        pose_detection = _make_pose_detection(pose_frames)
+        serve_window = _make_serve_window(0.0, 2.5, contact_timestamp=None)
+        video = _make_video(fps)
+
+        with patch(
+            "app.services.ball_detection.contact_detector.settings.AUTO_CONTACT_DETECTOR_VERSION",
+            "v2",
+        ):
+            result_v2 = detect_contact_timestamp(
+                ball_detection=ball_detection,
+                pose_detection=pose_detection,
+                serve_window=serve_window,
+                video=video,
+                dominant_hand="right",
+            )
+
+        with patch(
+            "app.services.ball_detection.contact_detector.settings.AUTO_CONTACT_DETECTOR_VERSION",
+            "v1",
+        ):
+            result_v1 = detect_contact_timestamp(
+                ball_detection=ball_detection,
+                pose_detection=pose_detection,
+                serve_window=serve_window,
+                video=video,
+                dominant_hand="right",
+            )
+
+        assert result_v1 is None
+        assert result_v2 is not None
+        assert abs(result_v2 - (50.0 / fps)) < 0.05

@@ -38,5 +38,8 @@ SUPABASE_DEMO_BUCKET=demo-videos  # optional — only needed if using public dem
 
 ## Notes
 
+- `AUTO_CONTACT_DETECTOR_VERSION` controls auto-contact logic:
+  - `v1` (default): toss-peak-gated wrist proximity.
+  - `v2`: phase-gated proximity (search starts at dominant-arm acceleration onset).
 - Don’t duplicate “API reference” docs: use `http://localhost:8000/docs`.
 - Keep `.env` permissive; the profile decides what’s required.
