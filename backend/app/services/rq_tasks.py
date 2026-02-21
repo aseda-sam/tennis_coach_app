@@ -353,12 +353,13 @@ def enqueue_pose_analysis(
     """
     try:
         logger.info(
-            f"Enqueueing pose detection job for video {video_id}, "
-            f"confidence_threshold={confidence_threshold}"
+            "Enqueueing pose detection job for video %s, confidence_threshold=%s",
+            video_id,
+            confidence_threshold,
         )
 
         job = analysis_queue.enqueue(
-            analyze_pose_detection_rq,
+            analyze_pose_detection_scout_refine_rq,
             video_id=video_id,
             video_path=video_path,
             confidence_threshold=confidence_threshold,
@@ -370,8 +371,10 @@ def enqueue_pose_analysis(
         )
 
         logger.info(
-            f"Successfully enqueued pose detection job {job.id} "
-            f"for video {video_id} to queue '{analysis_queue.name}'"
+            "Successfully enqueued pose detection job %s for video %s to queue '%s'",
+            job.id,
+            video_id,
+            analysis_queue.name,
         )
 
         return job
@@ -379,168 +382,12 @@ def enqueue_pose_analysis(
     except Exception as e:  # noqa: BLE001 - Intentionally catch all to allow upload to succeed
         # Log error but don't raise - allows upload to succeed even if Redis is down
         logger.warning(
-            f"Failed to enqueue pose detection job for video {video_id}: {e}. "
-            "Upload succeeded, but analysis will need to be triggered manually."
-        )
-        return None
-
-
-def analyze_pose_detection_rq(
-    video_id: int,
-    video_path: str,
-    confidence_threshold: float = 0.7,
-    video_job_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    """
-    RQ task for pose detection analysis.
-
-    Args:
-        video_id: Video ID from database
-        video_path: Path to video file (can be cloud path)
-        confidence_threshold: Detection confidence threshold
-
-    Returns:
-        Analysis results dictionary
-
-    Raises:
-        ValueError: If video not found or analysis fails
-        RuntimeError: If pose detection service fails
-    """
-    start_time = time.time()
-
-    temp_video_path = None
-    try:
-        # Lazy imports inside function (avoids fork issues)
-        from app.services.pose_detection import PoseDetectionService
-
-        logger.info(
-            "RQ task: Starting pose detection for video %s",
-            video_id,
-            extra=get_log_extra(video_id=video_id, job_id=video_job_id),
-        )
-
-        video_job_uuid = None
-        if video_job_id:
-            try:
-                import uuid
-
-                video_job_uuid = uuid.UUID(video_job_id)
-            except (ValueError, TypeError) as e:
-                logger.warning(
-                    "Invalid video_job_id %s: %s. Continuing without status update.",
-                    video_job_id,
-                    e,
-                )
-
-        # DB Stage 1: validate and mark job processing.
-        with SessionLocal() as db:
-            video = video_service.get_video_by_id(db, video_id)
-            if not video:
-                logger.info(
-                    "Video %s deleted before job started, exiting gracefully",
-                    video_id,
-                )
-                return {"status": "cancelled", "reason": "video_deleted"}
-
-            if video_job_uuid:
-                video_job = (
-                    db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
-                )
-                if video_job:
-                    video_job.status = "processing"
-                    video_job.started_at = datetime.utcnow()
-                    db.commit()
-
-        # Stage: Download video (if cloud storage)
-        local_path, temp_video_path = _get_temp_video_path(video_path)
-
-        # Stage: Pose detection
-        pose_service = PoseDetectionService()
-        pose_results = pose_service.analyze_video_file(
-            video_path=Path(local_path),
-            confidence_threshold=confidence_threshold,
-            detection_threshold=0.5,
-            max_frames=None,
-        )
-
-        if "error" in pose_results:
-            raise RuntimeError(f"Pose detection failed: {pose_results['error']}")
-
-        # DB Stage 2: persist results and mark completion.
-        with SessionLocal() as db:
-            pose_detection = pose_service.save_detection_results(
-                db=db, video_id=video_id, detection_results=pose_results
-            )
-            if video_job_uuid:
-                video_job = (
-                    db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
-                )
-                if video_job:
-                    video_job.status = "completed"
-                    video_job.finished_at = datetime.utcnow()
-                    db.commit()
-
-            duration = time.time() - start_time
-
-            logger.info(
-                "RQ task: Pose detection completed for video %s, detection_id=%s (%.1fs)",
-                video_id,
-                pose_detection.id,
-                duration,
-                extra=get_log_extra(video_id=video_id, job_id=video_job_id),
-            )
-
-            return {
-                "status": "completed",
-                "processing_time": pose_results.get("processing_time_seconds", 0.0),
-                "analysis_summary": {
-                    "total_frames": pose_results.get("total_frames", 0),
-                    "frames_with_poses": pose_results.get("frames_with_poses", 0),
-                    "detection_rate": pose_results.get("detection_rate", 0.0),
-                },
-                "pose_detection_id": pose_detection.id,
-                "analysis_type": "pose_only",
-            }
-
-    except Exception as e:
-        duration = time.time() - start_time
-
-        logger.error(
-            "RQ task failed for video %s: %s",
+            "Failed to enqueue pose detection job for video %s: %s. "
+            "Upload succeeded, but analysis will need to be triggered manually.",
             video_id,
             e,
-            exc_info=True,
-            extra=get_log_extra(video_id=video_id, job_id=video_job_id),
         )
-
-        # Update VideoJob status to failed if video_job_id provided
-        if video_job_id:
-            try:
-                import uuid
-
-                with SessionLocal() as db:
-                    video_job = (
-                        db.query(VideoJob)
-                        .filter(VideoJob.id == uuid.UUID(video_job_id))
-                        .first()
-                    )
-                    if video_job:
-                        video_job.status = "failed"
-                        video_job.error = str(e)[:500]
-                        video_job.finished_at = datetime.utcnow()
-                        db.commit()
-            except (ValueError, TypeError, SQLAlchemyError) as e2:
-                logger.warning(
-                    "Failed to update VideoJob status: %s. Original: %s",
-                    e2,
-                    e,
-                )
-
-        raise
-
-    finally:
-        # Clean up temp video file if created for cloud storage
-        _cleanup_temp_file(temp_video_path)
+        return None
 
 
 def analyze_pose_detection_scout_refine_rq(
@@ -728,9 +575,9 @@ def analyze_pose_detection_scout_refine_rq(
 
             # Ball detection on serve windows (optional: skip if import/runtime fails)
             try:
-                from app.services.ball_detection import BallDetectionService
+                from app.services.ball_detection import TrackNetBallDetectionService
 
-                ball_service = BallDetectionService()
+                ball_service = TrackNetBallDetectionService()
                 ball_results = ball_service.analyze_serve_windows(
                     video_path=Path(local_path),
                     windows=windows,

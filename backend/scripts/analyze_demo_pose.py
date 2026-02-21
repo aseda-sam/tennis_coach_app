@@ -26,7 +26,7 @@ from app.core.database import SessionLocal  # noqa: E402
 from app.core.redis_config import analysis_queue  # noqa: E402
 from app.models.video import Video  # noqa: E402
 from app.services.pose_detection import PoseDetectionService  # noqa: E402
-from app.services.rq_tasks import analyze_pose_detection_rq  # noqa: E402
+from app.services.rq_tasks import analyze_pose_detection_scout_refine_rq  # noqa: E402
 
 
 def get_demo_video_path(video: Video) -> str:
@@ -129,7 +129,7 @@ def run_pose_analysis(video_id: int, confidence_threshold: float = 0.7) -> None:
         print(f"🚀 Enqueueing pose analysis job for video {video_id}...")
         try:
             job = analysis_queue.enqueue(
-                analyze_pose_detection_rq,  # Existing RQ task - no new code
+                analyze_pose_detection_scout_refine_rq,
                 video_id=video_id,
                 video_path=video_path,
                 confidence_threshold=confidence_threshold,

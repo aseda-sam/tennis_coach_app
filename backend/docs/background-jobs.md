@@ -28,7 +28,7 @@ sequenceDiagram
 
     User->>Frontend: Trigger pose analysis
     Frontend->>API: POST /v0/analysis/videos/{id}
-    API->>RQ: Enqueue analyze_pose_detection_rq (via enqueue_pose_analysis helper)
+    API->>RQ: Enqueue analyze_pose_detection_scout_refine_rq (via enqueue_pose_analysis helper)
     API->>Frontend: Return job_id
 
     RQ->>PoseService: Run pose detection
@@ -63,7 +63,8 @@ PROFILE=local      # or production
 
 - Queue wiring: `app/core/redis_config.py`
 - Task functions:
-  - `app/services/rq_tasks.py::analyze_pose_detection_rq`
+  - `app/services/rq_tasks.py::analyze_pose_detection_scout_refine_rq`
+  - `app/services/rq_tasks.py::transcode_video_rq`
 
 ## Operational notes
 
