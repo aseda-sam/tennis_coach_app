@@ -24,15 +24,26 @@ METRIC_META: Dict[str, Dict[str, str]] = {
 }
 
 
-def metrics_to_flat_list(metrics: "BiomechanicsMetrics") -> List[Dict]:
-    """Convert BiomechanicsMetrics to flat list of {metric_name, value, unit, phase}.
+def metrics_to_nested_dict(metrics: "BiomechanicsMetrics") -> dict:
+    """Convert BiomechanicsMetrics to nested {phase: {metric_name: value}} dict for JSONB storage."""
+    result: dict = {}
+    data = metrics.model_dump()
+    for name, meta in METRIC_META.items():
+        value = data.get(name)
+        if value is not None:
+            phase = meta["phase"]
+            result.setdefault(phase, {})[name] = value
+    return result
+
+
+def metrics_to_flat_list(nested: dict) -> List[Dict]:
+    """Flatten nested JSONB {phase: {name: value}} to API list format.
 
     Only metrics with entries in METRIC_META are included in the output.
     """
     result = []
-    data = metrics.model_dump()
     for name, meta in METRIC_META.items():
-        value = data.get(name)
+        value = nested.get(meta["phase"], {}).get(name)
         result.append(
             {
                 "metric_name": name,

@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -38,9 +39,9 @@ class ServeBiomechanicsReport(Base):
         nullable=False,
     )
 
-    # Structured data (JSON-serialized)
+    # Structured data
     phase_segmentation_json = Column(Text, nullable=True)
-    metrics_json = Column(Text, nullable=True)
+    metrics = Column(JSONB, nullable=True)
 
     # Version tracking
     analysis_version = Column(String(20), nullable=False)

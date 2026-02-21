@@ -60,14 +60,9 @@ def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportRe
             )
 
     metrics = []
-    if report.metrics_json:
-        from app.services.biomechanics.metrics import BiomechanicsMetrics
-
-        metrics_obj = BiomechanicsMetrics.model_validate(
-            json.loads(report.metrics_json)
-        )
-        for m in metrics_to_flat_list(metrics_obj):
-            metrics.append(MetricValueResponse(**m))
+    nested = report.metrics or {}
+    for m in metrics_to_flat_list(nested):
+        metrics.append(MetricValueResponse(**m))
 
     return BiomechanicsReportResponse(
         id=report.id,

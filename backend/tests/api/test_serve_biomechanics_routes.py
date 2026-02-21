@@ -44,13 +44,10 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
             "total_phases_possible": 8,
         }
     )
-    report.metrics_json = json.dumps(
-        {
-            "knee_flexion_min_deg": 95.0,
-            "toss_peak_height": 1.8,
-            "toss_laterality": 0.15,
-        }
-    )
+    report.metrics = {
+        "loading": {"knee_flexion_min_deg": 95.0},
+        "release": {"toss_peak_height": 1.8, "toss_laterality": 0.15},
+    }
     return report
 
 

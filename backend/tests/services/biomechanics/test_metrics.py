@@ -8,6 +8,7 @@ from app.services.biomechanics.metrics import (
     BiomechanicsMetrics,
     compute_biomechanics_metrics,
     metrics_to_flat_list,
+    metrics_to_nested_dict,
 )
 from app.services.biomechanics.phase_segmentation import (
     PhaseWindow,
@@ -134,15 +135,59 @@ class TestComputeBiomechanicsMetrics:
         assert result.knee_flexion_min_deg is not None
 
 
-class TestMetricsToFlatList:
-    def test_only_includes_meta_entries(self):
-        """metrics_to_flat_list should only include metrics present in METRIC_META."""
+class TestMetricsToNestedDict:
+    def test_groups_by_phase(self):
+        """metrics_to_nested_dict should group metrics under their phase key."""
         metrics = BiomechanicsMetrics(
             knee_flexion_min_deg=95.0,
             toss_peak_height=1.8,
             toss_laterality=0.15,
         )
-        flat = metrics_to_flat_list(metrics)
+        nested = metrics_to_nested_dict(metrics)
+        assert "loading" in nested
+        assert "release" in nested
+        assert nested["loading"]["knee_flexion_min_deg"] == 95.0
+        assert nested["release"]["toss_peak_height"] == 1.8
+        assert nested["release"]["toss_laterality"] == 0.15
+
+    def test_omits_none_values(self):
+        """None values should not appear in the nested dict."""
+        metrics = BiomechanicsMetrics(knee_flexion_min_deg=100.0)
+        nested = metrics_to_nested_dict(metrics)
+        assert "loading" in nested
+        assert nested["loading"]["knee_flexion_min_deg"] == 100.0
+        # toss metrics are None — release key should be absent
+        assert "release" not in nested
+
+    def test_all_none_returns_empty_dict(self):
+        """All-None metrics should produce an empty dict."""
+        metrics = BiomechanicsMetrics()
+        nested = metrics_to_nested_dict(metrics)
+        assert nested == {}
+
+    def test_round_trip(self):
+        """nested_dict → flat_list should recover values and structure."""
+        metrics = BiomechanicsMetrics(
+            knee_flexion_min_deg=95.0,
+            toss_peak_height=1.8,
+            toss_laterality=0.15,
+        )
+        nested = metrics_to_nested_dict(metrics)
+        flat = metrics_to_flat_list(nested)
+        by_name = {m["metric_name"]: m for m in flat}
+        assert by_name["knee_flexion_min_deg"]["value"] == 95.0
+        assert by_name["toss_peak_height"]["value"] == 1.8
+        assert by_name["toss_laterality"]["value"] == 0.15
+
+
+class TestMetricsToFlatList:
+    def test_only_includes_meta_entries(self):
+        """metrics_to_flat_list should only include metrics present in METRIC_META."""
+        nested = {
+            "loading": {"knee_flexion_min_deg": 95.0},
+            "release": {"toss_peak_height": 1.8, "toss_laterality": 0.15},
+        }
+        flat = metrics_to_flat_list(nested)
         names = {m["metric_name"] for m in flat}
 
         assert names == set(METRIC_META.keys())
@@ -152,8 +197,8 @@ class TestMetricsToFlatList:
 
     def test_flat_list_has_correct_structure(self):
         """Each entry in flat list should have metric_name, value, unit, phase."""
-        metrics = BiomechanicsMetrics(knee_flexion_min_deg=100.0)
-        flat = metrics_to_flat_list(metrics)
+        nested = {"loading": {"knee_flexion_min_deg": 100.0}}
+        flat = metrics_to_flat_list(nested)
         for entry in flat:
             assert "metric_name" in entry
             assert "value" in entry
@@ -161,9 +206,8 @@ class TestMetricsToFlatList:
             assert "phase" in entry
 
     def test_flat_list_includes_none_values(self):
-        """Metrics with None values should still appear in flat list."""
-        metrics = BiomechanicsMetrics()  # all None
-        flat = metrics_to_flat_list(metrics)
+        """Metrics absent from nested dict should appear in flat list with value=None."""
+        flat = metrics_to_flat_list({})
         assert len(flat) == len(METRIC_META)
         for entry in flat:
             assert entry["value"] is None

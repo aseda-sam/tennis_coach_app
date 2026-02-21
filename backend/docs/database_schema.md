@@ -71,7 +71,7 @@ No scoring, ratings, or coaching text — phases + metrics only.
 - `user_id` (owner)
 - `player_id` (FK -> `players.id`, CASCADE)
 - `phase_segmentation_json` (TEXT, JSON-serialized phase boundaries)
-- `metrics_json` (TEXT, JSON-serialized BiomechanicsMetrics)
+- `metrics` (JSONB, nested by phase: `{"loading": {"knee_flexion_min_deg": 95.5}, "release": {...}}`)
 - `analysis_version`
 - `created_at`
 - Indexes:

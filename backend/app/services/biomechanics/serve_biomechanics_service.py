@@ -16,6 +16,7 @@ from app.models.serve_window import ServeWindow
 from app.models.video import Video
 from app.services.biomechanics.metrics import (
     compute_biomechanics_metrics,
+    metrics_to_nested_dict,
 )
 from app.services.biomechanics.phase_segmentation import (
     segment_serve_phases,
@@ -167,7 +168,7 @@ class ServeBiomechanicsService:
             user_id=user_id,
             player_id=serve_window.player_id,
             phase_segmentation_json=json.dumps(phase_result.model_dump(), default=str),
-            metrics_json=json.dumps(metrics.model_dump(), default=str),
+            metrics=metrics_to_nested_dict(metrics),
             analysis_version=ANALYSIS_VERSION,
         )
 
