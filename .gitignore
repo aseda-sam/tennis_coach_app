@@ -133,3 +133,6 @@ etc/
 # Writing
 writing/
 .cursor/skills/dev-story-capture/
+
+# Backend temporary/debug outputs
+backend/tmp/
