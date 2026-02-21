@@ -350,19 +350,79 @@ def annotate(
     orig_h, orig_w = raw_frames[0].shape[:2]
     print(f"Read {len(raw_frames)} frames ({orig_w}x{orig_h})")
 
-    # --- Run detection ---
-    if detector == "tracknet":
-        print("Converting to tensors...")
-        tensors = [_frame_to_tensor(f, device) for f in raw_frames]
-        print("Running TrackNetV2 inference...")
+    # --- YOLO path: detect + ByteTrack + supervision annotators (like Colab) ---
+    if detector == "yolo":
+        import supervision as sv
+
+        model_names = getattr(model, "names", {})
+        ball_class = 0 if len(model_names) <= 10 else 32
+
+        tracker = sv.ByteTrack()
+        box_annotator = sv.BoxAnnotator()
+        label_annotator = sv.LabelAnnotator()
+
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        writer = cv2.VideoWriter(str(out_path), fourcc, fps, (orig_w, orig_h))
+
+        print("Running YOLO + ByteTrack inference and annotating...")
         t1 = time.time()
-        raw_dets = _detect_frames_tracknet(
-            model, tensors, device, confidence, orig_w, orig_h
+        frames_with_ball = 0
+
+        for i, frame in enumerate(raw_frames):
+            result = model(frame, verbose=False)[0]
+            detections = sv.Detections.from_ultralytics(result)
+
+            # Filter to ball class, above confidence threshold
+            mask = (detections.class_id == ball_class) & (
+                detections.confidence >= confidence
+            )
+            detections = detections[mask]
+
+            if len(detections) > 0:
+                detections = tracker.update_with_detections(detections)
+                frames_with_ball += 1
+
+            # Build labels: "#<track_id> <conf>"
+            labels = []
+            if detections.tracker_id is not None:
+                for j in range(len(detections.tracker_id)):
+                    tid = detections.tracker_id[j]
+                    conf = detections.confidence[j]
+                    labels.append(f"#{tid} {conf:.2f}")
+
+            annotated = box_annotator.annotate(
+                scene=frame.copy(), detections=detections
+            )
+            annotated = label_annotator.annotate(
+                scene=annotated, detections=detections, labels=labels
+            )
+            writer.write(annotated)
+
+            if (i + 1) % 50 == 0:
+                print(f"  {i + 1}/{len(raw_frames)} frames processed...")
+
+        writer.release()
+        det_time = time.time() - t1
+        total_time = time.time() - t0
+
+        print(f"\nDone in {total_time:.1f}s")
+        print(f"Output: {out_path}")
+        print(
+            f"Summary: {frames_with_ball}/{len(raw_frames)} frames with detections "
+            f"({frames_with_ball / len(raw_frames) * 100:.1f}%) "
+            f"in {det_time:.1f}s ({len(raw_frames) / det_time:.1f} fps)"
         )
-    else:
-        print("Running YOLO inference...")
-        t1 = time.time()
-        raw_dets = _detect_frames_yolo(model, raw_frames, confidence)
+        return
+
+    # --- TrackNet path: existing pipeline (detect → smooth → custom overlay) ---
+    print("Converting to tensors...")
+    tensors = [_frame_to_tensor(f, device) for f in raw_frames]
+    print("Running TrackNetV2 inference...")
+    t1 = time.time()
+    raw_dets = _detect_frames_tracknet(
+        model, tensors, device, confidence, orig_w, orig_h
+    )
 
     det_time = time.time() - t1
     raw_detected = sum(1 for d in raw_dets if d["ball_x"] is not None)
@@ -370,12 +430,10 @@ def annotate(
         f"Raw detection: {raw_detected}/{len(raw_dets)} frames ({raw_detected / len(raw_dets) * 100:.1f}%) in {det_time:.1f}s ({len(raw_dets) / det_time:.1f} fps)"
     )
 
-    # Add timestamps for smoother
     for _i, (d, fi) in enumerate(zip(raw_dets, frame_indices)):
         d["frame_index"] = fi
         d["timestamp_ms"] = fi * 1000.0 / fps
 
-    # --- Post-process ---
     print("Applying trajectory smoother...")
     smoother = TrajectorySmoother()
     dets = smoother.smooth(raw_dets)
@@ -385,15 +443,13 @@ def annotate(
         f"After smoothing: {final_detected}/{len(dets)} frames with ball ({interp_count} interpolated)"
     )
 
-    # --- Write annotated video ---
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(out_path), fourcc, fps, (orig_w, orig_h))
 
-    # Heatmap video writer (TrackNet only)
     hm_writer = None
     hm_path = None
-    if save_heatmap and detector == "tracknet":
+    if save_heatmap:
         from app.services.ball_detection.tracknet_model import (
             TRACKNET_HEIGHT,
             TRACKNET_WIDTH,
@@ -403,29 +459,22 @@ def annotate(
         hm_writer = cv2.VideoWriter(
             str(hm_path), fourcc, fps, (TRACKNET_WIDTH * 2, TRACKNET_HEIGHT)
         )
-    elif save_heatmap and detector == "yolo":
-        print(
-            "WARNING: --heatmap is only supported with --detector tracknet, ignoring."
-        )
 
     print(f"Writing annotated video to {out_path}...")
     trail: list[tuple[float, float, bool]] = []
     stats = {"total": len(dets), "detected": final_detected, "interp": interp_count}
-    detector_label = "YOLO" if detector == "yolo" else "TrackNet"
 
     for i, (frame, det, fi) in enumerate(zip(raw_frames, dets, frame_indices)):
         ts_ms = fi * 1000.0 / fps
 
-        # Update trail
         if det["ball_x"] is not None:
             trail.append((det["ball_x"], det["ball_y"], det.get("interpolated", False)))
             if len(trail) > trail_length:
                 trail.pop(0)
 
-        annotated = _draw_overlay(frame, det, trail, fi, ts_ms, stats, detector_label)
+        annotated = _draw_overlay(frame, det, trail, fi, ts_ms, stats, "TrackNet")
         writer.write(annotated)
 
-        # Optional heatmap frame (TrackNet only)
         if hm_writer is not None:
             import torch
 

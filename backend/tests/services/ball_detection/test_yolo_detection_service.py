@@ -190,8 +190,8 @@ class TestSelectBallTrack:
         result = _select_ball_track(tracked_frames)
         assert result == 5
 
-    def test_multiple_moving_tracks_picks_most_displaced(self) -> None:
-        """With two moving tracks, pick the one with higher total displacement."""
+    def test_multiple_moving_tracks_picks_highest_mean_displacement(self) -> None:
+        """With two moving tracks, pick the one with higher per-frame displacement."""
         tracked_frames = []
         for i in range(5):
             det = MagicMock()
@@ -204,6 +204,37 @@ class TestSelectBallTrack:
                 dtype=np.float32,
             )
             tracked_frames.append((i, i * 33.3, det))
+
+        result = _select_ball_track(tracked_frames)
+        assert result == 2
+
+    def test_short_fast_track_beats_long_jittery_track(self) -> None:
+        """A short ball toss (high mean displacement) beats a long-lived static
+        object (low mean displacement but high total from jitter accumulation).
+        This is the real-world scenario: background objects appear in 100+ frames
+        with 1-2px jitter, while the toss arc is 20-30 frames at 30+ px/frame.
+        """
+        tracked_frames = []
+        # Track 1: static object, 50 frames, ~1px jitter per frame
+        for i in range(50):
+            det = MagicMock()
+            jitter = (i % 3) - 1  # -1, 0, 1 pattern
+            det.tracker_id = np.array([1], dtype=np.int32)
+            det.xyxy = np.array(
+                [[100 + jitter, 200 + jitter, 120 + jitter, 220 + jitter]],
+                dtype=np.float32,
+            )
+            tracked_frames.append((i, i * 33.3, det))
+
+        # Track 2: ball toss, 15 frames, ~40px displacement per frame
+        for i in range(15):
+            det = MagicMock()
+            det.tracker_id = np.array([2], dtype=np.int32)
+            det.xyxy = np.array(
+                [[190, 400 - i * 40, 210, 420 - i * 40]],  # moving upward fast
+                dtype=np.float32,
+            )
+            tracked_frames.append((50 + i, (50 + i) * 33.3, det))
 
         result = _select_ball_track(tracked_frames)
         assert result == 2

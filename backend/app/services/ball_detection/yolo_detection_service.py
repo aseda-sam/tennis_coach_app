@@ -56,10 +56,15 @@ def _rotate_frame(frame: np.ndarray, rotation: int) -> np.ndarray:
 def _select_ball_track(
     tracked_frames: List[tuple],
 ) -> Optional[int]:
-    """Pick the track ID with the highest total displacement (= moving ball).
+    """Pick the track ID with the highest mean displacement per frame (= moving ball).
 
     Static background objects (court balls, lights) get tracks with near-zero
-    displacement. The tossed ball gets a track with high displacement across frames.
+    per-frame displacement despite appearing in many frames. The tossed ball
+    has high per-frame displacement (fast movement over a short arc).
+
+    Uses mean displacement rather than total displacement so that a static object
+    jittering 1-2px/frame over 125 frames doesn't beat a ball toss moving
+    30px/frame over 20 frames.
 
     Args:
         tracked_frames: List of (frame_index, timestamp_ms, sv.Detections) tuples.
@@ -79,17 +84,21 @@ def _select_ball_track(
             track_positions.setdefault(int(tid), []).append((cx, cy))
 
     best_id: Optional[int] = None
-    best_disp = 0.0
+    best_mean_disp = 0.0
     for tid, positions in track_positions.items():
+        n_pairs = len(positions) - 1
+        if n_pairs <= 0:
+            continue
         total_disp = sum(
             math.hypot(
                 positions[i + 1][0] - positions[i][0],
                 positions[i + 1][1] - positions[i][1],
             )
-            for i in range(len(positions) - 1)
+            for i in range(n_pairs)
         )
-        if total_disp > best_disp:
-            best_id, best_disp = tid, total_disp
+        mean_disp = total_disp / n_pairs
+        if mean_disp > best_mean_disp:
+            best_id, best_mean_disp = tid, mean_disp
 
     return best_id
 
