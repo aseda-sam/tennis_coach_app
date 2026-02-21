@@ -60,6 +60,9 @@ venv.bak/
 !.cursor/skills/**
 .cursor/skills/interview-prep/
 
+# Antigravity agent (symlinks created by skills installer — not used)
+.agent/
+
 # Claude AI (track skills/commands; ignore local state)
 .claude/*
 !.claude/skills/
