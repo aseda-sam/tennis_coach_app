@@ -36,7 +36,11 @@ api = [
 worker = [
     # ML stack dependencies (only needed in worker)
     "mediapipe>=0.10.0",
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "scipy>=1.10.0",
     "ultralytics>=8.0.0",
+    "supervision>=0.18.0",
 ]
 dev = [
     "ruff>=0.1.0",
@@ -60,4 +64,4 @@ ignore = ["E501", "D1", "D203", "D212", "D401", "FA102", "S311", "PERF401", "TRY
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
-known-third-party = ["fastapi", "uvicorn", "sqlalchemy", "opencv", "ultralytics", "numpy", "pandas", "pydantic"]
+known-third-party = ["fastapi", "uvicorn", "sqlalchemy", "opencv", "torch", "torchvision", "scipy", "numpy", "pandas", "pydantic"]
