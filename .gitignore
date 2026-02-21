@@ -60,8 +60,14 @@ venv.bak/
 !.cursor/skills/**
 .cursor/skills/interview-prep/
 
-# Claude AI
-.claude/
+# Claude AI (track skills/commands; ignore local state)
+.claude/*
+!.claude/skills/
+!.claude/skills/**
+!.claude/commands/
+!.claude/commands/**
+.claude/commands/shorten-article.md
+!.claude/settings.json
 CLAUDE.md
 
 # Ruff
