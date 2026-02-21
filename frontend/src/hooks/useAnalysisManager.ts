@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnalysisData } from '../services/api';
+import { getApiErrorMessage } from '../utils/apiError';
 import unifiedAnalysisApi, {
   AnalysisRequest,
 } from '../services/unifiedAnalysisApi';
@@ -173,8 +174,6 @@ export const useAnalysisManager = ({
         startPolling(response.job_id);
       } catch (err: unknown) {
         const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
           code?: string;
         };
         let errorMessage: string;
@@ -184,10 +183,7 @@ export const useAnalysisManager = ({
             'Request timed out. The server may be busy or Redis may be unavailable.';
         } else {
           // Error detail is already normalized to string by axios interceptor
-          errorMessage =
-            axiosError?.response?.data?.detail ||
-            axiosError?.message ||
-            'Failed to start analysis';
+          errorMessage = getApiErrorMessage(err, 'Failed to start analysis');
         }
 
         setAnalysisState((prev) => ({
@@ -218,14 +214,7 @@ export const useAnalysisManager = ({
         jobId: null,
       }));
     } catch (err: unknown) {
-      const axiosError = err as {
-        response?: { data?: { detail?: string } };
-        message?: string;
-      };
-      const errorMessage =
-        axiosError?.response?.data?.detail ||
-        axiosError?.message ||
-        'Failed to cancel analysis';
+      const errorMessage = getApiErrorMessage(err, 'Failed to cancel analysis');
       setAnalysisState((prev) => ({
         ...prev,
         error: errorMessage,

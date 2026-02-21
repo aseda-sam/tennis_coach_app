@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { getApiErrorMessage } from '../utils/apiError';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useAdmin } from '../hooks/useAdmin';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
@@ -100,16 +101,10 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
         setUploadProgress(100);
         setStep(2); // Move to Step 2: Details
       } catch (err: unknown) {
-        const axiosError = err as {
-          response?: {
-            data?: { detail?: string; error?: { message?: string } };
-          };
-        };
-        const detail =
-          axiosError.response?.data?.detail ||
-          axiosError.response?.data?.error?.message;
-
-        const errorMessage = detail || 'Upload failed. Please try again.';
+        const errorMessage = getApiErrorMessage(
+          err,
+          'Upload failed. Please try again.'
+        );
         setError(errorMessage);
       }
     },
@@ -137,17 +132,10 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
       queryClient.setQueryData(['video', uploadedVideoId], updatedVideo);
       onUploadSuccess(updatedVideo as VideoMetadata);
     } catch (err: unknown) {
-      const axiosError = err as {
-        response?: {
-          data?: { detail?: string; error?: { message?: string } };
-        };
-      };
-      const detail =
-        axiosError.response?.data?.detail ||
-        axiosError.response?.data?.error?.message;
-
-      const errorMessage =
-        detail || 'Failed to update video details. Please try again.';
+      const errorMessage = getApiErrorMessage(
+        err,
+        'Failed to update video details. Please try again.'
+      );
       setError(errorMessage);
     }
   }, [

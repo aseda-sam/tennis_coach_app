@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnalysisData } from '../services/api';
+import { getApiErrorMessage } from '../utils/apiError';
 import unifiedAnalysisApi, { VideoJob } from '../services/unifiedAnalysisApi';
 
 export interface AnalysisProgress {
@@ -146,14 +147,10 @@ export function useAnalysisProgress(
         }
       } catch (err: unknown) {
         // Error detail is already normalized to string by axios interceptor
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to get job status';
+        const errorMessage = getApiErrorMessage(
+          err,
+          'Failed to get job status'
+        );
         setError(errorMessage);
         setIsLoading(false);
         // Keep polling on transient errors

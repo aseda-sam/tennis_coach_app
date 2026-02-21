@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getApiErrorMessage } from '../utils/apiError';
 import {
   serveWindowApi,
   ServeWindow,
@@ -61,14 +62,10 @@ export const useServeWindows = ({
   // Call onError callback when there's an error
   useEffect(() => {
     if (serveWindowsQuery.error && onError) {
-      const axiosError = serveWindowsQuery.error as {
-        response?: { data?: { detail?: string } };
-        message?: string;
-      };
-      const errorMessage =
-        axiosError?.response?.data?.detail ||
-        axiosError?.message ||
-        'Failed to load serve windows';
+      const errorMessage = getApiErrorMessage(
+        serveWindowsQuery.error,
+        'Failed to load serve windows'
+      );
       onError(errorMessage);
     }
   }, [serveWindowsQuery.error, onError]);
@@ -116,14 +113,10 @@ export const useServeWindows = ({
       try {
         return await createMutation.mutateAsync(serveWindow);
       } catch (err: unknown) {
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to create serve window';
+        const errorMessage = getApiErrorMessage(
+          err,
+          'Failed to create serve window'
+        );
         throw new Error(errorMessage);
       }
     },
@@ -138,14 +131,10 @@ export const useServeWindows = ({
       try {
         return await updateMutation.mutateAsync({ serveWindowId, updates });
       } catch (err: unknown) {
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to update serve window';
+        const errorMessage = getApiErrorMessage(
+          err,
+          'Failed to update serve window'
+        );
         throw new Error(errorMessage);
       }
     },
@@ -157,14 +146,10 @@ export const useServeWindows = ({
       try {
         await deleteMutation.mutateAsync(serveWindowId);
       } catch (err: unknown) {
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to delete serve window';
+        const errorMessage = getApiErrorMessage(
+          err,
+          'Failed to delete serve window'
+        );
         throw new Error(errorMessage);
       }
     },
@@ -176,18 +161,10 @@ export const useServeWindows = ({
 
   // Extract error state
   const error = serveWindowsQuery.error
-    ? (() => {
-        const err = serveWindowsQuery.error;
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        return (
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to load serve windows'
-        );
-      })()
+    ? getApiErrorMessage(
+        serveWindowsQuery.error,
+        'Failed to load serve windows'
+      )
     : null;
 
   return {

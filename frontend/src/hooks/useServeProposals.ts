@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect } from 'react';
+import { getApiErrorMessage } from '../utils/apiError';
 import {
   AcceptProposalRequest,
   ClearProposalsResponse,
@@ -92,14 +93,10 @@ export const useServeProposals = ({
   // Call onError callback when there's an error
   useEffect(() => {
     if (proposalsQuery.error && onError) {
-      const axiosError = proposalsQuery.error as {
-        response?: { data?: { detail?: string } };
-        message?: string;
-      };
-      const errorMessage =
-        axiosError?.response?.data?.detail ||
-        axiosError?.message ||
-        'Failed to load proposals';
+      const errorMessage = getApiErrorMessage(
+        proposalsQuery.error,
+        'Failed to load proposals'
+      );
       onError(errorMessage);
     }
   }, [proposalsQuery.error, onError]);
@@ -191,14 +188,7 @@ export const useServeProposals = ({
       try {
         return await runDetectionMutation.mutateAsync(force);
       } catch (err: unknown) {
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to run detection';
+        const errorMessage = getApiErrorMessage(err, 'Failed to run detection');
         throw new Error(errorMessage);
       }
     },
@@ -210,14 +200,10 @@ export const useServeProposals = ({
       try {
         return await clearProposalsMutation.mutateAsync();
       } catch (err: unknown) {
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to clear proposals';
+        const errorMessage = getApiErrorMessage(
+          err,
+          'Failed to clear proposals'
+        );
         throw new Error(errorMessage);
       }
     }, [clearProposalsMutation]);
@@ -230,14 +216,10 @@ export const useServeProposals = ({
       try {
         await acceptMutation.mutateAsync({ proposalId, request });
       } catch (err: unknown) {
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to accept proposal';
+        const errorMessage = getApiErrorMessage(
+          err,
+          'Failed to accept proposal'
+        );
         throw new Error(errorMessage);
       }
     },
@@ -249,14 +231,10 @@ export const useServeProposals = ({
       try {
         await rejectMutation.mutateAsync(proposalId);
       } catch (err: unknown) {
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to reject proposal';
+        const errorMessage = getApiErrorMessage(
+          err,
+          'Failed to reject proposal'
+        );
         throw new Error(errorMessage);
       }
     },
@@ -268,14 +246,7 @@ export const useServeProposals = ({
       try {
         await editMutation.mutateAsync({ proposalId, request });
       } catch (err: unknown) {
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to edit proposal';
+        const errorMessage = getApiErrorMessage(err, 'Failed to edit proposal');
         throw new Error(errorMessage);
       }
     },
@@ -343,18 +314,7 @@ export const useServeProposals = ({
 
   // Extract error state
   const error = proposalsQuery.error
-    ? (() => {
-        const err = proposalsQuery.error;
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        return (
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to load proposals'
-        );
-      })()
+    ? getApiErrorMessage(proposalsQuery.error, 'Failed to load proposals')
     : null;
 
   return {

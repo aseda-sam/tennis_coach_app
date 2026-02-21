@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useState } from 'react';
-import { AnalysisState, useAnalysisStatus } from '../hooks/useAnalysisStatus';
+import { getApiErrorMessage } from '../utils/apiError';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import {
   useDeleteVideo,
@@ -44,47 +44,15 @@ const VideoList: React.FC<VideoListProps> = ({
   } = useVideos();
 
   const videoIds = videos.map((v: VideoMetadata) => v.id);
-  const { data: analysisStatusesMap = {}, isLoading: statusesLoading } =
-    useVideoAnalysisStatuses(videoIds);
+  const { isLoading: statusesLoading } = useVideoAnalysisStatuses(videoIds);
 
   const { data: playerProfile } = usePlayerProfile();
 
   const deleteVideoMutation = useDeleteVideo();
   const updateMetadataMutation = useUpdateVideoMetadata();
 
-  // Track active analysis tasks using the unified system
-  const [activeAnalysisTasks, setActiveAnalysisTasks] = useState<
-    Map<number, string> // videoId -> jobId
-  >(new Map());
-
   const loading = videosLoading || statusesLoading;
   const error = videosError ? 'Failed to load videos. Please try again.' : null;
-
-  // Use the unified analysis status system (callbacks kept for future analyze functionality)
-  useAnalysisStatus({
-    onComplete: useCallback(
-      async (
-        completedState: Extract<AnalysisState, { status: 'completed' }>
-      ) => {
-        // Task completed, refresh videos and clear active tasks
-        try {
-          await refetchVideos();
-          setActiveAnalysisTasks(new Map());
-        } catch (err) {
-          // Silently handle refresh errors - component will continue with existing state
-          setActiveAnalysisTasks(new Map());
-        }
-      },
-      [refetchVideos]
-    ),
-    onError: useCallback(
-      (failedState: Extract<AnalysisState, { status: 'failed' }>) => {
-        // Error is already handled by the failed state - just clear active tasks
-        setActiveAnalysisTasks(new Map());
-      },
-      []
-    ),
-  });
 
   const handleDelete = async (videoId: number) => {
     try {
@@ -173,12 +141,8 @@ const VideoList: React.FC<VideoListProps> = ({
       setIsEditModalOpen(false);
       setEditingVideo(null);
     } catch (err: unknown) {
-      const axiosError = err as {
-        response?: { data?: { detail?: string } };
-      };
       setEditError(
-        axiosError.response?.data?.detail ||
-          'Failed to update video. Please try again.'
+        getApiErrorMessage(err, 'Failed to update video. Please try again.')
       );
     }
   }, [
@@ -203,10 +167,6 @@ const VideoList: React.FC<VideoListProps> = ({
   // Removed handleCancelAnalysis - we now only use pose detection
 
   // Removed getAnalysisForVideo - we now only use pose detection
-
-  const isAnalyzing = (videoId: number): boolean => {
-    return activeAnalysisTasks.has(videoId);
-  };
 
   const formatFileSize = (bytes: number): string => {
     const mb = bytes / (1024 * 1024);
@@ -292,25 +252,12 @@ const VideoList: React.FC<VideoListProps> = ({
       ) : (
         <div className="video-grid">
           {videos.map((video: VideoMetadata) => {
-            const analysisStatus = analysisStatusesMap[video.id];
-            const isCurrentlyAnalyzing = isAnalyzing(video.id);
-
             return (
               <div
                 key={video.id}
                 className="video-card"
-                onClick={() => {
-                  // Only make clickable if analysis exists or not analyzing
-                  if (analysisStatus?.has_analysis || !isCurrentlyAnalyzing) {
-                    handleViewAnalysis(video.id);
-                  }
-                }}
-                style={{
-                  cursor:
-                    analysisStatus?.has_analysis || !isCurrentlyAnalyzing
-                      ? 'pointer'
-                      : 'default',
-                }}
+                onClick={() => handleViewAnalysis(video.id)}
+                style={{ cursor: 'pointer' }}
               >
                 {/* Thumbnail Area */}
                 <div className="video-card-thumbnail">
