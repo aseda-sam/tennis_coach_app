@@ -95,7 +95,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(true);
   const [showEditMode, setShowEditMode] = useState(false);
-  const [phaseDetailExpanded, setPhaseDetailExpanded] = useState(false);
   const [loopCurrentPhase, setLoopCurrentPhase] = useState(false);
   const [loopPhaseWindow, setLoopPhaseWindow] = useState<PhaseWindow | null>(
     null
@@ -149,6 +148,12 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const currentPhase = currentServe
     ? findCurrentPhase(phases, currentTime)
     : undefined;
+  const filteredMetrics = useMemo(() => {
+    if (!currentPhase) return metrics;
+    return metrics.filter(
+      (m) => m.phase === currentPhase.phase || m.phase === null
+    );
+  }, [metrics, currentPhase]);
 
   // Sync currentTime when switching serves
   useEffect(() => {
@@ -388,12 +393,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const serveWindowsProcessing =
     !!analysisStatus?.has_analysis && !hasServes && analysisJobActive;
 
-  // Current phase metrics (for phase detail panel)
-  const currentPhaseMetrics = useMemo(() => {
-    if (!currentPhase) return metrics;
-    return metrics.filter((m) => m.phase === currentPhase.phase);
-  }, [metrics, currentPhase]);
-
   return (
     <div className="analysis-dashboard">
       {/* Header */}
@@ -486,7 +485,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         <div className="analysis-dashboard__focus-view">
           {hasServes ? (
             <>
-              {/* Hero View */}
+              {/* Hero View (left column at desktop) */}
               <HeroView
                 videoUrl={videoUrl}
                 videoId={videoId}
@@ -500,8 +499,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 onSeek={handleSeek}
               />
 
-              {/* Serve Nav + Phase Timeline Row */}
-              <div className="analysis-dashboard__nav-row">
+              {/* Right panel: serve nav, timeline, phases, metrics */}
+              <div className="analysis-dashboard__right-panel">
                 <ServeNavigator
                   serveWindows={sortedServeWindows}
                   currentIndex={currentServeIndex}
@@ -519,102 +518,63 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     />
                   </div>
                 )}
-              </div>
 
-              {phases.length > 0 && (
-                <div className="analysis-dashboard__phase-controls">
-                  <div className="analysis-dashboard__current-stage">
-                    <span className="analysis-dashboard__current-stage-label">
-                      Current Stage
-                    </span>
-                    <strong className="analysis-dashboard__current-stage-value">
-                      {currentPhase?.phase_label ?? 'Unknown'}
-                    </strong>
-                  </div>
-                  <div className="analysis-dashboard__phase-chip-row">
-                    {phases.map((phase) => (
+                {phases.length > 0 && (
+                  <div className="analysis-dashboard__phase-controls">
+                    <div className="analysis-dashboard__phase-chip-row">
+                      {phases.map((phase) => (
+                        <button
+                          key={phase.phase}
+                          type="button"
+                          className={`analysis-dashboard__phase-chip ${
+                            currentPhase?.phase === phase.phase
+                              ? 'analysis-dashboard__phase-chip--active'
+                              : ''
+                          }`}
+                          onClick={() => handlePhaseJump(phase)}
+                        >
+                          {phase.phase_label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="analysis-dashboard__phase-actions">
+                      {currentServe?.contact_timestamp != null && (
+                        <button
+                          type="button"
+                          className="analysis-dashboard__goto-contact-btn"
+                          onClick={() =>
+                            handleContactJump(currentServe.contact_timestamp!)
+                          }
+                        >
+                          Go to Contact
+                        </button>
+                      )}
                       <button
-                        key={phase.phase}
                         type="button"
-                        className={`analysis-dashboard__phase-chip ${
-                          currentPhase?.phase === phase.phase
-                            ? 'analysis-dashboard__phase-chip--active'
+                        className={`analysis-dashboard__loop-btn ${
+                          loopCurrentPhase
+                            ? 'analysis-dashboard__loop-btn--active'
                             : ''
                         }`}
-                        onClick={() => handlePhaseJump(phase)}
+                        onClick={handleToggleLoopCurrentPhase}
+                        disabled={!currentPhase}
                       >
-                        {phase.phase_label}
+                        {loopCurrentPhase
+                          ? 'Looping Current Stage'
+                          : 'Loop Current Stage'}
                       </button>
-                    ))}
+                    </div>
                   </div>
-                  <div className="analysis-dashboard__phase-actions">
-                    {currentServe?.contact_timestamp != null && (
-                      <button
-                        type="button"
-                        className="analysis-dashboard__goto-contact-btn"
-                        onClick={() =>
-                          handleContactJump(currentServe.contact_timestamp!)
-                        }
-                      >
-                        Go to Contact
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className={`analysis-dashboard__loop-btn ${
-                        loopCurrentPhase
-                          ? 'analysis-dashboard__loop-btn--active'
-                          : ''
-                      }`}
-                      onClick={handleToggleLoopCurrentPhase}
-                      disabled={!currentPhase}
-                    >
-                      {loopCurrentPhase
-                        ? 'Looping Current Stage'
-                        : 'Loop Current Stage'}
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* Phase Detail (Progressive Disclosure) */}
-              {currentPhase && (
-                <div className="analysis-dashboard__phase-detail">
-                  <button
-                    className="analysis-dashboard__phase-detail-header"
-                    onClick={() => setPhaseDetailExpanded(!phaseDetailExpanded)}
-                    type="button"
-                    aria-expanded={phaseDetailExpanded}
-                  >
-                    <span className="analysis-dashboard__phase-name">
-                      {currentPhase.phase_label}
-                    </span>
-                    {currentPhaseMetrics.length > 0 && !phaseDetailExpanded && (
-                      <span className="analysis-dashboard__phase-summary">
-                        {METRIC_DISPLAY_NAMES[
-                          currentPhaseMetrics[0].metric_name
-                        ] ??
-                          currentPhaseMetrics[0].metric_name.replace(/_/g, ' ')}
-                        :{' '}
-                        {formatMetricValue(
-                          currentPhaseMetrics[0].value,
-                          currentPhaseMetrics[0].unit
-                        )}
-                      </span>
-                    )}
-                    <span
-                      className="analysis-dashboard__phase-chevron"
-                      data-expanded={phaseDetailExpanded}
-                    >
-                      &#9662;
-                    </span>
-                  </button>
-                  {phaseDetailExpanded && currentPhaseMetrics.length > 0 && (
-                    <div className="analysis-dashboard__phase-metrics">
-                      {currentPhaseMetrics.map((m) => (
+                {/* Metrics Strip — filtered by active phase */}
+                {metrics.length > 0 && (
+                  <div className="analysis-dashboard__metrics-strip">
+                    {filteredMetrics.length > 0 ? (
+                      filteredMetrics.map((m) => (
                         <div
                           key={m.metric_name}
-                          className="analysis-dashboard__metric-row"
+                          className="analysis-dashboard__metric-card"
                         >
                           <span className="analysis-dashboard__metric-label">
                             {METRIC_DISPLAY_NAMES[m.metric_name] ??
@@ -624,20 +584,15 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                             {formatMetricValue(m.value, m.unit)}
                           </span>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Go Practice CTA */}
-              <button
-                className="analysis-dashboard__practice-cta"
-                onClick={onClose}
-                type="button"
-              >
-                Go Practice
-              </button>
+                      ))
+                    ) : (
+                      <p className="analysis-dashboard__metrics-empty">
+                        No metrics for this phase
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           ) : serveWindowsProcessing ? (
             <div className="analysis-dashboard__progress-state">
@@ -722,16 +677,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           )}
         </div>
       )}
-
-      {/* Keyboard Shortcuts */}
-      <button
-        className="analysis-dashboard__shortcuts-hint"
-        onClick={() => setShowKeyboardShortcuts(true)}
-        type="button"
-        title="Keyboard shortcuts"
-      >
-        <kbd>?</kbd> Keyboard Shortcuts
-      </button>
 
       <KeyboardShortcutsModal
         isOpen={showKeyboardShortcuts}
