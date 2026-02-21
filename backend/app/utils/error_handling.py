@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, NoReturn, Optional, Tuple
 
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -136,6 +136,38 @@ def _extract_resource_info_from_error(
         resource_id = match.group(2)
 
     return resource_type, resource_id
+
+
+def handle_service_error(
+    error: Exception,
+    operation: str,
+    context: Optional[Dict[str, Any]] = None,
+) -> NoReturn:
+    """
+    Translate service-layer exceptions into appropriate API errors.
+    Raises the mapped error; never returns.
+    """
+    if isinstance(error, HTTPException):
+        raise error
+    if isinstance(error, ValueError):
+        error_msg = str(error).lower()
+        if "not found" in error_msg:
+            resource_type, resource_id = _extract_resource_info_from_error(
+                error, context
+            )
+            raise handle_not_found_error(resource_type, resource_id) from error
+        if "access denied" in error_msg or "forbidden" in error_msg:
+            raise APIError(
+                status_code=status.HTTP_403_FORBIDDEN,
+                error_code="FORBIDDEN",
+                message=str(error),
+            ) from error
+        raise APIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error_code=ErrorCodes.VALIDATION_ERROR,
+            message=str(error),
+        ) from error
+    log_and_raise_error(error, operation, context)
 
 
 def log_and_raise_error(

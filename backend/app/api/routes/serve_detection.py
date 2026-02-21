@@ -3,7 +3,7 @@
 import logging
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas.serve_detection import (
@@ -25,7 +25,7 @@ from app.dependencies.auth import get_current_user
 from app.services import video_service
 from app.services.serve_detection import proposal_service
 from app.utils.authorization import require_video_access, require_video_not_demo
-from app.utils.error_handling import handle_not_found_error, log_and_raise_error
+from app.utils.error_handling import handle_not_found_error, handle_service_error
 
 logger = logging.getLogger(__name__)
 
@@ -72,14 +72,14 @@ async def get_detection_status(
             can_run_detection=can_run,
         )
 
-    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
-        log_and_raise_error(e, "get_detection_status", {"video_id": video_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "get_detection_status", {"video_id": video_id})
 
 
 @router.post(
     "/videos/{video_id}/serve-detection/propose",
     response_model=ProposeResponse,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
 )
 async def propose_serve_windows(
     video_id: int,
@@ -118,10 +118,8 @@ async def propose_serve_windows(
             count=len(proposals),
         )
 
-    except ValueError as e:
-        log_and_raise_error(e, "propose_serve_windows", {"video_id": video_id})
-    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
-        log_and_raise_error(e, "propose_serve_windows", {"video_id": video_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "propose_serve_windows", {"video_id": video_id})
 
 
 @router.delete(
@@ -158,8 +156,8 @@ async def clear_proposals(
             cleared_count=cleared_count,
         )
 
-    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
-        log_and_raise_error(e, "clear_proposals", {"video_id": video_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "clear_proposals", {"video_id": video_id})
 
 
 @router.get(
@@ -192,8 +190,8 @@ async def get_proposals(
 
         return [ServeWindowProposalInfo.model_validate(p) for p in proposals]
 
-    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
-        log_and_raise_error(e, "get_proposals", {"video_id": video_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "get_proposals", {"video_id": video_id})
 
 
 @router.post(
@@ -216,10 +214,8 @@ async def accept_proposal(
         )
         return ServeWindowInfo.model_validate(serve_window)
 
-    except ValueError as e:
-        log_and_raise_error(e, "accept_proposal", {"proposal_id": proposal_id})
-    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
-        log_and_raise_error(e, "accept_proposal", {"proposal_id": proposal_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "accept_proposal", {"proposal_id": proposal_id})
 
 
 @router.post(
@@ -238,10 +234,8 @@ async def reject_proposal(
         proposal_service.reject_proposal(db, proposal_id, current_user["id"])
         return {"message": f"Proposal {proposal_id} rejected"}
 
-    except ValueError as e:
-        log_and_raise_error(e, "reject_proposal", {"proposal_id": proposal_id})
-    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
-        log_and_raise_error(e, "reject_proposal", {"proposal_id": proposal_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "reject_proposal", {"proposal_id": proposal_id})
 
 
 @router.post(
@@ -269,18 +263,8 @@ async def edit_proposal(
         )
         return ServeWindowInfo.model_validate(serve_window)
 
-    except ValueError as e:
-        error_msg = str(e).lower()
-        if "not found" in error_msg or "unauthorized" in error_msg:
-            raise handle_not_found_error("proposal", str(proposal_id)) from e
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
-        log_and_raise_error(e, "edit_proposal", {"proposal_id": proposal_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "edit_proposal", {"proposal_id": proposal_id})
 
 
 @router.post(
@@ -321,10 +305,8 @@ async def accept_all_proposals(
             serve_window_ids=[sa.id for sa in serve_windows],
         )
 
-    except ValueError as e:
-        log_and_raise_error(e, "accept_all_proposals", {"video_id": video_id})
-    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
-        log_and_raise_error(e, "accept_all_proposals", {"video_id": video_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "accept_all_proposals", {"video_id": video_id})
 
 
 @router.post(
@@ -373,7 +355,5 @@ async def reject_proposals_by_confidence(
             threshold=threshold,
         )
 
-    except ValueError as e:
-        log_and_raise_error(e, "reject_by_confidence", {"video_id": video_id})
-    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
-        log_and_raise_error(e, "reject_by_confidence", {"video_id": video_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "reject_by_confidence", {"video_id": video_id})

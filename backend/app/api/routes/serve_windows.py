@@ -4,12 +4,11 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas.serve_window import (
     ServeWindowCreate,
-    ServeWindowDetail,
     ServeWindowInfo,
     ServeWindowUpdate,
 )
@@ -17,7 +16,7 @@ from app.core.database import get_db
 from app.dependencies.auth import get_current_user
 from app.services import serve_window_service, video_service
 from app.utils.authorization import require_video_access, require_video_not_demo
-from app.utils.error_handling import handle_not_found_error, log_and_raise_error
+from app.utils.error_handling import handle_not_found_error, handle_service_error
 
 logger = logging.getLogger(__name__)
 
@@ -56,23 +55,8 @@ async def create_serve_window(
 
         return ServeWindowInfo.model_validate(db_serve_window)
 
-    except ValueError as e:
-        error_msg = str(e).lower()
-        if "not found" in error_msg:
-            raise handle_not_found_error("video", str(serve_window.video_id)) from e
-        if "access denied" in error_msg or "forbidden" in error_msg:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=str(e),
-            ) from e
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
-        log_and_raise_error(
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(
             e, "create_serve_window", {"video_id": serve_window.video_id}
         )
 
@@ -107,23 +91,8 @@ async def update_serve_window(
 
         return ServeWindowInfo.model_validate(updated_serve_window)
 
-    except ValueError as e:
-        error_msg = str(e).lower()
-        if "not found" in error_msg:
-            raise handle_not_found_error("serve_window", str(serve_window_id)) from e
-        if "access denied" in error_msg or "forbidden" in error_msg:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=str(e),
-            ) from e
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
-        log_and_raise_error(
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(
             e, "update_serve_window", {"serve_window_id": serve_window_id}
         )
 
@@ -157,29 +126,16 @@ async def get_my_serve_windows(
 
         return [ServeWindowInfo.model_validate(sa) for sa in serve_windows]
 
-    except ValueError as e:
-        error_msg = str(e).lower()
-        if "access denied" in error_msg or "forbidden" in error_msg:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=str(e),
-            ) from e
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
-        log_and_raise_error(e, "get_my_serve_windows", {})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "get_my_serve_windows", {})
 
 
-@router.get("/{serve_window_id}", response_model=ServeWindowDetail)
+@router.get("/{serve_window_id}", response_model=ServeWindowInfo)
 async def get_serve_window(
     serve_window_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> ServeWindowDetail:
+) -> ServeWindowInfo:
     """Get details of a specific serve window."""
     try:
         serve_window = serve_window_service.get_serve_window_by_id(
@@ -188,25 +144,12 @@ async def get_serve_window(
             user_id=current_user["id"],
         )
 
-        return ServeWindowDetail.model_validate(serve_window)
+        return ServeWindowInfo.model_validate(serve_window)
 
-    except ValueError as e:
-        error_msg = str(e).lower()
-        if "not found" in error_msg:
-            raise handle_not_found_error("serve_window", str(serve_window_id)) from e
-        if "access denied" in error_msg or "forbidden" in error_msg:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=str(e),
-            ) from e
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
-        log_and_raise_error(e, "get_serve_window", {"serve_window_id": serve_window_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(
+            e, "get_serve_window", {"serve_window_id": serve_window_id}
+        )
 
 
 @router.delete("/{serve_window_id}")
@@ -237,22 +180,7 @@ async def delete_serve_window(
 
         return {"message": f"Serve window {serve_window_id} deleted successfully"}
 
-    except ValueError as e:
-        error_msg = str(e).lower()
-        if "not found" in error_msg:
-            raise handle_not_found_error("serve_window", str(serve_window_id)) from e
-        if "access denied" in error_msg or "forbidden" in error_msg:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=str(e),
-            ) from e
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
-        log_and_raise_error(
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(
             e, "delete_serve_window", {"serve_window_id": serve_window_id}
         )

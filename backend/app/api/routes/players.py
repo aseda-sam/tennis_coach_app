@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas.player import (
@@ -16,8 +16,8 @@ from app.core.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.player import Player
 from app.services import player_service
-from app.utils.authorization import require_player_access
-from app.utils.error_handling import handle_processing_error, log_and_raise_error
+from app.utils.authorization import is_admin, require_player_access
+from app.utils.error_handling import handle_service_error
 
 router = APIRouter(tags=["players"])
 
@@ -59,11 +59,8 @@ def create_player(
         )
 
         return _create_player_info(db, db_player)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "create_player", {})
 
 
 @router.get("/", response_model=List[PlayerListItem])
@@ -78,8 +75,6 @@ def get_players(
 ) -> List[PlayerListItem]:
     """Get all players for the current user with optional filtering and pagination."""
     try:
-        from app.utils.authorization import is_admin
-
         players = player_service.list_user_players(
             db=db,
             user_id=current_user["id"],
@@ -100,8 +95,8 @@ def get_players(
             )
             for player in players
         ]
-    except Exception as e:
-        raise handle_processing_error("get_players", str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "get_players", {"user_id": current_user["id"]})
 
 
 @router.get("/me", response_model=PlayerInfo)
@@ -115,11 +110,8 @@ def get_my_player(
             db, current_user["id"]
         )
         return _create_player_info(db, default_player)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "get_my_player", {})
 
 
 @router.put("/me", response_model=PlayerInfo)
@@ -163,11 +155,8 @@ def upsert_my_player(
             )
 
         return _create_player_info(db, default_player)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "upsert_my_player", {})
 
 
 @router.get("/{player_id}", response_model=PlayerInfo)
@@ -186,15 +175,8 @@ def get_player(
         require_player_access(player, current_user)
 
         return _create_player_info(db, player)
-    except ValueError as e:
-        # Check if it's a "not found" error
-        if "not found" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            ) from e
-        else:
-            log_and_raise_error(e, "get_player", {"player_id": player_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "get_player", {"player_id": player_id})
 
 
 @router.put("/{player_id}", response_model=PlayerInfo)
@@ -228,15 +210,8 @@ def update_player(
             player = player_service.update_player(db, player_id, **update_data)
 
         return _create_player_info(db, player)
-    except ValueError as e:
-        # Check if it's a "not found" error
-        if "not found" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            ) from e
-        else:
-            log_and_raise_error(e, "update_player", {"player_id": player_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "update_player", {"player_id": player_id})
 
 
 @router.delete("/{player_id}", response_model=PlayerDeleteResponse)
@@ -257,12 +232,5 @@ def delete_player(
 
         player_service.delete_player(db, player_id)
         return PlayerDeleteResponse(message=f"Player {player_id} deleted successfully")
-    except ValueError as e:
-        # Check if it's a "not found" error
-        if "not found" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            ) from e
-        else:
-            log_and_raise_error(e, "delete_player", {"player_id": player_id})
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "delete_player", {"player_id": player_id})

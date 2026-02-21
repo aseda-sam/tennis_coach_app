@@ -23,6 +23,17 @@ alwaysApply: false
   - Good: `GET /v0/videos/{video_id}`, `POST /v0/serve-attempts`, `DELETE /v0/players/{player_id}`
   - Avoid: verb-y paths like `/analyze-video/{id}` unless it’s truly an operation resource.
 
+## Schema Organization
+
+- Define ALL request/response models in `backend/app/api/schemas/`, never inline in route files.
+  A model in a routes file is always wrong; move it.
+- Export all public schemas from `backend/app/api/schemas/__init__.py`.
+- Use `Literal[...]` for any field with a fixed set of valid string values (e.g., court_side,
+  serve_subtype). Plain `str` with a comment is not sufficient.
+- Use `@model_validator(mode="after")` for cross-field validation (e.g., start < end timestamps).
+  Do NOT validate this in the route handler.
+- Avoid empty subclasses (`class Foo(Bar): pass`). If the parent schema is sufficient, use it directly.
+
 ## Schemas & Response Models
 
 - **Define schemas** in `backend/app/api/schemas/` and use them via `response_model=...`.
@@ -33,6 +44,9 @@ alwaysApply: false
 
 - **Always use** `backend/app/utils/error_handling.py` for API errors:
   - Raise `APIError`, or use helpers (`handle_*`) and `log_and_raise_error(...)`.
+- In route handlers, use `handle_service_error(e, "operation_name", context)` from
+  `app.utils.error_handling` instead of manually catching ValueError and string-matching messages.
+- `ValueError` → 400/404 mapping lives only in `handle_service_error`. Do not duplicate it in routes.
 - **Never leak internals**: unhandled 500s must be generic (`"Internal server error"`, `ErrorCodes.INTERNAL_ERROR`).
 - **Error payload shape** (stable contract):
 
@@ -45,6 +59,12 @@ alwaysApply: false
   }
 }
 ```
+
+## Status Codes
+
+- POST that creates a resource → HTTP 201
+- POST that triggers an action (no new resource) → HTTP 200
+- `propose` creates proposals → 201. `accept`, `reject` actions → 200.
 
 ## AuthN/AuthZ
 

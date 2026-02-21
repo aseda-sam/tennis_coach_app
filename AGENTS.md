@@ -83,6 +83,7 @@ writing/              # Substack context, LTA coaching notes, story seeds (gitig
 - **Layers:** Routes handle HTTP + auth, Services handle logic, Models define schema. Don't leak HTTP concerns into services.
 - **Auth:** `Depends(get_current_user)` on protected endpoints. AuthZ via `app.utils.authorization` helpers. Always scope queries by `user_id`.
 - **Errors:** Use `APIError` / `log_and_raise_error` from `app.utils.error_handling`. Never leak internals in 500s.
+- **Schemas:** Define all request/response schemas in `app/api/schemas/`. Never inline in route files. See `api-patterns.mdc` for full schema conventions.
 - **Storage:** Always go through `app.services.storage_service.storage_service`. No raw `open()` in routes/services.
 - **Background jobs:** Use RQ + `VideoJob` for anything > 5s. Jobs create their own DB sessions.
 - **API versioning:** All endpoints under `/v0/` (alpha, breaking changes allowed).

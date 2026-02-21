@@ -19,13 +19,17 @@ from fastapi import (
 from fastapi.responses import (
     Response,
 )
-from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy.orm import Session
 
 from app.api.schemas.common import PaginationParams
 from app.api.schemas.video import (
+    BallContactTimestampsResponse,
+    BulkAnalysisStatusRequest,
+    BulkAnalysisStatusResponse,
+    VideoAnalysisStatus,
     VideoDeleteResponse,
     VideoInfo,
+    VideoJobResponse,
     VideoListItem,
     VideoMetadataUpdateRequest,
     VideoSignedUrlResponse,
@@ -55,69 +59,6 @@ from app.utils.error_handling import (
     handle_not_found_error,
     log_and_raise_error,
 )
-
-
-class VideoAnalysisStatus(BaseModel):
-    """Response model for video analysis status check."""
-
-    video_id: int
-    has_analysis: bool
-    analysis_types: List[str] = []
-
-
-class BulkAnalysisStatusRequest(BaseModel):
-    """Request model for bulk analysis status check."""
-
-    video_ids: List[int] = Field(
-        description="List of video IDs to check analysis status for",
-        min_length=1,
-        max_length=100,  # Limit to prevent abuse
-    )
-
-
-class BulkAnalysisStatusResponse(BaseModel):
-    """Response model for bulk analysis status check."""
-
-    statuses: List[VideoAnalysisStatus] = Field(
-        description="Analysis status for each requested video"
-    )
-
-
-class BallContactTimestampsResponse(BaseModel):
-    """Response model for ball contact timestamps in a video (serve contact points)."""
-
-    ball_contact_timestamps: List[float] = Field(
-        default_factory=list,
-        description="Sorted list of ball contact timestamps in seconds (unique, ascending)",
-    )
-
-
-class VideoJobResponse(BaseModel):
-    """Response schema for video job status."""
-
-    id: UUID
-    video_id: int
-    job_type: str
-    status: str
-    error: Optional[str] = None
-    stage: Optional[str] = (
-        None  # "transcoding", "scout", "detecting_serves", "refining", "complete"
-    )
-    progress_percent: int = 0
-    serve_windows_found: Optional[int] = (
-        None  # Number of serve windows found (after scout pass)
-    )
-    created_at: datetime
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-
-    model_config = {"from_attributes": True}
-
-    @field_serializer("id")
-    def serialize_id(self, id: UUID) -> str:
-        """Convert UUID to string for JSON serialization."""
-        return str(id)
-
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -176,10 +117,6 @@ async def get_video_job(
         Video job for the authenticated user
     """
     try:
-        from uuid import UUID
-
-        from app.utils.authorization import is_admin
-
         job_uuid = UUID(job_id)
         job = video_job_service.get_job_by_id(
             db=db,
@@ -211,8 +148,6 @@ async def list_videos(
     Returns a paginated list of videos with basic information.
     """
     try:
-        from app.utils.authorization import is_admin
-
         # Filter by user_id unless admin
         # Exclude demo videos from user's library
         videos = video_service.list_user_videos(
@@ -276,8 +211,6 @@ async def get_video_ball_contact_timestamps(
 
     Returns sorted, unique ball contact timestamps from serve windows that have a contact point.
     """
-    from app.services import serve_window_service
-
     db_video = video_service.get_video_by_id(db, video_id)
     if not db_video:
         raise handle_not_found_error("video", str(video_id))
@@ -524,8 +457,6 @@ async def get_bulk_analysis_status(
         Analysis status for each requested video
     """
     try:
-        from app.utils.authorization import is_admin
-
         status_dicts = video_service.get_bulk_analysis_status(
             db=db,
             video_ids=request.video_ids,

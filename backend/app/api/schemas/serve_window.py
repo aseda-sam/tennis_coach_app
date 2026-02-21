@@ -1,9 +1,9 @@
 """Serve window API schemas."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ServeWindowCreate(BaseModel):
@@ -19,19 +19,31 @@ class ServeWindowCreate(BaseModel):
     contact_timestamp: Optional[float] = Field(
         default=None, ge=0, description="Contact timestamp in seconds (optional)"
     )
-    court_side: Optional[str] = Field(
+    court_side: Optional[Literal["deuce", "ad"]] = Field(
         default=None, description="Court side: 'deuce' or 'ad'"
     )
     serve_number: Optional[int] = Field(
         default=None, ge=1, le=2, description="Serve number: 1 or 2"
     )
-    serve_subtype: Optional[str] = Field(
+    serve_subtype: Optional[Literal["flat", "slice", "kick"]] = Field(
         default=None, description="Serve subtype: 'flat', 'slice', 'kick'"
     )
-    in_out: Optional[str] = Field(
+    in_out: Optional[Literal["in", "out_long", "out_wide", "net", "unknown"]] = Field(
         default=None,
         description="Outcome: 'in', 'out_long', 'out_wide', 'net', 'unknown'",
     )
+
+    @model_validator(mode="after")
+    def validate_timestamps(self) -> "ServeWindowCreate":
+        if self.start_timestamp >= self.end_timestamp:
+            raise ValueError("start_timestamp must be less than end_timestamp")
+        if self.contact_timestamp is not None and not (
+            self.start_timestamp <= self.contact_timestamp <= self.end_timestamp
+        ):
+            raise ValueError(
+                "contact_timestamp must be between start_timestamp and end_timestamp"
+            )
+        return self
 
 
 class ServeWindowUpdate(BaseModel):
@@ -49,19 +61,37 @@ class ServeWindowUpdate(BaseModel):
     contact_timestamp: Optional[float] = Field(
         default=None, ge=0, description="Contact timestamp in seconds (optional)"
     )
-    court_side: Optional[str] = Field(
+    court_side: Optional[Literal["deuce", "ad"]] = Field(
         default=None, description="Court side: 'deuce' or 'ad'"
     )
     serve_number: Optional[int] = Field(
         default=None, ge=1, le=2, description="Serve number: 1 or 2"
     )
-    serve_subtype: Optional[str] = Field(
+    serve_subtype: Optional[Literal["flat", "slice", "kick"]] = Field(
         default=None, description="Serve subtype: 'flat', 'slice', 'kick'"
     )
-    in_out: Optional[str] = Field(
+    in_out: Optional[Literal["in", "out_long", "out_wide", "net", "unknown"]] = Field(
         default=None,
         description="Outcome: 'in', 'out_long', 'out_wide', 'net', 'unknown'",
     )
+
+    @model_validator(mode="after")
+    def validate_timestamps(self) -> "ServeWindowUpdate":
+        start = self.start_timestamp
+        end = self.end_timestamp
+        contact = self.contact_timestamp
+        if start is not None and end is not None and start >= end:
+            raise ValueError("start_timestamp must be less than end_timestamp")
+        if (
+            contact is not None
+            and start is not None
+            and end is not None
+            and not (start <= contact <= end)
+        ):
+            raise ValueError(
+                "contact_timestamp must be between start_timestamp and end_timestamp"
+            )
+        return self
 
 
 class ServeWindowInfo(BaseModel):
@@ -95,9 +125,3 @@ class ServeWindowInfo(BaseModel):
     created_at: datetime = Field(description="Creation timestamp")
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class ServeWindowDetail(ServeWindowInfo):
-    """Detailed serve window information (extends ServeWindowInfo)."""
-
-    pass

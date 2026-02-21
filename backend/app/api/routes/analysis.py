@@ -70,83 +70,63 @@ async def start_analysis(
                 detail=f"Invalid analysis type: {request.analysis_type}",
             )
 
-        try:
-            logger.info(
-                f"Starting analysis request: video_id={video_id}, "
-                f"analysis_type={request.analysis_type}, "
-                f"confidence_threshold={request.confidence_threshold}"
-            )
+        logger.info(
+            f"Starting analysis request: video_id={video_id}, "
+            f"analysis_type={request.analysis_type}, "
+            f"confidence_threshold={request.confidence_threshold}"
+        )
 
-            # Redis connection is already checked in redis_config.py on module load
-            # If Redis is unavailable, the connection will fail when enqueueing, which is handled below
+        # Create VideoJob record BEFORE enqueuing (status='queued')
+        video_job = video_job_service.create_video_job(
+            db=db,
+            video_id=video_id,
+            user_id=current_user["id"],
+            job_type=request.analysis_type,
+            status="queued",
+        )
 
-            # Create VideoJob record BEFORE enqueuing (status='queued')
-            video_job = video_job_service.create_video_job(
-                db=db,
-                video_id=video_id,
-                user_id=current_user["id"],
-                job_type=request.analysis_type,
-                status="queued",
-            )
-
-            # Enqueue RQ job using shared helper
-            logger.info("Enqueueing %s job to Redis queue...", request.analysis_type)
-            try:
-                job = enqueue_pose_analysis(
-                    video_id=video_id,
-                    video_path=video.file_path,
-                    confidence_threshold=request.confidence_threshold,
-                    video_job_id=str(
-                        video_job.id
-                    ),  # Pass VideoJob ID for status updates
-                )
-                if not job:
-                    # Helper returned None (Redis unavailable)
-                    # Update VideoJob status to failed
-                    video_job.status = "failed"
-                    video_job.error = "Failed to enqueue job to Redis"
-                    db.commit()
-                    raise HTTPException(
-                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail="Failed to enqueue job to Redis. Please check Redis connection.",
-                    )
-
-                # Store RQ job ID for debugging correlation
-                video_job.rq_job_id = job.id
-                db.commit()
-
-                logger.info(
-                    f"Successfully enqueued {request.analysis_type} analysis job {job.id} "
-                    f"for video {video_id} to queue '{analysis_queue.name}'",
-                    extra=get_log_extra(
-                        request_id=http_request.state.request_id
-                        if hasattr(http_request, "state")
-                        else None,
-                        job_id=str(video_job.id),
-                        video_id=video_id,
-                        rq_job_id=job.id,
-                    ),
-                )
-            except HTTPException:
-                raise
-
-            return AnalysisResponse(
-                job_id=str(video_job.id),  # Return VideoJob ID, not RQ job ID
-                video_id=video_id,
-                analysis_type=request.analysis_type,
-                status="queued",
-                message=f"{request.analysis_type} analysis started successfully",
-                estimated_duration=_get_estimated_duration(request.analysis_type),
-            )
-
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.exception("Failed to enqueue job for video %s", video_id)
+        # Enqueue RQ job using shared helper
+        logger.info("Enqueueing %s job to Redis queue...", request.analysis_type)
+        job = enqueue_pose_analysis(
+            video_id=video_id,
+            video_path=video.file_path,
+            confidence_threshold=request.confidence_threshold,
+            video_job_id=str(video_job.id),
+        )
+        if not job:
+            # Helper returned None (Redis unavailable)
+            video_job.status = "failed"
+            video_job.error = "Failed to enqueue job to Redis"
+            db.commit()
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to start analysis. Please try again later.",
-            ) from e
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Failed to enqueue job to Redis. Please check Redis connection.",
+            )
+
+        video_job.rq_job_id = job.id
+        db.commit()
+
+        logger.info(
+            f"Successfully enqueued {request.analysis_type} analysis job {job.id} "
+            f"for video {video_id} to queue '{analysis_queue.name}'",
+            extra=get_log_extra(
+                request_id=http_request.state.request_id
+                if hasattr(http_request, "state")
+                else None,
+                job_id=str(video_job.id),
+                video_id=video_id,
+                rq_job_id=job.id,
+            ),
+        )
+
+        return AnalysisResponse(
+            job_id=str(video_job.id),
+            video_id=video_id,
+            analysis_type=request.analysis_type,
+            status="queued",
+            message=f"{request.analysis_type} analysis started successfully",
+            estimated_duration=_get_estimated_duration(request.analysis_type),
+        )
 
     except HTTPException:
         raise

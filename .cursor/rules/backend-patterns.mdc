@@ -36,6 +36,11 @@ alwaysApply: false
 - **If you change a background job task or queue**: update `backend/docs/background-jobs.md`.
 - **If you change a script's CLI flags**: update `backend/docs/demo-videos.md` (for demo/admin scripts).
 
+## Imports
+
+- All imports at module top level. Never import inside a route handler function.
+  Inline imports (`from x import y` inside a def) are always a code smell; move to top of file.
+
 ## Errors
 
 - **Services**: raise standard Python exceptions (`ValueError`, `RuntimeError`, `FileNotFoundError`).
