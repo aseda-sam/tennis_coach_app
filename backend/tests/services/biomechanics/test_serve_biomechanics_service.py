@@ -28,12 +28,13 @@ def _mock_serve_window() -> MagicMock:
     return sa
 
 
-def _mock_video() -> MagicMock:
+def _mock_video(camera_angle: str = "behind") -> MagicMock:
     v = MagicMock()
     v.id = 10
     v.fps = 30.0
     v.width = 1280
     v.height = 720
+    v.camera_angle = camera_angle
     return v
 
 
@@ -84,7 +85,7 @@ class TestServeBiomechanicsServicePipeline:
         assert saved.user_id == "user-1"
         assert saved.phase_segmentation_json is not None
         assert saved.metrics_json is not None
-        assert saved.analysis_version == "phase-metrics-v1"
+        assert saved.analysis_version == "phase-metrics-v3"
 
     @patch(
         "app.services.biomechanics.serve_biomechanics_service.get_pose_frames_in_window"
@@ -146,7 +147,7 @@ class TestServeBiomechanicsServicePipeline:
         metrics = json.loads(saved.metrics_json)
         assert isinstance(metrics, dict)
         # BiomechanicsMetrics has scalar fields
-        assert "elbow_angle_at_contact" in metrics or "knee_flexion_min_deg" in metrics
+        assert "knee_flexion_min_deg" in metrics
 
     def test_compute_raises_on_missing_serve(self) -> None:
         db = MagicMock()
@@ -155,6 +156,55 @@ class TestServeBiomechanicsServicePipeline:
         service = ServeBiomechanicsService()
         with pytest.raises(ValueError, match="not found"):
             service.compute_analysis(db, serve_window_id=999, user_id="user-1")
+
+    @patch(
+        "app.services.biomechanics.serve_biomechanics_service._get_best_ball_detection"
+    )
+    @patch(
+        "app.services.biomechanics.serve_biomechanics_service.get_pose_frames_in_window"
+    )
+    @patch(
+        "app.services.biomechanics.serve_biomechanics_service._select_best_pose_detection"
+    )
+    def test_laterality_excluded_for_profile_camera(
+        self,
+        mock_best_pose: MagicMock,
+        mock_get_frames: MagicMock,
+        mock_ball_det: MagicMock,
+    ) -> None:
+        """toss_laterality should be null when camera_angle is 'profile'."""
+        mock_best_pose.return_value = _mock_pose_detection()
+        mock_get_frames.return_value = _make_serve_sequence()
+
+        # Return toss metrics including laterality
+        mock_ball_det.return_value = MagicMock()
+
+        db = MagicMock()
+        video = _mock_video(camera_angle="profile")
+        db.query.return_value.filter.return_value.first.side_effect = [
+            _mock_serve_window(),
+            video,
+            _mock_player(),
+        ]
+        db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
+
+        with patch(
+            "app.services.biomechanics.serve_biomechanics_service._compute_toss_metrics"
+        ) as mock_toss:
+            mock_toss.return_value = {
+                "toss_peak_height": 1.5,
+                "toss_peak_timestamp": 0.5,
+                "toss_laterality": 0.12,
+            }
+            service = ServeBiomechanicsService()
+            service.compute_analysis(db, serve_window_id=1, user_id="user-1")
+
+        saved = db.add.call_args[0][0]
+        import json
+
+        metrics = json.loads(saved.metrics_json)
+        assert metrics.get("toss_peak_height") == 1.5
+        assert metrics.get("toss_laterality") is None
 
     @patch(
         "app.services.biomechanics.serve_biomechanics_service._select_best_pose_detection"

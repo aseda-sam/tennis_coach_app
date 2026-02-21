@@ -165,6 +165,7 @@ def _compute_toss_metrics(
     video_height = video.height or 720
     player_height_px = float(video_height) * 0.5
     shoulder_y: Optional[float] = None
+    pose_at_start = None
     if pose_detection and pose_detection.pose_data:
         pose_at_start = get_pose_at_timestamp(pose_detection, video, start_sec)
         if pose_at_start:
@@ -190,11 +191,22 @@ def _compute_toss_metrics(
     if toss_peak_height is not None and toss_peak_height < 0:
         toss_peak_height = 0.0
 
+    # Toss laterality: horizontal distance of ball from body center, normalized
+    toss_laterality: Optional[float] = None
+    if best.get("ball_x") is not None and pose_at_start is not None:
+        ls = pose_at_start.get("left_shoulder")
+        rs = pose_at_start.get("right_shoulder")
+        if ls and rs:
+            body_center_x = (ls[0] + rs[0]) / 2
+            toss_laterality = (best["ball_x"] - body_center_x) / player_height_px
+            toss_laterality = round(toss_laterality, 4)
+
     return {
         "toss_peak_height": round(toss_peak_height, 4)
         if toss_peak_height is not None
         else None,
         "toss_peak_timestamp": round(toss_peak_timestamp, 4),
+        "toss_laterality": toss_laterality,
     }
 
 

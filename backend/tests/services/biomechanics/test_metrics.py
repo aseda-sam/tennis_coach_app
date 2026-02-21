@@ -4,14 +4,16 @@ TDD: Define the contract for computing all metrics from pose frames + phases.
 """
 
 from app.services.biomechanics.metrics import (
+    METRIC_META,
     BiomechanicsMetrics,
     compute_biomechanics_metrics,
+    metrics_to_flat_list,
 )
 from app.services.biomechanics.phase_segmentation import (
     PhaseWindow,
     segment_serve_phases,
 )
-from tests.biomechanics_fixtures import _make_serve_sequence
+from tests.biomechanics_fixtures import _make_pose, _make_serve_sequence
 
 
 def _get_phases(frames: list, contact_ts: float = 1.3) -> list[PhaseWindow]:
@@ -45,92 +47,6 @@ class TestComputeBiomechanicsMetrics:
         )
         assert isinstance(result, BiomechanicsMetrics)
 
-    def test_computes_trunk_rotation(self):
-        frames = _make_serve_sequence()
-        phases = _get_phases(frames)
-        result = compute_biomechanics_metrics(
-            pose_frames=frames,
-            fps=30.0,
-            serve_start=0.0,
-            serve_end=2.0,
-            contact_timestamp=1.3,
-            dominant_hand="right",
-            video_width=1280,
-            video_height=720,
-            phases=phases,
-        )
-        # Trunk rotation at contact is computed when keypoints allow; field must exist
-        assert hasattr(result, "trunk_rotation_at_contact")
-        if result.trunk_rotation_at_contact is not None:
-            assert isinstance(result.trunk_rotation_at_contact, (int, float))
-
-    def test_computes_contact_point_height(self):
-        frames = _make_serve_sequence()
-        phases = _get_phases(frames)
-        result = compute_biomechanics_metrics(
-            pose_frames=frames,
-            fps=30.0,
-            serve_start=0.0,
-            serve_end=2.0,
-            contact_timestamp=1.3,
-            dominant_hand="right",
-            video_width=1280,
-            video_height=720,
-            phases=phases,
-        )
-        # Contact point height at contact should be positive (wrist above shoulder)
-        assert result.contact_point_height is not None
-        assert result.contact_point_height > 0.0
-
-    def test_computes_shoulder_abduction(self):
-        frames = _make_serve_sequence()
-        phases = _get_phases(frames)
-        result = compute_biomechanics_metrics(
-            pose_frames=frames,
-            fps=30.0,
-            serve_start=0.0,
-            serve_end=2.0,
-            contact_timestamp=1.3,
-            dominant_hand="right",
-            video_width=1280,
-            video_height=720,
-            phases=phases,
-        )
-        assert result.shoulder_abduction_at_contact is not None
-
-    def test_computes_hip_shoulder_separation(self):
-        frames = _make_serve_sequence()
-        phases = _get_phases(frames)
-        result = compute_biomechanics_metrics(
-            pose_frames=frames,
-            fps=30.0,
-            serve_start=0.0,
-            serve_end=2.0,
-            contact_timestamp=1.3,
-            dominant_hand="right",
-            video_width=1280,
-            video_height=720,
-            phases=phases,
-        )
-        assert result.hip_shoulder_separation_at_contact is not None
-        assert result.hip_shoulder_separation_at_contact >= 0.0
-
-    def test_computes_racket_drop(self):
-        frames = _make_serve_sequence()
-        phases = _get_phases(frames)
-        result = compute_biomechanics_metrics(
-            pose_frames=frames,
-            fps=30.0,
-            serve_start=0.0,
-            serve_end=2.0,
-            contact_timestamp=1.3,
-            dominant_hand="right",
-            video_width=1280,
-            video_height=720,
-            phases=phases,
-        )
-        assert result.racket_drop_depth is not None
-
     def test_computes_knee_flexion(self):
         frames = _make_serve_sequence()
         phases = _get_phases(frames)
@@ -146,10 +62,28 @@ class TestComputeBiomechanicsMetrics:
             phases=phases,
         )
         assert result.knee_flexion_min_deg is not None
-        assert 0 <= result.knee_flexion_min_deg <= 180
+        assert 80 <= result.knee_flexion_min_deg <= 180
+
+    def test_knee_flexion_outlier_gate(self):
+        """Values below 80° should be rejected as pose artifacts."""
+        # Build frames where knees are impossibly bent (very high knee_y = deep bend)
+        frames = [_make_pose(knee_y=0.95) for _ in range(10)]
+        result = compute_biomechanics_metrics(
+            pose_frames=frames,
+            fps=30.0,
+            serve_start=0.0,
+            serve_end=0.33,
+            contact_timestamp=None,
+            dominant_hand="right",
+            video_width=1280,
+            video_height=720,
+        )
+        # The extremely deep bend produces an angle < 80° → should be gated to None
+        if result.knee_flexion_min_deg is not None:
+            assert result.knee_flexion_min_deg >= 80.0
 
     def test_left_handed_dominant_hand(self):
-        """Metrics compute without error for left-handed player (toss arm = right)."""
+        """Metrics compute without error for left-handed player."""
         frames = _make_serve_sequence()
         phases = _get_phases(frames, contact_ts=1.3)
         result = compute_biomechanics_metrics(
@@ -164,26 +98,8 @@ class TestComputeBiomechanicsMetrics:
             phases=phases,
         )
         assert isinstance(result, BiomechanicsMetrics)
-        # At least contact-based metrics should be present
-        assert hasattr(result, "contact_point_height")
-
-    def test_handles_no_phases(self):
-        """Should still compute contact-based metrics without phase data."""
-        frames = _make_serve_sequence()
-        result = compute_biomechanics_metrics(
-            pose_frames=frames,
-            fps=30.0,
-            serve_start=0.0,
-            serve_end=2.0,
-            contact_timestamp=1.3,
-            dominant_hand="right",
-            video_width=1280,
-            video_height=720,
-            phases=None,
-        )
-        assert isinstance(result, BiomechanicsMetrics)
-        # Contact-based metrics should still work
-        assert result.contact_point_height is not None
+        # Active metrics should still be present
+        assert result.knee_flexion_min_deg is not None
 
     def test_handles_empty_frames(self):
         result = compute_biomechanics_metrics(
@@ -199,9 +115,9 @@ class TestComputeBiomechanicsMetrics:
         )
         assert isinstance(result, BiomechanicsMetrics)
 
-    def test_computes_elbow_angle(self):
+    def test_handles_no_phases(self):
+        """Should still compute metrics without phase data."""
         frames = _make_serve_sequence()
-        phases = _get_phases(frames)
         result = compute_biomechanics_metrics(
             pose_frames=frames,
             fps=30.0,
@@ -211,24 +127,43 @@ class TestComputeBiomechanicsMetrics:
             dominant_hand="right",
             video_width=1280,
             video_height=720,
-            phases=phases,
+            phases=None,
         )
-        assert result.elbow_angle_at_contact is not None
-        assert 0 < result.elbow_angle_at_contact <= 180
+        assert isinstance(result, BiomechanicsMetrics)
+        # Knee flexion doesn't depend on phases
+        assert result.knee_flexion_min_deg is not None
 
-    def test_kinetic_chain_fields_exist(self):
-        frames = _make_serve_sequence()
-        phases = _get_phases(frames)
-        result = compute_biomechanics_metrics(
-            pose_frames=frames,
-            fps=30.0,
-            serve_start=0.0,
-            serve_end=2.0,
-            contact_timestamp=1.3,
-            dominant_hand="right",
-            video_width=1280,
-            video_height=720,
-            phases=phases,
+
+class TestMetricsToFlatList:
+    def test_only_includes_meta_entries(self):
+        """metrics_to_flat_list should only include metrics present in METRIC_META."""
+        metrics = BiomechanicsMetrics(
+            knee_flexion_min_deg=95.0,
+            toss_peak_height=1.8,
+            toss_laterality=0.15,
         )
-        assert hasattr(result, "kinetic_chain_sequence")
-        assert hasattr(result, "kinetic_chain_correct")
+        flat = metrics_to_flat_list(metrics)
+        names = {m["metric_name"] for m in flat}
+
+        assert names == set(METRIC_META.keys())
+        assert "knee_flexion_min_deg" in names
+        assert "toss_peak_height" in names
+        assert "toss_laterality" in names
+
+    def test_flat_list_has_correct_structure(self):
+        """Each entry in flat list should have metric_name, value, unit, phase."""
+        metrics = BiomechanicsMetrics(knee_flexion_min_deg=100.0)
+        flat = metrics_to_flat_list(metrics)
+        for entry in flat:
+            assert "metric_name" in entry
+            assert "value" in entry
+            assert "unit" in entry
+            assert "phase" in entry
+
+    def test_flat_list_includes_none_values(self):
+        """Metrics with None values should still appear in flat list."""
+        metrics = BiomechanicsMetrics()  # all None
+        flat = metrics_to_flat_list(metrics)
+        assert len(flat) == len(METRIC_META)
+        for entry in flat:
+            assert entry["value"] is None

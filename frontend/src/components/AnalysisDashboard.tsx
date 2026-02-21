@@ -23,18 +23,9 @@ interface AnalysisDashboardProps {
 }
 
 const METRIC_DISPLAY_NAMES: Record<string, string> = {
-  elbow_angle_at_contact: 'Elbow Extension',
   knee_flexion_min_deg: 'Knee Flexion',
-  trunk_rotation_at_contact: 'Trunk Rotation',
-  trunk_rotation_at_cocking: 'Trunk Coil',
-  shoulder_abduction_at_contact: 'Shoulder Position',
-  shoulder_abduction_at_cocking: 'Arm Position',
-  contact_point_height: 'Contact Height',
-  hip_shoulder_separation_max: 'Hip-Shoulder Separation',
-  hip_shoulder_separation_at_contact: 'Hip-Shoulder Sep. (Contact)',
-  racket_drop_depth: 'Racket Drop',
   toss_peak_height: 'Toss Peak Height',
-  kinetic_chain_correct: 'Kinetic Chain',
+  toss_laterality: 'Toss Position',
 };
 
 function formatMetricValue(value: number | null, unit: string): string {

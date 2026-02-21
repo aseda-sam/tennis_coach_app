@@ -46,9 +46,9 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
     )
     report.metrics_json = json.dumps(
         {
-            "knee_flexion_min_deg": 65.0,
-            "elbow_angle_at_contact": 165.0,
-            "contact_point_height": 1.0,
+            "knee_flexion_min_deg": 95.0,
+            "toss_peak_height": 1.8,
+            "toss_laterality": 0.15,
         }
     )
     return report
