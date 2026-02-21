@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ServeWindowCreate } from '../services/serveWindowApi';
+import {
+  CourtSide,
+  InOut,
+  ServeSubtype,
+  ServeWindowCreate,
+} from '../services/serveWindowApi';
 import {
   formatTime,
   validateContactTimestamp,
@@ -505,7 +510,7 @@ const AddServeWindowButton: React.FC<AddServeWindowButtonProps> = ({
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      court_side: e.target.value || null,
+                      court_side: (e.target.value as CourtSide) || null,
                     })
                   }
                 >
@@ -540,7 +545,7 @@ const AddServeWindowButton: React.FC<AddServeWindowButtonProps> = ({
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      serve_subtype: e.target.value || null,
+                      serve_subtype: (e.target.value as ServeSubtype) || null,
                     })
                   }
                 >
@@ -558,7 +563,7 @@ const AddServeWindowButton: React.FC<AddServeWindowButtonProps> = ({
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      in_out: e.target.value || null,
+                      in_out: (e.target.value as InOut) || null,
                     })
                   }
                 >

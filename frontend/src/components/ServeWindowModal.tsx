@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ServeWindow, ServeWindowUpdate } from '../services/serveWindowApi';
+import {
+  CourtSide,
+  InOut,
+  ServeSubtype,
+  ServeWindow,
+  ServeWindowUpdate,
+} from '../services/serveWindowApi';
 import {
   formatTime,
   validateContactTimestamp,
@@ -246,7 +252,7 @@ const ServeWindowModal: React.FC<ServeWindowModalProps> = ({
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        court_side: e.target.value || null,
+                        court_side: (e.target.value as CourtSide) || null,
                       })
                     }
                   >
@@ -284,7 +290,7 @@ const ServeWindowModal: React.FC<ServeWindowModalProps> = ({
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        serve_subtype: e.target.value || null,
+                        serve_subtype: (e.target.value as ServeSubtype) || null,
                       })
                     }
                   >
@@ -302,7 +308,7 @@ const ServeWindowModal: React.FC<ServeWindowModalProps> = ({
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        in_out: e.target.value || null,
+                        in_out: (e.target.value as InOut) || null,
                       })
                     }
                   >
@@ -493,7 +499,7 @@ const ServeWindowModal: React.FC<ServeWindowModalProps> = ({
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      court_side: e.target.value || null,
+                      court_side: (e.target.value as CourtSide) || null,
                     })
                   }
                 >
@@ -529,7 +535,7 @@ const ServeWindowModal: React.FC<ServeWindowModalProps> = ({
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      serve_subtype: e.target.value || null,
+                      serve_subtype: (e.target.value as ServeSubtype) || null,
                     })
                   }
                 >
@@ -547,7 +553,7 @@ const ServeWindowModal: React.FC<ServeWindowModalProps> = ({
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      in_out: e.target.value || null,
+                      in_out: (e.target.value as InOut) || null,
                     })
                   }
                 >

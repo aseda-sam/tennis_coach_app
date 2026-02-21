@@ -1,5 +1,9 @@
 import api from './api';
 
+export type CourtSide = 'deuce' | 'ad';
+export type ServeSubtype = 'flat' | 'slice' | 'kick';
+export type InOut = 'in' | 'out_long' | 'out_wide' | 'net' | 'unknown';
+
 export interface ServeWindow {
   id: number;
   video_id: number;
@@ -11,10 +15,10 @@ export interface ServeWindow {
   status: string;
   confidence: number | null;
   model_version: string | null;
-  court_side: string | null;
+  court_side: CourtSide | null;
   serve_number: number | null;
-  serve_subtype: string | null;
-  in_out: string | null;
+  serve_subtype: ServeSubtype | null;
+  in_out: InOut | null;
   created_at: string;
 }
 
@@ -24,10 +28,10 @@ export interface ServeWindowCreate {
   start_timestamp: number;
   end_timestamp: number;
   contact_timestamp?: number | null;
-  court_side?: string | null;
+  court_side?: CourtSide | null;
   serve_number?: number | null;
-  serve_subtype?: string | null;
-  in_out?: string | null;
+  serve_subtype?: ServeSubtype | null;
+  in_out?: InOut | null;
 }
 
 export interface ServeWindowUpdate {
@@ -35,15 +39,15 @@ export interface ServeWindowUpdate {
   start_timestamp?: number | null;
   end_timestamp?: number | null;
   contact_timestamp?: number | null;
-  court_side?: string | null;
+  court_side?: CourtSide | null;
   serve_number?: number | null;
-  serve_subtype?: string | null;
-  in_out?: string | null;
+  serve_subtype?: ServeSubtype | null;
+  in_out?: InOut | null;
 }
 
 export interface ServeWindowFilters {
   player_id?: number;
-  court_side?: string;
+  court_side?: CourtSide;
   video_id?: number;
   start_date?: string;
   end_date?: string;
