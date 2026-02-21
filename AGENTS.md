@@ -160,4 +160,3 @@ Comprehensive coding conventions, patterns, and examples live in `.cursor/rules/
 - `python-code-standards.mdc` — Python style, Pydantic v2, imports
 - `react-frontend.mdc` — Components, styling, form patterns, accessibility
 - `testing-patterns.mdc` — TDD workflow, what to test, contract testing
-- `observability.mdc` — OpenTelemetry tracing, structured logging, metrics

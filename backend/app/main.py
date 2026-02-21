@@ -35,19 +35,13 @@ from app.utils.error_handling import (
     general_error_handler,
     validation_error_handler,
 )
-from app.utils.logging_context import ObservabilityLogFilter
-from app.utils.metrics import setup_metrics
-from app.utils.otel import setup_otel_tracing
+from app.utils.logging_context import StructuredLogFilter
 
 logger = logging.getLogger(__name__)
 
-_otel_enabled = setup_otel_tracing(default_service_name="tennis-coach-api")
-# Initialize metrics (uses same OTLP endpoint as traces). Return value is unused.
-setup_metrics(default_service_name="tennis-coach-api")
-
-# Add observability filter to root logger (adds trace_id/span_id to all logs)
+# Add structured log filter to root logger (adds request_id/job_id/video_id to all logs)
 root_logger = logging.getLogger()
-root_logger.addFilter(ObservabilityLogFilter())
+root_logger.addFilter(StructuredLogFilter())
 
 
 def validate_redis_url(url: str) -> bool:
@@ -219,11 +213,6 @@ app = FastAPI(
     redoc_url="/redoc" if settings.PROFILE == "local" else None,
     openapi_url="/openapi.json" if settings.PROFILE == "local" else None,
 )
-
-if _otel_enabled:
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-
-    FastAPIInstrumentor().instrument_app(app)
 
 # Add CORS middleware
 app.add_middleware(
