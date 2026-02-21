@@ -351,8 +351,7 @@ Ball data is used today for toss metrics and visualization; it is not yet used t
 ### Racket Tracking
 
 - There is **no racket object detection**. MediaPipe provides pose keypoints only (33 body landmarks); YOLO is used only for the ball (COCO class 32), not for tennis racket (class 38).
-- The **`racket_drop_depth`** metric is a **wrist proxy**: it uses dominant wrist position relative to shoulder, `(wrist_y - shoulder_y) / torso_length`, and assumes the racket follows the wrist. It is computed in `angle_calculations.calculate_racket_drop_depth()` between cocking and contact phases.
-- So "racket" metrics are biomechanical proxies from pose, not actual racket tracking.
+- Any future "racket" metrics would need either actual racket detection (YOLO class 38) or wrist-based proxies computed from pose keypoints.
 
 ### Contact UI
 

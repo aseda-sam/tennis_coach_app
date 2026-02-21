@@ -17,16 +17,16 @@ flowchart TD
 
   FRAMES --> METRICS["Compute biomechanics metrics"]
   SEG_OUT --> METRICS
-  METRICS --> MET_OUT["BiomechanicsMetrics\nknee flexion, elbow angle,\ncontact height, trunk rotation, etc."]
+  METRICS --> MET_OUT["BiomechanicsMetrics\nknee flexion, toss peak height,\ntoss laterality"]
 
   MET_OUT --> STORE["Store ServeBiomechanicsReport\n(phase_segmentation_json + metrics_json)"]
   STORE --> RET
 
   subgraph seg_detail ["Phase Detection Heuristics"]
     S1["Start: first frame"]
-    S2["Wind-up: toss arm rises above shoulder"]
-    S3["Cocking: both arms raised (trophy position)"]
-    S4["Loading: deepest knee bend (max knee-hip ratio)"]
+    S2["Release: toss arm rises above shoulder"]
+    S3["Loading: deepest knee bend (max knee-hip ratio)"]
+    S4["Cocking: both arms raised (trophy position)"]
     S5["Acceleration: wrist velocity > 2x mean"]
     S6["Contact: from tagged contact_timestamp"]
     S7["Deceleration: velocity drops < 50% peak"]
@@ -36,8 +36,8 @@ flowchart TD
 
   subgraph core_metrics ["Core Metrics (MVP)"]
     M1["knee_flexion_min_deg (loading)"]
-    M2["elbow_angle_at_contact (contact)"]
-    M3["contact_point_height (contact)"]
+    M2["toss_peak_height (release)"]
+    M3["toss_laterality (release, behind only)"]
   end
 ```
 
