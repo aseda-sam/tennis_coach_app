@@ -39,6 +39,56 @@ alwaysApply: false
 
 - If a test requires local filesystem access and storage is cloud, **skip** with a clear message.
 
+## Test structure
+
+```
+backend/tests/
+  conftest.py                  # Root fixtures: client, db_session, test_user_id, temp_upload_dir
+  biomechanics_fixtures.py     # Shared helpers: _make_pose(), _make_serve_sequence()
+  api/                         # Contract tests (route-level)
+    test_serve_biomechanics_routes.py
+  services/                    # Unit tests (service-level)
+    biomechanics/
+      conftest.py              # Biomechanics-specific fixtures
+      test_metrics.py
+      test_phase_segmentation.py
+      test_posture_analysis.py
+      test_serve_biomechanics_service.py
+      test_toss_metrics.py
+    ball_detection/
+      test_contact_detector.py
+  test_*.py                    # Top-level: contract, unit, and integration tests
+```
+
+**Naming:** `test_<module_or_feature>.py`. Classes: `TestFeatureBehavior`. Methods: `test_<scenario>`.
+
+## Fixtures
+
+**Root `conftest.py` fixtures:**
+- `client` — `TestClient` with DB override + mock auth (returns `test_user_id`). Use for contract/API tests.
+- `db_session` — isolated DB session per test (rollback on teardown). Use when you need DB without HTTP.
+- `test_user_id` — `"00000000-0000-0000-0000-000000000000"`. Matches the mock auth user.
+- `temp_upload_dir` — `Path` to a temp directory, cleaned up after test.
+- `sample_video_content` — minimal MP4-like bytes for API upload tests.
+- `ensure_local_profile` (autouse) — forces `PROFILE=local` for all tests.
+
+**`biomechanics_fixtures.py` helpers** (import directly, not via conftest):
+- `_make_pose(left_wrist_y=..., right_wrist_y=..., knee_y=..., ...)` — build a single pose dict.
+- `_make_serve_sequence(num_frames=60, fps=30.0)` — build a full serve pose sequence with realistic phase progression.
+
+## Mock patches
+
+- **Patch where imported, not where defined.** If `app.services.foo` imports `bar` from `app.utils.bar`, patch `app.services.foo.bar`, not `app.utils.bar.bar`.
+- **Storage:** Patch `app.services.storage_service.storage_service` for file operations.
+- **Auth:** Already handled by `client` fixture (overrides `get_current_user`). For auth-specific tests, override manually.
+- **Redis/RQ:** Patch `rq.Queue` or the specific enqueue call. Don't start a real Redis connection.
+- **Settings:** Use `patch.object(settings, "FIELD", value)` — don't monkeypatch env vars directly.
+
+## DB vs pure unit tests
+
+- **Needs DB:** Any test using `client` or `db_session` fixtures (contract tests, integration tests).
+- **Pure unit:** Biomechanics service tests, utility tests — no DB fixture needed, run without Postgres.
+
 ## Where to look (canonical examples)
 
 - Tests: `backend/tests/`
