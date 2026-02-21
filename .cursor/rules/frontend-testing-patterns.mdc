@@ -1,0 +1,58 @@
+---
+description: Frontend testing conventions (Jest + React Testing Library)
+globs:
+  - frontend/src/**/*.test.{ts,tsx}
+  - frontend/src/**/*.tsx
+alwaysApply: false
+---
+
+# Frontend Testing Patterns
+
+## TDD Workflow (Required)
+
+- **Red**: Write failing test first that defines the behavior you want.
+- **Green**: Implement minimum code to pass the test.
+- **Refactor**: Clean up code while keeping tests green.
+- **Work in small steps**: 5-10 minute cycles, commit after each passing test.
+
+## What to Test (Required)
+
+- **Component rendering**: Render with representative props, assert visible text/structure.
+- **User interactions**: Click, type, keyboard navigation. Prefer `@testing-library/user-event` over `fireEvent`.
+- **State transitions**: Loading -> loaded -> error states via mocked hook responses.
+- **Conditional UI**: Verify elements appear/disappear based on props and state.
+- **Accessibility**: Assert ARIA attributes, roles, labels on interactive elements.
+
+## What NOT to Test
+
+- Implementation details (state values, hook internals, number of renders).
+- Third-party library behavior (React Query caching, Axios interceptor internals).
+- Pixel-perfect styling (use visual regression tools for that, not unit tests).
+
+## Testing Patterns (Required)
+
+### Provider Wrapper
+
+Components using React Query need `QueryClientProvider`. Create a shared `renderWithProviders` utility with `retry: false` and fresh `QueryClient` per test.
+
+### Mock Custom Hooks, Not Axios
+
+When testing components, mock the hook (`jest.mock('../hooks/useVideos')`) not the HTTP layer. Keeps tests focused on component behavior.
+
+### Mock Child Components
+
+When testing a parent with complex children: `jest.mock('../VideoOverlay', () => () => <div data-testid="mock-overlay" />)`.
+
+### Test File Location
+
+Colocate with component (`ComponentName.test.tsx` next to `ComponentName.tsx`) or in `__tests__/` subdirectory.
+
+### Naming
+
+`describe('ComponentName')` -> `it('renders X when Y')`. Focus on behavior, not method names.
+
+## Canonical Examples
+
+- Component test: `frontend/src/components/VideoPlayer.test.tsx`
+- Utility test: `frontend/src/utils/__tests__/validation.test.ts`
+- Component test (subdirectory): `frontend/src/components/__tests__/TimingPerformance.test.tsx`

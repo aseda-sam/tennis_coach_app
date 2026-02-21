@@ -1,82 +1,59 @@
 ---
-description: React frontend patterns
+description: React code patterns, component architecture, and performance
 globs:
-  - frontend/**/*.{ts,tsx,css}
+  - frontend/src/**/*.{ts,tsx}
 alwaysApply: false
 ---
 
 # Frontend Patterns (React)
 
-## Product UX Philosophy
-
-These constraints apply to every analysis and feedback view. They come from the app’s design philosophy (see AGENTS.md).
-
-- **Practice > analysis**: Every analysis view must have a clear “what next?” action. Don’t build features that reward staying in the app longer. Dead-end screens are a design failure.
-- **Progressive disclosure**: Never show all metrics or data at once. Default to collapsed or summary. Expand on demand. One teaching point per view when possible.
-- **Honest about the medium**: No coaching language in UI copy. Use “metrics”, “analysis”, “your serve data” — not “your coach recommends” or “we suggest.” Frame information as data, not instruction.
-- **Summary-first pattern**: When displaying multiple metrics, show a single-line summary per group (e.g. one key value), with expand for full detail.
-
 ## Principles
 
 - **KISS/DRY/YAGNI**: keep components small; extract shared logic after it repeats; avoid speculative abstractions.
 
-## UI Copy (Required)
+## Component Architecture (Required)
 
-- **Use Title Case** for buttons, headings, nav labels, and prominent UI text (e.g. "Find Serve Windows", "Re-Analyze Serves", "Go to Contact"). Use sentence case only for body/helper text and toasts.
+- Max ~300 lines per component (excluding imports/types). If larger, split into sub-components with clear single responsibilities.
+- Extract reusable logic into custom hooks. Keep components focused on rendering + event handling.
+- Use `React.memo` for leaf components that receive stable props and render in lists or frequently-updating parents.
+- Don't premature-optimize — only memoize when there's a measured or obvious perf concern.
 
-## Styling (Required)
+## Re-render Optimization (Required)
 
-- **Use design tokens**; don’t hardcode colors/spacing unless there’s no token.
-- **Follow the design system** in `frontend/DESIGN.md`.
-- **Prefer component-scoped CSS** (import `./Component.css`) and consistent class naming.
+- Derive state during render, not in effects. If a value can be computed from props/state, use `useMemo` — don't `useEffect` + `setState`.
+- Use functional `setState` (`setCount(prev => prev + 1)`) when callbacks reference current state — avoids stale closures and removes state from dependency arrays.
+- Hoist default non-primitive props (objects, arrays) outside the component to prevent re-renders from new references.
+- Use `useRef` for transient values that change frequently but don't need to trigger renders (e.g., animation frame IDs, timer IDs, previous values).
+- Avoid subscribing to state you only use inside event handlers — read it via ref instead.
+- Use `useCallback` for functions passed as props to memoized children or used in dependency arrays.
+- Don't wrap simple primitive expressions in `useMemo` — the overhead exceeds the cost of recomputation.
 
-### Form Fields (Required)
+## Code Splitting (Required for new routes/heavy components)
 
-- **Required fields**: Use a red asterisk (`*`) with `aria-label="required"` for accessibility. Style with `.required-asterisk` class (red color, semibold weight, small left margin).
-- **Optional fields**: Prefer required-only labeling (asterisk) and omit "(optional)" by default. Add "(optional)" only when it reduces ambiguity (e.g., when most fields are required, or the optionality is surprising).
-- **Radio buttons**: When there are only 2 options, use horizontal layout (`.radio-group--horizontal` with `display: flex; flex-direction: row; gap: var(--spacing-lg)`). For 3+ options, use vertical grid layout.
-- **Checkboxes**: When a checkbox applies to a specific field (e.g., "apply to existing items"), nest it within that field's container with a visual separator (border-top) and clear context in the label text.
-- **Avoid jargon in labels**: Prefer user language over internal terms (e.g., “Who Is Serving?” over “Default Player”). Use helper text to explain impact in plain language (e.g., “New serves detected in this video will be saved under this player.”).
-- **Field spacing**: Use consistent spacing between fields (`var(--spacing-lg)` or `var(--spacing-xl)`).
-- **Helper text**: Use `.field-note` class for helper text below fields (small font, muted color, relaxed line-height).
-- **Select dropdowns**: Use custom arrow styling for consistency: `appearance: none` + custom SVG arrow with proper spacing (`padding-right: var(--spacing-4xl)`, `background-position: right var(--spacing-md) center`). Use neutral gray arrow color (`stroke='%23666'`) to match form controls.
+- Use `React.lazy()` + `<Suspense>` for route-level code splitting when adding new top-level views.
+- Don't dynamically import small or always-needed components — only heavy, conditionally-rendered ones.
 
-### Focus States (Accessibility)
+## Error Boundaries (Required)
 
-- **Preserve keyboard navigation**: Focus indicators are required for accessibility. Don't remove them without providing alternative visual feedback.
-- **For custom-styled form controls**: When native inputs are wrapped in styled containers (e.g., radio buttons in custom cards), remove the native input's focus outline (`input:focus { outline: none; }`) and ensure the container provides clear visual feedback (e.g., `.container.selected` with border/background changes).
-- **For standard inputs**: Keep or style focus indicators appropriately. Use design tokens (`--focus-outline-width`, `--focus-outline-color`) when customizing.
-- **Pattern**: If removing a focus outline, verify the element or its container has clear selected/active states for keyboard users.
+- Root error boundary in `App.tsx` is required — catches unhandled errors and shows a recovery UI.
+- Add local error boundaries around independently-failing sections (e.g., video player, analysis dashboard) so one crash doesn't take down the whole page.
 
 ## Data Fetching (Required)
 
-- **Use React Query** for server state (`useQuery`/`useMutation`); don’t hand-roll fetch state machines.
-- **Invalidate queries** after mutations (don’t manually “sync” caches).
+- **Use React Query** for server state (`useQuery`/`useMutation`); don't hand-roll fetch state machines.
+- **Invalidate queries** after mutations (don't manually "sync" caches).
 
-## Button Patterns (Required)
+## Import Hygiene
 
-- **Action buttons**: Use clear visual hierarchy with background, border, and shadow. Minimum touch target size: 36px height.
-- **Primary actions**: Use primary color with sufficient contrast. Include hover states with subtle transform (`translateY(-1px)`) and shadow elevation.
-- **Primary hover consistency**: Never allow generic button hover selectors to override primary button styles (avoid white-out/contrast loss). Scope generic hovers with exclusions like `:not(.primary)` when needed.
-- **Secondary actions**: Use neutral backgrounds with borders. On hover, show color change and elevation.
-- **Destructive actions**: Use error color scheme (red) on hover, with soft background. Always provide clear visual feedback.
-- **Button states**: Include hover, active, and disabled states. Use transitions for smooth interactions.
-- **Card actions**: Group action buttons together in a dedicated `.card-actions` section at the bottom of cards. Separate from information content with a border-top divider. Limit to 3 actions per card. Align actions to the right (or left for RTL). Use consistent spacing between grouped buttons.
+- Import directly from the source file. Don't create barrel `index.ts` files that re-export entire directories — they defeat tree-shaking.
+- Exception: `lib/index.ts` is fine for small utility re-exports (e.g., `cn`).
 
-## Loading States (Required)
+## Conditional Rendering
 
-- **Use one shared loader pattern**: Prefer `LoadingIndicator` (`frontend/src/components/LoadingIndicator.tsx`) for page-level, panel-level, and overlay loading states.
-- **Avoid ad-hoc spinner classes**: Don’t create new generic `.spinner` / `.loading-spinner` styles unless there is a strong component-specific reason.
-- **Always include user-facing loading text**: Add clear labels (e.g., “Loading videos...”, “Loading Video...”) so users understand what is happening.
-- **Choose the right loading scope**:
-  - Full-page boot/load: centered loader with preserved layout spacing.
-  - Panel/card loading: loader inside the container to avoid layout jump.
-  - Media loading (video/canvas): overlay loader with readable contrast.
-- **Use React Query state intentionally**: Use `isLoading` for first load and `isFetching` for background refreshes; avoid blocking the full UI during background refetch.
-- **Prevent layout shift**: Reserve space (`min-height`/stable containers) for loading regions rather than replacing content with unstyled text.
-- **Accessibility**: Loading components should expose status semantics (`role="status"`, `aria-live="polite"`) and should not remove focus indicators.
+- Prefer ternary (`condition ? <A /> : null`) over `&&` when the left side could be falsy-but-renderable (`0`, `""`).
+- `&&` is fine when the condition is a boolean or null check.
 
-## Typescript
+## TypeScript
 
 - **Avoid `any`**; type API responses and error surfaces.
 - Prefer discriminated unions for UI state when states multiply.
@@ -85,11 +62,15 @@ These constraints apply to every analysis and feedback view. They come from the 
 
 - Design tokens: `frontend/src/design-tokens.css`
 - CSS component patterns: `frontend/DESIGN.md`
+- Design conventions & UI patterns: `.cursor/rules/frontend-design.mdc`
+- API layer conventions: `.cursor/rules/frontend-api-patterns.mdc`
+- Frontend testing patterns: `.cursor/rules/frontend-testing-patterns.mdc`
 
-## When to update docs
+## When to Update Docs
 
 - **If you add a new CSS component pattern** (new class convention, new component structure): add it to `frontend/DESIGN.md`.
 - **If you add a new behavioral rule** (new required pattern, constraint, or anti-pattern): add it here in `react-frontend.mdc`, not in `DESIGN.md`.
+- **If you add a new design convention** (styling, motion, UX philosophy): add it to `frontend-design.mdc`.
 
 ## Before Committing Frontend Files (Required)
 
