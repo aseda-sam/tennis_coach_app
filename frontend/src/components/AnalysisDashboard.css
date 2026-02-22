@@ -255,8 +255,45 @@
 .analysis-dashboard__playback-controls {
   display: flex;
   align-items: center;
+  gap: var(--spacing-sm);
   border-top: 1px solid var(--color-border);
   padding: var(--spacing-sm) var(--spacing-lg);
+}
+
+/* Speed selector — segmented button group */
+.analysis-dashboard__speed-selector {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.analysis-dashboard__speed-btn {
+  padding: 6px 10px;
+  border: none;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-mono);
+  cursor: pointer;
+  transition: var(--transition-normal);
+}
+
+.analysis-dashboard__speed-btn:last-child {
+  border-right: none;
+}
+
+.analysis-dashboard__speed-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface-secondary);
+}
+
+.analysis-dashboard__speed-btn--active {
+  background: var(--color-court-blue-soft);
+  color: var(--color-court-blue);
+  font-weight: var(--font-weight-semibold);
 }
 
 .analysis-dashboard__loop-btn {

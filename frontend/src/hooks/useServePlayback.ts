@@ -13,6 +13,7 @@ interface UseServePlaybackResult {
   isPlaying: boolean;
   loopCurrentPhase: boolean;
   loopPhaseWindow: PhaseWindow | null;
+  playbackSpeed: number;
   handlePlayPause: () => void;
   handleSeek: (t: number) => void;
   handleTimeUpdate: (t: number) => void;
@@ -20,6 +21,7 @@ interface UseServePlaybackResult {
   handleContactJump: (contactTimestamp: number, phases: PhaseWindow[]) => void;
   handleToggleLoopCurrentPhase: (currentPhase: PhaseWindow | undefined) => void;
   handleServeNavigate: (index: number) => void;
+  setPlaybackSpeed: (speed: number) => void;
 }
 
 export function useServePlayback({
@@ -32,6 +34,7 @@ export function useServePlayback({
   const [loopPhaseWindow, setLoopPhaseWindow] = useState<PhaseWindow | null>(
     null
   );
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
   const currentServe = sortedServeWindows[currentServeIndex] ?? null;
 
@@ -42,6 +45,7 @@ export function useServePlayback({
       setIsPlaying(false);
       setLoopCurrentPhase(false);
       setLoopPhaseWindow(null);
+      setPlaybackSpeed(1);
     }
   }, [currentServe?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -51,7 +55,7 @@ export function useServePlayback({
 
     const interval = setInterval(() => {
       setCurrentTime((t) => {
-        const next = t + 1 / 30;
+        const next = t + (1 / 30) * playbackSpeed;
         // When looping a phase, keep playback pinned to that phase window.
         if (loopCurrentPhase && loopPhaseWindow) {
           if (
@@ -75,7 +79,13 @@ export function useServePlayback({
     }, 1000 / 30);
 
     return () => clearInterval(interval);
-  }, [isPlaying, currentServe, loopCurrentPhase, loopPhaseWindow]);
+  }, [
+    isPlaying,
+    currentServe,
+    loopCurrentPhase,
+    loopPhaseWindow,
+    playbackSpeed,
+  ]);
 
   const handlePlayPause = useCallback(() => {
     setIsPlaying((p) => !p);
@@ -156,6 +166,7 @@ export function useServePlayback({
     isPlaying,
     loopCurrentPhase,
     loopPhaseWindow,
+    playbackSpeed,
     handlePlayPause,
     handleSeek,
     handleTimeUpdate,
@@ -163,5 +174,6 @@ export function useServePlayback({
     handleContactJump,
     handleToggleLoopCurrentPhase,
     handleServeNavigate,
+    setPlaybackSpeed,
   };
 }

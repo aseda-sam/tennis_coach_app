@@ -19,6 +19,8 @@ function formatMetricValue(value: number | null, unit: string): string {
   return value.toFixed(2);
 }
 
+const SPEED_OPTIONS = [0.25, 0.5, 1] as const;
+
 interface AnalysisDashboardMetricsProps {
   currentServe: ServeWindow;
   phases: PhaseWindow[];
@@ -28,10 +30,12 @@ interface AnalysisDashboardMetricsProps {
   currentTime: number;
   loopCurrentPhase: boolean;
   loopPhaseLabel: string | null;
+  playbackSpeed: number;
   onSeek: (t: number) => void;
   onPhaseJump: (phase: PhaseWindow) => void;
   onContactJump: (contactTimestamp: number) => void;
   onToggleLoopCurrentPhase: () => void;
+  onSpeedChange: (speed: number) => void;
   onMetricClick?: (metric: MetricValue) => void;
 }
 
@@ -44,10 +48,12 @@ const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
   currentTime,
   loopCurrentPhase,
   loopPhaseLabel,
+  playbackSpeed,
   onSeek,
   onPhaseJump,
   onContactJump,
   onToggleLoopCurrentPhase,
+  onSpeedChange,
   onMetricClick,
 }) => {
   return (
@@ -143,6 +149,26 @@ const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
       {/* Playback controls */}
       {phases.length > 0 && (
         <div className="analysis-dashboard__playback-controls">
+          <div
+            className="analysis-dashboard__speed-selector"
+            role="group"
+            aria-label="Playback speed"
+          >
+            {SPEED_OPTIONS.map((speed) => (
+              <button
+                key={speed}
+                type="button"
+                className={`analysis-dashboard__speed-btn${
+                  playbackSpeed === speed
+                    ? ' analysis-dashboard__speed-btn--active'
+                    : ''
+                }`}
+                onClick={() => onSpeedChange(speed)}
+              >
+                {speed}x
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             className={`analysis-dashboard__loop-btn${

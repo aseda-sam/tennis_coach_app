@@ -18,6 +18,7 @@ interface HeroViewProps {
   onPlayPause: () => void;
   onSeek: (time: number) => void;
   annotations?: MetricValue[];
+  playbackSpeed?: number;
 }
 
 const HeroView: React.FC<HeroViewProps> = ({
@@ -33,6 +34,7 @@ const HeroView: React.FC<HeroViewProps> = ({
   onPlayPause,
   onSeek,
   annotations,
+  playbackSpeed = 1,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pipVideoRef = useRef<HTMLVideoElement>(null);
@@ -63,6 +65,12 @@ const HeroView: React.FC<HeroViewProps> = ({
       video.pause();
     }
   }, [isPlaying, activeVideoRef, viewMode]);
+
+  // Sync playback rate on video elements
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.playbackRate = playbackSpeed;
+    if (pipVideoRef.current) pipVideoRef.current.playbackRate = playbackSpeed;
+  }, [playbackSpeed]);
 
   // Keep video in sync with external time changes (phase jumps, loop resets)
   useEffect(() => {

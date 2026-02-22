@@ -110,6 +110,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     isPlaying,
     loopCurrentPhase,
     loopPhaseWindow,
+    playbackSpeed,
     handlePlayPause,
     handleSeek,
     handleTimeUpdate,
@@ -117,6 +118,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     handleContactJump,
     handleToggleLoopCurrentPhase,
     handleServeNavigate,
+    setPlaybackSpeed,
   } = useServePlayback({ sortedServeWindows });
 
   const { data: biomechanicsReport } = useServeBiomechanicsReport(
@@ -360,6 +362,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   onPlayPause={handlePlayPause}
                   onSeek={handleSeek}
                   annotations={annotationMetrics}
+                  playbackSpeed={playbackSpeed}
                 />
               </ErrorBoundary>
 
@@ -373,10 +376,12 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 currentTime={currentTime}
                 loopCurrentPhase={loopCurrentPhase}
                 loopPhaseLabel={loopPhaseWindow?.phase_label ?? null}
+                playbackSpeed={playbackSpeed}
                 onSeek={handleSeek}
                 onPhaseJump={wrappedPhaseJump}
                 onContactJump={handleContactJumpWithPhases}
                 onToggleLoopCurrentPhase={handleToggleLoopWithPhase}
+                onSpeedChange={setPlaybackSpeed}
                 onMetricClick={handleMetricClick}
               />
             </>
