@@ -21,7 +21,7 @@ docker compose exec frontend npm test
 # Backend lint/format
 cd backend && ruff check . --fix && ruff format .
 
-      # Frontend lint
+# Frontend lint
 cd frontend && npm run lint
 
 # Frontend format (run before committing any frontend file)
@@ -50,10 +50,14 @@ backend/
     api/schemas/      # Pydantic request/response models
     models/           # SQLAlchemy ORM models
     services/         # Business logic (no HTTP concerns)
+    dependencies/     # FastAPI dependency injection helpers
     core/config.py    # Settings / env vars
     core/database.py  # DB session setup
     utils/            # Error handling, auth helpers, logging, metrics
   alembic/            # DB migrations
+  docs/               # Operational backend docs (config, schema, jobs, deploy)
+  ml_models/          # Pre-trained model weights (MediaPipe pose, YOLO ball detection)
+  scripts/            # Utility and maintenance scripts (backfill, annotation, DB tools)
   tests/              # pytest tests
 frontend/
   src/
@@ -72,6 +76,7 @@ data/
     demo/             # Curated demo videos (controlled subset visible to users)
   database/           # Local DB volume mount (empty until docker compose up)
 docs/
+  decisions/          # Architectural decision records (ADRs)
   diagrams/           # Mermaid architecture diagrams (system overview, auth, upload,
                       # analysis pipeline, serve feedback pipeline, data flow, DB relationships)
   assets/             # Screenshots and images for README/docs
