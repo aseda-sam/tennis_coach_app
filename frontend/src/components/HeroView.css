@@ -39,21 +39,22 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-top: 1px solid var(--color-border);
 }
 
 .hero-view__play-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 64px;
-  padding: var(--spacing-sm) var(--spacing-lg);
+  min-width: 80px;
+  padding: var(--spacing-sm) var(--spacing-xl);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: var(--transition-normal);
 }
@@ -65,7 +66,7 @@
 
 .hero-view__scrubber {
   flex: 1;
-  height: 4px;
+  height: 6px;
   cursor: pointer;
   accent-color: var(--color-primary);
 }
@@ -73,7 +74,7 @@
 .hero-view__toggle-btn {
   padding: var(--spacing-sm) var(--spacing-lg);
   border: 1px solid var(--color-primary-light);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--color-primary-soft);
   color: var(--color-primary-darker);
   font-size: var(--font-size-sm);

@@ -131,7 +131,10 @@
 /* Video Grid - Card Layout */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(var(--layout-card-grid-min), 1fr)
+  );
   gap: 24px;
   margin-top: 0;
 }
@@ -140,18 +143,18 @@
 .video-card {
   background: var(--color-surface);
   border-radius: 14px;
-  box-shadow: var(--shadow-xl);
+  box-shadow: none;
   overflow: hidden;
   transition: var(--transition-normal);
-  border: 1px solid var(--color-border-light);
+  border: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   cursor: pointer;
 }
 
 .video-card:hover {
-  box-shadow: var(--shadow-2xl);
-  transform: translateY(-1px);
+  box-shadow: none;
+  border-color: var(--color-border-dark);
 }
 
 /* Thumbnail Area (top 2/3 of card) */

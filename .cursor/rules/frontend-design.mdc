@@ -7,6 +7,21 @@ alwaysApply: false
 
 # Frontend Design Conventions
 
+## Read First: Visual Identity
+
+Before writing any component or CSS, read `frontend/VISUAL_IDENTITY.md`. It defines:
+
+- The aesthetic direction — what this app should look and feel like
+- Typography system — DM Sans + DM Mono, when and how to use each
+- Color philosophy — what each color is *for*, not just its hex value
+- Layout grammar — page containers, spacing rhythm, grid patterns
+- Key view descriptions — what each major view should feel like
+- What to avoid — concrete anti-patterns that produce generic UI
+
+The rules below assume you have read and internalized that document.
+
+---
+
 ## Product UX Philosophy
 
 These constraints apply to every analysis and feedback view. They come from the app's design philosophy (see AGENTS.md).

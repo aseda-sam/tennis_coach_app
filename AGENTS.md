@@ -57,6 +57,8 @@ backend/
   scripts/            # Utility and maintenance scripts (backfill, annotation, DB tools)
   tests/              # pytest tests
 frontend/
+  VISUAL_IDENTITY.md  # Aesthetic north star — read before any frontend work
+  DESIGN.md           # CSS component patterns reference
   src/
     components/       # React components
     hooks/            # Custom React hooks
@@ -148,6 +150,8 @@ A pre-commit hook runs automatically on every `git commit`. If it fails, the com
 - Do not add `Co-Authored-By` lines to commit messages.
 
 ## Detailed rules
+
+**Frontend design:** Before any frontend work, read `frontend/VISUAL_IDENTITY.md` — it defines the aesthetic direction, typography system (DM Sans + DM Mono), color philosophy, layout grammar, and key view descriptions.
 
 Comprehensive coding conventions live in `.cursor/rules/`. These files are **not auto-loaded** — read the relevant one when working in that domain:
 

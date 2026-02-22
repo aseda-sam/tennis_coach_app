@@ -1,9 +1,9 @@
 /* Analysis Dashboard — Focus-mode serve viewer */
 
 .analysis-dashboard {
-  max-width: var(--container-max-width);
+  max-width: var(--layout-content-max-width);
   margin: 0 auto;
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg) var(--layout-page-gutter);
   min-height: 100vh;
 }
 
@@ -140,16 +140,11 @@
 }
 
 .analysis-dashboard__action-btn--primary {
-  background: linear-gradient(
-    135deg,
-    var(--color-success),
-    var(--color-success-dark)
-  );
+  background: var(--color-primary);
   color: white;
 }
 
 .analysis-dashboard__action-btn--primary:hover:not(:disabled) {
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
@@ -168,17 +163,12 @@
 }
 
 .analysis-dashboard__action-btn--accept-all {
-  background: linear-gradient(
-    135deg,
-    var(--color-success),
-    var(--color-success-dark)
-  );
+  background: var(--color-primary);
   color: white;
   font-weight: var(--font-weight-semibold);
 }
 
 .analysis-dashboard__action-btn--accept-all:hover:not(:disabled) {
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
 }
 
@@ -226,7 +216,7 @@
 .analysis-dashboard__timeline-wrapper {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--spacing-md) var(--spacing-lg);
 }
 
@@ -236,7 +226,7 @@
   gap: var(--spacing-sm);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--spacing-md) var(--spacing-lg);
 }
 
@@ -247,7 +237,7 @@
 }
 
 .analysis-dashboard__phase-chip {
-  padding: 6px 10px;
+  padding: var(--spacing-xs) var(--spacing-md);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
   background: var(--color-surface-secondary);
@@ -266,6 +256,7 @@
   border-color: var(--color-primary);
   background: var(--color-primary-soft);
   color: var(--color-primary-darker);
+  font-weight: var(--font-weight-medium);
 }
 
 .analysis-dashboard__phase-actions {
@@ -338,7 +329,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-lg) var(--spacing-xl);
 }
 
 .analysis-dashboard__metric-card--clickable {
@@ -357,14 +348,18 @@
 
 .analysis-dashboard__metric-label {
   font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-muted);
-  text-transform: capitalize;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
 }
 
 .analysis-dashboard__metric-value {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-display-sm);
+  font-weight: 500;
+  color: var(--color-ink-heavy);
+  line-height: 1.1;
 }
 
 /* No Serves State */
