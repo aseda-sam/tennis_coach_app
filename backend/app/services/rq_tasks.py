@@ -575,9 +575,9 @@ def analyze_pose_detection_scout_refine_rq(
 
             # Ball detection on serve windows (optional: skip if import/runtime fails)
             try:
-                from app.services.ball_detection import TrackNetBallDetectionService
+                from app.services.ball_detection import YoloBallDetectionService
 
-                ball_service = TrackNetBallDetectionService()
+                ball_service = YoloBallDetectionService()
                 ball_results = ball_service.analyze_serve_windows(
                     video_path=Path(local_path),
                     windows=windows,

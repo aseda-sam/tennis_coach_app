@@ -461,3 +461,90 @@ class TestDetectContactFromBallWristProximity:
         assert result_v1 is None
         assert result_v2 is not None
         assert abs(result_v2 - (50.0 / fps)) < 0.05
+
+
+class TestInterpolatedFrameGating:
+    """Interpolated frames (from spline post-processing) bypass the confidence gate."""
+
+    def test_interpolated_frame_passes_confidence_gate(self) -> None:
+        """An interpolated frame with confidence=0.0 should still be eligible for contact."""
+        fps = 30.0
+        contact_frame = 45
+        # Build a ball list where the contact frame is interpolated (confidence = 0.0)
+        ball_list = [
+            {
+                "frame_index": i,
+                "timestamp_ms": i * 1000.0 / fps,
+                "ball_x": 640.0 if i == contact_frame else 400.0,
+                "ball_y": 150.0 if i == contact_frame else 300.0,
+                "confidence": 0.0,  # would normally fail the confidence gate
+                "interpolated": i
+                == contact_frame,  # only contact frame is interpolated
+            }
+            for i in range(30, 60)
+        ]
+        # Toss peak at first frame so contact frame is eligible
+        ball_list[0]["ball_y"] = 80.0
+
+        pose_frames = []
+        for i in range(70):
+            if i == contact_frame:
+                pose_frames.append(_make_pose_frame(640.0, 150.0, "right"))
+            else:
+                pose_frames.append(_make_pose_frame(400.0, 400.0, "right"))
+
+        ball_detection = _make_ball_detection(ball_list)
+        pose_detection = _make_pose_detection(pose_frames)
+        serve_window = _make_serve_window(0.0, 2.5, contact_timestamp=None)
+        video = _make_video(fps)
+
+        result = detect_contact_timestamp(
+            ball_detection=ball_detection,
+            pose_detection=pose_detection,
+            serve_window=serve_window,
+            video=video,
+            dominant_hand="right",
+        )
+
+        # Should detect contact at the interpolated frame despite confidence=0.0
+        assert result is not None
+        assert abs(result - contact_frame / fps) < 0.05
+
+    def test_non_interpolated_low_confidence_is_filtered(self) -> None:
+        """A non-interpolated frame with low confidence should still be rejected."""
+        fps = 30.0
+        contact_frame = 45
+        ball_list = [
+            {
+                "frame_index": i,
+                "timestamp_ms": i * 1000.0 / fps,
+                "ball_x": 640.0 if i == contact_frame else 400.0,
+                "ball_y": 150.0 if i == contact_frame else 300.0,
+                "confidence": 0.1,  # below MIN_BALL_CONFIDENCE=0.3
+                "interpolated": False,  # not interpolated → gate applies
+            }
+            for i in range(30, 60)
+        ]
+        ball_list[0]["ball_y"] = 80.0
+
+        pose_frames = []
+        for i in range(70):
+            if i == contact_frame:
+                pose_frames.append(_make_pose_frame(640.0, 150.0, "right"))
+            else:
+                pose_frames.append(_make_pose_frame(400.0, 400.0, "right"))
+
+        ball_detection = _make_ball_detection(ball_list)
+        pose_detection = _make_pose_detection(pose_frames)
+        serve_window = _make_serve_window(0.0, 2.5, contact_timestamp=None)
+        video = _make_video(fps)
+
+        result = detect_contact_timestamp(
+            ball_detection=ball_detection,
+            pose_detection=pose_detection,
+            serve_window=serve_window,
+            video=video,
+            dominant_hand="right",
+        )
+
+        assert result is None

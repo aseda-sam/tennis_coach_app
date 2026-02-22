@@ -24,7 +24,9 @@ MIN_BALL_CONFIDENCE = 0.3
 DISTANCE_THRESHOLD_FRACTION = 0.15
 
 # Ball must be in upper portion of frame (contact is overhead). Fraction of frame height.
-UPPER_FRAME_Y_FRACTION = 0.5
+# ByteTrack separates static floor balls into different tracks (only the ball's track is
+# kept), so we can safely allow contact search in the upper 65% of the frame.
+UPPER_FRAME_Y_FRACTION = 0.65
 
 # Toss window for peak: first 70% of serve duration (ball goes up then down)
 TOSS_WINDOW_FRACTION = 0.7
@@ -115,7 +117,10 @@ def _detect_contact_by_proximity(
         ts_sec = ts_ms / 1000.0
         if ts_sec < min_ts_sec or ts_sec > end_sec or ts_sec < start_sec:
             continue
-        if det.get("confidence") is None or det["confidence"] < MIN_BALL_CONFIDENCE:
+        # Interpolated frames always pass the confidence gate (spline fills are trusted)
+        if not det.get("interpolated", False) and (
+            det.get("confidence") is None or det["confidence"] < MIN_BALL_CONFIDENCE
+        ):
             continue
         ball_x = det.get("ball_x")
         ball_y = det.get("ball_y")
@@ -175,7 +180,10 @@ def _collect_proximity_candidates(
         ts_sec = ts_ms / 1000.0
         if ts_sec < min_ts_sec or ts_sec > end_sec or ts_sec < start_sec:
             continue
-        if det.get("confidence") is None or det["confidence"] < MIN_BALL_CONFIDENCE:
+        # Interpolated frames always pass the confidence gate (spline fills are trusted)
+        if not det.get("interpolated", False) and (
+            det.get("confidence") is None or det["confidence"] < MIN_BALL_CONFIDENCE
+        ):
             continue
         ball_x = det.get("ball_x")
         ball_y = det.get("ball_y")

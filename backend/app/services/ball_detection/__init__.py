@@ -1,5 +1,7 @@
 """Ball detection service for tennis ball tracking in video."""
 
-from app.services.ball_detection.detection_service import BallDetectionService
+from app.services.ball_detection.yolo_detection_service import (
+    YoloBallDetectionService,
+)
 
-__all__ = ["BallDetectionService"]
+__all__ = ["YoloBallDetectionService"]

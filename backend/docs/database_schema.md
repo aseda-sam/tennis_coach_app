@@ -34,12 +34,13 @@ Stores player profiles (one default per user, with optional additional players).
 
 ## ball_detections
 
-Stores YOLO ball detection results for a video (serve windows only).
+Stores ball detection results for a video (serve windows only). Uses YOLO + ByteTrack.
 
 - `id` (PK)
 - `video_id` (FK -> `videos.id`, CASCADE)
 - `total_frames`, `frames_with_ball`, `detection_rate`
-- `ball_data` (JSON text: list of per-frame detections with frame_index, timestamp_ms, ball_x, ball_y, confidence)
+- `ball_data` (JSON text: list of per-frame detections with frame_index, timestamp_ms, ball_x, ball_y, confidence, interpolated)
+  - `interpolated: bool` — True if position was filled by cubic spline post-processing
 - `processing_time_seconds`, `frame_processing_rate`
 - `status`, `error_message`
 - `time_windows` (JSON: [{"start_ms", "end_ms"}, ...])

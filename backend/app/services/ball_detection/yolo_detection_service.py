@@ -1,15 +1,13 @@
 """Ball detection service using fine-tuned YOLOv8 + ByteTrack for tennis ball tracking.
 
-Replaces TrackNetV2 for our use case (close-up portrait phone footage where the
-ball is 20-100+ px). Public interface is identical to TrackNetBallDetectionService
-so rq_tasks.py requires only a one-line import swap.
+Close-up portrait phone footage where the ball is 20-100+ px.
 
 Internal flow per window:
-  1. Iterate frames individually (no triplet stacking needed)
-  2. Run YOLO inference → sv.Detections → ByteTrack tracker assigns track IDs
-  3. After all frames: select the track with highest total displacement (= moving ball)
+  1. Iterate frames individually
+  2. Run YOLO inference -> sv.Detections -> ByteTrack tracker assigns track IDs
+  3. After all frames: select the track with highest peak displacement (= moving ball)
   4. Build output dicts using only positions from the selected track
-  5. After all windows: apply TrajectorySmoother (velocity filter + spline interpolation)
+  5. After all windows: apply TrajectorySmoother (spline interpolation for short gaps)
 """
 
 from __future__ import annotations
@@ -53,18 +51,20 @@ def _rotate_frame(frame: np.ndarray, rotation: int) -> np.ndarray:
     return frame
 
 
+# Sliding window size for peak displacement track selection.
+# 5 frames ≈ 0.17s at 30fps — captures the toss arc burst.
+PEAK_WINDOW: int = 5
+
+
 def _select_ball_track(
     tracked_frames: List[tuple],
 ) -> Optional[int]:
-    """Pick the track ID with the highest mean displacement per frame (= moving ball).
+    """Pick the track ID with the highest peak displacement (= moving ball).
 
-    Static background objects (court balls, lights) get tracks with near-zero
-    per-frame displacement despite appearing in many frames. The tossed ball
-    has high per-frame displacement (fast movement over a short arc).
-
-    Uses mean displacement rather than total displacement so that a static object
-    jittering 1-2px/frame over 125 frames doesn't beat a ball toss moving
-    30px/frame over 20 frames.
+    For each track, computes pairwise displacements between consecutive positions,
+    then finds the maximum total displacement in any sliding window of PEAK_WINDOW
+    frames. This catches the toss arc regardless of how many stationary ball-in-hand
+    frames exist in the same track.
 
     Args:
         tracked_frames: List of (frame_index, timestamp_ms, sv.Detections) tuples.
@@ -84,21 +84,25 @@ def _select_ball_track(
             track_positions.setdefault(int(tid), []).append((cx, cy))
 
     best_id: Optional[int] = None
-    best_mean_disp = 0.0
+    best_peak = 0.0
     for tid, positions in track_positions.items():
         n_pairs = len(positions) - 1
         if n_pairs <= 0:
             continue
-        total_disp = sum(
+        displacements = [
             math.hypot(
                 positions[i + 1][0] - positions[i][0],
                 positions[i + 1][1] - positions[i][1],
             )
             for i in range(n_pairs)
+        ]
+        window = min(PEAK_WINDOW, len(displacements))
+        peak = max(
+            sum(displacements[i : i + window])
+            for i in range(len(displacements) - window + 1)
         )
-        mean_disp = total_disp / n_pairs
-        if mean_disp > best_mean_disp:
-            best_id, best_mean_disp = tid, mean_disp
+        if peak > best_peak:
+            best_id, best_peak = tid, peak
 
     return best_id
 
@@ -158,9 +162,6 @@ class YoloBallDetectionService:
         confidence: float = DEFAULT_CONFIDENCE,
     ) -> Dict[str, Any]:
         """Run YOLO ball detection within the given time windows.
-
-        Same return schema as TrackNetBallDetectionService so downstream code
-        (contact_detector, toss_metrics, serve_biomechanics_service) works unchanged.
 
         Per-frame dict schema (in ball_detections list):
             frame_index: int
@@ -269,7 +270,7 @@ class YoloBallDetectionService:
 
             cap.release()
 
-            # Select the ball track: highest total displacement
+            # Select the ball track: highest peak displacement
             ball_track_id = _select_ball_track(tracked_frames)
 
             # Build output dicts from the selected track
@@ -304,9 +305,9 @@ class YoloBallDetectionService:
                     }
                 )
 
-        # Post-processing: velocity filter + spline interpolation.
-        # Relaxed params vs TrackNet defaults: YOLO detects the ball in fewer frames
-        # but with high confidence, so we allow larger gaps and fewer anchors.
+        # Spline interpolation: fill short gaps where YOLO missed the ball.
+        # Relaxed params: YOLO detects the ball in fewer frames but with high
+        # confidence, so we allow larger gaps and fewer anchors.
         smoother = TrajectorySmoother(
             max_gap_frames=15,
             min_anchors=2,

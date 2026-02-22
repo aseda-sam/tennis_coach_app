@@ -190,8 +190,8 @@ class TestSelectBallTrack:
         result = _select_ball_track(tracked_frames)
         assert result == 5
 
-    def test_multiple_moving_tracks_picks_highest_mean_displacement(self) -> None:
-        """With two moving tracks, pick the one with higher per-frame displacement."""
+    def test_multiple_moving_tracks_picks_fastest(self) -> None:
+        """With two moving tracks, pick the one with higher peak displacement."""
         tracked_frames = []
         for i in range(5):
             det = MagicMock()
@@ -235,6 +235,46 @@ class TestSelectBallTrack:
                 dtype=np.float32,
             )
             tracked_frames.append((50 + i, (50 + i) * 33.3, det))
+
+        result = _select_ball_track(tracked_frames)
+        assert result == 2
+
+    def test_ball_in_hand_then_toss_beats_jittery_track(self) -> None:
+        """A track with 100 stationary frames (ball-in-hand) followed by 15 fast
+        frames (toss arc) should still be selected over a jittery background track.
+        This is the real-world scenario where ByteTrack gives ball-in-hand and
+        toss arc the same track ID.
+        """
+        tracked_frames = []
+        # Track 1: jittery background object, 80 frames, ~2px per frame
+        for i in range(80):
+            det = MagicMock()
+            jitter = (i % 3) - 1
+            det.tracker_id = np.array([1], dtype=np.int32)
+            det.xyxy = np.array(
+                [[100 + jitter, 200 + jitter, 120 + jitter, 220 + jitter]],
+                dtype=np.float32,
+            )
+            tracked_frames.append((i, i * 33.3, det))
+
+        # Track 2: ball-in-hand (stationary) for 100 frames, then toss arc for 15
+        for i in range(100):
+            det = MagicMock()
+            det.tracker_id = np.array([2], dtype=np.int32)
+            det.xyxy = np.array(
+                [[300, 500, 320, 520]],  # stationary at hand level
+                dtype=np.float32,
+            )
+            tracked_frames.append((i, i * 33.3, det))
+
+        for i in range(15):
+            det = MagicMock()
+            det.tracker_id = np.array([2], dtype=np.int32)
+            det.xyxy = np.array(
+                [[300, 500 - i * 40, 320, 520 - i * 40]],  # toss arc moving upward
+                dtype=np.float32,
+            )
+            tracked_frames.append((100 + i, (100 + i) * 33.3, det))
 
         result = _select_ball_track(tracked_frames)
         assert result == 2
