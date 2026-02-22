@@ -1528,8 +1528,7 @@
 
 .video-controls-below__toggle-input:focus
   + .video-controls-below__toggle-slider {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .video-controls-below__toggle-label {

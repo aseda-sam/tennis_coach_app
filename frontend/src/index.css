@@ -41,13 +41,10 @@ code {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* Focus ring: keyboard navigation only */
-*:focus {
-  outline: none;
-}
+/* No focus outlines */
+*:focus,
 *:focus-visible {
-  outline: var(--focus-outline-width) solid var(--focus-outline-color);
-  outline-offset: var(--focus-outline-offset);
+  outline: none;
 }
 
 /* Modern selection */
