@@ -332,24 +332,20 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         </div>
       )}
 
-      {/* Serve Navigation Rail: thumbnails + view toggle */}
+      {/* Serve Navigation Rail: thumbnails + view toggle inline */}
       {analysisStatus?.has_analysis && hasServes && (
-        <>
-          <div className="analysis-dashboard__serve-nav">
-            <ServeThumbnailStrip
-              serveWindows={sortedServeWindows}
-              currentIndex={currentServeIndex}
-              videoUrl={videoUrl}
-              onNavigate={handleServeNavigate}
-            />
-          </div>
-          <div className="analysis-dashboard__view-toggle-row">
-            <AnalysisViewToggle
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-            />
-          </div>
-        </>
+        <div className="analysis-dashboard__serve-nav">
+          <ServeThumbnailStrip
+            serveWindows={sortedServeWindows}
+            currentIndex={currentServeIndex}
+            videoUrl={videoUrl}
+            onNavigate={handleServeNavigate}
+          />
+          <AnalysisViewToggle
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+          />
+        </div>
       )}
 
       {/* Main Content: Focus-mode serve viewer */}

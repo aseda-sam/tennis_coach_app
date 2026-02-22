@@ -48,18 +48,23 @@
   text-transform: uppercase;
 }
 
-/* Serve Navigation Rail */
+/* Serve Navigation Rail — thumbnails left, view toggle right */
 .analysis-dashboard__serve-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
   background: var(--color-surface-secondary);
   border-radius: var(--radius-lg);
   padding: var(--spacing-md) var(--spacing-lg);
 }
 
-/* View Toggle Row */
-.analysis-dashboard__view-toggle-row {
-  display: flex;
-  justify-content: center;
-  padding: var(--spacing-xs) 0;
+.analysis-dashboard__serve-nav > .thumbnail-strip {
+  flex: 1;
+  min-width: 0;
+}
+
+.analysis-dashboard__serve-nav > .view-toggle {
+  flex-shrink: 0;
 }
 
 /* Empty / Loading States */
