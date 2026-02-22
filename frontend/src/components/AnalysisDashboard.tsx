@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
+import usePersistedState from '../hooks/usePersistedState';
 import { useServeBiomechanicsReport } from '../hooks/useServeBiomechanicsReport';
 import { useServePlayback } from '../hooks/useServePlayback';
 import { useServeProposals } from '../hooks/useServeProposals';
@@ -9,8 +10,9 @@ import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
-import DetectionDetailsPanel from './DetectionDetailsPanel';
 import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
+import CollapsibleSection from './CollapsibleSection';
+import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
@@ -99,6 +101,17 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
+
+  // Collapsible sidebar section state (persisted across sessions)
+  const [metricsExpanded, setMetricsExpanded] = usePersistedState(
+    'sidebar:metrics',
+    true
+  );
+  const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', true);
+  const [chartsExpanded, setChartsExpanded] = usePersistedState(
+    'sidebar:charts',
+    true
+  );
 
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
@@ -462,51 +475,78 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               <div className="analysis-dashboard__side-col">
                 {/* Metrics */}
                 {metrics.length > 0 && (
-                  <div className="analysis-dashboard__metrics-strip">
-                    {metrics.map((m) => {
-                      const isClickable =
-                        m.timestamp != null && m.value != null;
-                      return (
-                        <div
-                          key={m.metric_name}
-                          className={`analysis-dashboard__metric-card${isClickable ? ' analysis-dashboard__metric-card--clickable' : ''}`}
-                          onClick={
-                            isClickable ? () => handleMetricClick(m) : undefined
-                          }
-                          role={isClickable ? 'button' : undefined}
-                          tabIndex={isClickable ? 0 : undefined}
-                          onKeyDown={
-                            isClickable
-                              ? (e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    handleMetricClick(m);
+                  <CollapsibleSection
+                    title="Metrics"
+                    expanded={metricsExpanded}
+                    onToggle={() => setMetricsExpanded(!metricsExpanded)}
+                  >
+                    <div className="analysis-dashboard__metrics-strip">
+                      {metrics.map((m) => {
+                        const isClickable =
+                          m.timestamp != null && m.value != null;
+                        return (
+                          <div
+                            key={m.metric_name}
+                            className={`analysis-dashboard__metric-card${isClickable ? ' analysis-dashboard__metric-card--clickable' : ''}`}
+                            onClick={
+                              isClickable
+                                ? () => handleMetricClick(m)
+                                : undefined
+                            }
+                            role={isClickable ? 'button' : undefined}
+                            tabIndex={isClickable ? 0 : undefined}
+                            onKeyDown={
+                              isClickable
+                                ? (e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      handleMetricClick(m);
+                                    }
                                   }
-                                }
-                              : undefined
-                          }
-                        >
-                          <span className="analysis-dashboard__metric-label">
-                            {METRIC_DISPLAY_NAMES[m.metric_name] ??
-                              m.metric_name.replace(/_/g, ' ')}
-                          </span>
-                          <span className="analysis-dashboard__metric-value">
-                            {formatMetricValue(m.value, m.unit)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                                : undefined
+                            }
+                          >
+                            <span className="analysis-dashboard__metric-label">
+                              {METRIC_DISPLAY_NAMES[m.metric_name] ??
+                                m.metric_name.replace(/_/g, ' ')}
+                            </span>
+                            <span className="analysis-dashboard__metric-value">
+                              {formatMetricValue(m.value, m.unit)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CollapsibleSection>
                 )}
 
-                {/* Detection Details (stats for nerds) */}
+                {/* Key Time Points + Feature Curves */}
                 {biomechanicsReport?.detection_meta && (
-                  <DetectionDetailsPanel
-                    detectionMeta={biomechanicsReport.detection_meta}
-                    currentTime={currentTime}
-                    serveStart={currentServe!.start_timestamp}
-                    onSeek={handleSeek}
-                  />
+                  <>
+                    <CollapsibleSection
+                      title="Key Time Points"
+                      expanded={ktpExpanded}
+                      onToggle={() => setKtpExpanded(!ktpExpanded)}
+                    >
+                      <KTPTable
+                        detectionMeta={biomechanicsReport.detection_meta}
+                        serveStart={currentServe!.start_timestamp}
+                        onSeek={handleSeek}
+                      />
+                    </CollapsibleSection>
+                    <CollapsibleSection
+                      title="Feature Curves"
+                      expanded={chartsExpanded}
+                      onToggle={() => setChartsExpanded(!chartsExpanded)}
+                    >
+                      <FeatureChartsSection
+                        detectionMeta={biomechanicsReport.detection_meta}
+                        currentTime={currentTime}
+                        serveStart={currentServe!.start_timestamp}
+                        onSeek={handleSeek}
+                      />
+                    </CollapsibleSection>
+                  </>
                 )}
               </div>
             </>

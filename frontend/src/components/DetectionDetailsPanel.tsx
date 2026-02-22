@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Line,
   LineChart,
@@ -148,29 +148,12 @@ const FeatureChart: React.FC<FeatureChartProps> = ({
   );
 };
 
-interface DetectionDetailsPanelProps {
-  detectionMeta: DetectionMeta;
-  currentTime: number;
-  serveStart: number;
-  onSeek: (t: number) => void;
-}
+/* ------------------------------------------------------------------ */
+/*  Shared helpers for sub-components                                  */
+/* ------------------------------------------------------------------ */
 
-const DetectionDetailsPanel: React.FC<DetectionDetailsPanelProps> = ({
-  detectionMeta,
-  currentTime,
-  serveStart,
-  onSeek,
-}) => {
-  const [expanded, setExpanded] = useState(false);
-
-  const { ktps, feature_curves, fps, total_frames } = detectionMeta;
-
-  const currentFrame = useMemo(() => {
-    if (fps <= 0) return null;
-    const frame = Math.round((currentTime - serveStart) * fps);
-    if (frame < 0 || frame >= total_frames) return null;
-    return frame;
-  }, [currentTime, serveStart, fps, total_frames]);
+function useDetectionHelpers(detectionMeta: DetectionMeta, serveStart: number) {
+  const { ktps, fps, total_frames } = detectionMeta;
 
   const ktpFrameMarkers = useMemo(() => {
     const markers: { frame: number; label: string }[] = [];
@@ -186,11 +169,110 @@ const DetectionDetailsPanel: React.FC<DetectionDetailsPanelProps> = ({
     return markers;
   }, [ktps]);
 
+  return { fps, total_frames, ktpFrameMarkers, serveStart };
+}
+
+/* ------------------------------------------------------------------ */
+/*  KTPTable                                                           */
+/* ------------------------------------------------------------------ */
+
+interface KTPTableProps {
+  detectionMeta: DetectionMeta;
+  serveStart: number;
+  onSeek: (t: number) => void;
+}
+
+export const KTPTable: React.FC<KTPTableProps> = ({
+  detectionMeta,
+  serveStart,
+  onSeek,
+}) => {
+  const { ktps, fps } = detectionMeta;
+
   const handleRowClick = (frame: number | null) => {
     if (frame == null || fps <= 0) return;
     const timestamp = serveStart + frame / fps;
     onSeek(timestamp);
   };
+
+  return (
+    <div className="detection-details__section">
+      <table className="detection-details__table">
+        <thead>
+          <tr>
+            <th>KTP</th>
+            <th>Frame</th>
+            <th>Time</th>
+            <th>Method</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {KTP_ORDER.map((key) => {
+            const ktp = ktps[key];
+            if (!ktp) return null;
+            const frame = ktp.frame;
+            const timestamp =
+              frame != null && fps > 0 ? serveStart + frame / fps : null;
+            return (
+              <tr
+                key={key}
+                className={`detection-details__row${frame != null ? ' detection-details__row--clickable' : ''}`}
+                onClick={() => handleRowClick(frame)}
+              >
+                <td className="detection-details__cell-ktp">
+                  {KTP_DISPLAY_NAMES[key] ?? key}
+                </td>
+                <td className="detection-details__cell-mono">
+                  {frame ?? '\u2014'}
+                </td>
+                <td className="detection-details__cell-mono">
+                  {timestamp != null ? `${timestamp.toFixed(2)}s` : '\u2014'}
+                </td>
+                <td className="detection-details__cell-method">
+                  {formatMethod(ktp.method)}
+                </td>
+                <td className="detection-details__cell-details">
+                  {formatKTPDetails(key, ktp as Record<string, unknown>)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/*  FeatureChartsSection                                               */
+/* ------------------------------------------------------------------ */
+
+interface FeatureChartsSectionProps {
+  detectionMeta: DetectionMeta;
+  currentTime: number;
+  serveStart: number;
+  onSeek: (t: number) => void;
+}
+
+export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
+  detectionMeta,
+  currentTime,
+  serveStart,
+  onSeek,
+}) => {
+  const { fps, total_frames, ktpFrameMarkers } = useDetectionHelpers(
+    detectionMeta,
+    serveStart
+  );
+  const { feature_curves } = detectionMeta;
+
+  const currentFrame = useMemo(() => {
+    if (fps <= 0) return null;
+    const frame = Math.round((currentTime - serveStart) * fps);
+    if (frame < 0 || frame >= total_frames) return null;
+    return frame;
+  }, [currentTime, serveStart, fps, total_frames]);
 
   const handleFrameClick = useCallback(
     (frame: number) => {
@@ -201,124 +283,36 @@ const DetectionDetailsPanel: React.FC<DetectionDetailsPanelProps> = ({
   );
 
   return (
-    <div className="detection-details">
-      <button
-        type="button"
-        className="detection-details__toggle"
-        onClick={() => setExpanded(!expanded)}
-        aria-expanded={expanded}
-      >
-        <svg
-          className={`detection-details__chevron${expanded ? ' detection-details__chevron--open' : ''}`}
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-        >
-          <path
-            d="M6 4l4 4-4 4"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        <span className="detection-details__toggle-label">
-          Detection Details
-        </span>
-      </button>
-
-      {expanded && (
-        <div className="detection-details__content">
-          {/* KTP Summary Table */}
-          <div className="detection-details__section">
-            <table className="detection-details__table">
-              <thead>
-                <tr>
-                  <th>KTP</th>
-                  <th>Frame</th>
-                  <th>Time</th>
-                  <th>Method</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {KTP_ORDER.map((key) => {
-                  const ktp = ktps[key];
-                  if (!ktp) return null;
-                  const frame = ktp.frame;
-                  const timestamp =
-                    frame != null && fps > 0 ? serveStart + frame / fps : null;
-                  return (
-                    <tr
-                      key={key}
-                      className={`detection-details__row${frame != null ? ' detection-details__row--clickable' : ''}`}
-                      onClick={() => handleRowClick(frame)}
-                    >
-                      <td className="detection-details__cell-ktp">
-                        {KTP_DISPLAY_NAMES[key] ?? key}
-                      </td>
-                      <td className="detection-details__cell-mono">
-                        {frame ?? '\u2014'}
-                      </td>
-                      <td className="detection-details__cell-mono">
-                        {timestamp != null
-                          ? `${timestamp.toFixed(2)}s`
-                          : '\u2014'}
-                      </td>
-                      <td className="detection-details__cell-method">
-                        {formatMethod(ktp.method)}
-                      </td>
-                      <td className="detection-details__cell-details">
-                        {formatKTPDetails(key, ktp as Record<string, unknown>)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Feature Curves */}
-          <div className="detection-details__section">
-            <FeatureChart
-              data={feature_curves.max_wrist_height}
-              label="Wrist Height"
-              fps={fps}
-              ktpFrames={ktpFrameMarkers}
-              currentFrame={currentFrame}
-              color="var(--color-court-blue-light)"
-              onFrameClick={handleFrameClick}
-            />
-            <hr className="detection-details__separator" />
-            <FeatureChart
-              data={feature_curves.knee_hip_ratio}
-              label="Knee Bend"
-              fps={fps}
-              ktpFrames={ktpFrameMarkers.filter(
-                (m) => m.label === 'Trophy Position'
-              )}
-              currentFrame={currentFrame}
-              color="var(--color-court-clay)"
-              onFrameClick={handleFrameClick}
-            />
-            <hr className="detection-details__separator" />
-            <FeatureChart
-              data={feature_curves.max_wrist_velocity}
-              label="Wrist Velocity"
-              fps={fps}
-              ktpFrames={ktpFrameMarkers.filter(
-                (m) => m.label === 'Ball Impact'
-              )}
-              currentFrame={currentFrame}
-              color="var(--color-primary-dark)"
-              onFrameClick={handleFrameClick}
-            />
-          </div>
-        </div>
-      )}
+    <div className="detection-details__section">
+      <FeatureChart
+        data={feature_curves.max_wrist_height}
+        label="Wrist Height"
+        fps={fps}
+        ktpFrames={ktpFrameMarkers}
+        currentFrame={currentFrame}
+        color="var(--color-court-blue-light)"
+        onFrameClick={handleFrameClick}
+      />
+      <hr className="detection-details__separator" />
+      <FeatureChart
+        data={feature_curves.knee_hip_ratio}
+        label="Knee Bend"
+        fps={fps}
+        ktpFrames={ktpFrameMarkers.filter((m) => m.label === 'Trophy Position')}
+        currentFrame={currentFrame}
+        color="var(--color-court-clay)"
+        onFrameClick={handleFrameClick}
+      />
+      <hr className="detection-details__separator" />
+      <FeatureChart
+        data={feature_curves.max_wrist_velocity}
+        label="Wrist Velocity"
+        fps={fps}
+        ktpFrames={ktpFrameMarkers.filter((m) => m.label === 'Ball Impact')}
+        currentFrame={currentFrame}
+        color="var(--color-primary-dark)"
+        onFrameClick={handleFrameClick}
+      />
     </div>
   );
 };
-
-export default DetectionDetailsPanel;

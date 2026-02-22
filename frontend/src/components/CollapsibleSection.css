@@ -1,0 +1,47 @@
+/* Collapsible Section — reusable sidebar wrapper */
+
+.collapsible-section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+/* Toggle header */
+.collapsible-section__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: color var(--duration-fast) var(--ease-in-out);
+}
+
+.collapsible-section__toggle:hover {
+  color: var(--color-text);
+}
+
+.collapsible-section__label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.collapsible-section__chevron {
+  transition: transform var(--duration-fast) var(--ease-in-out);
+  flex-shrink: 0;
+}
+
+.collapsible-section__chevron--open {
+  transform: rotate(90deg);
+}
+
+/* Content area */
+.collapsible-section__content {
+  padding: 0 var(--spacing-lg) var(--spacing-lg);
+}
