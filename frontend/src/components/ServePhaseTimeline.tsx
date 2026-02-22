@@ -12,6 +12,8 @@ interface ServePhaseTimelineProps {
   contactTimestamp?: number | null;
   /** When true, hide phase labels below the track and the current-label above it. */
   hideLabels?: boolean;
+  /** Override which phase is highlighted (e.g. from parent tab selection). */
+  activePhase?: string | null;
 }
 
 const NEUTRAL_SEGMENT_COLOR = 'var(--color-border-dark)';
@@ -25,6 +27,7 @@ const ServePhaseTimeline: React.FC<ServePhaseTimelineProps> = ({
   onSeek,
   contactTimestamp = null,
   hideLabels = false,
+  activePhase = null,
 }) => {
   const duration = serveEnd - serveStart;
   if (duration <= 0) return null;
@@ -40,9 +43,19 @@ const ServePhaseTimeline: React.FC<ServePhaseTimelineProps> = ({
       ? toPercent(contactTimestamp)
       : null;
 
-  const currentPhase = phases.find(
-    (p) => currentTime >= p.start_timestamp && currentTime <= p.end_timestamp
-  );
+  // Use parent-provided active phase when available, otherwise derive from time.
+  // Half-open intervals [start, end) so boundary time belongs to the next phase.
+  const timeBasedPhase =
+    phases.find(
+      (p, i) =>
+        currentTime >= p.start_timestamp &&
+        (i === phases.length - 1
+          ? currentTime <= p.end_timestamp
+          : currentTime < p.end_timestamp)
+    ) ?? null;
+  const currentPhase = activePhase
+    ? (phases.find((p) => p.phase === activePhase) ?? timeBasedPhase)
+    : timeBasedPhase;
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();

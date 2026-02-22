@@ -30,8 +30,14 @@ function findCurrentPhase(
   phases: PhaseWindow[],
   time: number
 ): PhaseWindow | undefined {
+  // Half-open intervals [start, end) so boundary time belongs to the next phase.
+  // Last phase uses closed interval since nothing follows it.
   return phases.find(
-    (p) => time >= p.start_timestamp && time <= p.end_timestamp
+    (p, i) =>
+      time >= p.start_timestamp &&
+      (i === phases.length - 1
+        ? time <= p.end_timestamp
+        : time < p.end_timestamp)
   );
 }
 

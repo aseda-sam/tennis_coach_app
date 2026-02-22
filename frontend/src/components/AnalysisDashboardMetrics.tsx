@@ -96,6 +96,7 @@ const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
             onSeek={onSeek}
             contactTimestamp={currentServe.contact_timestamp ?? null}
             hideLabels
+            activePhase={currentPhase?.phase}
           />
         </div>
       )}
