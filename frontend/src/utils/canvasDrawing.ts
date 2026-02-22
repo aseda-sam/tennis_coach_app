@@ -449,15 +449,13 @@ export interface StickHudParams {
   phaseColor?: string;
 }
 
-/** Draw frame info, confidence indicator, and optional phase label in a pill. */
+/** Draw frame info and optional phase label in a pill. */
 export function drawStickHud(params: StickHudParams): void {
   const {
     ctx,
-    containerWidth,
     containerHeight,
     frameIndex,
     currentTime,
-    confidence,
     phaseLabel,
     phaseColor,
   } = params;
@@ -470,25 +468,6 @@ export function drawStickHud(params: StickHudParams): void {
     `F${frameIndex}  ${currentTime.toFixed(2)}s`,
     10,
     containerHeight - 12
-  );
-
-  // Confidence dot — bottom right
-  const confColor =
-    confidence > 0.7 ? '#00ff88' : confidence > 0.4 ? '#ffaa00' : '#ff4444';
-  const dotRadius = 5;
-  const dotX = containerWidth - 16;
-  const dotY = containerHeight - 16;
-  ctx.fillStyle = confColor;
-  ctx.beginPath();
-  ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.font = '10px monospace';
-  ctx.textAlign = 'right';
-  ctx.fillText(
-    `${(confidence * 100).toFixed(0)}%`,
-    dotX - dotRadius - 4,
-    dotY + 4
   );
 
   // Phase label pill — top left
