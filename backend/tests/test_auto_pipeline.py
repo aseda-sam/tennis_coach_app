@@ -178,9 +178,7 @@ class TestAutoAcceptProposals:
         test_video.primary_player_id = test_player.id
         db_session.commit()
 
-        with patch(
-            "app.services.serve_detection.proposal_service.settings"
-        ) as mock_settings:
+        with patch("app.core.config.settings") as mock_settings:
             mock_settings.AUTO_ACCEPT_CONFIDENCE_THRESHOLD = 0.8
 
             accepted = auto_accept_proposals(
