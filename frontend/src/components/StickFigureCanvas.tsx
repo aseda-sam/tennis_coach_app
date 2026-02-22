@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import React, { useRef } from 'react';
 import { useSkeletonAnimation } from '../hooks/useSkeletonAnimation';
 import { videoApi } from '../services/api';
+import { MetricValue } from '../types/biomechanics';
 import { OverlayData } from '../types/video';
 import LoadingIndicator from './LoadingIndicator';
 import './StickFigureCanvas.css';
@@ -15,6 +16,8 @@ interface StickFigureCanvasProps {
   phaseColor?: string;
   /** Phase label to display in top-left corner. */
   phaseLabel?: string;
+  /** Metrics with timestamps for canvas annotations. */
+  annotations?: MetricValue[];
 }
 
 const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
@@ -23,6 +26,7 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
   isPlaying,
   phaseColor,
   phaseLabel,
+  annotations,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,6 +47,7 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
     isPlaying,
     phaseColor,
     phaseLabel,
+    annotations,
   });
 
   if (isLoading) {

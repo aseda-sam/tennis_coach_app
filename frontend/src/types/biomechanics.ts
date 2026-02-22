@@ -5,6 +5,7 @@ export interface MetricValue {
   value: number | null;
   unit: string;
   phase: string | null;
+  timestamp?: number; // seconds — when this metric was measured
 }
 
 export interface PhaseWindow {

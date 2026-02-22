@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { MetricValue } from '../types/biomechanics';
 import { OverlayData } from '../types/video';
 import {
   BALL_TRAIL_LENGTH,
   STICK_FIGURE_SKELETON_COLOR,
+  computeAnnotationOpacity,
   drawGrid,
   drawJoints,
   drawStickBallTrail,
   drawStickHud,
   drawStickSkeleton,
+  drawTossHeightAnnotation,
+  drawTossLateralityAnnotation,
   normalizePose,
 } from '../utils/canvasDrawing';
 
@@ -19,6 +23,7 @@ interface UseSkeletonAnimationParams {
   isPlaying: boolean;
   phaseColor?: string;
   phaseLabel?: string;
+  annotations?: MetricValue[];
 }
 
 /**
@@ -33,6 +38,7 @@ export function useSkeletonAnimation({
   isPlaying,
   phaseColor,
   phaseLabel,
+  annotations,
 }: UseSkeletonAnimationParams): void {
   const animationFrameRef = useRef<number | null>(null);
   const lastRenderedTimeRef = useRef<number>(-1);
@@ -99,7 +105,7 @@ export function useSkeletonAnimation({
     const trail = ballTrailRef.current;
     if (frame.ball_position && frame.ball_position.length >= 2) {
       const ballNorm = normalizePose(
-        { _ball: frame.ball_position },
+        { ...frame.keypoints, _ball: frame.ball_position },
         containerWidth,
         containerHeight
       );
@@ -124,12 +130,74 @@ export function useSkeletonAnimation({
       phaseColor,
     });
 
+    // Metric annotations (toss height / laterality)
+    if (annotations && annotations.length > 0 && overlayData) {
+      for (const metric of annotations) {
+        if (metric.timestamp == null || metric.value == null) continue;
+
+        const opacity = computeAnnotationOpacity(currentTime, metric.timestamp);
+        if (opacity <= 0) continue;
+
+        // Look up the frame at the annotation's timestamp
+        const peakFrameIndex = Math.round(metric.timestamp * overlayData.fps);
+        const peakFrame =
+          overlayData.frames[
+            Math.max(0, Math.min(peakFrameIndex, overlayData.frames.length - 1))
+          ];
+        if (!peakFrame?.keypoints || !peakFrame.ball_position) continue;
+
+        // Compute shoulder midpoint for annotations
+        const ls = peakFrame.keypoints['left_shoulder'];
+        const rs = peakFrame.keypoints['right_shoulder'];
+        if (!ls || !rs) continue;
+
+        const shoulderMid = [(ls[0] + rs[0]) / 2, (ls[1] + rs[1]) / 2];
+
+        // Normalize the peak frame's ball + keypoints
+        const peakNorm = normalizePose(
+          {
+            ...peakFrame.keypoints,
+            _ball: peakFrame.ball_position,
+            _shoulder_mid: shoulderMid,
+          },
+          containerWidth,
+          containerHeight
+        );
+        if (!peakNorm?._ball || !peakNorm?._shoulder_mid) continue;
+
+        if (metric.metric_name === 'toss_peak_height') {
+          drawTossHeightAnnotation({
+            ctx,
+            ballY: peakNorm._ball.y,
+            shoulderY: peakNorm._shoulder_mid.y,
+            canvasWidth: containerWidth,
+            value: metric.value,
+            opacity,
+          });
+        }
+
+        if (metric.metric_name === 'toss_laterality') {
+          // Body center X from shoulder midpoint
+          drawTossLateralityAnnotation({
+            ctx,
+            ballX: peakNorm._ball.x,
+            bodyCenterX: peakNorm._shoulder_mid.x,
+            ballY: peakNorm._ball.y,
+            canvasHeight: containerHeight,
+            value: metric.value,
+            opacity,
+          });
+        }
+      }
+    }
+
     lastRenderedTimeRef.current = currentTime;
   }, [
     currentTime,
     overlayData,
     phaseColor,
     phaseLabel,
+    annotations,
     canvasRef,
     containerRef,
   ]);

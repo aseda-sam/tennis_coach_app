@@ -47,6 +47,7 @@ export const OVERLAY_SKELETON_COLOR = '#00FF00';
 export const STICK_FIGURE_SKELETON_COLOR = '#00ff88';
 export const BALL_COLOR = '#FF1493';
 export const BALL_TRAIL_LENGTH = 30; // ~1 second at 30fps
+export const ANNOTATION_COLOR = '#00D4FF';
 
 // ---------------------------------------------------------------------------
 // Geometry helpers
@@ -489,4 +490,151 @@ export function drawStickHud(params: StickHudParams): void {
     ctx.fillText(phaseLabel, 12, 24);
     ctx.shadowBlur = 0;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Metric annotation helpers (stick-figure mode only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute fade opacity based on proximity to annotation timestamp.
+ * Returns 0 when outside the window, 1 at the exact timestamp.
+ */
+export function computeAnnotationOpacity(
+  currentTime: number,
+  annotationTime: number,
+  windowMs: number = 300
+): number {
+  const windowSec = windowMs / 1000;
+  const dist = Math.abs(currentTime - annotationTime);
+  if (dist > windowSec) return 0;
+  return 1 - dist / windowSec;
+}
+
+export interface TossHeightAnnotationParams {
+  ctx: CanvasRenderingContext2D;
+  ballY: number;
+  shoulderY: number;
+  canvasWidth: number;
+  value: number;
+  opacity: number;
+}
+
+/**
+ * Draw toss height annotation: horizontal dashed line at ball peak Y,
+ * vertical measurement bracket from shoulder to ball, and value label.
+ */
+export function drawTossHeightAnnotation(
+  params: TossHeightAnnotationParams
+): void {
+  const { ctx, ballY, shoulderY, canvasWidth, value, opacity } = params;
+
+  ctx.save();
+  ctx.globalAlpha = opacity;
+
+  // Horizontal dashed line at peak height
+  ctx.strokeStyle = ANNOTATION_COLOR;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, ballY);
+  ctx.lineTo(canvasWidth, ballY);
+  ctx.stroke();
+
+  // Vertical bracket from shoulder to ball
+  const bracketX = canvasWidth - 40;
+  ctx.setLineDash([]);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bracketX, shoulderY);
+  ctx.lineTo(bracketX, ballY);
+  ctx.stroke();
+
+  // Bracket caps
+  const capWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(bracketX - capWidth, shoulderY);
+  ctx.lineTo(bracketX + capWidth, shoulderY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(bracketX - capWidth, ballY);
+  ctx.lineTo(bracketX + capWidth, ballY);
+  ctx.stroke();
+
+  // Value label
+  const labelY = (shoulderY + ballY) / 2;
+  ctx.fillStyle = ANNOTATION_COLOR;
+  ctx.font = 'bold 12px monospace';
+  ctx.textAlign = 'right';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+  ctx.shadowBlur = 3;
+  ctx.fillText(`Peak: ${value.toFixed(2)}x`, bracketX - 10, labelY + 4);
+  ctx.shadowBlur = 0;
+
+  ctx.restore();
+}
+
+export interface TossLateralityAnnotationParams {
+  ctx: CanvasRenderingContext2D;
+  ballX: number;
+  bodyCenterX: number;
+  ballY: number;
+  canvasHeight: number;
+  value: number;
+  opacity: number;
+}
+
+/**
+ * Draw toss laterality annotation: vertical reference line at body center,
+ * horizontal arrow to ball position, and value label.
+ */
+export function drawTossLateralityAnnotation(
+  params: TossLateralityAnnotationParams
+): void {
+  const { ctx, ballX, bodyCenterX, ballY, canvasHeight, value, opacity } =
+    params;
+
+  ctx.save();
+  ctx.globalAlpha = opacity;
+
+  // Vertical reference line at body center
+  ctx.strokeStyle = ANNOTATION_COLOR;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(bodyCenterX, 0);
+  ctx.lineTo(bodyCenterX, canvasHeight);
+  ctx.stroke();
+
+  // Horizontal line from body center to ball
+  const lineY = ballY + 20;
+  ctx.setLineDash([]);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bodyCenterX, lineY);
+  ctx.lineTo(ballX, lineY);
+  ctx.stroke();
+
+  // Arrow head
+  const dir = ballX > bodyCenterX ? -1 : 1;
+  const arrowSize = 6;
+  ctx.beginPath();
+  ctx.moveTo(ballX, lineY);
+  ctx.lineTo(ballX + dir * arrowSize, lineY - arrowSize);
+  ctx.moveTo(ballX, lineY);
+  ctx.lineTo(ballX + dir * arrowSize, lineY + arrowSize);
+  ctx.stroke();
+
+  // Value label
+  const sign = value >= 0 ? '+' : '';
+  const labelX = (bodyCenterX + ballX) / 2;
+  ctx.fillStyle = ANNOTATION_COLOR;
+  ctx.font = 'bold 12px monospace';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+  ctx.shadowBlur = 3;
+  ctx.fillText(`Lat: ${sign}${value.toFixed(2)}`, labelX, lineY - 8);
+  ctx.shadowBlur = 0;
+
+  ctx.restore();
 }

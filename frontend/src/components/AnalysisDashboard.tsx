@@ -7,7 +7,7 @@ import { useServePlayback } from '../hooks/useServePlayback';
 import { useServeProposals } from '../hooks/useServeProposals';
 import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
-import { PhaseWindow } from '../types/biomechanics';
+import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
 import AnalysisDashboardEditPanel from './AnalysisDashboardEditPanel';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
@@ -156,6 +156,21 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     handleToggleLoopCurrentPhase(currentPhase);
   }, [handleToggleLoopCurrentPhase, currentPhase]);
 
+  const handleMetricClick = useCallback(
+    (metric: MetricValue) => {
+      if (metric.timestamp != null) {
+        handleSeek(metric.timestamp);
+      }
+    },
+    [handleSeek]
+  );
+
+  // Metrics with timestamps, for canvas annotations
+  const annotationMetrics = useMemo(
+    () => metrics.filter((m) => m.timestamp != null && m.value != null),
+    [metrics]
+  );
+
   // Keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -303,6 +318,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   onTimeUpdate={handleTimeUpdate}
                   onPlayPause={handlePlayPause}
                   onSeek={handleSeek}
+                  annotations={annotationMetrics}
                 />
               </ErrorBoundary>
 
@@ -322,6 +338,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 onPhaseJump={handlePhaseJump}
                 onContactJump={handleContactJumpWithPhases}
                 onToggleLoopCurrentPhase={handleToggleLoopWithPhase}
+                onMetricClick={handleMetricClick}
               />
             </>
           ) : serveWindowsProcessing ? (

@@ -56,6 +56,14 @@ class ServeBiomechanicsService:
         )
 
         if existing is not None:
+            # Auto-refresh stale reports lacking _annotations metadata
+            metrics_json = existing.metrics or {}
+            if "_annotations" not in metrics_json:
+                logger.info(
+                    "Refreshing stale report %s (missing _annotations)",
+                    existing.id,
+                )
+                return self.compute_analysis(db, serve_window_id, user_id)
             return existing
 
         return self.compute_analysis(db, serve_window_id, user_id)
@@ -156,6 +164,7 @@ class ServeBiomechanicsService:
             )
             if toss_metrics and toss_metrics.get("toss_peak_height") is not None:
                 metrics.toss_peak_height = toss_metrics["toss_peak_height"]
+                metrics.toss_peak_timestamp = toss_metrics.get("toss_peak_timestamp")
             if (
                 toss_metrics
                 and toss_metrics.get("toss_laterality") is not None

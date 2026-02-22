@@ -35,6 +35,7 @@ interface AnalysisDashboardMetricsProps {
   onPhaseJump: (phase: PhaseWindow) => void;
   onContactJump: (contactTimestamp: number) => void;
   onToggleLoopCurrentPhase: () => void;
+  onMetricClick?: (metric: MetricValue) => void;
 }
 
 const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
@@ -52,6 +53,7 @@ const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
   onPhaseJump,
   onContactJump,
   onToggleLoopCurrentPhase,
+  onMetricClick,
 }) => {
   return (
     <div className="analysis-dashboard__right-panel">
@@ -121,20 +123,37 @@ const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
       {metrics.length > 0 && (
         <div className="analysis-dashboard__metrics-strip">
           {filteredMetrics.length > 0 ? (
-            filteredMetrics.map((m) => (
-              <div
-                key={m.metric_name}
-                className="analysis-dashboard__metric-card"
-              >
-                <span className="analysis-dashboard__metric-label">
-                  {METRIC_DISPLAY_NAMES[m.metric_name] ??
-                    m.metric_name.replace(/_/g, ' ')}
-                </span>
-                <span className="analysis-dashboard__metric-value">
-                  {formatMetricValue(m.value, m.unit)}
-                </span>
-              </div>
-            ))
+            filteredMetrics.map((m) => {
+              const isClickable =
+                m.timestamp != null && m.value != null && onMetricClick;
+              return (
+                <div
+                  key={m.metric_name}
+                  className={`analysis-dashboard__metric-card${isClickable ? ' analysis-dashboard__metric-card--clickable' : ''}`}
+                  onClick={isClickable ? () => onMetricClick(m) : undefined}
+                  role={isClickable ? 'button' : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
+                  onKeyDown={
+                    isClickable
+                      ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onMetricClick(m);
+                          }
+                        }
+                      : undefined
+                  }
+                >
+                  <span className="analysis-dashboard__metric-label">
+                    {METRIC_DISPLAY_NAMES[m.metric_name] ??
+                      m.metric_name.replace(/_/g, ' ')}
+                  </span>
+                  <span className="analysis-dashboard__metric-value">
+                    {formatMetricValue(m.value, m.unit)}
+                  </span>
+                </div>
+              );
+            })
           ) : (
             <p className="analysis-dashboard__metrics-empty">
               No metrics for this phase

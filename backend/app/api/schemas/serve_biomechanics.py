@@ -17,6 +17,10 @@ class MetricValueResponse(BaseModel):
     phase: Optional[str] = Field(
         default=None, description="Phase this metric belongs to"
     )
+    timestamp: Optional[float] = Field(
+        default=None,
+        description="Timestamp (seconds) of the event this metric measures",
+    )
 
 
 class PhaseWindowResponse(BaseModel):

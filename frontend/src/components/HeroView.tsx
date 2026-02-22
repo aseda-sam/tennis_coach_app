@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { MetricValue } from '../types/biomechanics';
 import StickFigureCanvas from './StickFigureCanvas';
 import './HeroView.css';
 
@@ -15,6 +16,7 @@ interface HeroViewProps {
   onTimeUpdate: (time: number) => void;
   onPlayPause: () => void;
   onSeek: (time: number) => void;
+  annotations?: MetricValue[];
 }
 
 const HeroView: React.FC<HeroViewProps> = ({
@@ -28,6 +30,7 @@ const HeroView: React.FC<HeroViewProps> = ({
   onTimeUpdate,
   onPlayPause,
   onSeek,
+  annotations,
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('analysis');
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -93,6 +96,7 @@ const HeroView: React.FC<HeroViewProps> = ({
               isPlaying={isPlaying}
               phaseColor="#00ff88"
               phaseLabel={phaseLabel}
+              annotations={annotations}
             />
           </div>
         )}

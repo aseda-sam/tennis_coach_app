@@ -84,8 +84,8 @@ class TestServeBiomechanicsServicePipeline:
         assert saved.serve_window_id == 1
         assert saved.user_id == "user-1"
         assert saved.phase_segmentation_json is not None
-        assert saved.metrics_json is not None
-        assert saved.analysis_version == "phase-metrics-v3"
+        assert saved.metrics is not None
+        assert saved.analysis_version == "phase-metrics-v4"
 
     @patch(
         "app.services.biomechanics.serve_biomechanics_service.get_pose_frames_in_window"
@@ -126,7 +126,7 @@ class TestServeBiomechanicsServicePipeline:
     @patch(
         "app.services.biomechanics.serve_biomechanics_service._select_best_pose_detection"
     )
-    def test_report_has_metrics_json(
+    def test_report_has_metrics(
         self, mock_best_pose: MagicMock, mock_get_frames: MagicMock
     ) -> None:
         mock_best_pose.return_value = _mock_pose_detection()
@@ -144,10 +144,11 @@ class TestServeBiomechanicsServicePipeline:
         service.compute_analysis(db, serve_window_id=1, user_id="user-1")
 
         saved = db.add.call_args[0][0]
-        metrics = json.loads(saved.metrics_json)
+        metrics = saved.metrics
         assert isinstance(metrics, dict)
-        # BiomechanicsMetrics has scalar fields
-        assert "knee_flexion_min_deg" in metrics
+        # Nested format: {phase: {metric_name: value}}
+        assert "loading" in metrics
+        assert "knee_flexion_min_deg" in metrics["loading"]
 
     def test_compute_raises_on_missing_serve(self) -> None:
         db = MagicMock()
@@ -200,11 +201,10 @@ class TestServeBiomechanicsServicePipeline:
             service.compute_analysis(db, serve_window_id=1, user_id="user-1")
 
         saved = db.add.call_args[0][0]
-        import json
-
-        metrics = json.loads(saved.metrics_json)
-        assert metrics.get("toss_peak_height") == 1.5
-        assert metrics.get("toss_laterality") is None
+        metrics = saved.metrics
+        # Nested format: {phase: {metric_name: value}}
+        assert metrics.get("release", {}).get("toss_peak_height") == 1.5
+        assert metrics.get("release", {}).get("toss_laterality") is None
 
     @patch(
         "app.services.biomechanics.serve_biomechanics_service._select_best_pose_detection"

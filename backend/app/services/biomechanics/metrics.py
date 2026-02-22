@@ -33,6 +33,16 @@ def metrics_to_nested_dict(metrics: "BiomechanicsMetrics") -> dict:
         if value is not None:
             phase = meta["phase"]
             result.setdefault(phase, {})[name] = value
+
+    # Store annotation fields (timestamps etc.) under _annotations key
+    annotations = {}
+    for field in ANNOTATION_FIELDS:
+        value = data.get(field)
+        if value is not None:
+            annotations[field] = value
+    if annotations:
+        result["_annotations"] = annotations
+
     return result
 
 
@@ -40,18 +50,24 @@ def metrics_to_flat_list(nested: dict) -> List[Dict]:
     """Flatten nested JSONB {phase: {name: value}} to API list format.
 
     Only metrics with entries in METRIC_META are included in the output.
+    Includes timestamp from _annotations when available.
     """
+    annotations = nested.get("_annotations", {})
     result = []
     for name, meta in METRIC_META.items():
         value = nested.get(meta["phase"], {}).get(name)
-        result.append(
-            {
-                "metric_name": name,
-                "value": value,
-                "unit": meta["unit"],
-                "phase": meta["phase"],
-            }
-        )
+        entry: Dict = {
+            "metric_name": name,
+            "value": value,
+            "unit": meta["unit"],
+            "phase": meta["phase"],
+            "timestamp": None,
+        }
+        # Look up timestamp from annotations
+        ts_field = METRIC_TIMESTAMP_MAP.get(name)
+        if ts_field:
+            entry["timestamp"] = annotations.get(ts_field)
+        result.append(entry)
     return result
 
 
@@ -61,6 +77,18 @@ class BiomechanicsMetrics(BaseModel):
     knee_flexion_min_deg: Optional[float] = None
     toss_peak_height: Optional[float] = None
     toss_laterality: Optional[float] = None
+    # Annotation timestamps (stored in JSONB _annotations, not in flat metric list directly)
+    toss_peak_timestamp: Optional[float] = None
+
+
+# Fields stored under _annotations in JSONB, not as regular phase metrics.
+ANNOTATION_FIELDS = {"toss_peak_timestamp"}
+
+# Maps metric name → annotation field name for timestamp lookup.
+METRIC_TIMESTAMP_MAP: Dict[str, str] = {
+    "toss_peak_height": "toss_peak_timestamp",
+    "toss_laterality": "toss_peak_timestamp",
+}
 
 
 def compute_biomechanics_metrics(
