@@ -27,6 +27,7 @@ interface AnalysisDashboardMetricsProps {
   filteredMetrics: MetricValue[];
   currentTime: number;
   loopCurrentPhase: boolean;
+  loopPhaseLabel: string | null;
   onSeek: (t: number) => void;
   onPhaseJump: (phase: PhaseWindow) => void;
   onContactJump: (contactTimestamp: number) => void;
@@ -42,6 +43,7 @@ const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
   filteredMetrics,
   currentTime,
   loopCurrentPhase,
+  loopPhaseLabel,
   onSeek,
   onPhaseJump,
   onContactJump,
@@ -50,8 +52,42 @@ const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
 }) => {
   return (
     <div className="analysis-dashboard__right-panel">
+      {/* Phase tab strip */}
       {phases.length > 0 && (
-        <div className="analysis-dashboard__timeline-wrapper">
+        <div className="analysis-dashboard__phase-tabs" role="tablist">
+          {phases.map((phase) => (
+            <button
+              key={phase.phase}
+              type="button"
+              className={`analysis-dashboard__phase-tab${
+                currentPhase?.phase === phase.phase
+                  ? ' analysis-dashboard__phase-tab--active'
+                  : ''
+              }`}
+              role="tab"
+              aria-selected={currentPhase?.phase === phase.phase}
+              onClick={() => onPhaseJump(phase)}
+            >
+              {phase.phase_label}
+            </button>
+          ))}
+          {currentServe.contact_timestamp != null && (
+            <button
+              type="button"
+              className="analysis-dashboard__phase-tab analysis-dashboard__phase-tab--contact"
+              role="tab"
+              aria-selected={false}
+              onClick={() => onContactJump(currentServe.contact_timestamp!)}
+            >
+              &#x2299; Contact
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Slim timeline scrubber — no labels */}
+      {phases.length > 0 && (
+        <div className="analysis-dashboard__timeline-inset">
           <ServePhaseTimeline
             phases={phases}
             currentTime={currentTime}
@@ -59,59 +95,16 @@ const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
             serveEnd={currentServe.end_timestamp}
             onSeek={onSeek}
             contactTimestamp={currentServe.contact_timestamp ?? null}
+            hideLabels
           />
         </div>
       )}
 
-      {phases.length > 0 && (
-        <div className="analysis-dashboard__phase-controls">
-          <div className="analysis-dashboard__phase-chip-row">
-            {phases.map((phase) => (
-              <button
-                key={phase.phase}
-                type="button"
-                className={`analysis-dashboard__phase-chip ${
-                  currentPhase?.phase === phase.phase
-                    ? 'analysis-dashboard__phase-chip--active'
-                    : ''
-                }`}
-                onClick={() => onPhaseJump(phase)}
-              >
-                {phase.phase_label}
-              </button>
-            ))}
-          </div>
-          <div className="analysis-dashboard__phase-actions">
-            {currentServe.contact_timestamp != null && (
-              <button
-                type="button"
-                className="analysis-dashboard__goto-contact-btn"
-                onClick={() => onContactJump(currentServe.contact_timestamp!)}
-              >
-                Go to Contact
-              </button>
-            )}
-            <button
-              type="button"
-              className={`analysis-dashboard__loop-btn ${
-                loopCurrentPhase ? 'analysis-dashboard__loop-btn--active' : ''
-              }`}
-              onClick={onToggleLoopCurrentPhase}
-              disabled={!currentPhase}
-            >
-              {loopCurrentPhase
-                ? 'Looping Current Stage'
-                : 'Loop Current Stage'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Metrics Strip -- filtered by active phase */}
-      {metrics.length > 0 && (
-        <div className="analysis-dashboard__metrics-strip">
-          {filteredMetrics.length > 0 ? (
-            filteredMetrics.map((m) => {
+      {/* Metrics for active phase */}
+      <div className="analysis-dashboard__phase-detail">
+        {metrics.length > 0 ? (
+          <div className="analysis-dashboard__metrics-strip">
+            {metrics.map((m) => {
               const isClickable =
                 m.timestamp != null && m.value != null && onMetricClick;
               return (
@@ -141,12 +134,27 @@ const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
                   </span>
                 </div>
               );
-            })
-          ) : (
-            <p className="analysis-dashboard__metrics-empty">
-              No metrics for this phase
-            </p>
-          )}
+            })}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Playback controls */}
+      {phases.length > 0 && (
+        <div className="analysis-dashboard__playback-controls">
+          <button
+            type="button"
+            className={`analysis-dashboard__loop-btn${
+              loopCurrentPhase ? ' analysis-dashboard__loop-btn--active' : ''
+            }`}
+            onClick={onToggleLoopCurrentPhase}
+            disabled={!currentPhase}
+          >
+            &#x21bb;{' '}
+            {loopCurrentPhase
+              ? `Looping ${loopPhaseLabel ?? 'Phase'}`
+              : `Loop ${currentPhase?.phase_label ?? 'Phase'}`}
+          </button>
         </div>
       )}
     </div>

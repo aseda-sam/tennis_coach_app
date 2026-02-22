@@ -209,87 +209,76 @@
   }
 }
 
-/* Right panel: controls + metrics stacked vertically */
+/* Right panel: unified card */
 .analysis-dashboard__right-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-.analysis-dashboard__timeline-wrapper {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
-  padding: var(--spacing-md) var(--spacing-lg);
+  overflow: hidden;
 }
 
-.analysis-dashboard__phase-controls {
+/* Phase tab strip */
+.analysis-dashboard__phase-tabs {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
 }
 
-.analysis-dashboard__phase-chip-row {
-  display: flex;
-  gap: var(--spacing-xs);
-  flex-wrap: wrap;
-}
-
-.analysis-dashboard__phase-chip {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-secondary);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-  transition: var(--transition-normal);
-}
-
-.analysis-dashboard__phase-chip:hover {
-  border-color: var(--color-border-dark);
-  color: var(--color-text);
-}
-
-.analysis-dashboard__phase-chip--active {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
-  color: var(--color-primary-darker);
-  font-weight: var(--font-weight-medium);
-}
-
-.analysis-dashboard__phase-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
-  align-items: center;
-}
-
-.analysis-dashboard__goto-contact-btn {
-  padding: 8px 12px;
+.analysis-dashboard__phase-tab {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-lg);
   font-size: var(--font-size-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
   transition:
-    border-color var(--duration-fast),
-    color var(--duration-fast);
+    color var(--duration-fast) var(--ease-in-out),
+    border-color var(--duration-fast) var(--ease-in-out);
+  white-space: nowrap;
 }
 
-.analysis-dashboard__goto-contact-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+.analysis-dashboard__phase-tab:hover {
+  color: var(--color-text);
+}
+
+.analysis-dashboard__phase-tab--active {
+  color: var(--color-court-blue);
+  border-bottom-color: var(--color-court-blue);
+  font-weight: var(--font-weight-semibold);
+}
+
+.analysis-dashboard__phase-tab--contact {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+/* Slim timeline scrubber inset */
+.analysis-dashboard__timeline-inset {
+  padding: var(--spacing-sm) var(--spacing-lg);
+}
+
+/* Phase detail / metrics area */
+.analysis-dashboard__phase-detail {
+  padding: var(--spacing-lg);
+}
+
+/* Playback controls row */
+.analysis-dashboard__playback-controls {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--color-border);
+  padding: var(--spacing-sm) var(--spacing-lg);
 }
 
 .analysis-dashboard__loop-btn {
-  align-self: flex-start;
-  padding: 8px 12px;
+  padding: 6px 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
@@ -311,12 +300,12 @@
 }
 
 .analysis-dashboard__loop-btn--active {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
-  color: var(--color-primary-darker);
+  border-color: var(--color-court-blue);
+  background: var(--color-court-blue-soft);
+  color: var(--color-court-blue);
 }
 
-/* Metrics Strip — always-visible metrics cards */
+/* Metrics Strip */
 .analysis-dashboard__metrics-strip {
   display: flex;
   gap: var(--spacing-md);
@@ -341,8 +330,8 @@
 }
 
 .analysis-dashboard__metric-card--clickable:hover {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
+  border-color: var(--color-court-blue);
+  background: var(--color-court-blue-soft);
 }
 
 .analysis-dashboard__metric-card--clickable:active {

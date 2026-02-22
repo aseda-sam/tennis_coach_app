@@ -116,6 +116,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     currentTime,
     isPlaying,
     loopCurrentPhase,
+    loopPhaseWindow,
     handlePlayPause,
     handleSeek,
     handleTimeUpdate,
@@ -137,9 +138,21 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     () => biomechanicsReport?.metrics ?? [],
     [biomechanicsReport]
   );
-  const currentPhase = currentServe
+  // Track which phase tab was explicitly clicked — gives instant highlight
+  // without waiting for the video seek to complete.
+  const [activePhaseKey, setActivePhaseKey] = useState<string | null>(null);
+
+  // Clear override when playback starts (natural phase transitions take over)
+  useEffect(() => {
+    if (isPlaying) setActivePhaseKey(null);
+  }, [isPlaying]);
+
+  const timeBasedPhase = currentServe
     ? findCurrentPhase(phases, currentTime)
     : undefined;
+  const currentPhase = activePhaseKey
+    ? (phases.find((p) => p.phase === activePhaseKey) ?? timeBasedPhase)
+    : timeBasedPhase;
   const filteredMetrics = useMemo(() => {
     if (!currentPhase) return metrics;
     return metrics.filter(
@@ -147,9 +160,23 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     );
   }, [metrics, currentPhase]);
 
-  // Wrap playback handlers that need phases/currentPhase from this scope
+  // Wrap playback handlers to capture the selected phase for instant tab highlight
+  const wrappedPhaseJump = useCallback(
+    (phase: PhaseWindow) => {
+      setActivePhaseKey(phase.phase);
+      handlePhaseJump(phase);
+    },
+    [handlePhaseJump]
+  );
+
   const handleContactJumpWithPhases = useCallback(
     (contactTimestamp: number) => {
+      const phaseAtContact = phases.find(
+        (p) =>
+          contactTimestamp >= p.start_timestamp &&
+          contactTimestamp <= p.end_timestamp
+      );
+      setActivePhaseKey(phaseAtContact?.phase ?? null);
       handleContactJump(contactTimestamp, phases);
     },
     [handleContactJump, phases]
@@ -357,8 +384,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 filteredMetrics={filteredMetrics}
                 currentTime={currentTime}
                 loopCurrentPhase={loopCurrentPhase}
+                loopPhaseLabel={loopPhaseWindow?.phase_label ?? null}
                 onSeek={handleSeek}
-                onPhaseJump={handlePhaseJump}
+                onPhaseJump={wrappedPhaseJump}
                 onContactJump={handleContactJumpWithPhases}
                 onToggleLoopCurrentPhase={handleToggleLoopWithPhase}
                 onMetricClick={handleMetricClick}

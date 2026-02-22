@@ -10,10 +10,12 @@ interface ServePhaseTimelineProps {
   onSeek: (timestamp: number) => void;
   /** When set, show a visible marker for contact (even if Contact is not in phases). */
   contactTimestamp?: number | null;
+  /** When true, hide phase labels below the track and the current-label above it. */
+  hideLabels?: boolean;
 }
 
 const NEUTRAL_SEGMENT_COLOR = 'var(--color-border-dark)';
-const ACTIVE_SEGMENT_COLOR = 'var(--color-primary)';
+const ACTIVE_SEGMENT_COLOR = 'var(--color-court-blue)';
 
 const ServePhaseTimeline: React.FC<ServePhaseTimelineProps> = ({
   phases,
@@ -22,6 +24,7 @@ const ServePhaseTimeline: React.FC<ServePhaseTimelineProps> = ({
   serveEnd,
   onSeek,
   contactTimestamp = null,
+  hideLabels = false,
 }) => {
   const duration = serveEnd - serveStart;
   if (duration <= 0) return null;
@@ -49,7 +52,7 @@ const ServePhaseTimeline: React.FC<ServePhaseTimelineProps> = ({
 
   return (
     <div className="phase-timeline">
-      {currentPhase && (
+      {!hideLabels && currentPhase && (
         <div className="phase-timeline__current-label">
           {currentPhase.phase_label}
         </div>
@@ -100,32 +103,34 @@ const ServePhaseTimeline: React.FC<ServePhaseTimelineProps> = ({
           />
         )}
       </div>
-      <div className="phase-timeline__labels">
-        {phases
-          .filter((p) => p.detected)
-          .map((phase) => {
-            const left = toPercent(
-              (phase.start_timestamp + phase.end_timestamp) / 2
-            );
-            return (
-              <span
-                key={phase.phase}
-                className="phase-timeline__label"
-                style={{ left: `${left}%` }}
-              >
-                {phase.phase_label}
-              </span>
-            );
-          })}
-        {contactPct != null && (
-          <span
-            className="phase-timeline__label phase-timeline__label--contact"
-            style={{ left: `${contactPct}%` }}
-          >
-            Contact
-          </span>
-        )}
-      </div>
+      {!hideLabels && (
+        <div className="phase-timeline__labels">
+          {phases
+            .filter((p) => p.detected)
+            .map((phase) => {
+              const left = toPercent(
+                (phase.start_timestamp + phase.end_timestamp) / 2
+              );
+              return (
+                <span
+                  key={phase.phase}
+                  className="phase-timeline__label"
+                  style={{ left: `${left}%` }}
+                >
+                  {phase.phase_label}
+                </span>
+              );
+            })}
+          {contactPct != null && (
+            <span
+              className="phase-timeline__label phase-timeline__label--contact"
+              style={{ left: `${contactPct}%` }}
+            >
+              Contact
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 };

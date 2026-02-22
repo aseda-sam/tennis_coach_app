@@ -12,6 +12,7 @@ interface UseServePlaybackResult {
   currentTime: number;
   isPlaying: boolean;
   loopCurrentPhase: boolean;
+  loopPhaseWindow: PhaseWindow | null;
   handlePlayPause: () => void;
   handleSeek: (t: number) => void;
   handleTimeUpdate: (t: number) => void;
@@ -154,6 +155,7 @@ export function useServePlayback({
     currentTime,
     isPlaying,
     loopCurrentPhase,
+    loopPhaseWindow,
     handlePlayPause,
     handleSeek,
     handleTimeUpdate,

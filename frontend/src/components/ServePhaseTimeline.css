@@ -17,7 +17,7 @@
 
 .phase-timeline__track {
   position: relative;
-  height: 8px;
+  height: 6px;
   background: var(--color-border);
   border-radius: var(--radius-full);
   cursor: pointer;
@@ -40,8 +40,8 @@
   position: absolute;
   top: -3px;
   width: 3px;
-  height: 14px;
-  background: var(--color-text);
+  height: 12px;
+  background: var(--color-court-blue);
   border-radius: var(--radius-full);
   transform: translateX(-50%);
   z-index: 2;
@@ -73,8 +73,8 @@
   top: 0;
   width: 2px;
   height: 100%;
-  min-height: 8px;
-  background: var(--color-primary);
+  min-height: 6px;
+  background: var(--color-court-blue);
   transform: translateX(-50%);
   z-index: 3;
   cursor: pointer;
@@ -84,6 +84,6 @@
 
 .phase-timeline__contact-marker:hover {
   width: 3px;
-  background: var(--color-primary);
-  box-shadow: 0 0 6px rgba(0, 200, 100, 0.5);
+  background: var(--color-court-blue);
+  box-shadow: 0 0 6px rgba(27, 75, 122, 0.5);
 }
