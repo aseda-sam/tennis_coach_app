@@ -42,6 +42,36 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
             "analysis_version": "phase-seg-v1",
             "total_phases_detected": 1,
             "total_phases_possible": 8,
+            "detection_meta": {
+                "ktps": {
+                    "ball_release": {
+                        "frame": 6,
+                        "method": "toss_wrist_above_shoulder",
+                        "search_window": [0, 24],
+                    },
+                    "trophy_position": {
+                        "frame": 21,
+                        "method": "peak_wrist_height_with_knee_validation",
+                        "search_window": [6, 42],
+                    },
+                    "racket_low_point": {
+                        "frame": 29,
+                        "method": "max_dominant_wrist_y",
+                        "search_window": [21, 39],
+                    },
+                    "ball_impact": {
+                        "frame": 39,
+                        "method": "user_tagged",
+                    },
+                },
+                "feature_curves": {
+                    "max_wrist_height": [0.1, 0.2, 0.3],
+                    "knee_hip_ratio": [0.5, 0.6, 0.7],
+                    "max_wrist_velocity": [0.0, 50.0, 100.0],
+                },
+                "fps": 30.0,
+                "total_frames": 60,
+            },
         }
     )
     report.metrics = {
@@ -130,6 +160,19 @@ class TestGetServeBiomechanics:
             assert "phase" in m
             assert "rating" not in m
             assert "feedback_text" not in m
+
+    @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
+    def test_detection_meta_in_response(self, mock_service, biomechanics_client):
+        """detection_meta should be passed through from phase_segmentation_json."""
+        mock_service.get_or_compute_analysis.return_value = _make_mock_report()
+        response = biomechanics_client.get("/v0/serve-windows/1/biomechanics")
+        data = response.json()
+        assert "detection_meta" in data
+        meta = data["detection_meta"]
+        assert meta is not None
+        assert "ktps" in meta
+        assert "feature_curves" in meta
+        assert "fps" in meta
 
     @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
     def test_not_found_returns_404(self, mock_service, biomechanics_client):

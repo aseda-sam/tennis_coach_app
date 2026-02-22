@@ -9,13 +9,31 @@ import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
-import AnalysisDashboardMetrics from './AnalysisDashboardMetrics';
+import DetectionDetailsPanel from './DetectionDetailsPanel';
 import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
+import ServePhaseTimeline from './ServePhaseTimeline';
 import ServeThumbnailStrip from './ServeThumbnailStrip';
+
+const METRIC_DISPLAY_NAMES: Record<string, string> = {
+  knee_flexion_min_deg: 'Knee Flexion',
+  toss_peak_height: 'Toss Peak Height',
+  toss_laterality: 'Toss Position',
+};
+
+function formatMetricValue(value: number | null, unit: string): string {
+  if (value === null) return 'N/A';
+  if (unit === 'deg' || unit === 'degrees') return `${Math.round(value)}\u00b0`;
+  if (unit === 'normalized') return value.toFixed(2);
+  if (unit === 'ms') return `${value} ms`;
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(2);
+}
+
+const SPEED_OPTIONS = [0.25, 0.5, 1] as const;
 
 interface AnalysisDashboardProps {
   videoId: number;
@@ -148,13 +166,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const currentPhase = activePhaseKey
     ? (phases.find((p) => p.phase === activePhaseKey) ?? timeBasedPhase)
     : timeBasedPhase;
-  const filteredMetrics = useMemo(() => {
-    if (!currentPhase) return metrics;
-    return metrics.filter(
-      (m) => m.phase === currentPhase.phase || m.phase === null
-    );
-  }, [metrics, currentPhase]);
-
   // Wrap playback handlers to capture the selected phase for instant tab highlight
   const wrappedPhaseJump = useCallback(
     (phase: PhaseWindow) => {
@@ -366,24 +377,149 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 />
               </ErrorBoundary>
 
-              {/* Right panel: serve nav, timeline, phases, metrics */}
-              <AnalysisDashboardMetrics
-                currentServe={currentServe!}
-                phases={phases}
-                currentPhase={currentPhase}
-                metrics={metrics}
-                filteredMetrics={filteredMetrics}
-                currentTime={currentTime}
-                loopCurrentPhase={loopCurrentPhase}
-                loopPhaseLabel={loopPhaseWindow?.phase_label ?? null}
-                playbackSpeed={playbackSpeed}
-                onSeek={handleSeek}
-                onPhaseJump={wrappedPhaseJump}
-                onContactJump={handleContactJumpWithPhases}
-                onToggleLoopCurrentPhase={handleToggleLoopWithPhase}
-                onSpeedChange={setPlaybackSpeed}
-                onMetricClick={handleMetricClick}
-              />
+              {/* Phase navigation — only when phases exist */}
+              {phases.length > 0 && (
+                <>
+                  {/* Phase tab strip */}
+                  <div
+                    className="analysis-dashboard__phase-tabs"
+                    role="tablist"
+                  >
+                    {phases.map((phase) => (
+                      <button
+                        key={phase.phase}
+                        type="button"
+                        className={`analysis-dashboard__phase-tab${
+                          currentPhase?.phase === phase.phase
+                            ? ' analysis-dashboard__phase-tab--active'
+                            : ''
+                        }`}
+                        role="tab"
+                        aria-selected={currentPhase?.phase === phase.phase}
+                        onClick={() => wrappedPhaseJump(phase)}
+                      >
+                        {phase.phase_label}
+                      </button>
+                    ))}
+                    {currentServe!.contact_timestamp != null && (
+                      <button
+                        type="button"
+                        className="analysis-dashboard__phase-tab analysis-dashboard__phase-tab--contact"
+                        role="tab"
+                        aria-selected={false}
+                        onClick={() =>
+                          handleContactJumpWithPhases(
+                            currentServe!.contact_timestamp!
+                          )
+                        }
+                      >
+                        &#x2299; Contact
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Slim timeline scrubber */}
+                  <div className="analysis-dashboard__timeline-inset">
+                    <ServePhaseTimeline
+                      phases={phases}
+                      currentTime={currentTime}
+                      serveStart={currentServe!.start_timestamp}
+                      serveEnd={currentServe!.end_timestamp}
+                      onSeek={handleSeek}
+                      contactTimestamp={currentServe!.contact_timestamp ?? null}
+                      hideLabels
+                      activePhase={currentPhase?.phase}
+                    />
+                  </div>
+
+                  {/* Playback controls: speed + loop */}
+                  <div className="analysis-dashboard__playback-controls">
+                    <div
+                      className="analysis-dashboard__speed-selector"
+                      role="group"
+                      aria-label="Playback speed"
+                    >
+                      {SPEED_OPTIONS.map((speed) => (
+                        <button
+                          key={speed}
+                          type="button"
+                          className={`analysis-dashboard__speed-btn${
+                            playbackSpeed === speed
+                              ? ' analysis-dashboard__speed-btn--active'
+                              : ''
+                          }`}
+                          onClick={() => setPlaybackSpeed(speed)}
+                        >
+                          {speed}x
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className={`analysis-dashboard__loop-btn${
+                        loopCurrentPhase
+                          ? ' analysis-dashboard__loop-btn--active'
+                          : ''
+                      }`}
+                      onClick={handleToggleLoopWithPhase}
+                      disabled={!currentPhase}
+                    >
+                      &#x21bb;{' '}
+                      {loopCurrentPhase
+                        ? `Looping ${loopPhaseWindow?.phase_label ?? 'Phase'}`
+                        : `Loop ${currentPhase?.phase_label ?? 'Phase'}`}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Metrics */}
+              {metrics.length > 0 && (
+                <div className="analysis-dashboard__metrics-strip">
+                  {metrics.map((m) => {
+                    const isClickable = m.timestamp != null && m.value != null;
+                    return (
+                      <div
+                        key={m.metric_name}
+                        className={`analysis-dashboard__metric-card${isClickable ? ' analysis-dashboard__metric-card--clickable' : ''}`}
+                        onClick={
+                          isClickable ? () => handleMetricClick(m) : undefined
+                        }
+                        role={isClickable ? 'button' : undefined}
+                        tabIndex={isClickable ? 0 : undefined}
+                        onKeyDown={
+                          isClickable
+                            ? (e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleMetricClick(m);
+                                }
+                              }
+                            : undefined
+                        }
+                      >
+                        <span className="analysis-dashboard__metric-label">
+                          {METRIC_DISPLAY_NAMES[m.metric_name] ??
+                            m.metric_name.replace(/_/g, ' ')}
+                        </span>
+                        <span className="analysis-dashboard__metric-value">
+                          {formatMetricValue(m.value, m.unit)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Detection Details (stats for nerds) */}
+              {biomechanicsReport?.detection_meta && (
+                <DetectionDetailsPanel
+                  detectionMeta={biomechanicsReport.detection_meta}
+                  currentTime={currentTime}
+                  serveStart={currentServe!.start_timestamp}
+                  onSeek={handleSeek}
+                />
+              )}
             </>
           ) : serveWindowsProcessing ? (
             <div className="analysis-dashboard__progress-state">

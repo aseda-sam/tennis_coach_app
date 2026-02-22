@@ -73,6 +73,48 @@ class TestContractTests:
         assert result.analysis_version == ANALYSIS_VERSION
         assert result.analysis_version == "phase-seg-v2"
 
+    def test_detection_meta_present(self):
+        """detection_meta must be present with ktps, feature_curves, fps, total_frames."""
+        result = _run_standard()
+        meta = result.detection_meta
+        assert meta is not None
+        assert "ktps" in meta
+        assert "feature_curves" in meta
+        assert "fps" in meta
+        assert "total_frames" in meta
+
+    def test_detection_meta_ktps_structure(self):
+        """detection_meta.ktps must have all 4 KTP keys with frame and method."""
+        result = _run_standard()
+        ktps = result.detection_meta["ktps"]
+        for ktp_name in [
+            "ball_release",
+            "trophy_position",
+            "racket_low_point",
+            "ball_impact",
+        ]:
+            assert ktp_name in ktps, f"Missing KTP: {ktp_name}"
+            assert "frame" in ktps[ktp_name]
+            assert "method" in ktps[ktp_name]
+
+    def test_detection_meta_feature_curves_structure(self):
+        """feature_curves must have 3 arrays matching total_frames length."""
+        result = _run_standard()
+        curves = result.detection_meta["feature_curves"]
+        total = result.detection_meta["total_frames"]
+        for key in ["max_wrist_height", "knee_hip_ratio", "max_wrist_velocity"]:
+            assert key in curves, f"Missing curve: {key}"
+            assert len(curves[key]) == total
+
+    def test_detection_meta_ktp_frames_are_valid(self):
+        """Detected KTP frames must be within valid range."""
+        result = _run_standard()
+        total = result.detection_meta["total_frames"]
+        for ktp_name, ktp_data in result.detection_meta["ktps"].items():
+            frame = ktp_data.get("frame")
+            if frame is not None:
+                assert 0 <= frame < total, f"{ktp_name} frame {frame} out of range"
+
 
 class TestKTPDetection:
     """Key Time Point sequential detection and phase derivation."""

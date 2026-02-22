@@ -42,6 +42,7 @@ PHASE_LABEL_MAP = {
 def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportResponse:
     """Convert DB model to API response."""
     phase_segmentation = []
+    seg_data = None
     if report.phase_segmentation_json:
         seg_data = json.loads(report.phase_segmentation_json)
         for pw in seg_data.get("phases", []):
@@ -64,12 +65,15 @@ def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportRe
     for m in metrics_to_flat_list(nested):
         metrics.append(MetricValueResponse(**m))
 
+    detection_meta = seg_data.get("detection_meta") if seg_data else None
+
     return BiomechanicsReportResponse(
         id=report.id,
         serve_window_id=report.serve_window_id,
         phase_segmentation=phase_segmentation,
         metrics=metrics,
         analysis_version=report.analysis_version,
+        detection_meta=detection_meta,
         created_at=report.created_at,
     )
 

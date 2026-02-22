@@ -1,7 +1,7 @@
 """Pydantic schemas for serve biomechanics API."""
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -48,4 +48,8 @@ class BiomechanicsReportResponse(BaseModel):
         description="Raw metric values (no ratings)",
     )
     analysis_version: str = Field(description="Phase/metrics analysis version")
+    detection_meta: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="KTP detection reasoning and feature curves (stats for nerds)",
+    )
     created_at: datetime = Field(description="Report creation time")
