@@ -1,15 +1,23 @@
 #!/usr/bin/env python
-"""Backfill ball detection for videos with serve windows but no ball data.
+"""Backfill ball detection for videos with serve windows.
 
-Queries videos that have accepted serve windows but no completed BallDetection
-record, then enqueues run_ball_detection_rq jobs for each.
+Queries videos that have accepted serve windows, then enqueues
+run_ball_detection_rq jobs for each. The RQ task deletes previous
+BallDetection records before re-running, so --force is safe.
 
 Usage:
     # Dry run — show what would be queued
     cd backend && python scripts/backfill_ball_detection.py --dry-run
 
-    # Enqueue jobs
+    # Enqueue only videos missing ball detection
     cd backend && python scripts/backfill_ball_detection.py
+
+    # Re-run ball detection on ALL videos (even ones that already have it)
+    cd backend && python scripts/backfill_ball_detection.py --force
+
+    # Exclude specific video IDs (e.g. one that's already running)
+    cd backend && python scripts/backfill_ball_detection.py --force --exclude 12
+    cd backend && python scripts/backfill_ball_detection.py --force --exclude 12 5 9
 
 Environment variables (same as host worker):
     REDIS_URL=redis://localhost:6379/0
@@ -35,27 +43,36 @@ from app.models.video import Video
 from app.services.rq_tasks import run_ball_detection_rq
 
 
-def find_videos_needing_ball_detection() -> list[dict]:
-    """Find videos with accepted serve windows but no completed BallDetection."""
-    with SessionLocal() as db:
-        # Subquery: video IDs that already have completed ball detection
-        completed_ball_video_ids = (
-            db.query(BallDetection.video_id)
-            .filter(BallDetection.status == "completed")
-            .subquery()
-        )
+def find_videos_with_serve_windows(
+    force: bool = False,
+    exclude_ids: list[int] | None = None,
+) -> list[dict]:
+    """Find videos with accepted serve windows.
 
-        # Videos with accepted serve windows but no completed ball detection
-        videos = (
+    Args:
+        force: If True, include all videos. If False, skip videos that
+               already have a completed BallDetection record.
+        exclude_ids: Video IDs to skip.
+    """
+    with SessionLocal() as db:
+        query = (
             db.query(Video)
             .join(ServeWindow, ServeWindow.video_id == Video.id)
-            .filter(
-                ServeWindow.status == "accepted",
-                ~Video.id.in_(db.query(completed_ball_video_ids)),
-            )
-            .distinct()
-            .all()
+            .filter(ServeWindow.status == "accepted")
         )
+
+        if exclude_ids:
+            query = query.filter(~Video.id.in_(exclude_ids))
+
+        if not force:
+            completed_ball_video_ids = (
+                db.query(BallDetection.video_id)
+                .filter(BallDetection.status == "completed")
+                .subquery()
+            )
+            query = query.filter(~Video.id.in_(db.query(completed_ball_video_ids)))
+
+        videos = query.distinct().all()
 
         results = []
         for v in videos:
@@ -88,16 +105,31 @@ def main() -> None:
         action="store_true",
         help="Show what would be queued without actually enqueuing",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-run ball detection on all videos, even those with existing results",
+    )
+    parser.add_argument(
+        "--exclude",
+        type=int,
+        nargs="+",
+        metavar="ID",
+        help="Video IDs to skip (e.g. --exclude 12 or --exclude 12 5 9)",
+    )
     args = parser.parse_args()
 
-    print("Searching for videos needing ball detection...")
-    videos = find_videos_needing_ball_detection()
+    mode = "all videos (--force)" if args.force else "videos missing ball detection"
+    print(f"Searching for {mode}...")
+    if args.exclude:
+        print(f"Excluding video IDs: {args.exclude}")
+    videos = find_videos_with_serve_windows(force=args.force, exclude_ids=args.exclude)
 
     if not videos:
-        print("No videos need ball detection backfill.")
+        print("No videos found.")
         return
 
-    print(f"\nFound {len(videos)} video(s) needing ball detection:\n")
+    print(f"\nFound {len(videos)} video(s):\n")
     for v in videos:
         print(
             f"  Video {v['video_id']}: {v['filename']} "

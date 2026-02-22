@@ -108,7 +108,18 @@ class StorageService:
         """
         path_obj = Path(file_path)
         if path_obj.is_absolute():
-            return path_obj
+            if path_obj.exists():
+                return path_obj
+            # Docker stores paths as /app/data/videos/raw/... which don't exist
+            # on the host. Strip to a relative path the handlers below recognise.
+            docker_video_prefix = "/app/data/videos/"
+            if file_path.startswith(docker_video_prefix):
+                # "/app/data/videos/raw/file.mp4" -> "raw/file.mp4"
+                file_path = file_path[len(docker_video_prefix) :]
+                path_obj = Path(file_path)
+                # Fall through to relative path handling below
+            else:
+                return path_obj
         # If path starts with '..', it's a relative path to a parent directory
         # Use it as-is (it will be resolved relative to current working directory)
         if file_path.startswith(".."):
