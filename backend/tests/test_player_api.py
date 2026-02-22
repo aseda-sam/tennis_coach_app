@@ -70,7 +70,7 @@ class TestPlayerAPI:
         response = client.post("/v0/players/", json=player_data)
 
         assert response.status_code == 400
-        assert "already exists" in response.json()["detail"]
+        assert "already exists" in response.json()["error"]["message"]
 
     def test_create_player_invalid_data(
         self, client: TestClient, db_session: Session
