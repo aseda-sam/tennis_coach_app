@@ -3,6 +3,7 @@
 We use **Redis Queue (RQ)** for slow work:
 
 - Pose detection (MediaPipe)
+- Ball detection (YOLO + ByteTrack)
 
 ## Data Flow: Biomechanics Loop
 
@@ -51,20 +52,57 @@ docker compose logs -f worker
 
 RQ dashboard (if enabled in compose): `http://localhost:9181`
 
+## Host worker setup (recommended for ball detection)
+
+Ball detection loads torch + YOLO + ByteTrack (~2-3 GB). On macOS, running the worker on the host gives MPS GPU acceleration and avoids Docker VM memory limits.
+
+```bash
+# Start Docker services WITHOUT the worker container
+docker compose up --build backend frontend postgres redis rq-dashboard
+
+# Start worker on host — MUST run from backend/ directory
+cd backend && source .venv/bin/activate
+REDIS_URL=redis://localhost:6379/0 \
+DATABASE_URL=postgresql://tennis:tennis_dev@localhost:5432/tennis_coach \
+python scripts/start_rq_worker.py
+```
+
+**Critical:** The worker must run from `backend/` because config uses relative paths:
+- `ML_MODELS_DIR = "ml_models"` resolves to `backend/ml_models/`
+- `UPLOAD_DIR = "../data/videos/raw"` resolves to `data/videos/raw/`
+
+YOLO auto-detects MPS on macOS (no explicit `device=` param needed). Check the logs for `YOLO inference device: mps`.
+
 ## Key env vars
 
 ```bash
 REDIS_URL=redis://localhost:6379/0
+DATABASE_URL=postgresql://tennis:tennis_dev@localhost:5432/tennis_coach
 SERVICE_TYPE=api   # or worker
 PROFILE=local      # or production
 ```
+
+`REDIS_URL` must be set explicitly for the host worker — `redis_config.py` does not auto-detect localhost like `config.py` does for `DATABASE_URL`.
 
 ## Where tasks live
 
 - Queue wiring: `app/core/redis_config.py`
 - Task functions:
-  - `app/services/rq_tasks.py::analyze_pose_detection_scout_refine_rq`
+  - `app/services/rq_tasks.py::analyze_pose_detection_scout_refine_rq` — full pipeline (pose + ball + biomechanics)
+  - `app/services/rq_tasks.py::run_ball_detection_rq` — standalone ball detection for existing videos
   - `app/services/rq_tasks.py::transcode_video_rq`
+
+## Backfilling ball detection
+
+For videos analyzed before ball detection was integrated:
+
+```bash
+# Preview what would be queued
+cd backend && python scripts/backfill_ball_detection.py --dry-run
+
+# Enqueue ball detection jobs
+cd backend && python scripts/backfill_ball_detection.py
+```
 
 ## Operational notes
 

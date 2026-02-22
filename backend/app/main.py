@@ -19,6 +19,7 @@ from starlette.responses import Response
 from app.api.routes import (
     admin,
     analysis,
+    ball_detection,
     config,
     overlay_data,
     players,
@@ -342,6 +343,17 @@ app.include_router(
     tags=["config"],
     responses={
         400: {"description": "Bad Request"},
+        500: {"description": "Internal Server Error"},
+    },
+)
+
+app.include_router(
+    ball_detection.router,
+    prefix="/v0",
+    tags=["ball-detection"],
+    responses={
+        400: {"description": "Bad Request"},
+        404: {"description": "Not Found"},
         500: {"description": "Internal Server Error"},
     },
 )

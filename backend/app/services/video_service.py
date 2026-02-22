@@ -11,6 +11,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.models.ball_detection import BallDetection
 from app.models.pose_detection import PoseDetection
 from app.models.video import Video
 from app.services.storage_service import storage_service
@@ -599,10 +600,26 @@ def get_video_analysis_status(db: Session, video_id: int) -> dict:
         has_analysis = True
         analysis_types.append("pose_detection")
 
+    # Check for ball detection
+    ball_detection = (
+        db.query(BallDetection)
+        .filter(BallDetection.video_id == video_id)
+        .order_by(BallDetection.created_at.desc())
+        .first()
+    )
+    has_ball_detection = bool(ball_detection and ball_detection.status == "completed")
+    if has_ball_detection:
+        analysis_types.append("ball_detection")
+
     return {
         "video_id": video_id,
         "has_analysis": has_analysis,
         "analysis_types": analysis_types,
+        "has_ball_detection": has_ball_detection,
+        "ball_detection_rate": ball_detection.detection_rate
+        if has_ball_detection
+        else None,
+        "ball_detection_status": ball_detection.status if ball_detection else None,
     }
 
 
@@ -648,8 +665,22 @@ def get_bulk_analysis_status(
         .all()
     )
 
+    # Fetch all ball detections in one query
+    ball_detections = (
+        db.query(BallDetection).filter(BallDetection.video_id.in_(video_ids)).all()
+    )
+
     # Build lookup maps for O(1) access
     pose_map: Dict[int, PoseDetection] = {pd.video_id: pd for pd in pose_detections}
+    ball_map: Dict[int, BallDetection] = {}
+    for bd in ball_detections:
+        # Keep the most recent per video
+        if bd.video_id not in ball_map or (
+            bd.created_at
+            and ball_map[bd.video_id].created_at
+            and bd.created_at > ball_map[bd.video_id].created_at
+        ):
+            ball_map[bd.video_id] = bd
 
     # Build response for each video
     statuses = []
@@ -661,11 +692,19 @@ def get_bulk_analysis_status(
             has_analysis = True
             analysis_types.append("pose_detection")
 
+        ball_det = ball_map.get(video_id)
+        has_ball = bool(ball_det and ball_det.status == "completed")
+        if has_ball:
+            analysis_types.append("ball_detection")
+
         statuses.append(
             {
                 "video_id": video_id,
                 "has_analysis": has_analysis,
                 "analysis_types": analysis_types,
+                "has_ball_detection": has_ball,
+                "ball_detection_rate": ball_det.detection_rate if has_ball else None,
+                "ball_detection_status": ball_det.status if ball_det else None,
             }
         )
 

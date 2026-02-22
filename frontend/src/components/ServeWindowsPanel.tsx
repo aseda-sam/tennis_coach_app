@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useServeWindows } from '../hooks/useServeWindows';
+import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { formatTime } from '../utils/validation';
 import './AnalysisRightPanel.css';
 import LoadingIndicator from './LoadingIndicator';
@@ -20,6 +21,7 @@ const ServeWindowsPanel: React.FC<ServeWindowsPanelProps> = ({
     filters: { video_id: videoId },
     autoRefresh: true,
   });
+  const { data: analysisStatus } = useVideoAnalysisStatus(videoId);
 
   const sortedServeWindows = useMemo(() => {
     return serveWindows.sort((a, b) => a.start_timestamp - b.start_timestamp);
@@ -53,6 +55,27 @@ const ServeWindowsPanel: React.FC<ServeWindowsPanelProps> = ({
             <h3 className="analysis-right-panel__card-title">
               Key Moments ({sortedServeWindows.length})
             </h3>
+            {analysisStatus?.has_ball_detection &&
+              analysisStatus.ball_detection_rate !== null && (
+                <span
+                  className="analysis-right-panel__ball-detection-badge"
+                  title={`Ball detected in ${Math.round(analysisStatus.ball_detection_rate * 100)}% of frames`}
+                >
+                  <span
+                    className="analysis-right-panel__ball-detection-dot"
+                    style={{
+                      backgroundColor:
+                        analysisStatus.ball_detection_rate >= 0.5
+                          ? 'var(--color-success)'
+                          : analysisStatus.ball_detection_rate >= 0.25
+                            ? 'var(--color-warning)'
+                            : 'var(--color-error)',
+                    }}
+                  />
+                  Ball tracking{' '}
+                  {Math.round(analysisStatus.ball_detection_rate * 100)}%
+                </span>
+              )}
           </div>
         </div>
         <div className="analysis-right-panel__metrics-list">

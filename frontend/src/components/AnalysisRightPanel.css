@@ -390,6 +390,23 @@
   text-transform: capitalize;
 }
 
+/* Ball Detection Quality Badge */
+.analysis-right-panel__ball-detection-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.analysis-right-panel__ball-detection-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
 .analysis-right-panel__metrics-empty {
   text-align: center;
   padding: var(--spacing-xl);

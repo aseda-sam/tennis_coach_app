@@ -152,6 +152,10 @@ class YoloBallDetectionService:
 
             self._logger.info("YOLO model loaded from %s", model_path)
 
+            # Log which compute device YOLO selected (CPU / MPS / CUDA)
+            device = getattr(self._model, "device", "unknown")
+            self._logger.info("YOLO inference device: %s", device)
+
         return self._model
 
     def analyze_serve_windows(

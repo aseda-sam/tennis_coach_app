@@ -71,6 +71,275 @@ def _cleanup_temp_file(temp_path: Path | None) -> None:
             logger.warning("Failed to delete temp video file %s: %s", temp_path, e)
 
 
+def run_ball_detection_rq(
+    video_id: int,
+    user_id: str,
+    video_job_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    RQ task for standalone ball detection on existing serve windows.
+
+    Runs YOLO + ByteTrack ball detection, auto-detects contact timestamps,
+    and recomputes biomechanics to pick up toss metrics.
+
+    Args:
+        video_id: Video ID from database
+        user_id: User ID who triggered the job
+        video_job_id: Optional VideoJob ID for status tracking
+
+    Returns:
+        Dictionary with ball detection results
+    """
+    start_time = time.time()
+    temp_video_path = None
+
+    try:
+        from app.services.ball_detection import YoloBallDetectionService
+        from app.services.ball_detection.contact_detector import (
+            detect_contact_timestamp,
+        )
+        from app.services.biomechanics.serve_biomechanics_service import (
+            compute_biomechanics_batch,
+        )
+
+        logger.info(
+            "RQ task: Starting ball detection for video %s",
+            video_id,
+            extra=get_log_extra(video_id=video_id, job_id=video_job_id),
+        )
+
+        video_job_uuid = None
+        if video_job_id:
+            try:
+                import uuid
+
+                video_job_uuid = uuid.UUID(video_job_id)
+            except (ValueError, TypeError) as e:
+                logger.warning("Invalid video_job_id %s: %s", video_job_id, e)
+
+        # Validate video and load serve windows
+        with SessionLocal() as db:
+            video = video_service.get_video_by_id(db, video_id)
+            if not video:
+                logger.info(
+                    "Video %s deleted before ball detection started, exiting",
+                    video_id,
+                )
+                return {"status": "cancelled", "reason": "video_deleted"}
+
+            video_path = video.file_path
+
+            accepted_windows = (
+                db.query(ServeWindow)
+                .filter(
+                    ServeWindow.video_id == video_id,
+                    ServeWindow.status == "accepted",
+                )
+                .all()
+            )
+            if not accepted_windows:
+                logger.info("No accepted serve windows for video %s", video_id)
+                return {"status": "skipped", "reason": "no_serve_windows"}
+
+            windows = [
+                {
+                    "start_ms": sw.start_timestamp * 1000.0,
+                    "end_ms": sw.end_timestamp * 1000.0,
+                }
+                for sw in accepted_windows
+            ]
+
+            if video_job_uuid:
+                video_job = (
+                    db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                )
+                if video_job:
+                    video_job.status = "processing"
+                    video_job.started_at = datetime.utcnow()
+                    if hasattr(video_job, "stage"):
+                        video_job.stage = "ball_detection"
+                    db.commit()
+
+        # Get local video file
+        local_path, temp_video_path = _get_temp_video_path(video_path)
+
+        # Run ball detection
+        ball_service = YoloBallDetectionService()
+        ball_results = ball_service.analyze_serve_windows(
+            video_path=Path(local_path),
+            windows=windows,
+            padding_ms=300,
+        )
+
+        if "error" in ball_results:
+            raise RuntimeError(f"Ball detection failed: {ball_results['error']}")
+
+        # Store results
+        with SessionLocal() as db:
+            # Delete previous BallDetection for idempotency
+            db.query(BallDetection).filter(BallDetection.video_id == video_id).delete()
+            db.flush()
+
+            ball_record = BallDetection(
+                video_id=video_id,
+                total_frames=ball_results["total_frames"],
+                frames_with_ball=ball_results["frames_with_ball"],
+                detection_rate=ball_results["detection_rate"],
+                ball_data=json.dumps(ball_results["ball_detections"]),
+                processing_time_seconds=ball_results["processing_time_seconds"],
+                frame_processing_rate=ball_results.get("frame_processing_rate"),
+                status="completed",
+                time_windows=json.dumps(windows),
+                completed_at=datetime.utcnow(),
+            )
+            db.add(ball_record)
+            db.commit()
+            db.refresh(ball_record)
+
+            logger.info(
+                "Ball detection stored for video %s: %s/%s frames",
+                video_id,
+                ball_results["frames_with_ball"],
+                ball_results["total_frames"],
+            )
+
+            # Auto-detect contact timestamps (reuse pattern from rq_tasks.py:621-677)
+            try:
+                video_obj = db.query(Video).filter(Video.id == video_id).first()
+                pose_detection = (
+                    db.query(PoseDetection)
+                    .filter(
+                        PoseDetection.video_id == video_id,
+                        PoseDetection.status == "completed",
+                    )
+                    .order_by(PoseDetection.created_at.desc())
+                    .first()
+                )
+                if video_obj and pose_detection:
+                    windows_missing_contact = (
+                        db.query(ServeWindow)
+                        .filter(
+                            ServeWindow.video_id == video_id,
+                            ServeWindow.contact_timestamp.is_(None),
+                        )
+                        .all()
+                    )
+                    for sw in windows_missing_contact:
+                        player = (
+                            db.query(Player).filter(Player.id == sw.player_id).first()
+                            if sw.player_id
+                            else None
+                        )
+                        dominant_hand = player.dominant_hand if player else "right"
+                        contact_ts = detect_contact_timestamp(
+                            ball_detection=ball_record,
+                            pose_detection=pose_detection,
+                            serve_window=sw,
+                            video=video_obj,
+                            dominant_hand=dominant_hand,
+                        )
+                        if contact_ts is not None:
+                            sw.contact_timestamp = contact_ts
+                            logger.info(
+                                "Auto-detected contact for serve window %s at %.2fs",
+                                sw.id,
+                                contact_ts,
+                            )
+                    db.commit()
+            except Exception as contact_err:  # noqa: BLE001
+                logger.warning(
+                    "Contact detection skipped for video %s: %s",
+                    video_id,
+                    contact_err,
+                    exc_info=True,
+                )
+
+            # Recompute biomechanics to pick up toss metrics
+            try:
+                reports = compute_biomechanics_batch(
+                    db=db,
+                    video_id=video_id,
+                    user_id=user_id,
+                )
+                logger.info(
+                    "Recomputed biomechanics for %d serves in video %s",
+                    len(reports),
+                    video_id,
+                )
+            except Exception as bio_err:  # noqa: BLE001
+                logger.warning(
+                    "Biomechanics recompute failed for video %s: %s",
+                    video_id,
+                    bio_err,
+                    exc_info=True,
+                )
+
+            # Update VideoJob status
+            if video_job_uuid:
+                video_job = (
+                    db.query(VideoJob).filter(VideoJob.id == video_job_uuid).first()
+                )
+                if video_job:
+                    video_job.status = "completed"
+                    if hasattr(video_job, "stage"):
+                        video_job.stage = "complete"
+                    video_job.finished_at = datetime.utcnow()
+                    db.commit()
+
+        duration = time.time() - start_time
+        logger.info(
+            "RQ task: Ball detection completed for video %s in %.1fs",
+            video_id,
+            duration,
+            extra=get_log_extra(video_id=video_id, job_id=video_job_id),
+        )
+
+        return {
+            "status": "completed",
+            "video_id": video_id,
+            "total_frames": ball_results["total_frames"],
+            "frames_with_ball": ball_results["frames_with_ball"],
+            "detection_rate": ball_results["detection_rate"],
+            "processing_time_seconds": duration,
+        }
+
+    except Exception as e:
+        logger.error(
+            "RQ ball detection failed for video %s: %s",
+            video_id,
+            e,
+            exc_info=True,
+            extra=get_log_extra(video_id=video_id, job_id=video_job_id),
+        )
+
+        if video_job_id:
+            try:
+                import uuid
+
+                with SessionLocal() as db:
+                    video_job = (
+                        db.query(VideoJob)
+                        .filter(VideoJob.id == uuid.UUID(video_job_id))
+                        .first()
+                    )
+                    if video_job:
+                        video_job.status = "failed"
+                        video_job.error = str(e)[:500]
+                        video_job.finished_at = datetime.utcnow()
+                        db.commit()
+            except (ValueError, TypeError, SQLAlchemyError) as e2:
+                logger.warning(
+                    "Failed to update VideoJob status: %s. Original: %s",
+                    e2,
+                    e,
+                )
+
+        raise
+
+    finally:
+        _cleanup_temp_file(temp_video_path)
+
+
 def transcode_video_rq(
     video_id: int,
     video_path: str,

@@ -6,6 +6,9 @@ export type VideoAnalysisStatus = {
   video_id: number;
   has_analysis: boolean;
   analysis_types: string[];
+  has_ball_detection: boolean;
+  ball_detection_rate: number | null;
+  ball_detection_status: string | null;
 };
 
 export type VideoAnalysisStatusById = Record<number, VideoAnalysisStatus>;

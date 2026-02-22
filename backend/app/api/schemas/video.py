@@ -167,6 +167,13 @@ class VideoAnalysisStatus(BaseModel):
     video_id: int
     has_analysis: bool
     analysis_types: List[str] = []
+    has_ball_detection: bool = False
+    ball_detection_rate: Optional[float] = Field(
+        default=None, description="Ball detection rate (0.0-1.0)"
+    )
+    ball_detection_status: Optional[str] = Field(
+        default=None, description="Ball detection status: completed, failed, or null"
+    )
 
 
 class BulkAnalysisStatusRequest(BaseModel):
