@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Line,
   LineChart,
   ReferenceLine,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -55,6 +56,24 @@ function formatMethod(method: string): string {
   return method.replace(/_/g, ' ');
 }
 
+/** Custom dot rendered at the current playback frame on the line. */
+const PlaybackDot: React.FC<{
+  cx?: number;
+  cy?: number;
+  payload?: { frame: number };
+  targetFrame: number | null;
+  color: string;
+}> = ({ cx, cy, payload, targetFrame, color }) => {
+  if (
+    targetFrame === null ||
+    payload?.frame !== targetFrame ||
+    cx == null ||
+    cy == null
+  )
+    return null;
+  return <circle cx={cx} cy={cy} r={4} fill={color} stroke="none" />;
+};
+
 interface FeatureChartProps {
   data: number[];
   label: string;
@@ -62,6 +81,7 @@ interface FeatureChartProps {
   ktpFrames: { frame: number; label: string }[];
   currentFrame: number | null;
   color: string;
+  onFrameClick: (frame: number) => void;
 }
 
 const FeatureChart: React.FC<FeatureChartProps> = ({
@@ -71,10 +91,20 @@ const FeatureChart: React.FC<FeatureChartProps> = ({
   ktpFrames,
   currentFrame,
   color,
+  onFrameClick,
 }) => {
   const chartData = useMemo(
     () => data.map((value, i) => ({ frame: i, value })),
     [data]
+  );
+
+  const handleClick = useCallback(
+    (state: { activeLabel?: string | number } | null) => {
+      if (state?.activeLabel != null) {
+        onFrameClick(Number(state.activeLabel));
+      }
+    },
+    [onFrameClick]
   );
 
   return (
@@ -84,15 +114,23 @@ const FeatureChart: React.FC<FeatureChartProps> = ({
         <LineChart
           data={chartData}
           margin={{ top: 4, right: 4, bottom: 4, left: 4 }}
+          onClick={handleClick}
+          style={{ cursor: 'crosshair' }}
         >
           <XAxis dataKey="frame" hide />
           <YAxis hide domain={['auto', 'auto']} />
+          <Tooltip
+            cursor={{ stroke: 'var(--color-text)', strokeOpacity: 0.4 }}
+            content={() => null}
+            isAnimationActive={false}
+          />
           <Line
             type="monotone"
             dataKey="value"
             stroke={color}
             strokeWidth={1.5}
-            dot={false}
+            dot={<PlaybackDot targetFrame={currentFrame} color={color} />}
+            activeDot={{ r: 4, fill: color, stroke: 'none' }}
             isAnimationActive={false}
           />
           {ktpFrames.map(({ frame, label: ktpLabel }) => (
@@ -104,14 +142,6 @@ const FeatureChart: React.FC<FeatureChartProps> = ({
               strokeDasharray="3 3"
             />
           ))}
-          {currentFrame !== null && (
-            <ReferenceLine
-              x={currentFrame}
-              stroke="var(--color-text)"
-              strokeWidth={1.5}
-              strokeOpacity={0.6}
-            />
-          )}
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -161,6 +191,14 @@ const DetectionDetailsPanel: React.FC<DetectionDetailsPanelProps> = ({
     const timestamp = serveStart + frame / fps;
     onSeek(timestamp);
   };
+
+  const handleFrameClick = useCallback(
+    (frame: number) => {
+      if (fps <= 0) return;
+      onSeek(serveStart + frame / fps);
+    },
+    [fps, serveStart, onSeek]
+  );
 
   return (
     <div className="detection-details">
@@ -250,7 +288,9 @@ const DetectionDetailsPanel: React.FC<DetectionDetailsPanelProps> = ({
               ktpFrames={ktpFrameMarkers}
               currentFrame={currentFrame}
               color="var(--color-court-blue-light)"
+              onFrameClick={handleFrameClick}
             />
+            <hr className="detection-details__separator" />
             <FeatureChart
               data={feature_curves.knee_hip_ratio}
               label="Knee Bend"
@@ -260,7 +300,9 @@ const DetectionDetailsPanel: React.FC<DetectionDetailsPanelProps> = ({
               )}
               currentFrame={currentFrame}
               color="var(--color-court-clay)"
+              onFrameClick={handleFrameClick}
             />
+            <hr className="detection-details__separator" />
             <FeatureChart
               data={feature_curves.max_wrist_velocity}
               label="Wrist Velocity"
@@ -270,6 +312,7 @@ const DetectionDetailsPanel: React.FC<DetectionDetailsPanelProps> = ({
               )}
               currentFrame={currentFrame}
               color="var(--color-primary-dark)"
+              onFrameClick={handleFrameClick}
             />
           </div>
         </div>

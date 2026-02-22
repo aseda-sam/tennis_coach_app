@@ -123,3 +123,10 @@
   text-transform: uppercase;
   letter-spacing: var(--letter-spacing-wide);
 }
+
+/* Separator between charts */
+.detection-details__separator {
+  border: none;
+  border-top: 1px solid var(--color-border-light);
+  margin: 0;
+}
