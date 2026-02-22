@@ -12,19 +12,23 @@ alwaysApply: false
 
 - **Protect contracts** (API response shapes, service behavior) with fast, reliable tests.
 
-## TDD Workflow (Required)
+## When to Write Tests First (TDD)
 
-- **Red**: Write failing test first that defines the contract/behavior you want.
-- **Green**: Implement minimum code to pass the test.
-- **Refactor**: Clean up code while keeping tests green.
-- **Work in small steps**: 5-10 minute cycles, commit after each passing test.
+TDD (Red → Green → Refactor) works well when the contract is known upfront. Use it for:
 
-## What to Write (Required - Default Order)
+- **Bug fixes**: Write a failing test that reproduces the bug, then fix it. Non-negotiable.
+- **API contract changes**: If you're adding/removing fields on a response schema, write the contract test asserting the new shape before changing the schema. The contract is known — test it first.
+- **Service logic with clear inputs/outputs**: Pure functions, validators, calculators — if you can define expected behavior before writing code, do it.
+
+TDD is less useful when you're **designing a new data structure** or **exploring** what the output should look like. If you don't know the shape yet, implement first, then write tests that lock down the result. Don't write throwaway tests just to say you did TDD.
+
+**The rule**: write tests before implementation when the contract is known. Write tests after implementation when you're discovering the contract. Either way, tests must exist before the code is merged.
+
+## What to Write (Required)
 
 - **Contract tests (API)** for new/changed endpoints: status codes + response shape + auth behavior.
   - **REQUIRED**: If you change an API schema (add/remove fields), you MUST update/add a test that asserts the response shape includes those fields.
   - **REQUIRED**: If you add fields needed by UI (e.g., `session_type`, `camera_angle`, `primary_player_id`), list endpoint tests MUST verify those fields are present in the response.
-  - **REQUIRED**: Write the failing test BEFORE implementing the change (TDD).
 - **Unit tests (services/utils)** for business logic with dependencies mocked.
 - **Integration tests** only when the workflow contract needs it (upload → job → results).
 

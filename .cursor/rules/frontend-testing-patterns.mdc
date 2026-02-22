@@ -8,12 +8,11 @@ alwaysApply: false
 
 # Frontend Testing Patterns
 
-## TDD Workflow (Required)
+## When to Write Tests First
 
-- **Red**: Write failing test first that defines the behavior you want.
-- **Green**: Implement minimum code to pass the test.
-- **Refactor**: Clean up code while keeping tests green.
-- **Work in small steps**: 5-10 minute cycles, commit after each passing test.
+Use TDD (Red → Green → Refactor) when the behavior is known upfront — e.g., "clicking X should show Y," "loading state renders spinner," "error state shows message." Write the test first, then implement.
+
+When building a new component where the UI structure is still being designed, implement first, then write tests that lock down the behavior. Either way, tests must exist before merging.
 
 ## What to Test (Required)
 

@@ -27,29 +27,29 @@ Thank you for considering contributing to Tennis Coach App!
 - Backend: `pytest`
 - Frontend: `npm test -- --watchAll=false`
 
-### Test-Driven Development (TDD) Checklist
+### Testing Checklist
 
-**For new features:**
-- [ ] Write failing test first (Red)
-- [ ] Implement minimum code to pass (Green)
-- [ ] Refactor if needed (Refactor)
-- [ ] Test covers contract (status codes, response shapes), not implementation details
-
-**For bug fixes:**
+**Bug fixes (TDD required):**
 - [ ] Write failing test that reproduces the bug
 - [ ] Fix the bug (test should pass)
 - [ ] Verify test covers the edge case
 
-**For API endpoints:**
-- [ ] Contract test: status codes, response models, error cases
-- [ ] Integration test: full workflow if endpoint is part of a flow
+**API schema changes (TDD required):**
+- [ ] Write contract test asserting the new response shape
+- [ ] Implement the schema/route change
 - [ ] Use `PROFILE=local` in fixtures, not internal config fields
+
+**New features (tests required, TDD when contract is known):**
+- [ ] If the output shape is known upfront → write test first, then implement
+- [ ] If discovering the structure → implement first, then write tests that lock it down
+- [ ] Tests must exist before merge either way
+- [ ] Test covers contract (status codes, response shapes), not implementation details
 
 **For refactors:**
 - [ ] Keep tests unchanged if behavior is unchanged
 - [ ] Update tests only if contract changes (document why)
 
-See `.cursor/rules/testing-patterns.mdc` for detailed TDD guidance.
+See `.cursor/rules/testing-patterns.mdc` for detailed guidance.
 
 ## Pull Requests
 - Ensure CI passes (backend, frontend, security scans)

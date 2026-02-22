@@ -11,10 +11,10 @@ alwaysApply: false
 
 - **KISS/DRY/YAGNI**: keep components small; extract shared logic after it repeats; avoid speculative abstractions.
 
-## Component Architecture (Required)
+## Component Architecture
 
-- Max ~300 lines per component (excluding imports/types). If larger, split into sub-components with clear single responsibilities.
-- Extract reusable logic into custom hooks. Keep components focused on rendering + event handling.
+- Keep components focused on a single responsibility. If a component handles multiple unrelated concerns, split it — but don't split just to hit a line count.
+- Extract logic into custom hooks when it's reused across components or when it significantly clarifies the component's render logic. Don't extract a hook that's only used in one place unless it genuinely improves readability.
 - Use `React.memo` for leaf components that receive stable props and render in lists or frequently-updating parents.
 - Don't premature-optimize — only memoize when there's a measured or obvious perf concern.
 

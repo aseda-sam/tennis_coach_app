@@ -47,7 +47,7 @@ alwaysApply: false
 ## Imports
 
 - Keep imports at top-level by default.
-- Use **lazy imports** inside RQ task functions only when needed to avoid import/fork issues.
+- Lazy imports are fine for heavy ML dependencies (MediaPipe, YOLO, etc.) to avoid slowing startup/tests, and inside RQ task functions to avoid import/fork issues.
 
 ## Where architecture rules live
 

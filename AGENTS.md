@@ -102,7 +102,7 @@ writing/              # Substack context, LTA coaching notes, story seeds (gitig
 
 ## Testing
 
-- **TDD:** Write failing test first, implement, refactor.
+- **Tests required before merge.** Write tests first (TDD) when the contract is known — bug fixes, API schema changes, service logic with clear inputs/outputs. Write tests after implementation when discovering a new data structure or UI shape. Either way, no code merges without tests.
 - **Contract tests** for API endpoints (status codes + response shape). If you change a schema, update tests.
 - **Unit tests** for service/business logic with mocked dependencies.
 - **Mock externals** (Redis, storage, external APIs) unless explicitly integration testing.
@@ -161,5 +161,5 @@ Comprehensive coding conventions live in `.cursor/rules/`. These files are **not
 - `.cursor/rules/react-frontend.mdc` — Components, styling, form patterns, accessibility
 - `.cursor/rules/frontend-design.mdc` — Visual design patterns, component aesthetics
 - `.cursor/rules/frontend-api-patterns.mdc` — Frontend API client conventions
-- `.cursor/rules/testing-patterns.mdc` — TDD workflow, what to test, contract testing
+- `.cursor/rules/testing-patterns.mdc` — When to test first vs after, what to test, contract testing
 - `.cursor/rules/frontend-testing-patterns.mdc` — Frontend test patterns

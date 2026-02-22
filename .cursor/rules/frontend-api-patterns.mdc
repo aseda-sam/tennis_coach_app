@@ -27,10 +27,10 @@ alwaysApply: false
 - Every API call accessed by components goes through a custom hook in `hooks/`.
 - Query keys: kebab-case array — `['domain-entity', id?, filters?]`. Include all variables that affect the response.
 - `enabled` guard: Always gate queries on their dependencies (`enabled: !!videoId`). Never let a query fire with undefined/null IDs.
-- Stale time strategy:
-  - Config/profile data: 5-10 minutes
-  - Entity lists (videos, serve windows): 2-5 minutes
-  - Status/progress (polling): 30 seconds - 2 minutes
+- Stale time: tune based on how often the data changes and how stale is acceptable for the UX. General guidance:
+  - Rarely-changing data (config, profile): longer stale times (minutes)
+  - Entity lists: moderate stale times
+  - Polling/progress: short stale times
   - Signed URLs: dynamic, based on token expiry
 - Mutations must invalidate all related queries in `onSuccess`. If a mutation changes data that multiple query keys depend on, invalidate all of them.
 - Use partial key matching for broadcast invalidation: `invalidateQueries({ queryKey: ['serve-proposals'] })` matches all `['serve-proposals', videoId]` variants.

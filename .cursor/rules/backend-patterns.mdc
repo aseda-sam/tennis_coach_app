@@ -38,8 +38,9 @@ alwaysApply: false
 
 ## Imports
 
-- All imports at module top level. Never import inside a route handler function.
-  Inline imports (`from x import y` inside a def) are always a code smell; move to top of file.
+- Imports at module top level by default.
+- Lazy imports are acceptable for heavy dependencies (ML model libraries like MediaPipe, YOLO, large numerical libraries) to avoid slowing down startup and test collection. Also fine inside RQ task functions to avoid import/fork issues.
+- Don't lazy-import standard library or lightweight project modules — that's unnecessary indirection.
 
 ## Errors
 

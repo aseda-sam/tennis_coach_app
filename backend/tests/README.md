@@ -2,7 +2,7 @@
 
 ## Test Structure
 
-Tests follow TDD principles: **tests define contracts** (behavior), not implementation details.
+Tests define **contracts** (behavior), not implementation details.
 
 ### Test Layers
 
@@ -61,11 +61,12 @@ pytest tests/api/test_serve_biomechanics_routes.py
 - **Auth**: Mock user (test_user_id fixture)
 - **Storage**: Local filesystem (via PROFILE=local)
 
-### TDD Principles
+### Testing Principles
 
-1. **Write tests first** for new features
-2. **Test contracts** (status codes, response shapes), not internals
-3. **Use PROFILE-based config** in tests, not internal fields
-4. **Keep tests stable** when refactoring (only change if contract changes)
+1. **Test contracts** (status codes, response shapes), not internals
+2. **Tests first** when the contract is known (bug fixes, schema changes, clear input/output logic)
+3. **Tests after** when discovering a new structure — but always before merge
+4. **Use PROFILE-based config** in tests, not internal fields
+5. **Keep tests stable** when refactoring (only change if contract changes)
 
-See `.cursor/rules/testing-patterns.mdc` for detailed TDD guidance.
+See `.cursor/rules/testing-patterns.mdc` for detailed guidance.

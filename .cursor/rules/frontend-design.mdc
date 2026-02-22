@@ -26,10 +26,10 @@ The rules below assume you have read and internalized that document.
 
 These constraints apply to every analysis and feedback view. They come from the app's design philosophy (see AGENTS.md).
 
-- **Practice > analysis**: Every analysis view must have a clear "what next?" action. Don't build features that reward staying in the app longer. Dead-end screens are a design failure.
-- **Progressive disclosure**: Never show all metrics or data at once. Default to collapsed or summary. Expand on demand. One teaching point per view when possible.
+- **Practice > analysis**: User-facing analysis views should guide toward action when possible. Don't build features that reward staying in the app longer. But not every view needs a "what next?" — diagnostic panels, data views, and developer-facing tools are fine as reference screens.
+- **Progressive disclosure**: Default to collapsed or summary for user-facing metric views. Expand on demand. Diagnostic or debug panels (e.g., detection details) can show full data when expanded — the collapse itself is the progressive disclosure.
 - **Honest about the medium**: No coaching language in UI copy. Use "metrics", "analysis", "your serve data" — not "your coach recommends" or "we suggest." Frame information as data, not instruction.
-- **Summary-first pattern**: When displaying multiple metrics, show a single-line summary per group (e.g. one key value), with expand for full detail.
+- **Summary-first pattern**: When displaying multiple metrics to end users, prefer a summary with expand for detail. This doesn't apply to developer/debug views where the whole point is seeing everything.
 
 ## UI Copy (Required)
 
