@@ -169,7 +169,7 @@ class TestVideoCascadeDeletion:
             user_id=test_user_id,
             player_id=player.id,
             phase_segmentation_json='{"phases":[]}',
-            metrics_json="{}",
+            metrics=[],
             analysis_version="phase-metrics-v1",
         )
         db_session.add(report)
