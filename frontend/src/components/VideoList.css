@@ -43,12 +43,10 @@
 
 .upload-btn:hover {
   background: var(--color-primary-dark);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-primary-md);
 }
 
 .upload-btn:active {
-  transform: translateY(0);
+  opacity: 0.9;
 }
 
 .page-title {
@@ -100,7 +98,6 @@
 
 .retry-btn:hover {
   background: var(--color-error-dark);
-  transform: translateY(-1px);
 }
 
 /* Empty State */
@@ -268,20 +265,12 @@
   transition: var(--transition-normal);
   min-width: 36px;
   min-height: 36px;
-  box-shadow: var(--shadow-xs);
 }
 
 .delete-card-btn:hover:not(:disabled) {
   color: var(--color-error);
   background: var(--color-error-soft);
   border-color: var(--color-error-light);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
-}
-
-.delete-card-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-xs);
 }
 
 .delete-card-btn:disabled {
@@ -300,20 +289,12 @@
   cursor: pointer;
   transition: var(--transition-normal);
   min-height: 36px;
-  box-shadow: var(--shadow-xs);
 }
 
 .edit-card-btn:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-softest);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
-}
-
-.edit-card-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-xs);
+  border-color: var(--color-court-blue);
+  color: var(--color-court-blue);
+  background: var(--color-court-blue-soft);
 }
 
 .edit-card-btn:disabled {

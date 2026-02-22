@@ -115,8 +115,8 @@
 }
 
 .view-toggle-btn.active {
-  color: var(--color-primary-dark);
-  background: var(--color-primary-soft);
+  color: var(--color-court-blue);
+  background: var(--color-court-blue-soft);
   font-weight: 500;
 }
 

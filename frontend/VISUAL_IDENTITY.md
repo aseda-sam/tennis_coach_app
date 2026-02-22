@@ -74,7 +74,7 @@ The hex values are in `design-tokens.css`. This section explains the *intent* �
 **One job: action and positive state.** Primary buttons. Completed status badges. Active state indicators. Positive metric highlights. If you're using green for a heading, a section background, or decoration — stop. The scarcity of green is what makes it work.
 
 ### Court Blue (`--color-court-blue: #1B4B7A`)
-**One job: spatial identity and wayfinding.** Active segment in the view mode toggle. Breadcrumb hover color. Active thumbnail border. Scrubber accent. It says "tennis court" without being literal. Use the `--soft` variant for hover backgrounds.
+**One job: spatial identity and wayfinding.** Active segment in the view mode toggle. Header nav active tab. Breadcrumb hover color. Active thumbnail border. Scrubber accent. Edit-button hover accent on cards. It says "tennis court" without being literal. Use the `--soft` variant for hover backgrounds.
 
 ### Court Clay (`--color-court-clay: #D4784A`)
 **Reserved.** Available for future court-surface theming or accent moments. Not currently used in active UI — kept in the palette for consistency.
@@ -173,7 +173,7 @@ Open and spacious. A session log. Each card is an entry: thumbnail, title/date, 
 
 - Background: `--color-background`. Cards: white surface, `--color-border` border, `--radius-2xl` corners. **No shadow on cards.**
 - The status badge is the only colored element per card. Green for complete, muted neutral for pending/processing.
-- Card footer: action buttons separated by a `border-top` divider. Right-aligned. Maximum three actions per card.
+- Card footer: action buttons separated by a `border-top` divider. Right-aligned. Maximum three actions per card. Edit button hovers use court-blue accent (not green — green is for primary actions only).
 - Page header: video count (muted label), "Upload Video" button (green, primary, right side).
 - The grid breathes. `--layout-card-gap` between cards.
 
