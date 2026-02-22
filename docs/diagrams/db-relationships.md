@@ -93,4 +93,4 @@ erDiagram
 
 - **Relationship overview** — High-level only; no attributes. `||--o{` = one-to-many; `||--o|` = one-to-zero-or-one.
 - **Tables and key properties** — Entity names match table names (`players`, `videos`, `video_jobs`, `serve_windows`, `pose_detections`). USER is conceptual (no table; id/email from auth). PK = primary key, FK = foreign key; key fields listed for comprehension only.
-- **source/status** on SERVE_WINDOW — One-table workflow: auto-generated rows start `status=pending`, then move to `accepted`/`rejected`/`edited`; manual rows are created as accepted.
+- **source/status** on SERVE_WINDOW — `source` is `auto` (auto-detected) or `manual`. Auto-detected windows are saved directly as accepted; `status` field exists in the schema but the review workflow (pending → accepted/rejected) is no longer surfaced in the UI.

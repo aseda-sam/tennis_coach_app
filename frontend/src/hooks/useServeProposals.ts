@@ -1,76 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { serveProposalApi } from '../services/serveProposalApi';
 import {
-  AcceptProposalRequest,
-  ClearProposalsResponse,
   DetectionStatusResponse,
-  EditProposalRequest,
   ProposeResponse,
-  ServeWindowProposal,
 } from '../types/serveProposal';
 import { getApiErrorMessage } from '../utils/apiError';
-
-// Default threshold - matches backend SERVE_DETECTION_LOW_CONFIDENCE_THRESHOLD
-const DEFAULT_LOW_CONFIDENCE_THRESHOLD = 0.6;
 
 interface UseServeProposalsOptions {
   videoId?: number;
   autoRefresh?: boolean;
-  lowConfidenceThreshold?: number; // From config, defaults to 0.6
-  onProposalsLoaded?: (proposals: ServeWindowProposal[]) => void;
-  onError?: (error: string) => void;
 }
 
 interface UseServeProposalsResult {
-  proposals: ServeWindowProposal[];
-  loading: boolean;
-  error: string | null;
   detectionStatus: DetectionStatusResponse | null;
-  refreshProposals: () => Promise<void>;
-  refreshStatus: () => Promise<void>;
   runDetection: (force?: boolean) => Promise<ProposeResponse>;
-  clearProposals: () => Promise<ClearProposalsResponse>;
-  acceptProposal: (
-    proposalId: number,
-    request?: AcceptProposalRequest
-  ) => Promise<void>;
-  rejectProposal: (proposalId: number) => Promise<void>;
-  editProposal: (
-    proposalId: number,
-    request: EditProposalRequest
-  ) => Promise<void>;
-  // Bulk operations
-  acceptAllProposals: () => Promise<{ accepted: number; failed: number }>;
-  rejectLowConfidence: (
-    threshold?: number
-  ) => Promise<{ rejected: number; failed: number }>;
-  lowConfidenceCount: number;
+  refreshStatus: () => Promise<void>;
 }
 
 export const useServeProposals = ({
   videoId,
   autoRefresh = true,
-  lowConfidenceThreshold = DEFAULT_LOW_CONFIDENCE_THRESHOLD,
-  onProposalsLoaded,
-  onError,
 }: UseServeProposalsOptions = {}): UseServeProposalsResult => {
   const queryClient = useQueryClient();
 
-  // Build query keys
-  const proposalsQueryKey = ['serve-proposals', videoId];
   const statusQueryKey = ['serve-detection-status', videoId];
-
-  // Fetch proposals using React Query
-  const proposalsQuery = useQuery<ServeWindowProposal[]>({
-    queryKey: proposalsQueryKey,
-    queryFn: async () => {
-      if (!videoId) return [];
-      return await serveProposalApi.list(videoId);
-    },
-    enabled: autoRefresh && !!videoId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  });
 
   // Fetch detection status using React Query
   const statusQuery = useQuery<DetectionStatusResponse>({
@@ -83,24 +37,6 @@ export const useServeProposals = ({
     staleTime: 30 * 1000, // 30 seconds
   });
 
-  // Call onProposalsLoaded callback when proposals are loaded
-  useEffect(() => {
-    if (proposalsQuery.data && onProposalsLoaded) {
-      onProposalsLoaded(proposalsQuery.data);
-    }
-  }, [proposalsQuery.data, onProposalsLoaded]);
-
-  // Call onError callback when there's an error
-  useEffect(() => {
-    if (proposalsQuery.error && onError) {
-      const errorMessage = getApiErrorMessage(
-        proposalsQuery.error,
-        'Failed to load proposals'
-      );
-      onError(errorMessage);
-    }
-  }, [proposalsQuery.error, onError]);
-
   // Run detection mutation
   const runDetectionMutation = useMutation({
     mutationFn: (force: boolean = false) => {
@@ -108,74 +44,12 @@ export const useServeProposals = ({
       return serveProposalApi.propose(videoId, force);
     },
     onSuccess: () => {
-      // Invalidate and refetch proposals and status
-      queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
+      // Invalidate and refetch status
       queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
-      // Also invalidate serve windows since accepting creates one
+      // Also invalidate serve windows since detection creates them
       queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
     },
   });
-
-  // Clear proposals mutation
-  const clearProposalsMutation = useMutation({
-    mutationFn: () => {
-      if (!videoId) throw new Error('Video ID required');
-      return serveProposalApi.clearProposals(videoId);
-    },
-    onSuccess: () => {
-      // Invalidate and refetch proposals and status
-      queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
-    },
-  });
-
-  // Accept proposal mutation
-  const acceptMutation = useMutation({
-    mutationFn: ({
-      proposalId,
-      request,
-    }: {
-      proposalId: number;
-      request?: AcceptProposalRequest;
-    }) => serveProposalApi.accept(proposalId, request),
-    onSuccess: () => {
-      // Invalidate proposals and serve windows
-      queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
-    },
-  });
-
-  // Reject proposal mutation
-  const rejectMutation = useMutation({
-    mutationFn: (proposalId: number) => serveProposalApi.reject(proposalId),
-    onSuccess: () => {
-      // Invalidate proposals
-      queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
-    },
-  });
-
-  // Edit proposal mutation
-  const editMutation = useMutation({
-    mutationFn: ({
-      proposalId,
-      request,
-    }: {
-      proposalId: number;
-      request: EditProposalRequest;
-    }) => serveProposalApi.edit(proposalId, request),
-    onSuccess: () => {
-      // Invalidate proposals and serve windows
-      queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
-    },
-  });
-
-  const refreshProposals = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-  }, [queryClient]);
 
   const refreshStatus = useCallback(async () => {
     await queryClient.invalidateQueries({
@@ -195,134 +69,9 @@ export const useServeProposals = ({
     [runDetectionMutation]
   );
 
-  const clearProposals =
-    useCallback(async (): Promise<ClearProposalsResponse> => {
-      try {
-        return await clearProposalsMutation.mutateAsync();
-      } catch (err: unknown) {
-        const errorMessage = getApiErrorMessage(
-          err,
-          'Failed to clear proposals'
-        );
-        throw new Error(errorMessage);
-      }
-    }, [clearProposalsMutation]);
-
-  const acceptProposal = useCallback(
-    async (
-      proposalId: number,
-      request?: AcceptProposalRequest
-    ): Promise<void> => {
-      try {
-        await acceptMutation.mutateAsync({ proposalId, request });
-      } catch (err: unknown) {
-        const errorMessage = getApiErrorMessage(
-          err,
-          'Failed to accept proposal'
-        );
-        throw new Error(errorMessage);
-      }
-    },
-    [acceptMutation]
-  );
-
-  const rejectProposal = useCallback(
-    async (proposalId: number): Promise<void> => {
-      try {
-        await rejectMutation.mutateAsync(proposalId);
-      } catch (err: unknown) {
-        const errorMessage = getApiErrorMessage(
-          err,
-          'Failed to reject proposal'
-        );
-        throw new Error(errorMessage);
-      }
-    },
-    [rejectMutation]
-  );
-
-  const editProposal = useCallback(
-    async (proposalId: number, request: EditProposalRequest): Promise<void> => {
-      try {
-        await editMutation.mutateAsync({ proposalId, request });
-      } catch (err: unknown) {
-        const errorMessage = getApiErrorMessage(err, 'Failed to edit proposal');
-        throw new Error(errorMessage);
-      }
-    },
-    [editMutation]
-  );
-
-  // Count proposals below confidence threshold
-  const proposals = proposalsQuery.data || [];
-  const lowConfidenceCount = proposals.filter(
-    (p) => p.confidence < lowConfidenceThreshold
-  ).length;
-
-  // Accept all proposals using batch API
-  const acceptAllProposals = useCallback(async (): Promise<{
-    accepted: number;
-    failed: number;
-  }> => {
-    if (!videoId) {
-      return { accepted: 0, failed: 0 };
-    }
-
-    const response = await serveProposalApi.acceptAll(videoId);
-
-    // Invalidate queries to refresh
-    queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-    queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
-    queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
-
-    return { accepted: response.accepted_count, failed: 0 };
-  }, [videoId, queryClient]);
-
-  // Reject proposals below confidence threshold using batch API
-  const rejectLowConfidence = useCallback(
-    async (
-      threshold: number = lowConfidenceThreshold
-    ): Promise<{ rejected: number; failed: number }> => {
-      if (!videoId) {
-        return { rejected: 0, failed: 0 };
-      }
-
-      const response = await serveProposalApi.rejectByConfidence(
-        videoId,
-        threshold
-      );
-
-      // Invalidate queries to refresh
-      queryClient.invalidateQueries({ queryKey: ['serve-proposals'] });
-      queryClient.invalidateQueries({ queryKey: ['serve-detection-status'] });
-
-      return { rejected: response.rejected_count, failed: 0 };
-    },
-    [videoId, lowConfidenceThreshold, queryClient]
-  );
-
-  // Extract loading state
-  const loading = proposalsQuery.isLoading;
-
-  // Extract error state
-  const error = proposalsQuery.error
-    ? getApiErrorMessage(proposalsQuery.error, 'Failed to load proposals')
-    : null;
-
   return {
-    proposals,
-    loading,
-    error,
     detectionStatus: statusQuery.data || null,
-    refreshProposals,
-    refreshStatus,
     runDetection,
-    clearProposals,
-    acceptProposal,
-    rejectProposal,
-    editProposal,
-    acceptAllProposals,
-    rejectLowConfidence,
-    lowConfidenceCount,
+    refreshStatus,
   };
 };

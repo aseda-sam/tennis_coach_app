@@ -5,21 +5,17 @@ import Breadcrumb from './Breadcrumb';
 interface AnalysisDashboardHeaderProps {
   videoFilename: string;
   hasServes: boolean;
-  showEditMode: boolean;
   serveIndex?: number;
   serveCount?: number;
   onClose: () => void;
-  onToggleEditMode: () => void;
 }
 
 const AnalysisDashboardHeader: React.FC<AnalysisDashboardHeaderProps> = ({
   videoFilename,
   hasServes,
-  showEditMode,
   serveIndex,
   serveCount,
   onClose,
-  onToggleEditMode,
 }) => {
   const segments = [
     { label: 'Library', onClick: onClose },
@@ -36,15 +32,6 @@ const AnalysisDashboardHeader: React.FC<AnalysisDashboardHeaderProps> = ({
       <Breadcrumb segments={segments} />
       <div className="analysis-dashboard__header-right">
         <h1 className="analysis-dashboard__page-title">Serve Analysis</h1>
-        {hasServes && (
-          <button
-            className="analysis-dashboard__edit-btn"
-            onClick={onToggleEditMode}
-            type="button"
-          >
-            {showEditMode ? 'Done' : 'Edit Serves'}
-          </button>
-        )}
       </div>
     </div>
   );

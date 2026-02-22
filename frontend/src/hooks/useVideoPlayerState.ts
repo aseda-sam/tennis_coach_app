@@ -38,7 +38,6 @@ interface UseVideoPlayerStateParams {
   onNavigateReady?: (navigateFn: (serveWindowId: number) => void) => void;
   isDemo?: boolean;
   naturalScroll?: boolean;
-  lowConfidenceThreshold?: number;
 }
 
 export interface UseVideoPlayerStateReturn {
@@ -107,7 +106,6 @@ export interface UseVideoPlayerStateReturn {
   isRunningDetection: boolean;
   detectionMessage: string | null;
   handleAutoDetect: () => Promise<void>;
-  handleClearProposals: () => Promise<void>;
   showDetectionMessage: (message: string) => void;
   hasExistingDetections: boolean | null;
 
@@ -164,12 +162,8 @@ export interface UseVideoPlayerStateReturn {
   deleteServeWindow: ReturnType<typeof useServeWindows>['deleteServeWindow'];
   createServeWindow: ReturnType<typeof useServeWindows>['createServeWindow'];
 
-  // Proposals data (from hook)
-  proposals: ReturnType<typeof useServeProposals>['proposals'];
+  // Detection status (from hook)
   detectionStatus: ReturnType<typeof useServeProposals>['detectionStatus'];
-  acceptProposal: ReturnType<typeof useServeProposals>['acceptProposal'];
-  rejectProposal: ReturnType<typeof useServeProposals>['rejectProposal'];
-  editProposal: ReturnType<typeof useServeProposals>['editProposal'];
 
   // Contact timestamps
   contactTimestamps: number[];
@@ -273,15 +267,7 @@ export function useVideoPlayerState({
 
   const { contactTimestamps } = useContactTimestamps(videoId);
 
-  const {
-    proposals,
-    detectionStatus,
-    runDetection,
-    clearProposals,
-    acceptProposal,
-    rejectProposal,
-    editProposal,
-  } = useServeProposals({
+  const { detectionStatus, runDetection } = useServeProposals({
     videoId,
     autoRefresh: !!videoId,
   });
@@ -308,55 +294,26 @@ export function useVideoPlayerState({
   }, []);
 
   const hasExistingDetections =
-    detectionStatus &&
-    (detectionStatus.pending_proposals > 0 ||
-      detectionStatus.serve_windows > 0);
+    detectionStatus && detectionStatus.serve_windows > 0;
 
   // ── Auto-detect handler ───────────────────────────────────────────────
   const handleAutoDetect = useCallback(async () => {
     if (!videoId || isRunningDetection) return;
 
     if (hasExistingDetections && detectionStatus) {
-      const hasServeWindows = detectionStatus.serve_windows > 0;
-      const hasPendingProposals = detectionStatus.pending_proposals > 0;
-
-      let message = 'This video already has ';
-      const parts: string[] = [];
-      if (hasServeWindows) {
-        parts.push(`${detectionStatus.serve_windows} serve window(s)`);
-      }
-      if (hasPendingProposals) {
-        parts.push(`${detectionStatus.pending_proposals} pending proposal(s)`);
-      }
-      message += parts.join(' and ') + '. ';
-
-      if (hasServeWindows) {
-        message +=
-          'Running detection again will only add new proposals. Delete existing serve windows first if you want to start fresh.';
-        showDetectionMessage(message);
-        return;
-      }
-
-      if (hasPendingProposals) {
-        const confirmed = window.confirm(
-          message +
-            'Do you want to clear existing proposals and re-run detection?'
-        );
-        if (!confirmed) return;
-      }
+      const message = `This video already has ${detectionStatus.serve_windows} serve window(s). Delete existing serve windows first if you want to start fresh.`;
+      showDetectionMessage(message);
+      return;
     }
 
     setIsRunningDetection(true);
     setDetectionMessage(null);
     try {
-      const force = detectionStatus?.pending_proposals
-        ? detectionStatus.pending_proposals > 0
-        : false;
-      const response = await runDetection(force);
+      const response = await runDetection(false);
       if (response.count === 0) {
         showDetectionMessage('No serve windows detected.');
       } else {
-        showDetectionMessage(`Found ${response.count} proposals.`);
+        showDetectionMessage(`Found ${response.count} serve window(s).`);
       }
     } catch (err) {
       console.error('Failed to run detection:', err);
@@ -379,24 +336,6 @@ export function useVideoPlayerState({
     hasExistingDetections,
     detectionStatus,
   ]);
-
-  // ── Clear proposals handler ───────────────────────────────────────────
-  const handleClearProposals = useCallback(async () => {
-    if (!videoId) return;
-
-    const confirmed = window.confirm(
-      'Are you sure you want to clear all pending proposals? This cannot be undone.'
-    );
-    if (!confirmed) return;
-
-    try {
-      const response = await clearProposals();
-      showDetectionMessage(`Cleared ${response.cleared_count} proposal(s).`);
-    } catch (err) {
-      console.error('Failed to clear proposals:', err);
-      showDetectionMessage('Failed to clear proposals.');
-    }
-  }, [videoId, clearProposals, showDetectionMessage]);
 
   // ── Zoom helpers ──────────────────────────────────────────────────────
   const zoomIn = useCallback(() => {
@@ -1060,7 +999,6 @@ export function useVideoPlayerState({
     isRunningDetection,
     detectionMessage,
     handleAutoDetect,
-    handleClearProposals,
     showDetectionMessage,
     hasExistingDetections: hasExistingDetections ?? false,
 
@@ -1117,12 +1055,8 @@ export function useVideoPlayerState({
     deleteServeWindow,
     createServeWindow,
 
-    // Proposals data
-    proposals,
+    // Detection status
     detectionStatus,
-    acceptProposal,
-    rejectProposal,
-    editProposal,
 
     // Contact timestamps
     contactTimestamps,

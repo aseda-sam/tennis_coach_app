@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
-import { useAppConfig } from '../hooks/useAppConfig';
 import { useServeBiomechanicsReport } from '../hooks/useServeBiomechanicsReport';
 import { useServePlayback } from '../hooks/useServePlayback';
 import { useServeProposals } from '../hooks/useServeProposals';
@@ -9,7 +8,6 @@ import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
-import AnalysisDashboardEditPanel from './AnalysisDashboardEditPanel';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
 import AnalysisDashboardMetrics from './AnalysisDashboardMetrics';
 import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
@@ -48,9 +46,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   onClose,
 }) => {
   const queryClient = useQueryClient();
-  const { config } = useAppConfig();
-  const lowConfidenceThreshold =
-    config.serve_detection.low_confidence_threshold;
 
   const { data: analysisStatus, refetch: refetchAnalysisStatus } =
     useVideoAnalysisStatus(videoId);
@@ -86,7 +81,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(true);
-  const [showEditMode, setShowEditMode] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
 
   // No-serves find state (mutually exclusive with edit panel)
@@ -98,16 +92,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     autoRefresh: true,
   });
 
-  const {
-    proposals,
-    detectionStatus,
-    runDetection,
-    clearProposals,
-    acceptAllProposals,
-  } = useServeProposals({
+  const { runDetection } = useServeProposals({
     videoId,
     autoRefresh: true,
-    lowConfidenceThreshold,
   });
 
   const sortedServeWindows = useMemo(
@@ -234,16 +221,13 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
     setIsFindingServes(true);
     try {
-      const force = detectionStatus?.pending_proposals
-        ? detectionStatus.pending_proposals > 0
-        : false;
-      await runDetection(force);
+      await runDetection(false);
     } catch (err) {
       console.error('Failed to find serves:', err);
     } finally {
       setIsFindingServes(false);
     }
-  }, [analysisStatus, detectionStatus, runDetection]);
+  }, [analysisStatus, runDetection]);
 
   // Analysis in progress -- show progress view
   const analysisInProgress =
@@ -270,11 +254,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       <AnalysisDashboardHeader
         videoFilename={videoFilename}
         hasServes={hasServes}
-        showEditMode={showEditMode}
         serveIndex={hasServes ? currentServeIndex : undefined}
         serveCount={hasServes ? sortedServeWindows.length : undefined}
         onClose={onClose}
-        onToggleEditMode={() => setShowEditMode(!showEditMode)}
       />
 
       {/* Analysis Required State */}
@@ -438,18 +420,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             </div>
           )}
         </div>
-      )}
-
-      {/* Edit Serves Mode (secondary) */}
-      {showEditMode && (
-        <AnalysisDashboardEditPanel
-          proposals={proposals}
-          detectionStatus={detectionStatus}
-          hasAnalysis={!!analysisStatus?.has_analysis}
-          runDetection={runDetection}
-          clearProposals={clearProposals}
-          acceptAllProposals={acceptAllProposals}
-        />
       )}
 
       <KeyboardShortcutsModal

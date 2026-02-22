@@ -39,7 +39,6 @@ interface VideoPlayerProps {
   onNavigateReady?: (navigateFn: (serveWindowId: number) => void) => void;
   isDemo?: boolean;
   naturalScroll?: boolean;
-  lowConfidenceThreshold?: number;
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -55,7 +54,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onNavigateReady,
   isDemo = false,
   naturalScroll: naturalScrollProp = false,
-  lowConfidenceThreshold = 0.6,
 }) => {
   const s = useVideoPlayerState({
     videoUrl,
@@ -70,7 +68,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     onNavigateReady,
     isDemo,
     naturalScroll: naturalScrollProp,
-    lowConfidenceThreshold,
   });
 
   const handleAddServeWindow = async (serveWindow: ServeWindowCreate) => {
@@ -214,16 +211,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               >
                 {s.isRunningDetection ? 'Detecting...' : 'Auto-detect serves'}
               </button>
-              {s.proposals.length > 0 && (
-                <button
-                  className="auto-detect-clear-btn"
-                  onClick={s.handleClearProposals}
-                  disabled={s.isRunningDetection}
-                  title="Clear all pending proposals"
-                >
-                  Clear
-                </button>
-              )}
             </div>
           </div>
         )}
@@ -326,7 +313,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 state={s}
                 videoId={videoId}
                 isDemo={isDemo}
-                lowConfidenceThreshold={lowConfidenceThreshold}
               />
             )}
           </div>
@@ -334,12 +320,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       </div>
 
       {showControls && controlsBelow && (
-        <VideoPlayerTimeline
-          state={s}
-          videoId={videoId}
-          isDemo={isDemo}
-          lowConfidenceThreshold={lowConfidenceThreshold}
-        />
+        <VideoPlayerTimeline state={s} videoId={videoId} isDemo={isDemo} />
       )}
 
       {!controlsBelow && (

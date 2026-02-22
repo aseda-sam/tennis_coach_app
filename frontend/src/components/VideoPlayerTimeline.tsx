@@ -6,7 +6,6 @@ import {
 import type { ServeWindowCreate } from '../types/serveWindow';
 import AddServeWindowButton from './AddServeWindowButton';
 import { ArrowBackIcon, PauseIcon, PlayIcon } from './Icons';
-import ProposalRange from './ProposalRange';
 import ServeWindowModal from './ServeWindowModal';
 import ServeWindowRange from './ServeWindowRange';
 import './VideoPlayer.css';
@@ -15,14 +14,12 @@ interface VideoPlayerTimelineProps {
   state: UseVideoPlayerStateReturn;
   videoId?: number;
   isDemo: boolean;
-  lowConfidenceThreshold: number;
 }
 
 const VideoPlayerTimeline: React.FC<VideoPlayerTimelineProps> = ({
   state,
   videoId,
   isDemo,
-  lowConfidenceThreshold,
 }) => {
   const {
     isPlaying,
@@ -64,7 +61,6 @@ const VideoPlayerTimeline: React.FC<VideoPlayerTimelineProps> = ({
     wasPlayingRef,
     // Data
     serveWindows,
-    proposals,
     selectedServeWindow,
     selectedServeWindowId,
     setSelectedServeWindow,
@@ -74,9 +70,6 @@ const VideoPlayerTimeline: React.FC<VideoPlayerTimelineProps> = ({
     updateServeWindow,
     deleteServeWindow,
     createServeWindow,
-    acceptProposal,
-    rejectProposal,
-    editProposal,
     queryClient,
     setHighlightTimestamp,
     setOpenRange,
@@ -146,49 +139,6 @@ const VideoPlayerTimeline: React.FC<VideoPlayerTimelineProps> = ({
             onTouchEnd={handleSeekEnd}
             step={frameStep}
           />
-          {/* Proposal ranges (shown before serve windows) */}
-          {proposals.length > 0 && duration > 0 && (
-            <div className="video-controls-below__proposal-ranges">
-              {proposals.map((proposal) => (
-                <ProposalRange
-                  key={proposal.id}
-                  proposal={proposal}
-                  duration={duration}
-                  lowConfidenceThreshold={lowConfidenceThreshold}
-                  onClick={() => {
-                    seekToTime(proposal.start_timestamp);
-                  }}
-                  onAccept={async () => {
-                    try {
-                      await acceptProposal(proposal.id);
-                    } catch (err) {
-                      console.error('Failed to accept proposal:', err);
-                      alert('Failed to accept proposal');
-                    }
-                  }}
-                  onReject={async () => {
-                    try {
-                      await rejectProposal(proposal.id);
-                    } catch (err) {
-                      console.error('Failed to reject proposal:', err);
-                      alert('Failed to reject proposal');
-                    }
-                  }}
-                  onEdit={async () => {
-                    try {
-                      await editProposal(proposal.id, {
-                        start_timestamp: proposal.start_timestamp,
-                        end_timestamp: proposal.end_timestamp,
-                      });
-                    } catch (err) {
-                      console.error('Failed to edit proposal:', err);
-                      alert('Failed to edit proposal');
-                    }
-                  }}
-                />
-              ))}
-            </div>
-          )}
           {/* Serve window ranges */}
           {serveWindows.length > 0 && duration > 0 && (
             <div

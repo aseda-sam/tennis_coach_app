@@ -48,24 +48,6 @@
   text-transform: uppercase;
 }
 
-.analysis-dashboard__edit-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: var(--transition-normal);
-}
-
-.analysis-dashboard__edit-btn:hover {
-  background: var(--color-surface-secondary);
-  border-color: var(--color-border-dark);
-  color: var(--color-text);
-}
-
 /* View Toggle Row */
 .analysis-dashboard__view-toggle-row {
   display: flex;
@@ -369,28 +351,6 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   max-width: 400px;
-}
-
-/* Edit Serves Panel (secondary mode) */
-.analysis-dashboard__edit-panel {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  margin-top: var(--spacing-lg);
-}
-
-.analysis-dashboard__edit-title {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-  margin: 0 0 var(--spacing-md) 0;
-}
-
-.analysis-dashboard__edit-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
 }
 
 /* Toast */
