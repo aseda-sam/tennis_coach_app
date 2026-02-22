@@ -41,8 +41,11 @@ code {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* Modern focus styles */
+/* Focus ring: keyboard navigation only */
 *:focus {
+  outline: none;
+}
+*:focus-visible {
   outline: var(--focus-outline-width) solid var(--focus-outline-color);
   outline-offset: var(--focus-outline-offset);
 }
