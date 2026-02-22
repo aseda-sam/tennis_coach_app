@@ -27,9 +27,6 @@ cd frontend && npm run lint
 # Frontend format (run before committing any frontend file)
 cd frontend && npm run format
 
-# Frontend format (run before committing any frontend file)
-cd frontend && npm run format
-
 # Backend dependency management (uses uv, not pip)
 cd backend && uv pip install -e ".[dev]"   # install/sync all deps
 cd backend && uv pip install <package>      # add a package to the venv
@@ -88,7 +85,7 @@ writing/              # Substack context, LTA coaching notes, story seeds (gitig
 - **Layers:** Routes handle HTTP + auth, Services handle logic, Models define schema. Don't leak HTTP concerns into services.
 - **Auth:** `Depends(get_current_user)` on protected endpoints. AuthZ via `app.utils.authorization` helpers. Always scope queries by `user_id`.
 - **Errors:** Use `APIError` / `log_and_raise_error` from `app.utils.error_handling`. Never leak internals in 500s.
-- **Schemas:** Define all request/response schemas in `app/api/schemas/`. Never inline in route files. See `api-patterns.mdc` for full schema conventions.
+- **Schemas:** Define all request/response schemas in `app/api/schemas/`. Never inline in route files. Read `.cursor/rules/api-patterns.mdc` for full schema conventions.
 - **Storage:** Always go through `app.services.storage_service.storage_service`. No raw `open()` in routes/services.
 - **Background jobs:** Use RQ + `VideoJob` for anything > 5s. Jobs create their own DB sessions.
 - **API versioning:** All endpoints under `/v0/` (alpha, breaking changes allowed).
@@ -99,7 +96,7 @@ writing/              # Substack context, LTA coaching notes, story seeds (gitig
 - **No standalone docs for one-time work.** Migration runbooks, one-off SQL guides, and per-feature setup notes do not get their own `.md` files. Document inline: in the migration file's docstring, the commit message, or a code comment. Standalone docs only for things that need ongoing reference.
 - **Update docs at the point of change.** If you change a model → update `database_schema.md`. Change a config var → update `config.md`. Change a script's flags → update `demo-videos.md`. Don't defer it.
 - **Docs live close to the code they describe.** Backend operational docs in `backend/docs/`. Product/system-level docs in root `docs/`. Frontend CSS patterns in `frontend/DESIGN.md`. Behavioral rules for AI in `.cursor/rules/`.
-- **Design tokens and CSS patterns are a reference, not a rule.** `frontend/DESIGN.md` is the CSS pattern reference. Behavioral constraints (use tokens, button hierarchy, accessibility) live in `.cursor/rules/react-frontend.mdc`.
+- **Design tokens and CSS patterns are a reference, not a rule.** `frontend/DESIGN.md` is the CSS pattern reference. Read `.cursor/rules/react-frontend.mdc` for behavioral constraints (use tokens, button hierarchy, accessibility).
 
 ## Testing
 
@@ -144,13 +141,6 @@ A pre-commit hook runs automatically on every `git commit`. If it fails, the com
 
 **If a commit fails:** Read the hook name in the output to know what failed. The most common cause is `frontend-prettier` — fix by running `cd frontend && npm run format`, then re-staging and committing.
 
-**Before committing any frontend file, always run:**
-
-```bash
-cd frontend && npm run format   # Prettier auto-fix
-cd frontend && npm run lint     # ESLint (use lint:fix for auto-fixable issues)
-```
-
 **Before committing any Python file, ruff runs automatically** and fixes what it can. If ruff modifies files, re-stage them and commit again.
 
 ## Commits
@@ -159,10 +149,13 @@ cd frontend && npm run lint     # ESLint (use lint:fix for auto-fixable issues)
 
 ## Detailed rules
 
-Comprehensive coding conventions, patterns, and examples live in `.cursor/rules/`:
+Comprehensive coding conventions live in `.cursor/rules/`. These files are **not auto-loaded** — read the relevant one when working in that domain:
 
-- `api-patterns.mdc` — REST conventions, error contracts, file uploads
-- `backend-patterns.mdc` — Layers, auth, storage, RQ jobs
-- `python-code-standards.mdc` — Python style, Pydantic v2, imports
-- `react-frontend.mdc` — Components, styling, form patterns, accessibility
-- `testing-patterns.mdc` — TDD workflow, what to test, contract testing
+- `.cursor/rules/api-patterns.mdc` — REST conventions, error contracts, file uploads
+- `.cursor/rules/backend-patterns.mdc` — Layers, auth, storage, RQ jobs
+- `.cursor/rules/python-code-standards.mdc` — Python style, Pydantic v2, imports
+- `.cursor/rules/react-frontend.mdc` — Components, styling, form patterns, accessibility
+- `.cursor/rules/frontend-design.mdc` — Visual design patterns, component aesthetics
+- `.cursor/rules/frontend-api-patterns.mdc` — Frontend API client conventions
+- `.cursor/rules/testing-patterns.mdc` — TDD workflow, what to test, contract testing
+- `.cursor/rules/frontend-testing-patterns.mdc` — Frontend test patterns
