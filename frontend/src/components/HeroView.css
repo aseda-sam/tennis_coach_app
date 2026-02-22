@@ -254,8 +254,9 @@
     padding: var(--spacing-sm) var(--spacing-lg);
   }
 
-  .hero-view__display {
-    aspect-ratio: 16 / 8.5;
+  .hero-view__pip-video {
+    width: 120px;
+    height: 68px;
   }
 }
 

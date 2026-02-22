@@ -188,6 +188,21 @@
   gap: var(--spacing-lg);
 }
 
+/* Main column (video + phase tabs + playback controls) */
+.analysis-dashboard__main-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  min-width: 0;
+}
+
+/* Side column (metrics + detection details) */
+.analysis-dashboard__side-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
 /* Phase tab strip */
 .analysis-dashboard__phase-tabs {
   display: flex;
@@ -419,6 +434,31 @@
   }
 }
 
+/* Responsive — desktop two-column layout (≥1024px) */
+@media (min-width: 1024px) {
+  .analysis-dashboard__focus-view {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: var(--spacing-xl);
+  }
+
+  .analysis-dashboard__side-col {
+    position: sticky;
+    top: 64px;
+    max-height: calc(100vh - 64px - var(--spacing-lg));
+    overflow-y: auto;
+  }
+
+  .analysis-dashboard__metric-card {
+    min-width: 0;
+  }
+
+  .analysis-dashboard__progress-state,
+  .analysis-dashboard__no-serves {
+    grid-column: 1 / -1;
+  }
+}
+
 /* Responsive — 1080p laptops */
 @media (min-width: 1024px) and (max-width: 1280px) {
   .analysis-dashboard__header {
@@ -429,7 +469,7 @@
     padding: var(--spacing-sm) var(--spacing-md);
   }
 
-  .analysis-dashboard__focus-view {
+  .analysis-dashboard__main-col {
     gap: var(--spacing-md);
   }
 
@@ -443,6 +483,13 @@
   }
 }
 
+/* Responsive — wide desktops (≥1280px) */
+@media (min-width: 1280px) {
+  .analysis-dashboard__focus-view {
+    grid-template-columns: 1fr 360px;
+  }
+}
+
 /* Responsive — large screens (1440p+) */
 @media (min-width: 1440px) {
   .analysis-dashboard {
@@ -450,7 +497,8 @@
   }
 
   .analysis-dashboard__focus-view {
-    gap: var(--spacing-xl);
+    grid-template-columns: 1fr 400px;
+    gap: var(--spacing-2xl);
   }
 
   .analysis-dashboard__metrics-strip {
