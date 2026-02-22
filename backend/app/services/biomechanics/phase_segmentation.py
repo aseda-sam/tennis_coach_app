@@ -1,14 +1,17 @@
-"""Serve phase segmentation using heuristic detection from pose keypoints.
+"""Serve phase segmentation using KTP-based detection from pose keypoints.
 
-Segments a serve into 8 Kovacs phases by analyzing feature curves
-(wrist height, velocity, knee bend) across the serve window.
+Segments a serve into 8 Kovacs phases by detecting 4 Key Time Points (KTPs)
+and deriving phase intervals from them.
+
+KTPs: Ball Release → Trophy Position → Racket Low Point → Ball Impact
+
+Architecture rationale: see docs/decisions/003-phase-segmentation-redesign.md
 """
 
 import logging
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
-import numpy as np
 from pydantic import BaseModel
 
 from app.services.serve_detection.feature_extractor import (
@@ -17,15 +20,19 @@ from app.services.serve_detection.feature_extractor import (
 
 logger = logging.getLogger(__name__)
 
-ANALYSIS_VERSION = "phase-seg-v1"
+ANALYSIS_VERSION = "phase-seg-v2"
 
-# Heuristic multipliers for phase detection (Kovacs 8-stage model)
-ACCELERATION_VELOCITY_MULTIPLIER = (
-    2.0  # Wrist velocity > mean * this = acceleration onset
-)
-DECELERATION_VELOCITY_FRACTION = (
-    0.5  # Wrist velocity < peak * this = deceleration onset
-)
+# Default confidence scores per phase
+_PHASE_CONFIDENCE: Dict[str, float] = {
+    "start": 1.0,
+    "release": 0.8,
+    "loading": 0.7,
+    "cocking": 0.7,
+    "acceleration": 0.7,
+    "contact": 1.0,
+    "deceleration": 0.6,
+    "finish": 0.7,
+}
 
 
 class ServePhase(str, Enum):
@@ -39,7 +46,7 @@ class ServePhase(str, Enum):
     FINISH = "finish"
 
 
-# Ordered list of phases for monotonic enforcement
+# Ordered list of phases (kept for downstream consumers)
 PHASE_ORDER = [
     ServePhase.START,
     ServePhase.RELEASE,
@@ -79,10 +86,10 @@ def segment_serve_phases(
     video_width: int,
     video_height: int,
 ) -> PhaseSegmentationResult:
-    """Segment a serve into Kovacs 8-stage phases using pose keypoint heuristics.
+    """Segment a serve into Kovacs 8-stage phases using KTP-based detection.
 
-    Based on Kovacs & Ellenbecker (2011) 8-stage tennis serve model:
-    Start, Release, Loading, Cocking, Acceleration, Contact, Deceleration, Finish.
+    Detects 4 Key Time Points (Ball Release, Trophy Position, Racket Low Point,
+    Ball Impact) sequentially, then derives 8 phase intervals from them.
 
     Args:
         pose_frames: List of pose keypoint dicts (one per frame), None for missing.
@@ -103,60 +110,63 @@ def segment_serve_phases(
     frame_shape = (video_height, video_width, 3)
     total_frames = len(pose_frames)
 
+    if total_frames == 0:
+        phases = [
+            _make_phase_window(ServePhase.START, 0, 0, serve_start, serve_start, 1.0)
+        ]
+        return PhaseSegmentationResult(
+            phases=phases,
+            analysis_version=ANALYSIS_VERSION,
+            total_phases_detected=1,
+            total_phases_possible=8,
+        )
+
     # Extract per-frame features
     features = _extract_feature_curves(pose_frames, fps, frame_shape)
 
-    # Determine toss arm and dominant arm
     toss_side = "left" if dominant_hand == "right" else "right"
     dom_side = dominant_hand
 
-    # Detect each phase boundary
-    detections: Dict[ServePhase, Tuple[int, float]] = {}
+    # --- Detect 4 Key Time Points sequentially ---
 
-    # 1. Start — first frame
-    detections[ServePhase.START] = (0, 1.0)
+    # KTP 1: Ball Release (constrained to first 40% of serve)
+    search_end_br = max(1, int(total_frames * 0.4))
+    ball_release = _detect_ball_release(pose_frames, toss_side, search_end_br)
 
-    # 2. Release — toss arm wrist rises above shoulder
-    release_frame = _detect_release(pose_frames, toss_side)
-    if release_frame is not None:
-        detections[ServePhase.RELEASE] = (release_frame, 0.8)
+    # KTP 2: Trophy Position (after ball release, first 70% of remaining)
+    br_frame = ball_release if ball_release is not None else 0
+    remaining = total_frames - br_frame
+    search_end_tp = min(total_frames, br_frame + max(1, int(remaining * 0.7)))
+    trophy_position = _detect_trophy_position(features, br_frame, search_end_tp)
 
-    # 3. Loading — frame with maximum knee-hip ratio (deepest knee bend)
-    loading_frame = _detect_loading(features)
-    if loading_frame is not None:
-        detections[ServePhase.LOADING] = (loading_frame, 0.7)
-
-    # 4. Cocking — both wrists above shoulders + peak wrist height (trophy pose)
-    cocking_frame = _detect_cocking(pose_frames, features)
-    if cocking_frame is not None:
-        detections[ServePhase.COCKING] = (cocking_frame, 0.7)
-
-    # 5. Acceleration — dominant wrist velocity spike
-    accel_frame = _detect_acceleration(features)
-    if accel_frame is not None:
-        detections[ServePhase.ACCELERATION] = (accel_frame, 0.6)
-
-    # 6. Contact — from timestamp
+    # KTP 3: Ball Impact (from user-tagged contact timestamp)
+    ball_impact = None
     if contact_timestamp is not None:
-        contact_frame = int((contact_timestamp - serve_start) * fps)
-        contact_frame = max(0, min(contact_frame, total_frames - 1))
-        detections[ServePhase.CONTACT] = (contact_frame, 1.0)
+        ball_impact = int((contact_timestamp - serve_start) * fps)
+        ball_impact = max(0, min(ball_impact, total_frames - 1))
 
-    # 7. Deceleration — dominant wrist velocity drops after contact
-    contact_f = detections.get(ServePhase.CONTACT, (None, 0))[0]
-    if contact_f is not None:
-        decel_frame = _detect_deceleration(features, contact_f)
-        if decel_frame is not None:
-            detections[ServePhase.DECELERATION] = (decel_frame, 0.6)
+    # KTP 4: Racket Low Point (after trophy, before impact or 85% of serve)
+    tp_frame = trophy_position if trophy_position is not None else br_frame
+    rlp_end = (
+        ball_impact if ball_impact is not None else max(1, int(total_frames * 0.85))
+    )
+    racket_low_point = _detect_racket_low_point(
+        pose_frames, dom_side, tp_frame, rlp_end
+    )
 
-    # 8. Finish — dominant wrist drops below shoulder after contact
-    if contact_f is not None:
-        finish_frame = _detect_finish(pose_frames, dom_side, contact_f)
-        if finish_frame is not None:
-            detections[ServePhase.FINISH] = (finish_frame, 0.7)
-
-    # Enforce monotonic ordering: remove out-of-order phases
-    phases = _enforce_monotonic(detections, total_frames, fps, serve_start, serve_end)
+    # --- Derive 8 phases from KTPs ---
+    phases = _derive_phases_from_ktps(
+        total_frames=total_frames,
+        fps=fps,
+        serve_start=serve_start,
+        ball_release=ball_release,
+        trophy_position=trophy_position,
+        racket_low_point=racket_low_point,
+        ball_impact=ball_impact,
+        features=features,
+        pose_frames=pose_frames,
+        dom_side=dom_side,
+    )
 
     return PhaseSegmentationResult(
         phases=phases,
@@ -164,6 +174,9 @@ def segment_serve_phases(
         total_phases_detected=len(phases),
         total_phases_possible=8,
     )
+
+
+# --- Feature extraction ---
 
 
 def _extract_feature_curves(
@@ -182,12 +195,21 @@ def _extract_feature_curves(
     return features
 
 
-def _detect_release(pose_frames: List[Optional[Dict]], toss_side: str) -> Optional[int]:
-    """Detect release: first frame where toss-arm wrist rises above shoulder."""
+# --- KTP detectors ---
+
+
+def _detect_ball_release(
+    pose_frames: List[Optional[Dict]], toss_side: str, search_end: int
+) -> Optional[int]:
+    """Detect ball release: first frame where toss-arm wrist rises above shoulder.
+
+    Constrained to first 40% of serve window to avoid false positives.
+    """
     wrist_key = f"{toss_side}_wrist"
     shoulder_key = f"{toss_side}_shoulder"
 
-    for i, frame in enumerate(pose_frames):
+    for i in range(min(search_end, len(pose_frames))):
+        frame = pose_frames[i]
         if frame is None:
             continue
         wrist = frame.get(wrist_key)
@@ -198,94 +220,128 @@ def _detect_release(pose_frames: List[Optional[Dict]], toss_side: str) -> Option
     return None
 
 
-def _detect_cocking(
-    pose_frames: List[Optional[Dict]], features: List[Dict]
+def _detect_trophy_position(
+    features: List[Dict], search_start: int, search_end: int
 ) -> Optional[int]:
-    """Detect cocking phase onset: both arms raised + peak max_wrist_height (trophy pose)."""
-    # Find frames where both arms are raised
-    candidates = []
-    for i, feat in enumerate(features):
-        if feat.get("both_arms_raised", False):
-            candidates.append((i, feat.get("max_wrist_height", 0.0)))
+    """Detect trophy position: peak wrist height with co-occurring knee bend.
 
-    if not candidates:
-        return None
-
-    # Pick the frame with highest wrist height among candidates
-    best = max(candidates, key=lambda x: x[1])
-    return best[0]
-
-
-def _detect_loading(features: List[Dict]) -> Optional[int]:
-    """Detect loading: frame with maximum knee-hip ratio (deepest knee bend).
-
-    knee_hip_ratio is (avg_knee_y - avg_hip_y) / torso_length; in screen coords
-    larger Y is lower, so a larger positive ratio means knees further below hips.
+    Composite detector:
+    1. Find frames where any wrist is above its shoulder.
+    2. Among candidates, find peak max_wrist_height.
+    3. Validate knee bend co-occurrence (±5 frames must have ≥80% of max knee_hip_ratio).
+    4. Fallback: peak max_wrist_height without arm-raise filter (for beginners).
     """
-    ratios = []
-    for i, feat in enumerate(features):
-        khr = feat.get("knee_hip_ratio", 0.0)
-        if feat.get("has_pose", False) and khr > 0:
-            ratios.append((i, khr))
+    n = len(features)
+    search_end = min(search_end, n)
 
-    if not ratios:
+    if search_start >= search_end:
         return None
 
-    best = max(ratios, key=lambda x: x[1])
-    return best[0]
-
-
-def _detect_acceleration(features: List[Dict]) -> Optional[int]:
-    """Detect acceleration: dominant wrist velocity exceeds 2x mean velocity."""
-    velocities = [
-        (i, feat.get("max_wrist_velocity", 0.0))
-        for i, feat in enumerate(features)
-        if feat.get("has_pose", False)
+    # Find max knee_hip_ratio across entire serve for validation threshold
+    all_khr = [
+        f.get("knee_hip_ratio", 0.0) for f in features if f.get("has_pose", False)
     ]
+    max_khr = max(all_khr) if all_khr else 0.0
+    khr_threshold = max_khr * 0.8 if max_khr > 0 else 0.0
 
-    if len(velocities) < 3:
-        return None
+    # Find candidate frames: any wrist above shoulder
+    candidates = []
+    for i in range(search_start, search_end):
+        if features[i].get("any_wrist_above_shoulder", False):
+            candidates.append((i, features[i].get("max_wrist_height", 0.0)))
 
-    mean_vel = np.mean([v for _, v in velocities])
-    if mean_vel <= 0:
-        return None
+    if candidates:
+        # Sort by wrist height descending
+        candidates.sort(key=lambda x: x[1], reverse=True)
 
-    threshold = mean_vel * ACCELERATION_VELOCITY_MULTIPLIER
+        # Try each candidate, validate knee bend co-occurrence
+        for frame_idx, _ in candidates:
+            if _validate_knee_bend(features, frame_idx, khr_threshold):
+                return frame_idx
 
-    # Find first frame exceeding threshold
-    for i, vel in velocities:
-        if vel > threshold:
-            return i
+        # No candidate passed knee validation — return highest wrist height
+        return candidates[0][0]
 
-    return None
+    # Fallback: no wrist-above-shoulder frames — peak max_wrist_height
+    best_frame = None
+    best_height = -1.0
+    for i in range(search_start, search_end):
+        h = features[i].get("max_wrist_height", 0.0)
+        if features[i].get("has_pose", False) and h > best_height:
+            best_height = h
+            best_frame = i
+    return best_frame
 
 
-def _detect_deceleration(features: List[Dict], contact_frame: int) -> Optional[int]:
-    """Detect deceleration: wrist velocity drops below 50% of peak after contact."""
-    # Get peak velocity around/before contact
-    pre_contact = [
-        feat.get("max_wrist_velocity", 0.0)
-        for feat in features[max(0, contact_frame - 5) : contact_frame + 1]
+def _validate_knee_bend(
+    features: List[Dict], frame_idx: int, khr_threshold: float
+) -> bool:
+    """Check if knee bend co-occurs with the candidate frame (±5 frames)."""
+    if khr_threshold <= 0:
+        return True  # No knee bend data — skip validation
+
+    n = len(features)
+    window_start = max(0, frame_idx - 5)
+    window_end = min(n, frame_idx + 6)
+
+    window_ratios = [
+        features[j].get("knee_hip_ratio", 0.0)
+        for j in range(window_start, window_end)
+        if features[j].get("has_pose", False)
     ]
-    if not pre_contact:
-        return None
+    if not window_ratios:
+        return False
 
-    peak_vel = max(pre_contact)
-    if peak_vel <= 0:
-        return None
-
-    threshold = peak_vel * DECELERATION_VELOCITY_FRACTION
-
-    # Search after contact
-    for i in range(contact_frame + 1, len(features)):
-        vel = features[i].get("max_wrist_velocity", 0.0)
-        if vel < threshold:
-            return i
-
-    return None
+    return max(window_ratios) >= khr_threshold
 
 
-def _detect_finish(
+def _detect_racket_low_point(
+    pose_frames: List[Optional[Dict]],
+    dom_side: str,
+    search_start: int,
+    search_end: int,
+) -> Optional[int]:
+    """Detect racket low point: dominant wrist at lowest spatial position.
+
+    Finds the frame where dominant wrist Y is at its maximum (in screen coords,
+    higher Y = lower position = racket behind back). Pure spatial check — no
+    velocity thresholds, robust to pose jitter.
+    """
+    wrist_key = f"{dom_side}_wrist"
+    max_y = -1.0
+    best_frame = None
+
+    for i in range(search_start, min(search_end, len(pose_frames))):
+        frame = pose_frames[i]
+        if frame is None:
+            continue
+        wrist = frame.get(wrist_key)
+        if wrist is not None and wrist[1] > max_y:
+            max_y = wrist[1]
+            best_frame = i
+
+    return best_frame
+
+
+# --- Post-contact detectors ---
+
+
+def _smooth_velocities(features: List[Dict], window: int = 3) -> List[Dict]:
+    """Return features with smoothed max_wrist_velocity (rolling average)."""
+    velocities = [f.get("max_wrist_velocity", 0.0) for f in features]
+    n = len(velocities)
+    smoothed = []
+    for i in range(n):
+        start = max(0, i - window // 2)
+        end = min(n, i + window // 2 + 1)
+        avg_vel = sum(velocities[start:end]) / (end - start)
+        feat_copy = dict(features[i])
+        feat_copy["max_wrist_velocity"] = avg_vel
+        smoothed.append(feat_copy)
+    return smoothed
+
+
+def _detect_finish_frame(
     pose_frames: List[Optional[Dict]], dom_side: str, contact_frame: int
 ) -> Optional[int]:
     """Detect finish: dominant wrist drops below shoulder after contact."""
@@ -304,49 +360,105 @@ def _detect_finish(
     return None
 
 
-def _enforce_monotonic(
-    detections: Dict[ServePhase, Tuple[int, float]],
+# --- Phase derivation ---
+
+
+def _find_loading_start(
+    features: List[Dict], search_start: int, search_end: int
+) -> Optional[int]:
+    """Find frame with peak knee bend between ball release and trophy position."""
+    best_frame = None
+    best_ratio = -1.0
+    for i in range(search_start, min(search_end, len(features))):
+        ratio = features[i].get("knee_hip_ratio", 0.0)
+        if features[i].get("has_pose", False) and ratio > best_ratio:
+            best_ratio = ratio
+            best_frame = i
+    return best_frame
+
+
+def _derive_phases_from_ktps(
     total_frames: int,
     fps: float,
     serve_start: float,
-    serve_end: float,
+    ball_release: Optional[int],
+    trophy_position: Optional[int],
+    racket_low_point: Optional[int],
+    ball_impact: Optional[int],
+    features: List[Dict],
+    pose_frames: List[Optional[Dict]],
+    dom_side: str,
 ) -> List[PhaseWindow]:
-    """Enforce monotonic phase ordering, discard out-of-order phases."""
-    ordered_phases = []
-    last_frame = -1
+    """Derive 8 Kovacs phases from 4 Key Time Points.
 
-    for phase in PHASE_ORDER:
-        if phase not in detections:
-            continue
-        frame, confidence = detections[phase]
-        if frame <= last_frame and phase != ServePhase.START:
-            # Out of order — skip this phase
-            continue
-        ordered_phases.append((phase, frame, confidence))
-        last_frame = frame
+    Builds a boundary list where each entry marks a phase start frame,
+    then converts to PhaseWindows.
+    """
+    last_frame = max(total_frames - 1, 0)
 
-    # Build PhaseWindows with start/end boundaries
+    # Build boundary list: (frame, phase_that_starts_here)
+    boundaries: List[Tuple[int, ServePhase]] = [(0, ServePhase.START)]
+
+    if ball_release is not None:
+        boundaries.append((ball_release, ServePhase.RELEASE))
+
+    if trophy_position is not None:
+        # Insert Loading before Cocking if knee bend detected between BR and TP
+        if ball_release is not None:
+            loading_start = _find_loading_start(features, ball_release, trophy_position)
+            if (
+                loading_start is not None
+                and loading_start > ball_release
+                and loading_start < trophy_position
+            ):
+                boundaries.append((loading_start, ServePhase.LOADING))
+        boundaries.append((trophy_position, ServePhase.COCKING))
+
+    if racket_low_point is not None:
+        boundaries.append((racket_low_point, ServePhase.ACCELERATION))
+
+    if ball_impact is not None:
+        boundaries.append((ball_impact, ServePhase.CONTACT))
+        contact_end = min(ball_impact + 1, last_frame)
+
+        if contact_end < last_frame:
+            finish_frame = _detect_finish_frame(pose_frames, dom_side, ball_impact)
+            if finish_frame is not None and finish_frame > contact_end:
+                boundaries.append((contact_end, ServePhase.DECELERATION))
+                boundaries.append((finish_frame, ServePhase.FINISH))
+            else:
+                boundaries.append((contact_end, ServePhase.DECELERATION))
+
+    # Convert boundaries to PhaseWindows
     result = []
-    for idx, (phase, frame, confidence) in enumerate(ordered_phases):
-        # End frame is start of next phase (or end of serve)
-        if idx + 1 < len(ordered_phases):
-            end_frame = ordered_phases[idx + 1][1]
-        else:
-            end_frame = max(total_frames - 1, frame)
+    for idx in range(len(boundaries)):
+        frame, phase = boundaries[idx]
+        end_frame = boundaries[idx + 1][0] if idx + 1 < len(boundaries) else last_frame
 
-        start_ts = serve_start + frame / fps if fps > 0 else serve_start
-        end_ts = serve_start + end_frame / fps if fps > 0 else serve_end
+        start_ts = serve_start + frame / fps
+        end_ts = serve_start + end_frame / fps
 
-        result.append(
-            PhaseWindow(
-                phase=phase,
-                start_timestamp=round(start_ts, 4),
-                end_timestamp=round(end_ts, 4),
-                start_frame=frame,
-                end_frame=end_frame,
-                confidence=confidence,
-                detected=True,
-            )
-        )
+        result.append(_make_phase_window(phase, frame, end_frame, start_ts, end_ts))
 
     return result
+
+
+def _make_phase_window(
+    phase: ServePhase,
+    start_frame: int,
+    end_frame: int,
+    start_timestamp: float,
+    end_timestamp: float,
+    confidence: Optional[float] = None,
+) -> PhaseWindow:
+    return PhaseWindow(
+        phase=phase,
+        start_timestamp=round(start_timestamp, 4),
+        end_timestamp=round(end_timestamp, 4),
+        start_frame=start_frame,
+        end_frame=end_frame,
+        confidence=confidence
+        if confidence is not None
+        else _PHASE_CONFIDENCE.get(phase.value, 0.5),
+        detected=True,
+    )

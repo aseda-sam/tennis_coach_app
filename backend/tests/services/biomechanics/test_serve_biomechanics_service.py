@@ -85,7 +85,7 @@ class TestServeBiomechanicsServicePipeline:
         assert saved.user_id == "user-1"
         assert saved.phase_segmentation_json is not None
         assert saved.metrics is not None
-        assert saved.analysis_version == "phase-metrics-v4"
+        assert saved.analysis_version == "phase-metrics-v5"
 
     @patch(
         "app.services.biomechanics.serve_biomechanics_service.get_pose_frames_in_window"

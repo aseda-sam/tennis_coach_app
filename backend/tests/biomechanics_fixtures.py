@@ -87,3 +87,52 @@ def _make_serve_sequence(
         else:
             frames.append(_make_pose(left_wrist_y=0.6, right_wrist_y=0.55))
     return frames
+
+
+def _make_asymmetric_serve_sequence(
+    num_frames: int = 60,
+    fps: float = 30.0,
+) -> list[dict[str, Any] | None]:
+    """Create a serve where only the dominant (right) arm is raised in trophy.
+
+    Simulates a beginner who doesn't raise the toss arm high during trophy.
+    The toss arm still rises above shoulder for ball release, then drops back.
+    This tests that trophy detection works with any (not both) wrists above shoulder.
+    """
+    frames: list[dict[str, Any] | None] = []
+    for i in range(num_frames):
+        if i <= 5:
+            frames.append(_make_pose(left_wrist_y=0.6, right_wrist_y=0.6))
+        elif i <= 12:
+            # Toss arm rises above shoulder for ball release
+            progress = (i - 6) / 6
+            left_y = 0.6 - progress * 0.4
+            frames.append(_make_pose(left_wrist_y=left_y, right_wrist_y=0.5))
+        elif i <= 20:
+            # Knee bend, toss arm drops back down
+            progress = (i - 13) / 7
+            knee_y = 0.7 + progress * 0.15
+            left_y = 0.2 + progress * 0.2  # Drops back to 0.4 (below shoulder)
+            frames.append(
+                _make_pose(left_wrist_y=left_y, right_wrist_y=0.2, knee_y=knee_y)
+            )
+        elif i <= 28:
+            # Only right arm raised high (asymmetric trophy)
+            frames.append(_make_pose(left_wrist_y=0.4, right_wrist_y=0.1))
+        elif i <= 38:
+            progress = (i - 29) / 9
+            right_y = 0.4 - progress * 0.35
+            frames.append(
+                _make_pose(left_wrist_y=0.5, right_wrist_y=right_y, right_wrist_x=0.75)
+            )
+        elif i <= 42:
+            frames.append(
+                _make_pose(left_wrist_y=0.5, right_wrist_y=0.05, right_wrist_x=0.75)
+            )
+        elif i <= 48:
+            progress = (i - 43) / 5
+            right_y = 0.05 + progress * 0.3
+            frames.append(_make_pose(left_wrist_y=0.5, right_wrist_y=right_y))
+        else:
+            frames.append(_make_pose(left_wrist_y=0.6, right_wrist_y=0.55))
+    return frames
