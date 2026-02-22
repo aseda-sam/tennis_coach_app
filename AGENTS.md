@@ -113,34 +113,34 @@ writing/              # Substack context, LTA coaching notes, story seeds (gitig
 
 These constraints apply when building any user-facing feature. They come from hard-won lessons about what this app actually is (and isn't).
 
-- **Practice > analysis.** The goal is to get users serving on a court, not spending more time in the app. Every feature should push them toward action, not deeper analysis. If a new UI element could trap a user in a stats-browsing loop, reconsider it.
-- **Progressive disclosure.** Show one thing at a time. Don't front-load metrics, options, or complexity. Unlock detail as users demonstrate understanding.
+- **Practice > analysis.** The goal is to get users serving on a court with valuable data and recommendations, not spending too much time in the app
+- **Progressive disclosure.** Show one thing at a time. Don't front-load too much metrics, options, or complexity. Unlock detail as users demonstrate understanding.
 - **App ≠ live coach.** The app gives asynchronous video feedback. It cannot see confusion, adjust in real time, or replace the feel of a human coach. Don't build features that pretend otherwise. Be honest about the medium's limits.
-- **LTA L1 is context, not a pivot.** The coaching course informs design thinking. It does not override the current roadmap or justify new complexity. Real technique-teaching frameworks are LTA L2+ territory.
 - **The app is a coach-prep tool.** Help users identify what to work on, give them language to use with a coach, encourage them to practice. It complements coaches; it doesn't replace them.
 
 ## Pre-commit pipeline
 
 A pre-commit hook runs automatically on every `git commit`. If it fails, the commit is blocked. Here is what runs and what to do:
 
-| Hook | Stage | What it does | Auto-fixes? |
-|---|---|---|---|
-| `trailing-whitespace` | commit | Removes trailing whitespace | Yes — re-stage if fixed |
-| `end-of-file-fixer` | commit | Ensures files end with newline | Yes — re-stage if fixed |
-| `check-yaml / check-json` | commit | Validates YAML/JSON syntax | No — fix manually |
-| `check-added-large-files` | commit | Blocks files >1 MB | No — remove the file |
-| `detect-private-key` | commit | Blocks committed secrets | No — remove the secret |
-| `ruff` (Python) | commit | Lints Python, applies safe fixes | Yes — auto-fixed |
-| `ruff-format` (Python) | commit | Formats Python | Yes — auto-fixed |
-| `frontend-eslint` | commit | ESLint on `.ts/.tsx` files | No — run `cd frontend && npm run lint:fix` |
-| `frontend-prettier` | commit | Checks formatting of `.ts/.tsx/.css` | No — run `cd frontend && npm run format` |
-| `backend-pytest` | **push** | Runs backend test suite | No — fix failing tests |
-| `frontend-typecheck` | **push** | TypeScript `tsc --noEmit` | No — fix type errors |
-| `mermaid-validate` | **push** | Validates Mermaid diagrams in `docs/diagrams/` | No — fix broken diagrams |
+| Hook                      | Stage    | What it does                                   | Auto-fixes?                                |
+| ------------------------- | -------- | ---------------------------------------------- | ------------------------------------------ |
+| `trailing-whitespace`     | commit   | Removes trailing whitespace                    | Yes — re-stage if fixed                    |
+| `end-of-file-fixer`       | commit   | Ensures files end with newline                 | Yes — re-stage if fixed                    |
+| `check-yaml / check-json` | commit   | Validates YAML/JSON syntax                     | No — fix manually                          |
+| `check-added-large-files` | commit   | Blocks files >1 MB                             | No — remove the file                       |
+| `detect-private-key`      | commit   | Blocks committed secrets                       | No — remove the secret                     |
+| `ruff` (Python)           | commit   | Lints Python, applies safe fixes               | Yes — auto-fixed                           |
+| `ruff-format` (Python)    | commit   | Formats Python                                 | Yes — auto-fixed                           |
+| `frontend-eslint`         | commit   | ESLint on `.ts/.tsx` files                     | No — run `cd frontend && npm run lint:fix` |
+| `frontend-prettier`       | commit   | Checks formatting of `.ts/.tsx/.css`           | No — run `cd frontend && npm run format`   |
+| `backend-pytest`          | **push** | Runs backend test suite                        | No — fix failing tests                     |
+| `frontend-typecheck`      | **push** | TypeScript `tsc --noEmit`                      | No — fix type errors                       |
+| `mermaid-validate`        | **push** | Validates Mermaid diagrams in `docs/diagrams/` | No — fix broken diagrams                   |
 
 **If a commit fails:** Read the hook name in the output to know what failed. The most common cause is `frontend-prettier` — fix by running `cd frontend && npm run format`, then re-staging and committing.
 
 **Before committing any frontend file, always run:**
+
 ```bash
 cd frontend && npm run format   # Prettier auto-fix
 cd frontend && npm run lint     # ESLint (use lint:fix for auto-fixable issues)
