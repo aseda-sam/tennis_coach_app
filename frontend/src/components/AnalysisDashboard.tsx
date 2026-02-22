@@ -15,7 +15,6 @@ import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
-import ServePhaseTimeline from './ServePhaseTimeline';
 import ServeThumbnailStrip from './ServeThumbnailStrip';
 
 const METRIC_DISPLAY_NAMES: Record<string, string> = {
@@ -333,24 +332,24 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         </div>
       )}
 
-      {/* View Mode Toggle */}
+      {/* Serve Navigation Rail: thumbnails + view toggle */}
       {analysisStatus?.has_analysis && hasServes && (
-        <div className="analysis-dashboard__view-toggle-row">
-          <AnalysisViewToggle
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-          />
-        </div>
-      )}
-
-      {/* Serve Thumbnail Strip */}
-      {analysisStatus?.has_analysis && hasServes && (
-        <ServeThumbnailStrip
-          serveWindows={sortedServeWindows}
-          currentIndex={currentServeIndex}
-          videoUrl={videoUrl}
-          onNavigate={handleServeNavigate}
-        />
+        <>
+          <div className="analysis-dashboard__serve-nav">
+            <ServeThumbnailStrip
+              serveWindows={sortedServeWindows}
+              currentIndex={currentServeIndex}
+              videoUrl={videoUrl}
+              onNavigate={handleServeNavigate}
+            />
+          </div>
+          <div className="analysis-dashboard__view-toggle-row">
+            <AnalysisViewToggle
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
+          </div>
+        </>
       )}
 
       {/* Main Content: Focus-mode serve viewer */}
@@ -374,6 +373,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   onSeek={handleSeek}
                   annotations={annotationMetrics}
                   playbackSpeed={playbackSpeed}
+                  phases={phases}
+                  activePhase={currentPhase?.phase}
+                  contactTimestamp={currentServe!.contact_timestamp ?? null}
                 />
               </ErrorBoundary>
 
@@ -416,20 +418,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                         &#x2299; Contact
                       </button>
                     )}
-                  </div>
-
-                  {/* Slim timeline scrubber */}
-                  <div className="analysis-dashboard__timeline-inset">
-                    <ServePhaseTimeline
-                      phases={phases}
-                      currentTime={currentTime}
-                      serveStart={currentServe!.start_timestamp}
-                      serveEnd={currentServe!.end_timestamp}
-                      onSeek={handleSeek}
-                      contactTimestamp={currentServe!.contact_timestamp ?? null}
-                      hideLabels
-                      activePhase={currentPhase?.phase}
-                    />
                   </div>
 
                   {/* Playback controls: speed + loop */}

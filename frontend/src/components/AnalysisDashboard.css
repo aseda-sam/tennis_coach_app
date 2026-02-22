@@ -48,11 +48,18 @@
   text-transform: uppercase;
 }
 
+/* Serve Navigation Rail */
+.analysis-dashboard__serve-nav {
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
 /* View Toggle Row */
 .analysis-dashboard__view-toggle-row {
   display: flex;
   justify-content: center;
-  padding: var(--spacing-sm) 0;
+  padding: var(--spacing-xs) 0;
 }
 
 /* Empty / Loading States */
@@ -213,11 +220,6 @@
   margin-left: auto;
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
-}
-
-/* Slim timeline scrubber inset */
-.analysis-dashboard__timeline-inset {
-  padding: var(--spacing-sm) 0;
 }
 
 /* Playback controls row */
@@ -395,7 +397,7 @@
   }
 }
 
-/* Responsive */
+/* Responsive — mobile */
 @media (max-width: 768px) {
   .analysis-dashboard {
     padding: var(--spacing-md);
@@ -409,5 +411,44 @@
   .analysis-dashboard__header-right {
     width: 100%;
     justify-content: space-between;
+  }
+}
+
+/* Responsive — 1080p laptops */
+@media (min-width: 1024px) and (max-width: 1280px) {
+  .analysis-dashboard__header {
+    margin-bottom: var(--spacing-md);
+  }
+
+  .analysis-dashboard__serve-nav {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .analysis-dashboard__focus-view {
+    gap: var(--spacing-md);
+  }
+
+  .analysis-dashboard__phase-tab {
+    font-size: var(--font-size-xs);
+    padding: var(--spacing-xs) var(--spacing-md);
+  }
+
+  .analysis-dashboard__metric-card {
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+}
+
+/* Responsive — large screens (1440p+) */
+@media (min-width: 1440px) {
+  .analysis-dashboard {
+    max-width: 1600px;
+  }
+
+  .analysis-dashboard__focus-view {
+    gap: var(--spacing-xl);
+  }
+
+  .analysis-dashboard__metrics-strip {
+    gap: var(--spacing-lg);
   }
 }

@@ -95,3 +95,11 @@
   letter-spacing: var(--letter-spacing-wide);
   line-height: 1;
 }
+
+/* 1080p laptops — smaller thumbnails */
+@media (min-width: 1024px) and (max-width: 1280px) {
+  .thumbnail-strip__frame {
+    width: 80px;
+    height: 60px;
+  }
+}

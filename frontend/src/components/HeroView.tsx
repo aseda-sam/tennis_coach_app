@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import { MetricValue } from '../types/biomechanics';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import { ViewMode } from './AnalysisViewToggle';
 import { PauseIcon, PlayIcon } from './Icons';
 import StickFigureCanvas from './StickFigureCanvas';
@@ -19,6 +19,9 @@ interface HeroViewProps {
   onSeek: (time: number) => void;
   annotations?: MetricValue[];
   playbackSpeed?: number;
+  phases?: PhaseWindow[];
+  activePhase?: string | null;
+  contactTimestamp?: number | null;
 }
 
 const HeroView: React.FC<HeroViewProps> = ({
@@ -35,6 +38,9 @@ const HeroView: React.FC<HeroViewProps> = ({
   onSeek,
   annotations,
   playbackSpeed = 1,
+  phases = [],
+  activePhase = null,
+  contactTimestamp = null,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pipVideoRef = useRef<HTMLVideoElement>(null);
@@ -97,6 +103,28 @@ const HeroView: React.FC<HeroViewProps> = ({
     return `${m}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
   };
 
+  const duration = serveEnd - serveStart;
+  const toPercent = useCallback(
+    (t: number) =>
+      duration > 0
+        ? Math.max(0, Math.min(100, ((t - serveStart) / duration) * 100))
+        : 0,
+    [serveStart, duration]
+  );
+
+  const hasPhases = phases.length > 0;
+
+  const contactPct = useMemo(() => {
+    if (
+      contactTimestamp != null &&
+      contactTimestamp >= serveStart &&
+      contactTimestamp <= serveEnd
+    ) {
+      return toPercent(contactTimestamp);
+    }
+    return null;
+  }, [contactTimestamp, serveStart, serveEnd, toPercent]);
+
   return (
     <div className="hero-view">
       <div className="hero-view__display">
@@ -140,16 +168,42 @@ const HeroView: React.FC<HeroViewProps> = ({
 
         <span className="hero-view__timestamp">{formatTime(currentTime)}</span>
 
-        <input
-          type="range"
-          className="hero-view__scrubber"
-          min={serveStart}
-          max={serveEnd}
-          step={0.001}
-          value={currentTime}
-          onChange={(e) => handleVideoSeek(parseFloat(e.target.value))}
-          aria-label="Serve timeline"
-        />
+        <div className="hero-view__scrubber-container">
+          {hasPhases && (
+            <div className="hero-view__phase-track" aria-hidden="true">
+              {phases.map((phase) => {
+                const left = toPercent(phase.start_timestamp);
+                const width = toPercent(phase.end_timestamp) - left;
+                const isActive = activePhase === phase.phase;
+                return (
+                  <div
+                    key={phase.phase}
+                    className={`hero-view__phase-segment${isActive ? ' hero-view__phase-segment--active' : ''}`}
+                    style={{ left: `${left}%`, width: `${width}%` }}
+                    title={phase.phase_label}
+                  />
+                );
+              })}
+              {contactPct != null && (
+                <div
+                  className="hero-view__contact-marker"
+                  style={{ left: `${contactPct}%` }}
+                  title={`Contact: ${contactTimestamp!.toFixed(2)}s`}
+                />
+              )}
+            </div>
+          )}
+          <input
+            type="range"
+            className="hero-view__scrubber"
+            min={serveStart}
+            max={serveEnd}
+            step={0.001}
+            value={currentTime}
+            onChange={(e) => handleVideoSeek(parseFloat(e.target.value))}
+            aria-label="Serve timeline"
+          />
+        </div>
 
         <span className="hero-view__timestamp hero-view__timestamp--end">
           {formatTime(serveEnd)}
