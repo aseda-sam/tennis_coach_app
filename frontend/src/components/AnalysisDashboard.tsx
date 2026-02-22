@@ -139,7 +139,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     currentTime,
     isPlaying,
     loopCurrentPhase,
-    loopPhaseWindow,
     playbackSpeed,
     handlePlayPause,
     handleSeek,
@@ -383,6 +382,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     onSeek={handleSeek}
                     annotations={annotationMetrics}
                     playbackSpeed={playbackSpeed}
+                    onPlaybackSpeedChange={setPlaybackSpeed}
+                    speedOptions={SPEED_OPTIONS}
+                    loopActive={loopCurrentPhase}
+                    loopDisabled={!currentPhase}
+                    onLoopToggle={handleToggleLoopWithPhase}
                     phases={phases}
                     activePhase={currentPhase?.phase}
                     contactTimestamp={currentServe!.contact_timestamp ?? null}
@@ -428,45 +432,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                           &#x2299; Contact
                         </button>
                       )}
-                    </div>
-
-                    {/* Playback controls: speed + loop */}
-                    <div className="analysis-dashboard__playback-controls">
-                      <div
-                        className="analysis-dashboard__speed-selector"
-                        role="group"
-                        aria-label="Playback speed"
-                      >
-                        {SPEED_OPTIONS.map((speed) => (
-                          <button
-                            key={speed}
-                            type="button"
-                            className={`analysis-dashboard__speed-btn${
-                              playbackSpeed === speed
-                                ? ' analysis-dashboard__speed-btn--active'
-                                : ''
-                            }`}
-                            onClick={() => setPlaybackSpeed(speed)}
-                          >
-                            {speed}x
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        type="button"
-                        className={`analysis-dashboard__loop-btn${
-                          loopCurrentPhase
-                            ? ' analysis-dashboard__loop-btn--active'
-                            : ''
-                        }`}
-                        onClick={handleToggleLoopWithPhase}
-                        disabled={!currentPhase}
-                      >
-                        &#x21bb;{' '}
-                        {loopCurrentPhase
-                          ? `Looping ${loopPhaseWindow?.phase_label ?? 'Phase'}`
-                          : `Loop ${currentPhase?.phase_label ?? 'Phase'}`}
-                      </button>
                     </div>
                   </>
                 )}

@@ -19,6 +19,11 @@ interface HeroViewProps {
   onSeek: (time: number) => void;
   annotations?: MetricValue[];
   playbackSpeed?: number;
+  onPlaybackSpeedChange?: (speed: number) => void;
+  speedOptions?: readonly number[];
+  loopActive?: boolean;
+  loopDisabled?: boolean;
+  onLoopToggle?: () => void;
   phases?: PhaseWindow[];
   activePhase?: string | null;
   contactTimestamp?: number | null;
@@ -38,6 +43,11 @@ const HeroView: React.FC<HeroViewProps> = ({
   onSeek,
   annotations,
   playbackSpeed = 1,
+  onPlaybackSpeedChange,
+  speedOptions,
+  loopActive = false,
+  loopDisabled = true,
+  onLoopToggle,
   phases = [],
   activePhase = null,
   contactTimestamp = null,
@@ -208,6 +218,42 @@ const HeroView: React.FC<HeroViewProps> = ({
         <span className="hero-view__timestamp hero-view__timestamp--end">
           {formatTime(serveEnd)}
         </span>
+
+        {speedOptions && onPlaybackSpeedChange && (
+          <div
+            className="hero-view__speed-selector"
+            role="group"
+            aria-label="Playback speed"
+          >
+            {speedOptions.map((speed) => (
+              <button
+                key={speed}
+                type="button"
+                className={`hero-view__speed-btn${
+                  playbackSpeed === speed ? ' hero-view__speed-btn--active' : ''
+                }`}
+                onClick={() => onPlaybackSpeedChange(speed)}
+              >
+                {speed}x
+              </button>
+            ))}
+          </div>
+        )}
+
+        {onLoopToggle && (
+          <button
+            type="button"
+            className={`hero-view__loop-btn${loopActive ? ' hero-view__loop-btn--active' : ''}`}
+            onClick={onLoopToggle}
+            disabled={loopDisabled}
+            aria-label={
+              loopActive ? 'Stop looping phase' : 'Loop current phase'
+            }
+            title={loopActive ? 'Stop looping phase' : 'Loop current phase'}
+          >
+            &#x21bb;
+          </button>
+        )}
       </div>
     </div>
   );
