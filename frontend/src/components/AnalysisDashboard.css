@@ -438,7 +438,7 @@
 @media (min-width: 1024px) {
   .analysis-dashboard__focus-view {
     display: grid;
-    grid-template-columns: 1fr 320px;
+    grid-template-columns: 1fr 380px;
     gap: var(--spacing-xl);
   }
 
@@ -486,7 +486,7 @@
 /* Responsive — wide desktops (≥1280px) */
 @media (min-width: 1280px) {
   .analysis-dashboard__focus-view {
-    grid-template-columns: 1fr 360px;
+    grid-template-columns: 1fr 420px;
   }
 }
 
@@ -497,7 +497,7 @@
   }
 
   .analysis-dashboard__focus-view {
-    grid-template-columns: 1fr 400px;
+    grid-template-columns: 1fr 460px;
     gap: var(--spacing-2xl);
   }
 
