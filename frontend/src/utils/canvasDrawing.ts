@@ -449,7 +449,7 @@ export interface StickHudParams {
   phaseColor?: string;
 }
 
-/** Draw frame info, confidence indicator, and optional phase label. */
+/** Draw frame info, confidence indicator, and optional phase label in a pill. */
 export function drawStickHud(params: StickHudParams): void {
   const {
     ctx,
@@ -462,33 +462,73 @@ export function drawStickHud(params: StickHudParams): void {
     phaseColor,
   } = params;
 
-  // Frame info
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.font = '12px monospace';
+  // Frame info — bottom left
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.font = '11px monospace';
   ctx.textAlign = 'left';
-  ctx.fillText(`Frame: ${frameIndex}`, 10, containerHeight - 30);
-  ctx.fillText(`Time: ${currentTime.toFixed(2)}s`, 10, containerHeight - 14);
-
-  // Confidence indicator
-  ctx.textAlign = 'right';
-  ctx.fillStyle =
-    confidence > 0.7 ? '#00ff88' : confidence > 0.4 ? '#ffaa00' : '#ff4444';
   ctx.fillText(
-    `Confidence: ${(confidence * 100).toFixed(0)}%`,
-    containerWidth - 10,
-    containerHeight - 14
+    `F${frameIndex}  ${currentTime.toFixed(2)}s`,
+    10,
+    containerHeight - 12
   );
 
-  // Phase label
+  // Confidence dot — bottom right
+  const confColor =
+    confidence > 0.7 ? '#00ff88' : confidence > 0.4 ? '#ffaa00' : '#ff4444';
+  const dotRadius = 5;
+  const dotX = containerWidth - 16;
+  const dotY = containerHeight - 16;
+  ctx.fillStyle = confColor;
+  ctx.beginPath();
+  ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(
+    `${(confidence * 100).toFixed(0)}%`,
+    dotX - dotRadius - 4,
+    dotY + 4
+  );
+
+  // Phase label pill — top left
   if (phaseLabel) {
     const baseColor = phaseColor || STICK_FIGURE_SKELETON_COLOR;
+    ctx.font = 'bold 13px sans-serif';
+    const textWidth = ctx.measureText(phaseLabel).width;
+    const pillPadX = 10;
+    const pillPadY = 6;
+    const pillX = 10;
+    const pillY = 10;
+    const pillW = textWidth + pillPadX * 2;
+    const pillH = 13 + pillPadY * 2;
+    const pillR = pillH / 2;
+
+    // Pill background
     ctx.fillStyle = baseColor;
-    ctx.font = 'bold 14px sans-serif';
+    ctx.globalAlpha = 0.2;
+    ctx.beginPath();
+    ctx.moveTo(pillX + pillR, pillY);
+    ctx.lineTo(pillX + pillW - pillR, pillY);
+    ctx.arcTo(pillX + pillW, pillY, pillX + pillW, pillY + pillR, pillR);
+    ctx.arcTo(
+      pillX + pillW,
+      pillY + pillH,
+      pillX + pillW - pillR,
+      pillY + pillH,
+      pillR
+    );
+    ctx.lineTo(pillX + pillR, pillY + pillH);
+    ctx.arcTo(pillX, pillY + pillH, pillX, pillY + pillH - pillR, pillR);
+    ctx.arcTo(pillX, pillY, pillX + pillR, pillY, pillR);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Pill text
+    ctx.fillStyle = baseColor;
     ctx.textAlign = 'left';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-    ctx.shadowBlur = 4;
-    ctx.fillText(phaseLabel, 12, 24);
-    ctx.shadowBlur = 0;
+    ctx.fillText(phaseLabel, pillX + pillPadX, pillY + pillPadY + 11);
   }
 }
 
@@ -521,8 +561,9 @@ export interface TossHeightAnnotationParams {
 }
 
 /**
- * Draw toss height annotation: horizontal dashed line at ball peak Y,
- * vertical measurement bracket from shoulder to ball, and value label.
+ * Draw toss height annotation: horizontal dashed line at ball peak Y with glow,
+ * vertical measurement bracket from shoulder to ball, rounded-rect label backdrop,
+ * and "Peak Height" sub-label.
  */
 export function drawTossHeightAnnotation(
   params: TossHeightAnnotationParams
@@ -532,7 +573,9 @@ export function drawTossHeightAnnotation(
   ctx.save();
   ctx.globalAlpha = opacity;
 
-  // Horizontal dashed line at peak height
+  // Horizontal dashed line at peak height with glow
+  ctx.shadowColor = ANNOTATION_COLOR;
+  ctx.shadowBlur = 6;
   ctx.strokeStyle = ANNOTATION_COLOR;
   ctx.lineWidth = 1;
   ctx.setLineDash([6, 4]);
@@ -540,6 +583,7 @@ export function drawTossHeightAnnotation(
   ctx.moveTo(0, ballY);
   ctx.lineTo(canvasWidth, ballY);
   ctx.stroke();
+  ctx.shadowBlur = 0;
 
   // Vertical bracket from shoulder to ball
   const bracketX = canvasWidth - 40;
@@ -551,7 +595,8 @@ export function drawTossHeightAnnotation(
   ctx.stroke();
 
   // Bracket caps
-  const capWidth = 6;
+  const capWidth = 8;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(bracketX - capWidth, shoulderY);
   ctx.lineTo(bracketX + capWidth, shoulderY);
@@ -561,15 +606,61 @@ export function drawTossHeightAnnotation(
   ctx.lineTo(bracketX + capWidth, ballY);
   ctx.stroke();
 
-  // Value label
+  // Value label with rounded-rect backdrop
   const labelY = (shoulderY + ballY) / 2;
+  const valueText = `${value.toFixed(2)}x`;
+  const subLabel = 'Peak Height';
+  ctx.font = 'bold 13px monospace';
+  const valueWidth = ctx.measureText(valueText).width;
+  ctx.font = '10px sans-serif';
+  const subWidth = ctx.measureText(subLabel).width;
+  const labelWidth = Math.max(valueWidth, subWidth) + 16;
+  const labelHeight = 36;
+  const labelLeft = bracketX - labelWidth - 10;
+  const labelTop = labelY - labelHeight / 2;
+
+  // Backdrop
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  const r = 6;
+  ctx.beginPath();
+  ctx.moveTo(labelLeft + r, labelTop);
+  ctx.lineTo(labelLeft + labelWidth - r, labelTop);
+  ctx.arcTo(
+    labelLeft + labelWidth,
+    labelTop,
+    labelLeft + labelWidth,
+    labelTop + r,
+    r
+  );
+  ctx.arcTo(
+    labelLeft + labelWidth,
+    labelTop + labelHeight,
+    labelLeft + labelWidth - r,
+    labelTop + labelHeight,
+    r
+  );
+  ctx.lineTo(labelLeft + r, labelTop + labelHeight);
+  ctx.arcTo(
+    labelLeft,
+    labelTop + labelHeight,
+    labelLeft,
+    labelTop + labelHeight - r,
+    r
+  );
+  ctx.arcTo(labelLeft, labelTop, labelLeft + r, labelTop, r);
+  ctx.closePath();
+  ctx.fill();
+
+  // Value text
   ctx.fillStyle = ANNOTATION_COLOR;
-  ctx.font = 'bold 12px monospace';
-  ctx.textAlign = 'right';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-  ctx.shadowBlur = 3;
-  ctx.fillText(`Peak: ${value.toFixed(2)}x`, bracketX - 10, labelY + 4);
-  ctx.shadowBlur = 0;
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(valueText, labelLeft + labelWidth / 2, labelTop + 16);
+
+  // Sub-label
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.font = '10px sans-serif';
+  ctx.fillText(subLabel, labelLeft + labelWidth / 2, labelTop + 30);
 
   ctx.restore();
 }
@@ -586,7 +677,8 @@ export interface TossLateralityAnnotationParams {
 
 /**
  * Draw toss laterality annotation: vertical reference line at body center,
- * horizontal arrow to ball position, and value label.
+ * horizontal arrow with filled arrowhead to ball position, direction word,
+ * and label backdrop.
  */
 export function drawTossLateralityAnnotation(
   params: TossLateralityAnnotationParams
@@ -615,26 +707,163 @@ export function drawTossLateralityAnnotation(
   ctx.lineTo(ballX, lineY);
   ctx.stroke();
 
-  // Arrow head
+  // Filled arrowhead
   const dir = ballX > bodyCenterX ? -1 : 1;
-  const arrowSize = 6;
+  const arrowSize = 8;
+  ctx.fillStyle = ANNOTATION_COLOR;
   ctx.beginPath();
   ctx.moveTo(ballX, lineY);
-  ctx.lineTo(ballX + dir * arrowSize, lineY - arrowSize);
-  ctx.moveTo(ballX, lineY);
-  ctx.lineTo(ballX + dir * arrowSize, lineY + arrowSize);
-  ctx.stroke();
+  ctx.lineTo(ballX + dir * arrowSize, lineY - arrowSize * 0.6);
+  ctx.lineTo(ballX + dir * arrowSize, lineY + arrowSize * 0.6);
+  ctx.closePath();
+  ctx.fill();
 
-  // Value label
+  // Label backdrop + text
   const sign = value >= 0 ? '+' : '';
-  const labelX = (bodyCenterX + ballX) / 2;
+  const valueText = `${sign}${value.toFixed(2)}`;
+  const dirLabel = value >= 0 ? 'Right' : 'Left';
+  ctx.font = 'bold 12px monospace';
+  const valWidth = ctx.measureText(valueText).width;
+  ctx.font = '10px sans-serif';
+  const dirWidth = ctx.measureText(dirLabel).width;
+  const labelWidth = Math.max(valWidth, dirWidth) + 14;
+  const labelHeight = 32;
+  const labelX = (bodyCenterX + ballX) / 2 - labelWidth / 2;
+  const labelTop = lineY - labelHeight - 6;
+  const r = 5;
+
+  // Backdrop
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.beginPath();
+  ctx.moveTo(labelX + r, labelTop);
+  ctx.lineTo(labelX + labelWidth - r, labelTop);
+  ctx.arcTo(
+    labelX + labelWidth,
+    labelTop,
+    labelX + labelWidth,
+    labelTop + r,
+    r
+  );
+  ctx.arcTo(
+    labelX + labelWidth,
+    labelTop + labelHeight,
+    labelX + labelWidth - r,
+    labelTop + labelHeight,
+    r
+  );
+  ctx.lineTo(labelX + r, labelTop + labelHeight);
+  ctx.arcTo(
+    labelX,
+    labelTop + labelHeight,
+    labelX,
+    labelTop + labelHeight - r,
+    r
+  );
+  ctx.arcTo(labelX, labelTop, labelX + r, labelTop, r);
+  ctx.closePath();
+  ctx.fill();
+
+  // Value text
   ctx.fillStyle = ANNOTATION_COLOR;
   ctx.font = 'bold 12px monospace';
   ctx.textAlign = 'center';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-  ctx.shadowBlur = 3;
-  ctx.fillText(`Lat: ${sign}${value.toFixed(2)}`, labelX, lineY - 8);
-  ctx.shadowBlur = 0;
+  ctx.fillText(valueText, labelX + labelWidth / 2, labelTop + 14);
+
+  // Direction sub-label
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.font = '10px sans-serif';
+  ctx.fillText(dirLabel, labelX + labelWidth / 2, labelTop + 26);
+
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Contact point annotation
+// ---------------------------------------------------------------------------
+
+export interface ContactPointAnnotationParams {
+  ctx: CanvasRenderingContext2D;
+  x: number;
+  y: number;
+  opacity: number;
+}
+
+/**
+ * Draw contact point annotation: crosshair + pulsing circle + "Contact" label.
+ */
+export function drawContactPointAnnotation(
+  params: ContactPointAnnotationParams
+): void {
+  const { ctx, x, y, opacity } = params;
+
+  ctx.save();
+  ctx.globalAlpha = opacity;
+
+  const crossSize = 12;
+  const ringRadius = 16;
+
+  // Outer pulsing ring
+  ctx.strokeStyle = ANNOTATION_COLOR;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = opacity * 0.4;
+  ctx.beginPath();
+  ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = opacity;
+
+  // Inner ring
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, 6, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Crosshair lines
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - crossSize, y);
+  ctx.lineTo(x - 8, y);
+  ctx.moveTo(x + 8, y);
+  ctx.lineTo(x + crossSize, y);
+  ctx.moveTo(x, y - crossSize);
+  ctx.lineTo(x, y - 8);
+  ctx.moveTo(x, y + 8);
+  ctx.lineTo(x, y + crossSize);
+  ctx.stroke();
+
+  // Center dot
+  ctx.fillStyle = ANNOTATION_COLOR;
+  ctx.beginPath();
+  ctx.arc(x, y, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // "Contact" label
+  const label = 'Contact';
+  ctx.font = 'bold 11px sans-serif';
+  const textWidth = ctx.measureText(label).width;
+  const padX = 6;
+  const padY = 4;
+  const labelX = x + crossSize + 6;
+  const labelY = y - 8;
+
+  // Label backdrop
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  const bw = textWidth + padX * 2;
+  const bh = 11 + padY * 2;
+  const br = 4;
+  ctx.beginPath();
+  ctx.moveTo(labelX + br, labelY);
+  ctx.lineTo(labelX + bw - br, labelY);
+  ctx.arcTo(labelX + bw, labelY, labelX + bw, labelY + br, br);
+  ctx.arcTo(labelX + bw, labelY + bh, labelX + bw - br, labelY + bh, br);
+  ctx.lineTo(labelX + br, labelY + bh);
+  ctx.arcTo(labelX, labelY + bh, labelX, labelY + bh - br, br);
+  ctx.arcTo(labelX, labelY, labelX + br, labelY, br);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = ANNOTATION_COLOR;
+  ctx.textAlign = 'left';
+  ctx.fillText(label, labelX + padX, labelY + padY + 10);
 
   ctx.restore();
 }

@@ -60,6 +60,25 @@
   --color-sand: #f5f0e8; /* Warm neutral for milestone/highlight sections */
   --color-sand-dark: #ede8de; /* Border color on sand backgrounds */
 
+  /* Court-Inspired Palette */
+  --color-court-blue: #1b4b7a;
+  --color-court-blue-light: #2a6cb0;
+  --color-court-blue-soft: rgba(27, 75, 122, 0.08);
+  --color-court-clay: #d4784a;
+  --color-court-clay-soft: rgba(212, 120, 74, 0.1);
+  --color-ball-yellow: #ccff00;
+  --color-ball-yellow-soft: rgba(204, 255, 0, 0.12);
+
+  /* Annotation System */
+  --color-annotation-primary: #00d4ff;
+  --color-annotation-accent: #ff1493;
+  --color-annotation-skeleton: #00ff88;
+
+  /* Court-Line Pattern */
+  --court-line-color: rgba(27, 75, 122, 0.06);
+  --court-line-width: 1px;
+  --court-line-spacing: 48px;
+
   /* Overlay Colors */
   --color-overlay: rgba(15, 23, 42, 0.08);
   --color-overlay-dark: rgba(15, 23, 42, 0.12);
@@ -227,6 +246,11 @@
 
   --container-max-width: 1200px;
   --container-padding: var(--spacing-xl);
+
+  /* Analysis Layout */
+  --layout-analysis-max-width: 1440px;
+  --layout-video-ratio: 70%;
+  --layout-thumbnail-height: 72px;
 
   /* ============================================
      COMPONENT-SPECIFIC TOKENS

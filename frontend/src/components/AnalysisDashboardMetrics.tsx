@@ -2,7 +2,6 @@ import React from 'react';
 import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import { ServeWindow } from '../types/serveWindow';
 import './AnalysisDashboard.css';
-import ServeNavigator from './ServeNavigator';
 import ServePhaseTimeline from './ServePhaseTimeline';
 
 const METRIC_DISPLAY_NAMES: Record<string, string> = {
@@ -21,8 +20,6 @@ function formatMetricValue(value: number | null, unit: string): string {
 }
 
 interface AnalysisDashboardMetricsProps {
-  sortedServeWindows: ServeWindow[];
-  currentServeIndex: number;
   currentServe: ServeWindow;
   phases: PhaseWindow[];
   currentPhase: PhaseWindow | undefined;
@@ -30,7 +27,6 @@ interface AnalysisDashboardMetricsProps {
   filteredMetrics: MetricValue[];
   currentTime: number;
   loopCurrentPhase: boolean;
-  onServeNavigate: (index: number) => void;
   onSeek: (t: number) => void;
   onPhaseJump: (phase: PhaseWindow) => void;
   onContactJump: (contactTimestamp: number) => void;
@@ -39,8 +35,6 @@ interface AnalysisDashboardMetricsProps {
 }
 
 const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
-  sortedServeWindows,
-  currentServeIndex,
   currentServe,
   phases,
   currentPhase,
@@ -48,7 +42,6 @@ const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
   filteredMetrics,
   currentTime,
   loopCurrentPhase,
-  onServeNavigate,
   onSeek,
   onPhaseJump,
   onContactJump,
@@ -57,11 +50,6 @@ const AnalysisDashboardMetrics: React.FC<AnalysisDashboardMetricsProps> = ({
 }) => {
   return (
     <div className="analysis-dashboard__right-panel">
-      <ServeNavigator
-        serveWindows={sortedServeWindows}
-        currentIndex={currentServeIndex}
-        onNavigate={onServeNavigate}
-      />
       {phases.length > 0 && (
         <div className="analysis-dashboard__timeline-wrapper">
           <ServePhaseTimeline

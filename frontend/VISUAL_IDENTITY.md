@@ -6,13 +6,13 @@ This document is the aesthetic north star. **Read this before writing any compon
 
 ## In one sentence
 
-A clean, personal training log — high contrast, editorial whitespace, metrics as the hero — that says "you're serious about your serve."
+A clean, personal training log with richer tennis identity — high contrast, editorial whitespace, metrics as the hero, court-line textures, bold typography, and first-class annotation overlays.
 
 ---
 
-## Aesthetic Direction: Clean Sport
+## Aesthetic Direction: Richer Clean Sport
 
-Light, confident, and editorial. Think of a well-designed sports magazine spread: generous margins, strong typography, content given room to breathe. Not a SaaS dashboard. Not an analytics tool. A training journal that feels personal and precise.
+Light, confident, and editorial — with added tennis personality. Think of a well-designed sports magazine spread: generous margins, strong typography, content given room to breathe. Court-line patterns and a deep-blue accent connect the app to the sport without overwhelming the content.
 
 **Key qualities:**
 
@@ -20,7 +20,10 @@ Light, confident, and editorial. Think of a well-designed sports magazine spread
 - **Space signals importance.** Generous margins and padding say the content matters. Don't pack things in. Cramped UI feels cheap.
 - **Typography carries the personality.** The fonts do the design work — not gradients, not color blocks, not decorative elements.
 - **Green is earned.** The green accent is used for one thing: action and positive state. A primary button. A completed badge. A "you did something" moment. Not headers, not background sections, not decoration.
+- **Court blue (`--color-court-blue`) adds wayfinding.** Active toggle states, breadcrumb hovers, and thumbnail highlights use court blue. It signals "you are here" and "this is tennis."
+- **Court-line patterns add texture.** Subtle CSS grid lines at very low opacity (6%) appear on the analysis page background and stick-figure canvas. They whisper "court" without competing with content.
 - **Numbers are the heroes.** In the analysis view, metric values dominate visually. Everything else — labels, borders, backgrounds — exists to frame them.
+- **Annotations are first-class.** Toss height brackets, laterality arrows, and contact crosshairs use the annotation palette (cyan + magenta) with rounded-rect label backdrops. They appear in the stick-figure view and are designed to be beautiful, not just informative.
 
 ---
 
@@ -69,6 +72,21 @@ The hex values are in `design-tokens.css`. This section explains the *intent* �
 
 ### Green (`--color-primary: #00bc7d`)
 **One job: action and positive state.** Primary buttons. Completed status badges. Active state indicators. Positive metric highlights. If you're using green for a heading, a section background, or decoration — stop. The scarcity of green is what makes it work.
+
+### Court Blue (`--color-court-blue: #1B4B7A`)
+**One job: spatial identity and wayfinding.** Active segment in the view mode toggle. Breadcrumb hover color. Active thumbnail border. Scrubber accent. It says "tennis court" without being literal. Use the `--soft` variant for hover backgrounds.
+
+### Court Clay (`--color-court-clay: #D4784A`)
+**Reserved.** Available for future court-surface theming or accent moments. Not currently used in active UI — kept in the palette for consistency.
+
+### Ball Yellow (`--color-ball-yellow: #CCFF00`)
+**Reserved.** A high-visibility accent for ball-tracking highlights. Not used in standard UI chrome.
+
+### Annotation Palette
+Three colors for canvas-rendered measurement overlays:
+- `--color-annotation-primary` (#00D4FF) — cyan. Lines, brackets, labels, contact crosshair.
+- `--color-annotation-accent` (#FF1493) — magenta. Ball trail, head dot.
+- `--color-annotation-skeleton` (#00FF88) — green. Skeleton bones, phase pill.
 
 ### Ink Heavy (`--color-ink-heavy: #0a0f1a`)
 **One job: display text with authority.** Large metric numbers. Hero headings where the text needs visual mass. Use instead of `--color-text` when a value needs to dominate the view. Not for body text — too heavy.
@@ -161,12 +179,16 @@ Open and spacious. A session log. Each card is an entry: thumbnail, title/date, 
 
 ### Analysis Dashboard
 
-Focused and precise. Two-column layout: main panel (stick figure / video) at ~60% width left, metrics sidebar at ~40% width right.
+Focused and precise. Three-tier layout: breadcrumb header with view toggle, thumbnail strip for serve navigation, and a 70/30 two-column area (hero view left, metrics right).
 
+- **Breadcrumb** trails "Library > filename.mp4 > Serve 3 of 8" — tells users exactly where they are. Page title "SERVE ANALYSIS" in uppercase.
+- **View mode toggle** — a segmented pill with court-blue active state. "Video" shows the raw video; "Analysis" shows the stick-figure canvas with a PiP video in the corner.
+- **Thumbnail strip** — horizontal scrollable row of video frame captures. Active serve has a court-blue border + subtle scale. Serve number badge + court side label below.
+- **Court-line background** — subtle CSS grid pattern at 6% opacity gives the page a tennis-court texture.
 - Metric values are the visual heroes of the sidebar. DM Mono, `--font-size-display-lg`, `--color-ink-heavy`. They dominate.
 - Metric label sits below the value: DM Sans, `--font-size-xs`, uppercase, `--letter-spacing-wide`, `--color-text-muted`.
-- Phase timeline runs below the two-column area, spanning its full width.
-- Color appears only in: the active phase indicator (green border/highlight), positive metric thresholds (green value), error states (error color).
+- **Annotations** (toss height brackets, laterality arrows, contact crosshairs) use rounded-rect label backdrops with the annotation palette. Visible in the stick-figure canvas.
+- Color appears only in: the active phase indicator (green border/highlight), positive metric thresholds (green value), court-blue for navigation state, error states (error color).
 - Both the main panel and sidebar are white surfaces with `--color-border` borders.
 
 ### Upload Flow

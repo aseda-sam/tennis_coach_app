@@ -1,0 +1,39 @@
+/* Court-line pattern backgrounds — subtle tennis identity */
+
+.court-pattern {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      var(--court-line-color) 0,
+      var(--court-line-color) var(--court-line-width),
+      transparent var(--court-line-width),
+      transparent var(--court-line-spacing)
+    ),
+    repeating-linear-gradient(
+      90deg,
+      var(--court-line-color) 0,
+      var(--court-line-color) var(--court-line-width),
+      transparent var(--court-line-width),
+      transparent var(--court-line-spacing)
+    );
+}
+
+.court-pattern--vertical {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--court-line-color) 0,
+    var(--court-line-color) var(--court-line-width),
+    transparent var(--court-line-width),
+    transparent var(--court-line-spacing)
+  );
+}
+
+.court-pattern--horizontal {
+  background-image: repeating-linear-gradient(
+    0deg,
+    var(--court-line-color) 0,
+    var(--court-line-color) var(--court-line-width),
+    transparent var(--court-line-width),
+    transparent var(--court-line-spacing)
+  );
+}

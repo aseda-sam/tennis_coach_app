@@ -1,0 +1,32 @@
+/* Analysis View Toggle — segmented pill control */
+
+.view-toggle {
+  display: inline-flex;
+  background: var(--color-surface-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 2px;
+}
+
+.view-toggle__option {
+  padding: var(--spacing-xs) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  white-space: nowrap;
+}
+
+.view-toggle__option:hover:not(.view-toggle__option--active) {
+  color: var(--color-text);
+}
+
+.view-toggle__option--active {
+  background: var(--color-court-blue);
+  color: #ffffff;
+  box-shadow: var(--shadow-xs);
+}

@@ -12,10 +12,12 @@ import './AnalysisDashboard.css';
 import AnalysisDashboardEditPanel from './AnalysisDashboardEditPanel';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
 import AnalysisDashboardMetrics from './AnalysisDashboardMetrics';
+import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
+import ServeThumbnailStrip from './ServeThumbnailStrip';
 
 interface AnalysisDashboardProps {
   videoId: number;
@@ -79,6 +81,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(true);
   const [showEditMode, setShowEditMode] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
 
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
@@ -235,6 +238,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         videoFilename={videoFilename}
         hasServes={hasServes}
         showEditMode={showEditMode}
+        serveIndex={hasServes ? currentServeIndex : undefined}
+        serveCount={hasServes ? sortedServeWindows.length : undefined}
         onClose={onClose}
         onToggleEditMode={() => setShowEditMode(!showEditMode)}
       />
@@ -300,6 +305,26 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         </div>
       )}
 
+      {/* View Mode Toggle */}
+      {analysisStatus?.has_analysis && hasServes && (
+        <div className="analysis-dashboard__view-toggle-row">
+          <AnalysisViewToggle
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+          />
+        </div>
+      )}
+
+      {/* Serve Thumbnail Strip */}
+      {analysisStatus?.has_analysis && hasServes && (
+        <ServeThumbnailStrip
+          serveWindows={sortedServeWindows}
+          currentIndex={currentServeIndex}
+          videoUrl={videoUrl}
+          onNavigate={handleServeNavigate}
+        />
+      )}
+
       {/* Main Content: Focus-mode serve viewer */}
       {analysisStatus?.has_analysis && (
         <div className="analysis-dashboard__focus-view">
@@ -315,6 +340,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   currentTime={currentTime}
                   isPlaying={isPlaying}
                   phaseLabel={currentPhase?.phase_label}
+                  viewMode={viewMode}
                   onTimeUpdate={handleTimeUpdate}
                   onPlayPause={handlePlayPause}
                   onSeek={handleSeek}
@@ -324,8 +350,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
               {/* Right panel: serve nav, timeline, phases, metrics */}
               <AnalysisDashboardMetrics
-                sortedServeWindows={sortedServeWindows}
-                currentServeIndex={currentServeIndex}
                 currentServe={currentServe!}
                 phases={phases}
                 currentPhase={currentPhase}
@@ -333,7 +357,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 filteredMetrics={filteredMetrics}
                 currentTime={currentTime}
                 loopCurrentPhase={loopCurrentPhase}
-                onServeNavigate={handleServeNavigate}
                 onSeek={handleSeek}
                 onPhaseJump={handlePhaseJump}
                 onContactJump={handleContactJumpWithPhases}

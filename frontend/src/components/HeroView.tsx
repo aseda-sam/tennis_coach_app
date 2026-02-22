@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { MetricValue } from '../types/biomechanics';
+import { ViewMode } from './AnalysisViewToggle';
+import { PauseIcon, PlayIcon } from './Icons';
 import StickFigureCanvas from './StickFigureCanvas';
 import './HeroView.css';
-
-type ViewMode = 'video' | 'analysis';
 
 interface HeroViewProps {
   videoUrl: string;
@@ -13,6 +13,7 @@ interface HeroViewProps {
   currentTime: number;
   isPlaying: boolean;
   phaseLabel?: string;
+  viewMode: ViewMode;
   onTimeUpdate: (time: number) => void;
   onPlayPause: () => void;
   onSeek: (time: number) => void;
@@ -27,17 +28,22 @@ const HeroView: React.FC<HeroViewProps> = ({
   currentTime,
   isPlaying,
   phaseLabel,
+  viewMode,
   onTimeUpdate,
   onPlayPause,
   onSeek,
   annotations,
 }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('analysis');
   const videoRef = useRef<HTMLVideoElement>(null);
+  const pipVideoRef = useRef<HTMLVideoElement>(null);
 
+  const isVideoMode = viewMode === 'video-focus';
+  const activeVideoRef = isVideoMode ? videoRef : pipVideoRef;
+
+  // Sync timeupdate from whichever video element is active
   useEffect(() => {
-    if (viewMode !== 'video' || !videoRef.current) return;
-    const video = videoRef.current;
+    const video = activeVideoRef.current;
+    if (!video) return;
 
     const handleTimeUpdate = () => {
       onTimeUpdate(video.currentTime);
@@ -45,43 +51,48 @@ const HeroView: React.FC<HeroViewProps> = ({
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     return () => video.removeEventListener('timeupdate', handleTimeUpdate);
-  }, [viewMode, onTimeUpdate]);
+  }, [activeVideoRef, onTimeUpdate, viewMode]);
 
+  // Sync play/pause state
   useEffect(() => {
-    if (viewMode !== 'video' || !videoRef.current) return;
+    const video = activeVideoRef.current;
+    if (!video) return;
     if (isPlaying) {
-      videoRef.current.play().catch(() => {});
+      video.play().catch(() => {});
     } else {
-      videoRef.current.pause();
+      video.pause();
     }
-  }, [isPlaying, viewMode]);
+  }, [isPlaying, activeVideoRef, viewMode]);
 
+  // Keep video in sync with external time changes (phase jumps, loop resets)
   useEffect(() => {
-    if (viewMode !== 'video' || !videoRef.current) return;
-    // Keep native video playback in sync with phase seeks/loop jumps.
-    if (Math.abs(videoRef.current.currentTime - currentTime) > 0.04) {
-      videoRef.current.currentTime = currentTime;
+    const video = activeVideoRef.current;
+    if (!video) return;
+    if (Math.abs(video.currentTime - currentTime) > 0.04) {
+      video.currentTime = currentTime;
     }
-  }, [currentTime, viewMode]);
+  }, [currentTime, activeVideoRef, viewMode]);
 
   const handleVideoSeek = useCallback(
     (time: number) => {
-      if (videoRef.current) {
-        videoRef.current.currentTime = time;
-      }
+      if (videoRef.current) videoRef.current.currentTime = time;
+      if (pipVideoRef.current) pipVideoRef.current.currentTime = time;
       onSeek(time);
     },
     [onSeek]
   );
 
-  const toggleView = useCallback(() => {
-    setViewMode((prev) => (prev === 'video' ? 'analysis' : 'video'));
-  }, []);
+  const formatTime = (seconds: number): string => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 100);
+    return `${m}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="hero-view">
       <div className="hero-view__display">
-        {viewMode === 'video' ? (
+        {isVideoMode ? (
           <video
             ref={videoRef}
             className="hero-view__video"
@@ -98,6 +109,13 @@ const HeroView: React.FC<HeroViewProps> = ({
               phaseLabel={phaseLabel}
               annotations={annotations}
             />
+            <video
+              ref={pipVideoRef}
+              className="hero-view__pip-video"
+              src={videoUrl}
+              muted
+              onClick={onPlayPause}
+            />
           </div>
         )}
       </div>
@@ -107,9 +125,12 @@ const HeroView: React.FC<HeroViewProps> = ({
           className="hero-view__play-btn"
           onClick={onPlayPause}
           type="button"
+          aria-label={isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? 'Pause' : 'Play'}
+          {isPlaying ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
         </button>
+
+        <span className="hero-view__timestamp">{formatTime(currentTime)}</span>
 
         <input
           type="range"
@@ -122,13 +143,9 @@ const HeroView: React.FC<HeroViewProps> = ({
           aria-label="Serve timeline"
         />
 
-        <button
-          className="hero-view__toggle-btn"
-          onClick={toggleView}
-          type="button"
-        >
-          {viewMode === 'video' ? 'Show Analysis' : 'Show Video'}
-        </button>
+        <span className="hero-view__timestamp hero-view__timestamp--end">
+          {formatTime(serveEnd)}
+        </span>
       </div>
     </div>
   );
