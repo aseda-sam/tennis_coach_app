@@ -24,11 +24,6 @@
   box-shadow: var(--shadow-xs);
 }
 
-.account-menu-trigger:focus {
-  outline: var(--focus-outline-width) solid var(--focus-outline-color);
-  outline-offset: var(--focus-outline-offset);
-}
-
 /* Avatar */
 .account-avatar {
   width: 32px;

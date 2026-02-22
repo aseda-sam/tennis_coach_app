@@ -380,7 +380,6 @@
 }
 
 .form-field select:focus {
-  outline: none;
   border-color: var(--color-primary);
   box-shadow: var(--shadow-primary-sm);
 }
@@ -433,10 +432,6 @@
 
 .player-tag-option input {
   margin-top: 3px;
-}
-
-.player-tag-option input:focus {
-  outline: none;
 }
 
 .player-tag-option strong {

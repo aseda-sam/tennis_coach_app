@@ -110,7 +110,6 @@
 
 .form-group input:focus,
 .form-group select:focus {
-  outline: none;
   border-color: var(--color-info);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
@@ -392,7 +391,6 @@
 }
 
 .serve-detail-panel__form-group select:focus {
-  outline: none;
   border-color: var(--color-info);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
