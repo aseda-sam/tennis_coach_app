@@ -64,7 +64,9 @@ class TestVideoAPI:
         """Test upload with unsupported file format."""
         # Create a temporary text file
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp_file:
-            tmp_file.write(b"fake content")
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 100
+            )
             tmp_file_path = tmp_file.name
 
         try:
@@ -85,19 +87,24 @@ class TestVideoAPI:
         """Test successful video upload with mock video file."""
         # Create a mock video file (just a file with .mp4 extension)
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            # Write some fake video content
-            tmp_file.write(b"fake video content" * 1000)  # Make it larger
+            # Write valid MP4 magic bytes + padding
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 10000
+            )  # Make it larger
             tmp_file_path = tmp_file.name
 
         try:
             # Mock the enqueue function to verify it's called when enabled
             mock_job = MagicMock()
             mock_job.id = "test-job-id-123"
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
-                settings, "TRANSCODE_ENABLED", False
-            ), patch(
-                "app.core.redis_config.analysis_queue.enqueue", return_value=mock_job
-            ) as mock_enqueue:
+            with (
+                patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True),
+                patch.object(settings, "TRANSCODE_ENABLED", False),
+                patch(
+                    "app.core.redis_config.analysis_queue.enqueue",
+                    return_value=mock_job,
+                ) as mock_enqueue,
+            ):
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test.mp4", f, "video/mp4")}
                     response = client.post("/v0/videos/upload", files=files)
@@ -123,16 +130,20 @@ class TestVideoAPI:
         """Test that upload succeeds even if enqueue fails (Redis down)."""
         # Create a mock video file
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 1000)
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 10000
+            )
             tmp_file_path = tmp_file.name
 
         try:
             # Mock enqueue to return None (simulating Redis failure)
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
-                settings, "TRANSCODE_ENABLED", False
-            ), patch(
-                "app.core.redis_config.analysis_queue.enqueue", return_value=None
-            ) as mock_enqueue:
+            with (
+                patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True),
+                patch.object(settings, "TRANSCODE_ENABLED", False),
+                patch(
+                    "app.core.redis_config.analysis_queue.enqueue", return_value=None
+                ) as mock_enqueue,
+            ):
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test.mp4", f, "video/mp4")}
                     response = client.post("/v0/videos/upload", files=files)
@@ -156,17 +167,21 @@ class TestVideoAPI:
         """Test that upload succeeds even if enqueue raises exception."""
         # Create a mock video file
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 1000)
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 10000
+            )
             tmp_file_path = tmp_file.name
 
         try:
             # Mock enqueue to raise RedisConnectionError
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
-                settings, "TRANSCODE_ENABLED", False
-            ), patch(
-                "app.core.redis_config.analysis_queue.enqueue",
-                side_effect=RedisConnectionError("Redis unavailable"),
-            ) as mock_enqueue:
+            with (
+                patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True),
+                patch.object(settings, "TRANSCODE_ENABLED", False),
+                patch(
+                    "app.core.redis_config.analysis_queue.enqueue",
+                    side_effect=RedisConnectionError("Redis unavailable"),
+                ) as mock_enqueue,
+            ):
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test.mp4", f, "video/mp4")}
                     response = client.post("/v0/videos/upload", files=files)
@@ -189,17 +204,22 @@ class TestVideoAPI:
     ) -> None:
         """Test that all uploads enqueue a transcode job (regardless of file size)."""
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 100)
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 1000
+            )
             tmp_file_path = tmp_file.name
 
         try:
             mock_job = MagicMock()
             mock_job.id = "test-transcode-job-id"
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
-                settings, "TRANSCODE_ENABLED", True
-            ), patch(
-                "app.core.redis_config.analysis_queue.enqueue", return_value=mock_job
-            ) as mock_enqueue:
+            with (
+                patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True),
+                patch.object(settings, "TRANSCODE_ENABLED", True),
+                patch(
+                    "app.core.redis_config.analysis_queue.enqueue",
+                    return_value=mock_job,
+                ) as mock_enqueue,
+            ):
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test_video.mp4", f, "video/mp4")}
                     response = client.post("/v0/videos/upload", files=files)
@@ -403,7 +423,9 @@ class TestVideoAPI:
 
         # Create a mock video file
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 1000)
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 10000
+            )
             tmp_file_path = tmp_file.name
 
         try:

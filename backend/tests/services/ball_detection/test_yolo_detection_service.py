@@ -388,9 +388,11 @@ class TestYoloBallDetectionService:
         tracked.confidence = np.array([0.9], dtype=np.float32)
         mock_sv = self._make_mock_sv(tracked)
 
-        with patch(_CAP_PATH, return_value=fake_cap), patch(
-            _ROT_PATH, return_value=0
-        ), patch(_SV_PATH, mock_sv):
+        with (
+            patch(_CAP_PATH, return_value=fake_cap),
+            patch(_ROT_PATH, return_value=0),
+            patch(_SV_PATH, mock_sv),
+        ):
             result = service.analyze_serve_windows(
                 video_path=Path("/fake/video.mp4"),
                 windows=[{"start_ms": 0, "end_ms": 500}],
@@ -419,9 +421,11 @@ class TestYoloBallDetectionService:
         fake_cap = _fake_video_capture(frame_count=10)
         mock_sv = self._make_mock_sv()
 
-        with patch(_CAP_PATH, return_value=fake_cap), patch(
-            _ROT_PATH, return_value=0
-        ), patch(_SV_PATH, mock_sv):
+        with (
+            patch(_CAP_PATH, return_value=fake_cap),
+            patch(_ROT_PATH, return_value=0),
+            patch(_SV_PATH, mock_sv),
+        ):
             result = service.analyze_serve_windows(
                 video_path=Path("/fake/video.mp4"),
                 windows=[{"start_ms": 0, "end_ms": 300}],
@@ -443,9 +447,11 @@ class TestYoloBallDetectionService:
         fake_cap = _fake_video_capture(frame_count=5)
         mock_sv = self._make_mock_sv()  # No tracked detections (below threshold)
 
-        with patch(_CAP_PATH, return_value=fake_cap), patch(
-            _ROT_PATH, return_value=0
-        ), patch(_SV_PATH, mock_sv):
+        with (
+            patch(_CAP_PATH, return_value=fake_cap),
+            patch(_ROT_PATH, return_value=0),
+            patch(_SV_PATH, mock_sv),
+        ):
             result = service.analyze_serve_windows(
                 video_path=Path("/fake/video.mp4"),
                 windows=[{"start_ms": 0, "end_ms": 160}],
@@ -467,9 +473,11 @@ class TestYoloBallDetectionService:
         fake_cap = _fake_video_capture(width=360, height=640, frame_count=10)
         mock_sv = self._make_mock_sv()
 
-        with patch(_CAP_PATH, return_value=fake_cap), patch(
-            _ROT_PATH, return_value=-90
-        ), patch(_SV_PATH, mock_sv):
+        with (
+            patch(_CAP_PATH, return_value=fake_cap),
+            patch(_ROT_PATH, return_value=-90),
+            patch(_SV_PATH, mock_sv),
+        ):
             result = service.analyze_serve_windows(
                 video_path=Path("/fake/video.mp4"),
                 windows=[{"start_ms": 0, "end_ms": 300}],
@@ -494,10 +502,11 @@ class TestYoloBallDetectionService:
         mock_sv = self._make_mock_sv(tracked)
 
         # Disable smoother so we can reason about raw counts
-        with patch(_CAP_PATH, return_value=fake_cap), patch(
-            _ROT_PATH, return_value=0
-        ), patch(_SV_PATH, mock_sv), patch(
-            _SMOOTHER_PATH, side_effect=lambda dets: dets
+        with (
+            patch(_CAP_PATH, return_value=fake_cap),
+            patch(_ROT_PATH, return_value=0),
+            patch(_SV_PATH, mock_sv),
+            patch(_SMOOTHER_PATH, side_effect=lambda dets: dets),
         ):
             result = service.analyze_serve_windows(
                 video_path=Path("/fake/video.mp4"),
@@ -533,10 +542,11 @@ class TestYoloBallDetectionService:
         fake_cap = _fake_video_capture(frame_count=5)
         mock_sv = self._make_mock_sv()
 
-        with patch(_CAP_PATH, return_value=fake_cap), patch(
-            _ROT_PATH, return_value=0
-        ), patch(_SV_PATH, mock_sv), patch(
-            _SMOOTHER_PATH, side_effect=lambda dets: dets
+        with (
+            patch(_CAP_PATH, return_value=fake_cap),
+            patch(_ROT_PATH, return_value=0),
+            patch(_SV_PATH, mock_sv),
+            patch(_SMOOTHER_PATH, side_effect=lambda dets: dets),
         ):
             result = service.analyze_serve_windows(
                 video_path=Path("/fake/video.mp4"),

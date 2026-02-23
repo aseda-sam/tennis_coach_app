@@ -59,6 +59,7 @@ from app.utils.error_handling import (
     handle_not_found_error,
     log_and_raise_error,
 )
+from app.utils.rate_limit import limiter
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -164,7 +165,9 @@ async def list_videos(
 
 
 @router.get("/demo", response_model=VideoInfo)
+@limiter.limit("10/minute")
 async def get_demo_video(
+    request: Request,
     db: Session = Depends(get_db),
 ) -> VideoInfo:
     """
@@ -287,12 +290,12 @@ async def stream_video(
             raise handle_not_found_error("video", str(video_id)) from e
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Invalid video request",
         ) from e
     except RuntimeError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            detail="Video streaming failed",
         ) from e
     except HTTPException:
         raise
@@ -379,7 +382,7 @@ async def get_video_url(
                 )
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Failed to generate video URL: {e!s}",
+                    detail="Failed to generate video URL",
                 ) from e
         else:
             # For local storage, construct full URL to the stream endpoint
@@ -430,7 +433,7 @@ async def get_video_analysis_status(
             raise handle_not_found_error("video", str(video_id)) from e
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Invalid analysis request",
         ) from e
     except HTTPException:
         raise
@@ -470,7 +473,7 @@ async def get_bulk_analysis_status(
     except ValueError as e:
         raise HTTPException(
             status_code=404,
-            detail=str(e),
+            detail="Invalid bulk analysis request",
         ) from e
     except HTTPException:
         raise
@@ -595,7 +598,9 @@ async def update_video_metadata(
 
 
 @router.post("/upload", response_model=VideoUploadResponse)
+@limiter.limit("10/minute")
 async def upload_video(
+    request: Request,
     file: UploadFile = File(...),
     is_demo: bool = Query(False, description="Upload as demo video"),
     session_type: Optional[str] = Query(

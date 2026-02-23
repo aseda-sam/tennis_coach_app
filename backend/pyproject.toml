@@ -3,11 +3,11 @@ name = "tennis-coach-api"
 version = "0.1.0"
 description = "Tennis coaching platform with computer vision analysis"
 authors = [{name = "Aseda Ohene-Adu", email = "aoheneadu23@gmail.com"}]
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.104.1",
     "uvicorn[standard]>=0.24.0",
-    "python-multipart>=0.0.6",
+    "python-multipart>=0.0.18",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
     "python-dotenv>=1.0.0",
@@ -19,6 +19,13 @@ dependencies = [
     "supabase>=2.0.0",
     "redis>=5.0.0",
     "rq>=1.15.0",
+    "slowapi>=0.1.9",
+    "starlette>=0.36.2",
+    "urllib3>=2.6.3",
+    "pillow>=12.1.1",
+    "h2>=4.3.0",
+    "fonttools>=4.61.0",
+    "filelock>=3.20.3",
 ]
 
 [build-system]
@@ -36,8 +43,8 @@ api = [
 worker = [
     # ML stack dependencies (only needed in worker)
     "mediapipe>=0.10.0",
-    "torch>=2.0.0",
-    "torchvision>=0.15.0",
+    "torch>=2.6.0",
+    "torchvision>=0.21.0",
     "scipy>=1.10.0",
     "ultralytics>=8.0.0",
     "supervision>=0.18.0",
@@ -52,7 +59,7 @@ dev = [
 
 [tool.ruff]
 line-length = 88
-target-version = "py38"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "N", "ANN", "B", "BLE", "SIM", "S", "RUF"]

@@ -16,7 +16,9 @@ class TestVideoIntegration:
         """Test complete video upload and retrieval workflow."""
         # Create a temporary video file
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 1000)
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 10000
+            )
             tmp_file_path = tmp_file.name
 
         try:
@@ -102,7 +104,9 @@ class TestVideoIntegration:
         """Test that all response schemas match database models."""
         # Upload a video first
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 1000)
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 10000
+            )
             tmp_file_path = tmp_file.name
 
         try:

@@ -14,6 +14,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from starlette.responses import Response
 
 from app.api.routes import (
@@ -37,6 +39,7 @@ from app.utils.error_handling import (
     validation_error_handler,
 )
 from app.utils.logging_context import StructuredLogFilter
+from app.utils.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +218,10 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.PROFILE == "local" else None,
 )
 
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -235,6 +242,17 @@ async def block_docs_in_production(request: Request, call_next: Callable) -> Res
         return JSONResponse(status_code=404, content={"detail": "Not found"})
 
     return await call_next(request)
+
+
+# Security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next: Callable) -> Response:
+    """Add security headers to all responses."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 
 # Request processing time middleware
@@ -369,12 +387,15 @@ app.include_router(
     },
 )
 
-# Mount static files for processed videos
-processed_videos_dir = Path("data/videos/processed")
-if processed_videos_dir.exists():
-    app.mount(
-        "/processed", StaticFiles(directory=str(processed_videos_dir)), name="processed"
-    )
+# Mount static files for processed videos (local development only)
+if settings.PROFILE == "local":
+    processed_videos_dir = Path("data/videos/processed")
+    if processed_videos_dir.exists():
+        app.mount(
+            "/processed",
+            StaticFiles(directory=str(processed_videos_dir)),
+            name="processed",
+        )
 
 
 @app.get("/")
