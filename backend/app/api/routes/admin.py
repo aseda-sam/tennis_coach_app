@@ -1,4 +1,4 @@
-"""Admin-only API routes for maintenance and cleanup."""
+"""Admin-only API routes for demo management and user operations."""
 
 import logging
 from datetime import datetime
@@ -12,25 +12,14 @@ from app.api.schemas.background_tasks import AnalysisResponse
 from app.api.schemas.video import VideoInfo, VideoMetadata, VideoUploadResponse
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
-from app.services import admin_service, demo_service, video_service
+from app.services import demo_service, video_service
 from app.utils.authorization import is_admin, require_admin
 from app.utils.error_handling import handle_not_found_error, log_and_raise_error
+from app.utils.supabase_auth import get_user_by_id
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["admin"])
-
-
-class CleanupResponse(BaseModel):
-    """Response model for cleanup operations."""
-
-    orphaned_user_count: int
-    videos_deleted: int
-    players_deleted: int
-    files_deleted: int
-    errors: list[str]
-    dry_run: bool
-    message: str
 
 
 class AdminStatusResponse(BaseModel):
@@ -47,7 +36,7 @@ class DemoVideoListItem(BaseModel):
     file_path: str
     is_active_demo: bool
     has_pose_analysis: bool
-    serve_attempt_count: int
+    serve_window_count: int
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -207,7 +196,7 @@ async def upload_video_for_user(
         target_user_id: Supabase auth user ID to assign video ownership to
         is_demo: If True, upload as demo video
         session_type: Session type for serve-focused workflow
-        camera_angle: Camera angle for serve analysis
+        camera_angle: Camera angle for serve biomechanics
         recorded_at: When video was recorded (for trends)
 
     Returns:
@@ -217,7 +206,9 @@ async def upload_video_for_user(
 
     try:
         # Validate target user exists in Supabase
-        target_user = admin_service.validate_target_user_exists(target_user_id)
+        target_user = get_user_by_id(target_user_id)
+        if not target_user:
+            raise ValueError(f"Target user {target_user_id} not found in Supabase")
 
         logger.info(
             "Admin %s uploading video for user %s",
@@ -272,103 +263,3 @@ async def upload_video_for_user(
             "upload_video_for_user",
             {"filename": file.filename if file else "unknown"},
         )
-
-
-@router.post("/cleanup/orphaned-data", response_model=CleanupResponse)
-def cleanup_orphaned_user_data(
-    dry_run: bool = Query(
-        True, description="If True, only report what would be deleted"
-    ),
-    limit: Optional[int] = Query(
-        None, description="Limit number of users to process (for safety)"
-    ),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> CleanupResponse:
-    """Clean up orphaned data from deleted users (admin only).
-
-    This endpoint finds and deletes videos and players belonging to users
-    that no longer exist in Supabase auth.users table.
-
-    Args:
-        dry_run: If True, only report what would be deleted
-        limit: Optional limit on number of users to process
-        current_user: Current authenticated user (must be admin)
-        db: Database session
-
-    Returns:
-        Cleanup statistics and results
-    """
-    require_admin(current_user)
-
-    logger.info(
-        "Admin cleanup requested by %s (dry_run=%s, limit=%s)",
-        current_user.get("email"),
-        dry_run,
-        limit,
-    )
-
-    try:
-        from app.services.cleanup_service import cleanup_orphaned_data
-
-        stats = cleanup_orphaned_data(db, dry_run=dry_run, limit=limit)
-
-        message = (
-            f"{'Would delete' if dry_run else 'Deleted'} "
-            f"{stats['videos_deleted']} videos, {stats['players_deleted']} players, "
-            f"{stats['files_deleted']} files for {stats['orphaned_user_count']} orphaned users"
-        )
-
-        if stats["errors"]:
-            message += f" ({len(stats['errors'])} errors occurred)"
-
-        return CleanupResponse(
-            orphaned_user_count=stats["orphaned_user_count"],
-            videos_deleted=stats["videos_deleted"],
-            players_deleted=stats["players_deleted"],
-            files_deleted=stats["files_deleted"],
-            errors=stats["errors"],
-            dry_run=dry_run,
-            message=message,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for admin endpoint
-        log_and_raise_error(
-            e, "cleanup_orphaned_user_data", {"dry_run": dry_run, "limit": limit}
-        )
-
-
-@router.get("/cleanup/orphaned-data/check", response_model=dict)
-def check_orphaned_data(
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> dict:
-    """Check for orphaned data without deleting (admin only).
-
-    Args:
-        current_user: Current authenticated user (must be admin)
-        db: Database session
-
-    Returns:
-        Dictionary with orphaned user IDs and counts
-    """
-    require_admin(current_user)
-
-    try:
-        from app.services.cleanup_service import (
-            find_orphaned_user_ids,
-            get_orphaned_data_details,
-        )
-
-        orphaned_ids = find_orphaned_user_ids(db)
-        details = get_orphaned_data_details(db, orphaned_ids)
-
-        return {
-            "orphaned_user_count": len(orphaned_ids),
-            "orphaned_users": details,
-        }
-    except HTTPException:
-        raise
-    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for admin endpoint
-        log_and_raise_error(e, "check_orphaned_data", {})

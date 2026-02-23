@@ -3,9 +3,9 @@
 We use **Redis Queue (RQ)** for slow work:
 
 - Pose detection (MediaPipe)
-- Serve attempt analysis runs synchronously (not via RQ)
+- Ball detection (YOLO + ByteTrack)
 
-## Data Flow: Serve Analysis Loop
+## Data Flow: Biomechanics Loop
 
 ```mermaid
 sequenceDiagram
@@ -14,7 +14,7 @@ sequenceDiagram
     participant API
     participant RQ
     participant PoseService
-    participant ServeService
+    participant BiomechService
     participant DB
 
     User->>Frontend: Upload serve video
@@ -22,28 +22,25 @@ sequenceDiagram
     API->>DB: Create video record
     API->>Frontend: Return video_id
 
-    User->>Frontend: Tag serve attempts
-    Frontend->>API: POST /v0/serve-attempts/
-    API->>DB: Create serve_attempt records
-    API->>Frontend: Return serve_attempt_ids
+    User->>Frontend: Tag serve windows
+    Frontend->>API: POST /v0/serve-windows/
+    API->>DB: Create serve_window records
+    API->>Frontend: Return serve_window_ids
 
     User->>Frontend: Trigger pose analysis
     Frontend->>API: POST /v0/analysis/videos/{id}
-    API->>RQ: Enqueue analyze_pose_detection_rq
+    API->>RQ: Enqueue analyze_pose_detection_scout_refine_rq (via enqueue_pose_analysis helper)
     API->>Frontend: Return job_id
 
     RQ->>PoseService: Run pose detection
     PoseService->>DB: Save pose_detections
 
-    User->>Frontend: Trigger serve analysis
-    Frontend->>API: POST /v0/videos/{id}/analyze-serves
-    API->>ServeService: Calculate metrics (sync)
-    ServeService->>DB: Update serve_attempts (elbow_angle_at_contact)
-
-    Frontend->>API: GET /v0/serve-attempts/me
-    API->>DB: Query serve_attempts
-    API->>Frontend: Return metrics + recommendations
-    Frontend->>User: Display metrics + one recommendation
+    User->>Frontend: Open biomechanics panel
+    Frontend->>API: GET /v0/serve-windows/{id}/biomechanics
+    API->>BiomechService: Compute phases + metrics (lazy if missing)
+    BiomechService->>DB: Store serve_biomechanics_reports
+    API->>Frontend: Return biomechanics report
+    Frontend->>User: Display phases + metrics
 ```
 
 ## Local dev (Docker Compose)
@@ -55,19 +52,57 @@ docker compose logs -f worker
 
 RQ dashboard (if enabled in compose): `http://localhost:9181`
 
+## Host worker setup (recommended for ball detection)
+
+Ball detection loads torch + YOLO + ByteTrack (~2-3 GB). On macOS, running the worker on the host gives MPS GPU acceleration and avoids Docker VM memory limits.
+
+```bash
+# Start Docker services WITHOUT the worker container
+docker compose up --build backend frontend postgres redis rq-dashboard
+
+# Start worker on host — MUST run from backend/ directory
+cd backend && source .venv/bin/activate
+REDIS_URL=redis://localhost:6379/0 \
+DATABASE_URL=postgresql://tennis:tennis_dev@localhost:5432/tennis_coach \
+python scripts/start_rq_worker.py
+```
+
+**Critical:** The worker must run from `backend/` because config uses relative paths:
+- `ML_MODELS_DIR = "ml_models"` resolves to `backend/ml_models/`
+- `UPLOAD_DIR = "../data/videos/raw"` resolves to `data/videos/raw/`
+
+YOLO auto-detects MPS on macOS (no explicit `device=` param needed). Check the logs for `YOLO inference device: mps`.
+
 ## Key env vars
 
 ```bash
 REDIS_URL=redis://localhost:6379/0
+DATABASE_URL=postgresql://tennis:tennis_dev@localhost:5432/tennis_coach
 SERVICE_TYPE=api   # or worker
 PROFILE=local      # or production
 ```
+
+`REDIS_URL` must be set explicitly for the host worker — `redis_config.py` does not auto-detect localhost like `config.py` does for `DATABASE_URL`.
 
 ## Where tasks live
 
 - Queue wiring: `app/core/redis_config.py`
 - Task functions:
-  - `app/services/rq_tasks.py::analyze_pose_detection_rq`
+  - `app/services/rq_tasks.py::analyze_pose_detection_scout_refine_rq` — full pipeline (pose + ball + biomechanics)
+  - `app/services/rq_tasks.py::run_ball_detection_rq` — standalone ball detection for existing videos
+  - `app/services/rq_tasks.py::transcode_video_rq`
+
+## Backfilling ball detection
+
+For videos analyzed before ball detection was integrated:
+
+```bash
+# Preview what would be queued
+cd backend && python scripts/backfill_ball_detection.py --dry-run
+
+# Enqueue ball detection jobs
+cd backend && python scripts/backfill_ball_detection.py
+```
 
 ## Operational notes
 

@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
+import { useSkeletonAnimation } from '../hooks/useSkeletonAnimation';
 import { videoApi } from '../services/api';
+import { MetricValue } from '../types/biomechanics';
 import { OverlayData } from '../types/video';
 import LoadingIndicator from './LoadingIndicator';
 import './StickFigureCanvas.css';
@@ -10,164 +12,24 @@ interface StickFigureCanvasProps {
   currentTime: number;
   fps?: number;
   isPlaying: boolean;
-}
-
-// Skeleton connections for full body
-const SKELETON_CONNECTIONS = [
-  // Arms
-  ['left_shoulder', 'left_elbow'],
-  ['left_elbow', 'left_wrist'],
-  ['right_shoulder', 'right_elbow'],
-  ['right_elbow', 'right_wrist'],
-  // Legs
-  ['left_hip', 'left_knee'],
-  ['left_knee', 'left_ankle'],
-  ['right_hip', 'right_knee'],
-  ['right_knee', 'right_ankle'],
-  // Torso frame
-  ['left_shoulder', 'right_shoulder'],
-  ['left_hip', 'right_hip'],
-  ['left_shoulder', 'left_hip'],
-  ['right_shoulder', 'right_hip'],
-] as const;
-
-const KNEE_CONNECTIONS = new Set([
-  'left_hip|left_knee',
-  'left_knee|left_ankle',
-  'right_hip|right_knee',
-  'right_knee|right_ankle',
-]);
-
-const KNEE_BEND_ANGLE_THRESHOLD = 140;
-const DEFAULT_SKELETON_COLOR = '#00ff88';
-const KNEE_BEND_COLOR = '#A855F7';
-
-function calculateAngle(
-  point1: { x: number; y: number },
-  point2: { x: number; y: number },
-  point3: { x: number; y: number }
-): number | null {
-  const v1x = point1.x - point2.x;
-  const v1y = point1.y - point2.y;
-  const v2x = point3.x - point2.x;
-  const v2y = point3.y - point2.y;
-
-  const dot = v1x * v2x + v1y * v2y;
-  const mag1 = Math.hypot(v1x, v1y);
-  const mag2 = Math.hypot(v2x, v2y);
-  if (mag1 === 0 || mag2 === 0) return null;
-
-  const cosAngle = dot / (mag1 * mag2);
-  const clamped = Math.min(1, Math.max(-1, cosAngle));
-  return (Math.acos(clamped) * 180) / Math.PI;
-}
-
-function isKneeBent(
-  pose: Record<string, { x: number; y: number }>,
-  side: 'left' | 'right'
-): boolean {
-  const hip = pose[`${side}_hip`];
-  const knee = pose[`${side}_knee`];
-  const ankle = pose[`${side}_ankle`];
-  if (!hip || !knee || !ankle) return false;
-
-  const angle = calculateAngle(hip, knee, ankle);
-  return angle !== null && angle < KNEE_BEND_ANGLE_THRESHOLD;
-}
-
-function isKneeConnection(startKey: string, endKey: string): boolean {
-  return KNEE_CONNECTIONS.has(`${startKey}|${endKey}`);
-}
-
-// Joint circles for key points
-const JOINT_POINTS = [
-  'left_shoulder',
-  'right_shoulder',
-  'left_elbow',
-  'right_elbow',
-  'left_wrist',
-  'right_wrist',
-  'left_hip',
-  'right_hip',
-  'left_knee',
-  'right_knee',
-  'left_ankle',
-  'right_ankle',
-] as const;
-
-/**
- * Normalize pose keypoints to a consistent scale and center position.
- * Returns coordinates in a normalized space where the figure is centered
- * and scaled based on torso length.
- */
-function normalizePose(
-  keypoints: Record<string, number[]>,
-  canvasWidth: number,
-  canvasHeight: number
-): Record<string, { x: number; y: number }> | null {
-  // Required keypoints for normalization
-  const leftHip = keypoints['left_hip'];
-  const rightHip = keypoints['right_hip'];
-  const leftShoulder = keypoints['left_shoulder'];
-  const rightShoulder = keypoints['right_shoulder'];
-
-  if (!leftHip || !rightHip || !leftShoulder || !rightShoulder) {
-    return null;
-  }
-
-  // Calculate hip center (will be our reference point)
-  const hipCenterX = (leftHip[0] + rightHip[0]) / 2;
-  const hipCenterY = (leftHip[1] + rightHip[1]) / 2;
-
-  // Calculate shoulder center
-  const shoulderCenterX = (leftShoulder[0] + rightShoulder[0]) / 2;
-  const shoulderCenterY = (leftShoulder[1] + rightShoulder[1]) / 2;
-
-  // Calculate torso length (for scaling)
-  const torsoLength = Math.sqrt(
-    Math.pow(shoulderCenterX - hipCenterX, 2) +
-      Math.pow(shoulderCenterY - hipCenterY, 2)
-  );
-
-  if (torsoLength === 0) return null;
-
-  // Target size: figure should take up about 60% of the canvas height
-  // Assuming full body is roughly 4x torso length
-  const targetHeight = canvasHeight * 0.6;
-  const scale = targetHeight / (torsoLength * 4);
-
-  // Center position (slightly above center to account for legs below hips)
-  const centerX = canvasWidth / 2;
-  const centerY = canvasHeight * 0.4; // Place hip center at 40% from top
-
-  // Transform all keypoints
-  const normalized: Record<string, { x: number; y: number }> = {};
-
-  for (const [name, coords] of Object.entries(keypoints)) {
-    if (coords && coords.length >= 2) {
-      // Translate relative to hip center, scale, then translate to canvas center
-      const relX = coords[0] - hipCenterX;
-      const relY = coords[1] - hipCenterY;
-
-      normalized[name] = {
-        x: centerX + relX * scale,
-        y: centerY + relY * scale,
-      };
-    }
-  }
-
-  return normalized;
+  /** Override skeleton color (hex). Used for phase-based color-coding. */
+  phaseColor?: string;
+  /** Phase label to display in top-left corner. */
+  phaseLabel?: string;
+  /** Metrics with timestamps for canvas annotations. */
+  annotations?: MetricValue[];
 }
 
 const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
   videoId,
   currentTime,
   isPlaying,
+  phaseColor,
+  phaseLabel,
+  annotations,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastRenderedTimeRef = useRef<number>(-1);
 
   // Fetch overlay data using React Query
   const { data: overlayData, isLoading } = useQuery<OverlayData>({
@@ -176,197 +38,17 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const drawFrame = useCallback(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container || !overlayData) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Get container dimensions
-    const containerWidth = container.offsetWidth;
-    const containerHeight = container.offsetHeight;
-
-    // Set canvas size to match container (with device pixel ratio for sharpness)
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = containerWidth * dpr;
-    canvas.height = containerHeight * dpr;
-    canvas.style.width = `${containerWidth}px`;
-    canvas.style.height = `${containerHeight}px`;
-    ctx.scale(dpr, dpr);
-
-    // Clear canvas with dark background
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, containerWidth, containerHeight);
-
-    // Draw subtle grid pattern
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    const gridSize = 40;
-    for (let x = 0; x < containerWidth; x += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, containerHeight);
-      ctx.stroke();
-    }
-    for (let y = 0; y < containerHeight; y += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(containerWidth, y);
-      ctx.stroke();
-    }
-
-    // Get frame index from current time
-    let frameIndex = Math.round(currentTime * overlayData.fps);
-    if (frameIndex < 0) frameIndex = 0;
-    if (frameIndex >= overlayData.frames.length) {
-      frameIndex = overlayData.frames.length - 1;
-    }
-
-    const frame = overlayData.frames[frameIndex];
-    if (
-      !frame ||
-      !frame.keypoints ||
-      Object.keys(frame.keypoints).length === 0
-    ) {
-      // No pose data - show blank canvas (grid already drawn)
-      return;
-    }
-
-    // Normalize pose to canvas coordinates
-    const normalizedPose = normalizePose(
-      frame.keypoints,
-      containerWidth,
-      containerHeight
-    );
-    if (!normalizedPose) {
-      // Incomplete pose data - show blank canvas (grid already drawn)
-      return;
-    }
-
-    // Draw skeleton connections with glow effect
-    ctx.shadowColor = DEFAULT_SKELETON_COLOR;
-    ctx.shadowBlur = 8;
-    ctx.strokeStyle = DEFAULT_SKELETON_COLOR;
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-
-    const leftKneeBent = isKneeBent(normalizedPose, 'left');
-    const rightKneeBent = isKneeBent(normalizedPose, 'right');
-
-    for (const [startKey, endKey] of SKELETON_CONNECTIONS) {
-      const start = normalizedPose[startKey];
-      const end = normalizedPose[endKey];
-
-      if (start && end) {
-        const isLeftKneeSegment =
-          leftKneeBent &&
-          isKneeConnection(startKey, endKey) &&
-          startKey.startsWith('left_');
-        const isRightKneeSegment =
-          rightKneeBent &&
-          isKneeConnection(startKey, endKey) &&
-          startKey.startsWith('right_');
-
-        if (isLeftKneeSegment || isRightKneeSegment) {
-          ctx.strokeStyle = KNEE_BEND_COLOR;
-          ctx.lineWidth = 4;
-        } else {
-          ctx.strokeStyle = DEFAULT_SKELETON_COLOR;
-          ctx.lineWidth = 3;
-        }
-
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
-      }
-    }
-
-    // Draw joint circles
-    ctx.shadowBlur = 4;
-    ctx.fillStyle = '#ffffff';
-
-    for (const jointName of JOINT_POINTS) {
-      const joint = normalizedPose[jointName];
-      if (joint) {
-        ctx.beginPath();
-        ctx.arc(joint.x, joint.y, 5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // Reset shadow
-    ctx.shadowBlur = 0;
-
-    // Draw frame info
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Frame: ${frameIndex}`, 10, containerHeight - 30);
-    ctx.fillText(`Time: ${currentTime.toFixed(2)}s`, 10, containerHeight - 14);
-
-    // Draw confidence indicator
-    const confidence = frame.confidence || 0;
-    ctx.textAlign = 'right';
-    ctx.fillStyle =
-      confidence > 0.7 ? '#00ff88' : confidence > 0.4 ? '#ffaa00' : '#ff4444';
-    ctx.fillText(
-      `Confidence: ${(confidence * 100).toFixed(0)}%`,
-      containerWidth - 10,
-      containerHeight - 14
-    );
-
-    lastRenderedTimeRef.current = currentTime;
-  }, [currentTime, overlayData]);
-
-  // Handle resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      animationFrameRef.current = requestAnimationFrame(drawFrame);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [drawFrame]);
-
-  // Draw on time change
-  useEffect(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    animationFrameRef.current = requestAnimationFrame(drawFrame);
-  }, [currentTime, drawFrame]);
-
-  // Continuous animation loop when playing
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    let running = true;
-    const animate = () => {
-      if (!running) return;
-      drawFrame();
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      running = false;
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [isPlaying, drawFrame]);
+  // All rendering logic lives in the hook
+  useSkeletonAnimation({
+    canvasRef,
+    containerRef,
+    overlayData,
+    currentTime,
+    isPlaying,
+    phaseColor,
+    phaseLabel,
+    annotations,
+  });
 
   if (isLoading) {
     return (

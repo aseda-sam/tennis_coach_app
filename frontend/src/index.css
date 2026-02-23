@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
 @import './design-tokens.css';
 
 * {
@@ -41,16 +41,16 @@ code {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* Modern focus styles */
-*:focus {
-  outline: var(--focus-outline-width) solid var(--focus-outline-color);
-  outline-offset: var(--focus-outline-offset);
+/* No focus outlines */
+*:focus,
+*:focus-visible {
+  outline: none;
 }
 
 /* Modern selection */
 ::selection {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-light);
+  color: var(--color-info-dark);
 }
 
 /* Modern button reset */

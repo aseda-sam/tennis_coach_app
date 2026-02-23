@@ -1,23 +1,61 @@
 import { useQueryClient } from '@tanstack/react-query';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
-import { useAppConfig } from '../hooks/useAppConfig';
-import { useServeAttempts } from '../hooks/useServeAttempts';
+import usePersistedState from '../hooks/usePersistedState';
+import { useServeBiomechanicsReport } from '../hooks/useServeBiomechanicsReport';
+import { useServePlayback } from '../hooks/useServePlayback';
 import { useServeProposals } from '../hooks/useServeProposals';
+import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
-import { serveAttemptApi } from '../services/serveAttemptApi';
+import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
-import AnalysisRightPanel from './AnalysisRightPanel';
-import { ArrowBackIcon } from './Icons';
+import AnalysisDashboardHeader from './AnalysisDashboardHeader';
+import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
+import CollapsibleSection from './CollapsibleSection';
+import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
+import ErrorBoundary from './ErrorBoundary';
+import HeroView from './HeroView';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
-import VideoPlayer from './VideoPlayer';
+import ServeThumbnailStrip from './ServeThumbnailStrip';
+
+const METRIC_DISPLAY_NAMES: Record<string, string> = {
+  knee_flexion_min_deg: 'Knee Flexion',
+  toss_peak_height: 'Toss Peak Height',
+  toss_laterality: 'Toss Position',
+};
+
+function formatMetricValue(value: number | null, unit: string): string {
+  if (value === null) return 'N/A';
+  if (unit === 'deg' || unit === 'degrees') return `${Math.round(value)}\u00b0`;
+  if (unit === 'normalized') return value.toFixed(2);
+  if (unit === 'ms') return `${value} ms`;
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(2);
+}
+
+const SPEED_OPTIONS = [0.25, 0.5, 1] as const;
 
 interface AnalysisDashboardProps {
   videoId: number;
   videoFilename: string;
   videoUrl: string;
   onClose: () => void;
+}
+
+function findCurrentPhase(
+  phases: PhaseWindow[],
+  time: number
+): PhaseWindow | undefined {
+  // Half-open intervals [start, end) so boundary time belongs to the next phase.
+  // Last phase uses closed interval since nothing follows it.
+  return phases.find(
+    (p, i) =>
+      time >= p.start_timestamp &&
+      (i === phases.length - 1
+        ? time <= p.end_timestamp
+        : time < p.end_timestamp)
+  );
 }
 
 const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
@@ -27,25 +65,18 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   onClose,
 }) => {
   const queryClient = useQueryClient();
-  const { config } = useAppConfig();
-  const lowConfidenceThreshold =
-    config.serve_detection.low_confidence_threshold;
 
-  // Use React Query hook for analysis status (with caching)
   const { data: analysisStatus, refetch: refetchAnalysisStatus } =
     useVideoAnalysisStatus(videoId);
 
-  // Memoize the completion callback to prevent infinite re-renders
   const handleAnalysisComplete = useCallback(async () => {
-    // Refresh analysis status after completion without reloading page
     await refetchAnalysisStatus();
-    // Also invalidate the query to ensure fresh data
     queryClient.invalidateQueries({
       queryKey: ['video-analysis-status', videoId],
     });
+    queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
   }, [refetchAnalysisStatus, queryClient, videoId]);
 
-  // Analysis manager for pose analysis
   const {
     analysisState,
     startAnalysis,
@@ -62,52 +93,134 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         analysis_type: 'pose_only',
         confidence_threshold: 0.5,
       });
-    } catch (error) {
-      // Error handling is done by the startAnalysis hook
+    } catch {
+      // Error handling is done by the hook
     }
   }, [startAnalysis]);
 
-  const [videoPlayerNavigate, setVideoPlayerNavigate] = useState<
-    ((serveAttemptId: number) => void) | null
-  >(null);
-  const [isAnalyzingServes, setIsAnalyzingServes] = useState(false);
-  const [naturalScroll, setNaturalScroll] = useState(true);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
-  const [isFindingServes, setIsFindingServes] = useState(false);
-  const [findServesMessage, setFindServesMessage] = useState<string | null>(
-    null
+  const [naturalScroll, setNaturalScroll] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
+
+  // Collapsible sidebar section state (persisted across sessions)
+  const [metricsExpanded, setMetricsExpanded] = usePersistedState(
+    'sidebar:metrics',
+    true
+  );
+  const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', true);
+  const [chartsExpanded, setChartsExpanded] = usePersistedState(
+    'sidebar:charts',
+    true
   );
 
-  // Get serve attempts for this video
-  const { serveAttempts } = useServeAttempts({
+  // No-serves find state (mutually exclusive with edit panel)
+  const [isFindingServes, setIsFindingServes] = useState(false);
+
+  const { serveWindows } = useServeWindows({
     videoId,
     filters: { video_id: videoId },
     autoRefresh: true,
   });
 
-  // Get serve proposals for detection functionality
-  const {
-    proposals,
-    detectionStatus,
-    runDetection,
-    clearProposals,
-    acceptAllProposals,
-    rejectLowConfidence,
-    lowConfidenceCount,
-  } = useServeProposals({
+  const { runDetection } = useServeProposals({
     videoId,
     autoRefresh: true,
-    lowConfidenceThreshold,
   });
 
-  // State for bulk operations
-  const [isAcceptingAll, setIsAcceptingAll] = useState(false);
-  const [isRejectingLowConf, setIsRejectingLowConf] = useState(false);
+  const sortedServeWindows = useMemo(
+    () =>
+      [...serveWindows].sort((a, b) => a.start_timestamp - b.start_timestamp),
+    [serveWindows]
+  );
 
-  // Keyboard shortcut listener for ?
+  const {
+    currentServeIndex,
+    currentServe,
+    currentTime,
+    isPlaying,
+    loopCurrentPhase,
+    playbackSpeed,
+    handlePlayPause,
+    handleSeek,
+    handleTimeUpdate,
+    handlePhaseJump,
+    handleContactJump,
+    handleToggleLoopCurrentPhase,
+    handleServeNavigate,
+    setPlaybackSpeed,
+  } = useServePlayback({ sortedServeWindows });
+
+  const { data: biomechanicsReport } = useServeBiomechanicsReport(
+    currentServe?.id ?? null
+  );
+
+  const phases = useMemo(
+    () => biomechanicsReport?.phase_segmentation ?? [],
+    [biomechanicsReport]
+  );
+  const metrics = useMemo(
+    () => biomechanicsReport?.metrics ?? [],
+    [biomechanicsReport]
+  );
+  // Track which phase tab was explicitly clicked — gives instant highlight
+  // without waiting for the video seek to complete.
+  const [activePhaseKey, setActivePhaseKey] = useState<string | null>(null);
+
+  // Clear override when playback starts (natural phase transitions take over)
+  useEffect(() => {
+    if (isPlaying) setActivePhaseKey(null);
+  }, [isPlaying]);
+
+  const timeBasedPhase = currentServe
+    ? findCurrentPhase(phases, currentTime)
+    : undefined;
+  const currentPhase = activePhaseKey
+    ? (phases.find((p) => p.phase === activePhaseKey) ?? timeBasedPhase)
+    : timeBasedPhase;
+  // Wrap playback handlers to capture the selected phase for instant tab highlight
+  const wrappedPhaseJump = useCallback(
+    (phase: PhaseWindow) => {
+      setActivePhaseKey(phase.phase);
+      handlePhaseJump(phase);
+    },
+    [handlePhaseJump]
+  );
+
+  const handleContactJumpWithPhases = useCallback(
+    (contactTimestamp: number) => {
+      const phaseAtContact = phases.find(
+        (p) =>
+          contactTimestamp >= p.start_timestamp &&
+          contactTimestamp <= p.end_timestamp
+      );
+      setActivePhaseKey(phaseAtContact?.phase ?? null);
+      handleContactJump(contactTimestamp, phases);
+    },
+    [handleContactJump, phases]
+  );
+
+  const handleToggleLoopWithPhase = useCallback(() => {
+    handleToggleLoopCurrentPhase(currentPhase);
+  }, [handleToggleLoopCurrentPhase, currentPhase]);
+
+  const handleMetricClick = useCallback(
+    (metric: MetricValue) => {
+      if (metric.timestamp != null) {
+        handleSeek(metric.timestamp);
+      }
+    },
+    [handleSeek]
+  );
+
+  // Metrics with timestamps, for canvas annotations
+  const annotationMetrics = useMemo(
+    () => metrics.filter((m) => m.timestamp != null && m.value != null),
+    [metrics]
+  );
+
+  // Keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
@@ -116,7 +229,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         return;
       }
 
-      // ? key (with or without shift) opens shortcuts
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault();
         setShowKeyboardShortcuts(true);
@@ -127,366 +239,324 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Handle find serves
+  // Find serves handler for the no-serves fallback state
   const handleFindServes = useCallback(async () => {
-    if (!analysisStatus?.has_analysis) {
-      setFindServesMessage('Please run body tracking first.');
-      setTimeout(() => setFindServesMessage(null), 3000);
-      return;
-    }
-
-    // Check for existing detections
-    const hasExisting =
-      detectionStatus &&
-      (detectionStatus.pending_proposals > 0 ||
-        detectionStatus.serve_attempts > 0);
-
-    if (hasExisting && detectionStatus) {
-      if (
-        detectionStatus.serve_attempts > 0 &&
-        detectionStatus.pending_proposals === 0
-      ) {
-        setFindServesMessage(
-          'Serves already tagged. Delete them to re-detect.'
-        );
-        setTimeout(() => setFindServesMessage(null), 4000);
-        return;
-      }
-      if (detectionStatus.pending_proposals > 0) {
-        const confirmed = window.confirm(
-          `You have ${detectionStatus.pending_proposals} pending proposal(s). Clear them and re-detect?`
-        );
-        if (!confirmed) return;
-      }
-    }
+    if (!analysisStatus?.has_analysis) return;
 
     setIsFindingServes(true);
-    setFindServesMessage(null);
     try {
-      const force = detectionStatus?.pending_proposals
-        ? detectionStatus.pending_proposals > 0
-        : false;
-      const response = await runDetection(force);
-      if (response.count === 0) {
-        setFindServesMessage('No serves found in this video.');
-      } else {
-        setFindServesMessage(
-          `Found ${response.count} serve${response.count > 1 ? 's' : ''}!`
-        );
-      }
-      setTimeout(() => setFindServesMessage(null), 4000);
+      await runDetection(false);
     } catch (err) {
       console.error('Failed to find serves:', err);
-      setFindServesMessage('Failed to find serves. Please try again.');
-      setTimeout(() => setFindServesMessage(null), 4000);
     } finally {
       setIsFindingServes(false);
     }
-  }, [analysisStatus, detectionStatus, runDetection]);
+  }, [analysisStatus, runDetection]);
 
-  // Handle clear proposals
-  const handleClearProposals = useCallback(async () => {
-    if (proposals.length === 0) return;
-    const confirmed = window.confirm('Clear all pending serve proposals?');
-    if (!confirmed) return;
-    try {
-      await clearProposals();
-      setFindServesMessage('Proposals cleared.');
-      setTimeout(() => setFindServesMessage(null), 2000);
-    } catch (err) {
-      console.error('Failed to clear:', err);
-    }
-  }, [proposals.length, clearProposals]);
+  // Analysis in progress -- show progress view
+  const analysisInProgress =
+    !analysisStatus?.has_analysis &&
+    (analysisState.status === 'starting' ||
+      analysisState.status === 'processing');
 
-  // Handle accept all proposals
-  const handleAcceptAll = useCallback(async () => {
-    if (proposals.length === 0) return;
-    setIsAcceptingAll(true);
-    try {
-      const result = await acceptAllProposals();
-      if (result.failed > 0) {
-        setFindServesMessage(
-          `Accepted ${result.accepted}, ${result.failed} failed.`
-        );
-      } else {
-        setFindServesMessage(`Accepted ${result.accepted} serves!`);
-      }
-      setTimeout(() => setFindServesMessage(null), 3000);
-    } catch (err) {
-      console.error('Failed to accept all:', err);
-      setFindServesMessage('Failed to accept proposals.');
-      setTimeout(() => setFindServesMessage(null), 3000);
-    } finally {
-      setIsAcceptingAll(false);
-    }
-  }, [proposals.length, acceptAllProposals]);
+  const analysisIdle =
+    !analysisStatus?.has_analysis && analysisState.status === 'idle';
 
-  // Handle reject low confidence proposals
-  const handleRejectLowConfidence = useCallback(async () => {
-    if (lowConfidenceCount === 0) return;
-    setIsRejectingLowConf(true);
-    try {
-      const result = await rejectLowConfidence();
-      if (result.failed > 0) {
-        setFindServesMessage(
-          `Removed ${result.rejected}, ${result.failed} failed.`
-        );
-      } else {
-        setFindServesMessage(
-          `Removed ${result.rejected} low-confidence proposals.`
-        );
-      }
-      setTimeout(() => setFindServesMessage(null), 3000);
-    } catch (err) {
-      console.error('Failed to reject low confidence:', err);
-      setFindServesMessage('Failed to remove proposals.');
-      setTimeout(() => setFindServesMessage(null), 3000);
-    } finally {
-      setIsRejectingLowConf(false);
-    }
-  }, [lowConfidenceCount, rejectLowConfidence]);
+  const analysisFailed =
+    !analysisStatus?.has_analysis && analysisState.status === 'failed';
 
-  const handleServeAttemptClick = useCallback(
-    (serveAttemptId: number) => {
-      videoPlayerNavigate?.(serveAttemptId);
-    },
-    [videoPlayerNavigate]
-  );
-
-  const handleNavigateReady = useCallback(
-    (navigateFn: (serveAttemptId: number) => void) => {
-      setVideoPlayerNavigate(() => navigateFn);
-    },
-    []
-  );
-
-  const handleAnalyzeServes = useCallback(async () => {
-    if (serveAttempts.length === 0) {
-      alert('Please tag key moments first before analyzing.');
-      return;
-    }
-
-    // Check if any serve attempts already have metrics
-    const hasExistingMetrics = serveAttempts.some(
-      (sa) =>
-        (sa.elbow_angle_at_contact !== null &&
-          sa.elbow_angle_at_contact !== undefined) ||
-        sa.knee_bend_detected !== null
-    );
-
-    setIsAnalyzingServes(true);
-    try {
-      await serveAttemptApi.analyzeServes(videoId);
-      // Invalidate serve attempts query to refresh with metrics
-      queryClient.invalidateQueries({ queryKey: ['serve-attempts'] });
-      // Show different message based on whether metrics already existed
-      const message = hasExistingMetrics
-        ? 'Serves re-analyzed! Updated metrics are shown below.'
-        : 'Serve analysis completed! Check the metrics below.';
-      alert(message);
-    } catch (error: unknown) {
-      // Error detail is already normalized to string by axios interceptor
-      const axiosError = error as {
-        response?: { data?: { detail?: string } };
-        message?: string;
-      };
-      const errorMessage =
-        axiosError?.response?.data?.detail ||
-        axiosError?.message ||
-        'Failed to analyze serves. Please try again.';
-      alert(errorMessage);
-    } finally {
-      setIsAnalyzingServes(false);
-    }
-  }, [videoId, serveAttempts, queryClient]);
+  const hasServes = sortedServeWindows.length > 0;
+  const analysisJobActive =
+    analysisState.status === 'starting' ||
+    analysisState.status === 'processing';
+  const serveWindowsProcessing =
+    !!analysisStatus?.has_analysis && !hasServes && analysisJobActive;
 
   return (
     <div className="analysis-dashboard">
-      {/* Header - Compact title bar */}
-      <div className="analysis-dashboard__header">
-        <button
-          className="analysis-dashboard__back-button"
-          onClick={onClose}
-          type="button"
-        >
-          <ArrowBackIcon size={16} />
-          Back to Library
-        </button>
-        <h1 className="analysis-dashboard__title">{videoFilename}</h1>
-      </div>
+      {/* Header */}
+      <AnalysisDashboardHeader
+        videoFilename={videoFilename}
+        hasServes={hasServes}
+        serveIndex={hasServes ? currentServeIndex : undefined}
+        serveCount={hasServes ? sortedServeWindows.length : undefined}
+        onClose={onClose}
+      />
 
-      {/* Main Content */}
-      <div className="analysis-dashboard__content">
-        {/* Left Column - Video Player */}
-        <div className="analysis-dashboard__video-column">
-          <VideoPlayer
-            videoUrl={videoUrl}
-            title={videoFilename}
-            showControls={true}
-            aspectRatioMode="contain"
-            videoId={videoId}
-            hasPoseData={analysisStatus?.has_analysis || false}
-            controlsBelow={true}
-            onNavigateReady={handleNavigateReady}
-            isDemo={false}
-            naturalScroll={naturalScroll}
-            lowConfidenceThreshold={lowConfidenceThreshold}
-          />
+      {/* Analysis Required State */}
+      {analysisIdle && (
+        <div className="analysis-dashboard__empty-state">
+          <h2 className="analysis-dashboard__empty-title">Ready to Analyze</h2>
+          <p className="analysis-dashboard__empty-desc">
+            Track body movement to detect serves and compute biomechanics
+            automatically.
+          </p>
           <button
-            className="analysis-dashboard__shortcuts-hint"
-            onClick={() => setShowKeyboardShortcuts(true)}
+            className="analysis-dashboard__action-btn analysis-dashboard__action-btn--primary"
+            onClick={handleFocusAnalysis}
+            disabled={isAnalysisLoading}
             type="button"
-            title="Keyboard shortcuts"
           >
-            <kbd>?</kbd> Keyboard shortcuts
+            Track Body Movement
           </button>
         </div>
+      )}
 
-        {/* Right Column - Analysis Panel */}
-        <div className="analysis-dashboard__analysis-column">
-          {/* Action buttons for whole-video operations */}
-          <div className="analysis-dashboard__actions">
-            {!analysisStatus?.has_analysis && (
-              <>
-                {(analysisState.status === 'starting' ||
-                  analysisState.status === 'processing') && (
-                  <div className="analysis-dashboard__progress-card">
-                    <ProgressBar
-                      status={analysisState.status}
-                      showPercentage={false}
-                      showStatus={true}
-                      size="medium"
-                      animated={true}
-                      indeterminate={true}
-                    />
-                  </div>
-                )}
-                {analysisState.status === 'idle' && (
-                  <button
-                    className="analysis-dashboard__action-btn analysis-dashboard__action-btn--primary"
-                    onClick={handleFocusAnalysis}
-                    disabled={isAnalysisLoading}
-                  >
-                    Track Body Movement
-                  </button>
-                )}
-                {analysisState.status === 'failed' && (
-                  <div className="analysis-dashboard__error-card">
-                    <p className="analysis-dashboard__error-message">
-                      {analysisState.error ||
-                        'Analysis failed. Please try again.'}
-                    </p>
-                    <button
-                      className="analysis-dashboard__action-btn analysis-dashboard__action-btn--primary"
-                      onClick={handleFocusAnalysis}
-                      disabled={isAnalysisLoading}
-                    >
-                      Retry Body Tracking
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
+      {/* Analysis Failed */}
+      {analysisFailed && (
+        <div className="analysis-dashboard__empty-state analysis-dashboard__empty-state--error">
+          <p className="analysis-dashboard__error-message">
+            {analysisState.error || 'Analysis failed. Please try again.'}
+          </p>
+          <button
+            className="analysis-dashboard__action-btn analysis-dashboard__action-btn--primary"
+            onClick={handleFocusAnalysis}
+            disabled={isAnalysisLoading}
+            type="button"
+          >
+            Retry Body Tracking
+          </button>
+        </div>
+      )}
 
-            {analysisStatus?.has_analysis && (
-              <>
-                {proposals.length === 0 ? (
-                  <div className="analysis-dashboard__action-row">
-                    <button
-                      className={`analysis-dashboard__action-btn ${
-                        detectionStatus?.serve_attempts &&
-                        detectionStatus.serve_attempts > 0
-                          ? 'analysis-dashboard__action-btn--secondary'
-                          : 'analysis-dashboard__action-btn--find'
-                      }`}
-                      onClick={handleFindServes}
-                      disabled={isFindingServes}
-                      title="Detect serve windows in the video"
-                    >
-                      {isFindingServes ? 'Finding…' : 'Find Serve Windows'}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="analysis-dashboard__proposal-actions">
-                    {/* Accept All - primary action */}
-                    <button
-                      className="analysis-dashboard__action-btn analysis-dashboard__action-btn--accept-all"
-                      onClick={handleAcceptAll}
-                      disabled={isAcceptingAll || proposals.length === 0}
-                      title="Accept all proposals and create key moments"
-                    >
-                      {isAcceptingAll
-                        ? 'Accepting…'
-                        : `Accept All Key Moment Proposals (${proposals.length})`}
-                    </button>
+      {/* Analysis In Progress */}
+      {analysisInProgress && (
+        <div className="analysis-dashboard__progress-state">
+          <ProgressBar
+            status={
+              analysisState.status as
+                | 'starting'
+                | 'processing'
+                | 'finalizing'
+                | 'completed'
+                | 'failed'
+                | 'cancelled'
+            }
+            showPercentage={false}
+            showStatus={true}
+            size="medium"
+            animated={true}
+            indeterminate={true}
+          />
+          <p className="analysis-dashboard__progress-text">
+            Analyzing your serve video...
+          </p>
+        </div>
+      )}
 
-                    {/* Secondary actions row */}
-                    <div className="analysis-dashboard__action-row analysis-dashboard__action-row--secondary">
-                      {/* Remove low confidence - only show if there are any */}
-                      {lowConfidenceCount > 0 && (
-                        <button
-                          className="analysis-dashboard__action-btn analysis-dashboard__action-btn--remove-low"
-                          onClick={handleRejectLowConfidence}
-                          disabled={isRejectingLowConf}
-                          title="Remove proposals with less than 60% confidence"
-                        >
-                          {isRejectingLowConf
-                            ? 'Removing…'
-                            : `Remove Uncertain (${lowConfidenceCount})`}
-                        </button>
-                      )}
-
-                      {/* Clear all */}
-                      <button
-                        className="analysis-dashboard__action-btn analysis-dashboard__action-btn--clear-all"
-                        onClick={handleClearProposals}
-                        title="Clear all pending proposals"
-                      >
-                        Clear All
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {analysisStatus?.has_analysis && serveAttempts.length > 0 && (
-              <button
-                className="analysis-dashboard__action-btn analysis-dashboard__action-btn--primary"
-                onClick={handleAnalyzeServes}
-                disabled={isAnalyzingServes}
-              >
-                {isAnalyzingServes
-                  ? 'Analyzing…'
-                  : serveAttempts.some(
-                        (sa) =>
-                          (sa.elbow_angle_at_contact !== null &&
-                            sa.elbow_angle_at_contact !== undefined) ||
-                          sa.knee_bend_detected !== null
-                      )
-                    ? 'Re-Analyze Serves'
-                    : 'Analyze Serves'}
-              </button>
-            )}
-
-            {findServesMessage && (
-              <div className="analysis-dashboard__toast">
-                {findServesMessage}
-              </div>
-            )}
-          </div>
-
-          <AnalysisRightPanel
-            videoId={videoId}
-            videoFilename={videoFilename}
-            analysisStatus={analysisStatus}
-            onContactClick={handleServeAttemptClick}
-            isDemo={false}
+      {/* Serve Navigation Rail: thumbnails + view toggle inline */}
+      {analysisStatus?.has_analysis && hasServes && (
+        <div className="analysis-dashboard__serve-nav">
+          <ServeThumbnailStrip
+            serveWindows={sortedServeWindows}
+            currentIndex={currentServeIndex}
+            videoUrl={videoUrl}
+            onNavigate={handleServeNavigate}
+          />
+          <AnalysisViewToggle
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
           />
         </div>
-      </div>
+      )}
 
-      {/* Keyboard Shortcuts Modal */}
+      {/* Main Content: Focus-mode serve viewer */}
+      {analysisStatus?.has_analysis && (
+        <div className="analysis-dashboard__focus-view">
+          {hasServes ? (
+            <>
+              <div className="analysis-dashboard__main-col">
+                {/* Hero View (left column at desktop) */}
+                <ErrorBoundary fallbackMessage="Video player encountered an error.">
+                  <HeroView
+                    videoUrl={videoUrl}
+                    videoId={videoId}
+                    serveStart={currentServe!.start_timestamp}
+                    serveEnd={currentServe!.end_timestamp}
+                    currentTime={currentTime}
+                    isPlaying={isPlaying}
+                    phaseLabel={currentPhase?.phase_label}
+                    viewMode={viewMode}
+                    onTimeUpdate={handleTimeUpdate}
+                    onPlayPause={handlePlayPause}
+                    onSeek={handleSeek}
+                    annotations={annotationMetrics}
+                    playbackSpeed={playbackSpeed}
+                    onPlaybackSpeedChange={setPlaybackSpeed}
+                    speedOptions={SPEED_OPTIONS}
+                    loopActive={loopCurrentPhase}
+                    loopDisabled={!currentPhase}
+                    onLoopToggle={handleToggleLoopWithPhase}
+                    phases={phases}
+                    activePhase={currentPhase?.phase}
+                    contactTimestamp={currentServe!.contact_timestamp ?? null}
+                  />
+                </ErrorBoundary>
+
+                {/* Phase navigation — only when phases exist */}
+                {phases.length > 0 && (
+                  <>
+                    {/* Phase tab strip */}
+                    <div
+                      className="analysis-dashboard__phase-tabs"
+                      role="tablist"
+                    >
+                      {phases.map((phase) => (
+                        <button
+                          key={phase.phase}
+                          type="button"
+                          className={`analysis-dashboard__phase-tab${
+                            currentPhase?.phase === phase.phase
+                              ? ' analysis-dashboard__phase-tab--active'
+                              : ''
+                          }`}
+                          role="tab"
+                          aria-selected={currentPhase?.phase === phase.phase}
+                          onClick={() => wrappedPhaseJump(phase)}
+                        >
+                          {phase.phase_label}
+                        </button>
+                      ))}
+                      {currentServe!.contact_timestamp != null && (
+                        <button
+                          type="button"
+                          className="analysis-dashboard__phase-tab analysis-dashboard__phase-tab--contact"
+                          role="tab"
+                          aria-selected={false}
+                          onClick={() =>
+                            handleContactJumpWithPhases(
+                              currentServe!.contact_timestamp!
+                            )
+                          }
+                        >
+                          &#x2299; Contact
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="analysis-dashboard__side-col">
+                {/* Metrics */}
+                {metrics.length > 0 && (
+                  <CollapsibleSection
+                    title="Metrics"
+                    expanded={metricsExpanded}
+                    onToggle={() => setMetricsExpanded(!metricsExpanded)}
+                  >
+                    <div className="analysis-dashboard__metrics-strip">
+                      {metrics.map((m) => {
+                        const isClickable =
+                          m.timestamp != null && m.value != null;
+                        return (
+                          <div
+                            key={m.metric_name}
+                            className={`analysis-dashboard__metric-card${isClickable ? ' analysis-dashboard__metric-card--clickable' : ''}`}
+                            onClick={
+                              isClickable
+                                ? () => handleMetricClick(m)
+                                : undefined
+                            }
+                            role={isClickable ? 'button' : undefined}
+                            tabIndex={isClickable ? 0 : undefined}
+                            onKeyDown={
+                              isClickable
+                                ? (e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      handleMetricClick(m);
+                                    }
+                                  }
+                                : undefined
+                            }
+                          >
+                            <span className="analysis-dashboard__metric-label">
+                              {METRIC_DISPLAY_NAMES[m.metric_name] ??
+                                m.metric_name.replace(/_/g, ' ')}
+                            </span>
+                            <span className="analysis-dashboard__metric-value">
+                              {formatMetricValue(m.value, m.unit)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CollapsibleSection>
+                )}
+
+                {/* Key Time Points + Feature Curves */}
+                {biomechanicsReport?.detection_meta && (
+                  <>
+                    <CollapsibleSection
+                      title="Key Time Points"
+                      expanded={ktpExpanded}
+                      onToggle={() => setKtpExpanded(!ktpExpanded)}
+                    >
+                      <KTPTable
+                        detectionMeta={biomechanicsReport.detection_meta}
+                        serveStart={currentServe!.start_timestamp}
+                        onSeek={handleSeek}
+                      />
+                    </CollapsibleSection>
+                    <CollapsibleSection
+                      title="Feature Curves"
+                      expanded={chartsExpanded}
+                      onToggle={() => setChartsExpanded(!chartsExpanded)}
+                    >
+                      <FeatureChartsSection
+                        detectionMeta={biomechanicsReport.detection_meta}
+                        currentTime={currentTime}
+                        serveStart={currentServe!.start_timestamp}
+                        onSeek={handleSeek}
+                      />
+                    </CollapsibleSection>
+                  </>
+                )}
+              </div>
+            </>
+          ) : serveWindowsProcessing ? (
+            <div className="analysis-dashboard__progress-state">
+              <ProgressBar
+                status={
+                  analysisState.status as
+                    | 'starting'
+                    | 'processing'
+                    | 'finalizing'
+                    | 'completed'
+                    | 'failed'
+                    | 'cancelled'
+                }
+                showPercentage={false}
+                showStatus={true}
+                size="medium"
+                animated={true}
+                indeterminate={true}
+              />
+              <p className="analysis-dashboard__progress-text">
+                Processing serve windows...
+              </p>
+            </div>
+          ) : (
+            <div className="analysis-dashboard__no-serves">
+              <p>No serves detected yet.</p>
+              <p className="analysis-dashboard__no-serves-hint">
+                Serves are detected automatically during analysis. If no serves
+                were found, try re-running detection or adding them manually.
+              </p>
+              <button
+                className="analysis-dashboard__action-btn analysis-dashboard__action-btn--find"
+                onClick={handleFindServes}
+                disabled={isFindingServes}
+                type="button"
+              >
+                {isFindingServes ? 'Finding...' : 'Find Serve Windows'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <KeyboardShortcutsModal
         isOpen={showKeyboardShortcuts}
         onClose={() => setShowKeyboardShortcuts(false)}

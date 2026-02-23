@@ -19,14 +19,17 @@ from fastapi import (
 from fastapi.responses import (
     Response,
 )
-from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy.orm import Session
 
 from app.api.schemas.common import PaginationParams
-from app.api.schemas.serve_attempt import ServeAnalysisSummary
 from app.api.schemas.video import (
+    BallContactTimestampsResponse,
+    BulkAnalysisStatusRequest,
+    BulkAnalysisStatusResponse,
+    VideoAnalysisStatus,
     VideoDeleteResponse,
     VideoInfo,
+    VideoJobResponse,
     VideoListItem,
     VideoMetadataUpdateRequest,
     VideoSignedUrlResponse,
@@ -36,10 +39,9 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user, get_optional_user
 from app.services import (
-    analysis_status_service,
     player_service,
-    serve_attempt_service,
-    video_job_enqueue_service,
+    serve_window_service,
+    video_auto_enqueue_service,
     video_job_service,
     video_service,
     video_streaming_service,
@@ -51,76 +53,12 @@ from app.utils.authorization import (
     require_video_access,
     require_video_access_or_public_demo,
     require_video_deletable,
-    require_video_not_demo,
 )
 from app.utils.error_handling import (
     handle_file_error,
     handle_not_found_error,
     log_and_raise_error,
 )
-
-
-class VideoAnalysisStatus(BaseModel):
-    """Response model for video analysis status check."""
-
-    video_id: int
-    has_analysis: bool
-    analysis_types: List[str] = []
-
-
-class BulkAnalysisStatusRequest(BaseModel):
-    """Request model for bulk analysis status check."""
-
-    video_ids: List[int] = Field(
-        description="List of video IDs to check analysis status for",
-        min_length=1,
-        max_length=100,  # Limit to prevent abuse
-    )
-
-
-class BulkAnalysisStatusResponse(BaseModel):
-    """Response model for bulk analysis status check."""
-
-    statuses: List[VideoAnalysisStatus] = Field(
-        description="Analysis status for each requested video"
-    )
-
-
-class BallContactTimestampsResponse(BaseModel):
-    """Response model for ball contact timestamps in a video (serve contact points)."""
-
-    ball_contact_timestamps: List[float] = Field(
-        default_factory=list,
-        description="Sorted list of ball contact timestamps in seconds (unique, ascending)",
-    )
-
-
-class VideoJobResponse(BaseModel):
-    """Response schema for video job status."""
-
-    id: UUID
-    video_id: int
-    job_type: str
-    status: str
-    error: Optional[str] = None
-    stage: Optional[str] = (
-        None  # "transcoding", "scout", "detecting_serves", "refining", "complete"
-    )
-    progress_percent: int = 0
-    serve_windows_found: Optional[int] = (
-        None  # Number of serve windows found (after scout pass)
-    )
-    created_at: datetime
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-
-    model_config = {"from_attributes": True}
-
-    @field_serializer("id")
-    def serialize_id(self, id: UUID) -> str:
-        """Convert UUID to string for JSON serialization."""
-        return str(id)
-
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -179,10 +117,6 @@ async def get_video_job(
         Video job for the authenticated user
     """
     try:
-        from uuid import UUID
-
-        from app.utils.authorization import is_admin
-
         job_uuid = UUID(job_id)
         job = video_job_service.get_job_by_id(
             db=db,
@@ -214,8 +148,6 @@ async def list_videos(
     Returns a paginated list of videos with basic information.
     """
     try:
-        from app.utils.authorization import is_admin
-
         # Filter by user_id unless admin
         # Exclude demo videos from user's library
         videos = video_service.list_user_videos(
@@ -277,16 +209,14 @@ async def get_video_ball_contact_timestamps(
     """
     Get all ball contact timestamps for serves in a video (for prev/next contact navigation).
 
-    Returns sorted, unique ball contact timestamps from serve attempts that have a contact point.
+    Returns sorted, unique ball contact timestamps from serve windows that have a contact point.
     """
-    from app.services import serve_attempt_service
-
     db_video = video_service.get_video_by_id(db, video_id)
     if not db_video:
         raise handle_not_found_error("video", str(video_id))
     require_video_access(db_video, current_user)
 
-    timestamps = serve_attempt_service.get_ball_contact_timestamps(
+    timestamps = serve_window_service.get_ball_contact_timestamps(
         db=db,
         video_id=video_id,
         user_id=current_user["id"],
@@ -491,7 +421,7 @@ async def get_video_analysis_status(
 
         require_video_access(db_video, current_user)
 
-        status_dict = analysis_status_service.get_video_analysis_status(db, video_id)
+        status_dict = video_service.get_video_analysis_status(db, video_id)
         return VideoAnalysisStatus(**status_dict)
 
     except ValueError as e:
@@ -527,9 +457,7 @@ async def get_bulk_analysis_status(
         Analysis status for each requested video
     """
     try:
-        from app.utils.authorization import is_admin
-
-        status_dicts = analysis_status_service.get_bulk_analysis_status(
+        status_dicts = video_service.get_bulk_analysis_status(
             db=db,
             video_ids=request.video_ids,
             user_id=current_user["id"],
@@ -654,7 +582,7 @@ async def update_video_metadata(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Default player must be set before reassigning serves.",
                 )
-            serve_attempt_service.reassign_video_serve_attempts(
+            serve_window_service.reassign_video_serve_windows(
                 db=db,
                 video_id=video_id,
                 user_id=current_user["id"],
@@ -692,7 +620,7 @@ async def upload_video(
         file: Video file to upload
         is_demo: If True, upload as demo video (requires authorization)
         session_type: Session type for serve-focused workflow
-        camera_angle: Camera angle for serve analysis
+        camera_angle: Camera angle for serve biomechanics
         recorded_at: When video was recorded (for trends)
         client_recorded_at: Client-provided recording timestamp
 
@@ -736,7 +664,7 @@ async def upload_video(
         # or in environments where Redis should not be used.
         # When enabled, ALL uploads (regular and demo) are auto-enqueued.
         # Pytest tests are unaffected because they mock enqueue functions.
-        video_job_enqueue_service.auto_enqueue_video_analysis(
+        video_auto_enqueue_service.auto_enqueue_video_analysis(
             db=db,
             video=db_video,
             user_id=current_user["id"],
@@ -754,86 +682,4 @@ async def upload_video(
     except (OSError, ValueError) as e:
         log_and_raise_error(
             e, "upload_video", {"filename": file.filename if file else "unknown"}
-        )
-
-
-@router.post("/{video_id}/analyze-serves", response_model=ServeAnalysisSummary)
-async def analyze_serve_attempts(
-    video_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> ServeAnalysisSummary:
-    """
-    Batch analyze all serve attempts for a video.
-    Calculates elbow angles synchronously (no RQ).
-    """
-    try:
-        from app.services import serve_attempt_service
-        from app.services.serve_analysis_service import ServeAnalysisService
-
-        # Get video to check authorization
-        video = video_service.get_video_by_id(db, video_id)
-        if not video:
-            raise handle_not_found_error("video", str(video_id))
-
-        # Check authorization
-        require_video_access(video, current_user)
-
-        # Prevent modification of demo videos
-        require_video_not_demo(video, current_user)
-
-        # Get serve attempts for this video
-        serve_attempts = serve_attempt_service.get_serve_attempts_for_video(
-            db=db,
-            video_id=video_id,
-        )
-
-        if not serve_attempts:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No serve attempts found for this video. Please tag serve attempts first.",
-            )
-
-        # Count serves with contact
-        serves_with_contact = sum(
-            1 for sa in serve_attempts if sa.contact_timestamp is not None
-        )
-
-        # Run analysis inline (fast: uses already-computed pose detections)
-        analysis_service = ServeAnalysisService()
-        results = analysis_service.analyze_serve_attempts(
-            db=db, video_id=video_id, serve_attempts=serve_attempts
-        )
-
-        avg_elbow_angle = results.get("avg_elbow_angle")
-        if avg_elbow_angle is not None and not (0.0 <= avg_elbow_angle <= 180.0):
-            logger.warning(
-                "Serve analysis returned invalid avg_elbow_angle=%s for video_id=%s",
-                avg_elbow_angle,
-                video_id,
-            )
-            avg_elbow_angle = None
-
-        return ServeAnalysisSummary(
-            video_id=video_id,
-            total_serves=len(serve_attempts),
-            serves_with_contact=serves_with_contact,
-            avg_elbow_angle=avg_elbow_angle,
-            knee_bend_analyzed=results.get("knee_bend_analyzed", 0),
-            knee_bend_failed=results.get("knee_bend_failed", 0),
-        )
-
-    except HTTPException:
-        raise
-    except ValueError as e:
-        # Common expected error cases (e.g., missing pose detection)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
-    except Exception as e:  # noqa: BLE001 - Catch all exceptions to ensure proper error handling
-        log_and_raise_error(
-            e,
-            "analyze_serve_attempts",
-            {"video_id": video_id, "user_id": current_user["id"]},
         )

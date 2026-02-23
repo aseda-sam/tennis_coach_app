@@ -43,12 +43,10 @@
 
 .upload-btn:hover {
   background: var(--color-primary-dark);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-primary-md);
 }
 
 .upload-btn:active {
-  transform: translateY(0);
+  opacity: 0.9;
 }
 
 .page-title {
@@ -100,7 +98,6 @@
 
 .retry-btn:hover {
   background: var(--color-error-dark);
-  transform: translateY(-1px);
 }
 
 /* Empty State */
@@ -131,7 +128,10 @@
 /* Video Grid - Card Layout */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(var(--layout-card-grid-min), 1fr)
+  );
   gap: 24px;
   margin-top: 0;
 }
@@ -140,18 +140,18 @@
 .video-card {
   background: var(--color-surface);
   border-radius: 14px;
-  box-shadow: var(--shadow-xl);
+  box-shadow: none;
   overflow: hidden;
-  transition: all 0.2s ease;
-  border: 1px solid var(--color-border-light);
+  transition: var(--transition-normal);
+  border: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   cursor: pointer;
 }
 
 .video-card:hover {
-  box-shadow: var(--shadow-2xl);
-  transform: translateY(-1px);
+  box-shadow: none;
+  border-color: var(--color-border-dark);
 }
 
 /* Thumbnail Area (top 2/3 of card) */
@@ -265,20 +265,12 @@
   transition: var(--transition-normal);
   min-width: 36px;
   min-height: 36px;
-  box-shadow: var(--shadow-xs);
 }
 
 .delete-card-btn:hover:not(:disabled) {
   color: var(--color-error);
   background: var(--color-error-soft);
   border-color: var(--color-error-light);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
-}
-
-.delete-card-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-xs);
 }
 
 .delete-card-btn:disabled {
@@ -297,20 +289,12 @@
   cursor: pointer;
   transition: var(--transition-normal);
   min-height: 36px;
-  box-shadow: var(--shadow-xs);
 }
 
 .edit-card-btn:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-softest);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
-}
-
-.edit-card-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-xs);
+  border-color: var(--color-court-blue);
+  color: var(--color-court-blue);
+  background: var(--color-court-blue-soft);
 }
 
 .edit-card-btn:disabled {
@@ -510,7 +494,7 @@
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: var(--transition-fast);
   white-space: nowrap;
 }
 
@@ -540,7 +524,7 @@
   background: var(--color-surface);
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: var(--transition-fast);
   color: var(--color-text-muted);
   padding: 0;
 }
@@ -593,7 +577,7 @@
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
-  animation: modalSlideIn 0.3s ease-out;
+  animation: modalSlideIn var(--duration-slower) var(--ease-out);
 }
 
 @keyframes modalSlideIn {
@@ -722,7 +706,6 @@
 }
 
 .edit-video-field select:focus {
-  outline: none;
   border-color: var(--color-primary);
   box-shadow: var(--shadow-primary-sm);
 }
@@ -836,6 +819,12 @@
 .edit-video-save:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-modal {
+    animation: none;
+  }
 }
 
 /* Responsive Design */

@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     # Background job behavior
     AUTO_ENQUEUE_ON_UPLOAD: bool = False
 
+    # Pipeline automation
+    AUTO_ACCEPT_SERVE_PROPOSALS: bool = True
+    AUTO_ACCEPT_CONFIDENCE_THRESHOLD: float = 0.6
+    AUTO_COMPUTE_BIOMECHANICS: bool = True
+    AUTO_CONTACT_DETECTOR_VERSION: str = "v1"
+
     # ML Models
     ML_MODELS_DIR: str = "ml_models"
 
@@ -104,7 +110,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
-        extra="ignore",  # ignore unknown env vars (e.g. OTEL_* for OpenTelemetry)
+        extra="ignore",
     )
 
     @property
@@ -187,18 +193,16 @@ if settings.PROFILE == "production":
         )
 
 # Setup logging
-# Observability fields (trace_id, span_id, request_id, job_id, video_id) are added
-# by ObservabilityLogFilter and can be included in format if needed
+# Structured fields (request_id, job_id, video_id) are added
+# by StructuredLogFilter and can be included in format if needed
 logging.basicConfig(
     level=logging.DEBUG if settings.DEBUG else logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
-# Create directories (resolve relative paths from backend/ directory)
-_backend_dir = Path(__file__).parent.parent.parent  # backend/
-for d in [settings.UPLOAD_DIR, settings.PROCESSED_DIR, "../data/database"]:
-    dir_path = (_backend_dir / d).resolve() if d.startswith("../") else Path(d)
-    dir_path.mkdir(parents=True, exist_ok=True)
+# Create local storage directories on startup
+for d in [settings.UPLOAD_DIR, settings.PROCESSED_DIR]:
+    Path(d).mkdir(parents=True, exist_ok=True)
 
 
 # Environment limits (for video validation)

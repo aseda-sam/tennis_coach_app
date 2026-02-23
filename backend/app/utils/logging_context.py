@@ -1,7 +1,7 @@
-"""Structured logging utilities for observability.
+"""Structured logging utilities.
 
-Adds canonical IDs (trace_id, span_id, request_id, job_id, video_id) to log records
-so logs can be correlated with traces in Grafana.
+Adds canonical IDs (request_id, job_id, video_id, rq_job_id) to log records
+for correlation and debugging.
 """
 
 from __future__ import annotations
@@ -10,32 +10,11 @@ import logging
 from typing import Any, Optional
 
 
-class ObservabilityLogFilter(logging.Filter):
-    """Log filter that adds OTel trace/span IDs and request/job IDs to log records."""
+class StructuredLogFilter(logging.Filter):
+    """Log filter that adds request/job IDs to log records for structured logging."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        """Add observability context to log record."""
-        try:
-            from opentelemetry import trace
-
-            # Get current span context (if any)
-            span = trace.get_current_span()
-            if span:
-                span_context = span.get_span_context()
-                if span_context.is_valid:
-                    # Add trace_id and span_id as hex strings (standard format)
-                    record.trace_id = format(span_context.trace_id, "032x")
-                    record.span_id = format(span_context.span_id, "016x")
-                else:
-                    record.trace_id = None
-                    record.span_id = None
-            else:
-                record.trace_id = None
-                record.span_id = None
-        except Exception:  # noqa: BLE001 - OTel may not be available
-            record.trace_id = None
-            record.span_id = None
-
+        """Add structured context fields to log record."""
         # Ensure optional fields exist (set via extra={} or default to None)
         if not hasattr(record, "request_id"):
             record.request_id = None

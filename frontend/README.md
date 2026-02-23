@@ -1,6 +1,10 @@
 # Tennis Coach App - Frontend
 
-React frontend for the tennis analysis system with video upload, playback, and analysis visualization capabilities.
+Technical frontend guide for contributors working in `frontend/`.
+
+For product context, screenshots, and a quick project intro, start at the root `README.md`.
+
+This app covers authenticated upload flows, video review, and analysis UI rendering for serve data.
 
 ## Quick Start
 

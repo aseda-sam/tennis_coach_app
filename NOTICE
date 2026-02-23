@@ -1,36 +1,14 @@
-Tennis Coach App - Tennis Coaching Platform
-Copyright (C) 2025 Aseda Sam
+Tennis Coach App
+Copyright (c) 2026 Aseda Sam
 
-This software is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+Licensed under the MIT License. See LICENSE for details.
 
-IMPORTANT LEGAL NOTICE:
+THIRD-PARTY COMPONENTS
 
-1. SOURCE CODE AVAILABILITY
-   If you modify this program, or any covered work, by linking or combining it
-   with other code, you must make the source code of your modifications
-   available under the same AGPL-3.0 license.
+This software includes third-party components with their own licenses:
 
-2. NETWORK USE REQUIREMENT
-   If you use this software to provide services over a network, you must make
-   the complete source code available to all users of that service.
-
-3. COMMERCIAL USE
-   For commercial use, enterprise licensing, or proprietary deployments that
-   cannot comply with AGPL requirements, commercial licenses are available.
-
-4. TRADEMARK NOTICE
-   "Tennis Coach App" is a trademark of Aseda Sam. Use of this trademark requires
-   explicit permission.
-
-5. THIRD-PARTY COMPONENTS
-   This software includes third-party components with their own licenses:
-   - YOLO models: GPL-3.0 License (Ultralytics)
-   - MediaPipe: Apache 2.0 License (Google)
-   - See individual component licenses for details
-
-6. NO WARRANTY
-   This software is provided "as is" without warranty of any kind, express or
-   implied, including but not limited to the warranties of merchantability,
-   fitness for a particular purpose and noninfringement.
-
-For questions about licensing, please contact: aoheneadu23@gmail.com
+- MediaPipe: Apache 2.0 License (Google)
+- FastAPI: MIT License
+- React: MIT License
+- SQLAlchemy: MIT License
+- See individual component licenses for details.

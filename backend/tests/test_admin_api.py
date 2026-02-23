@@ -196,12 +196,8 @@ class TestUploadForUserEndpoint:
 
     def test_upload_for_user_validates_target_user_id(self, client: TestClient) -> None:
         """Test upload-for-user validates target_user_id parameter."""
-        with patch(
-            "app.services.admin_service.validate_target_user_exists"
-        ) as mock_get_user:
-            mock_get_user.side_effect = ValueError(
-                "Target user invalid-user-id not found in Supabase"
-            )  # User doesn't exist
+        with patch("app.api.routes.admin.get_user_by_id") as mock_get_user:
+            mock_get_user.return_value = None  # User doesn't exist
 
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
                 tmp_file.write(b"fake video content" * 1000)
@@ -227,9 +223,7 @@ class TestUploadForUserEndpoint:
         """Test successful upload-for-user assigns video to target user."""
         target_user_id = "22222222-2222-2222-2222-222222222222"
 
-        with patch(
-            "app.services.admin_service.validate_target_user_exists"
-        ) as mock_get_user, patch(
+        with patch("app.api.routes.admin.get_user_by_id") as mock_get_user, patch(
             "app.services.storage_service.storage_service"
         ) as mock_storage, patch.object(
             settings, "AUTO_ENQUEUE_ON_UPLOAD", False
@@ -489,89 +483,3 @@ class TestGetUserById:
             result = get_user_by_id("123e4567-e89b-12d3-a456-426614174000")
 
             assert result is None
-
-
-class TestCheckOrphanedDataEndpoint:
-    """Tests for GET /admin/cleanup/orphaned-data/check endpoint."""
-
-    def test_check_orphaned_data_requires_admin(self, client: TestClient) -> None:
-        """Test check orphaned data endpoint requires admin access."""
-
-        async def mock_non_admin() -> dict:
-            return {
-                "id": "11111111-1111-1111-1111-111111111111",
-                "email": "user@example.com",
-                "user_metadata": {},
-            }
-
-        app.dependency_overrides[get_current_user] = mock_non_admin
-
-        try:
-            response = client.get("/v0/admin/cleanup/orphaned-data/check")
-
-            assert response.status_code == 403
-        finally:
-            app.dependency_overrides.clear()
-
-    def test_check_orphaned_data_empty(
-        self, client: TestClient, db_session: Session
-    ) -> None:
-        """Test returns empty list when no orphaned data exists."""
-        # Default test user is admin (00000000-0000-0000-0000-000000000000)
-        response = client.get("/v0/admin/cleanup/orphaned-data/check")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "orphaned_user_count" in data
-        assert "orphaned_users" in data
-        assert data["orphaned_user_count"] == 0
-        assert data["orphaned_users"] == []
-
-    def test_check_orphaned_data_with_orphans(
-        self, client: TestClient, db_session: Session
-    ) -> None:
-        """Test returns orphaned user details when orphaned data exists."""
-        from app.models.player import Player
-        from app.models.video import Video
-
-        # Create data for a user that doesn't exist in Supabase
-        orphan_user_id = "orphan-user-id-12345678"
-
-        video1 = Video(
-            filename="orphan_video1.mp4",
-            file_path="raw/orphan_video1.mp4",
-            file_size=1000,
-            user_id=orphan_user_id,
-        )
-        video2 = Video(
-            filename="orphan_video2.mp4",
-            file_path="raw/orphan_video2.mp4",
-            file_size=2000,
-            user_id=orphan_user_id,
-        )
-        player = Player(
-            name="Orphan Player",
-            dominant_hand="right",
-            user_id=orphan_user_id,
-        )
-        db_session.add_all([video1, video2, player])
-        db_session.commit()
-
-        # Mock find_orphaned_user_ids to return our orphan user
-        # The import happens inside the route function, so we mock at the service level
-        with patch(
-            "app.services.cleanup_service.find_orphaned_user_ids"
-        ) as mock_find_orphans:
-            mock_find_orphans.return_value = [orphan_user_id]
-
-            response = client.get("/v0/admin/cleanup/orphaned-data/check")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["orphaned_user_count"] == 1
-        assert len(data["orphaned_users"]) == 1
-
-        orphan_detail = data["orphaned_users"][0]
-        assert orphan_detail["user_id"] == orphan_user_id
-        assert orphan_detail["video_count"] == 2
-        assert orphan_detail["player_count"] == 1

@@ -8,6 +8,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
+    ffmpeg \
     libglib2.0-0 \
     libgomp1 \
     libxcb1 \

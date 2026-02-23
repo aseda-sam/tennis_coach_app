@@ -322,7 +322,7 @@ def get_or_create_default_player(
 
     If a default player doesn't exist, creates one with the provided data.
     If name is not provided, uses "Me" as fallback.
-    This becomes the default selection for serve attempt tagging.
+    This becomes the default selection for serve window tagging.
 
     Args:
         db: Database session

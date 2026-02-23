@@ -17,7 +17,7 @@ Stores uploaded videos and metadata.
 - `session_type`, `camera_angle`, `recorded_at`
 - `primary_player_id` (FK -> `players.id`, nullable)
   - Default player attribution for serves created from this video.
-  - Used when a serve attempt or proposal acceptance does not specify `player_id`.
+  - Used when a serve window or proposal acceptance does not specify `player_id`.
 - Indexes used by timeline/progress queries:
   - `ix_videos_recorded_at` on `recorded_at`
   - `ix_videos_user_recorded_at` on (`user_id`, `recorded_at`)
@@ -34,28 +34,47 @@ Stores player profiles (one default per user, with optional additional players).
 
 ## ball_detections
 
-Stores YOLO ball detection results for a video (serve windows only).
+Stores ball detection results for a video (serve windows only). Uses YOLO + ByteTrack.
 
 - `id` (PK)
 - `video_id` (FK -> `videos.id`, CASCADE)
 - `total_frames`, `frames_with_ball`, `detection_rate`
-- `ball_data` (JSON text: list of per-frame detections with frame_index, timestamp_ms, ball_x, ball_y, confidence)
+- `ball_data` (JSON text: list of per-frame detections with frame_index, timestamp_ms, ball_x, ball_y, confidence, interpolated)
+  - `interpolated: bool` — True if position was filled by cubic spline post-processing
 - `processing_time_seconds`, `frame_processing_rate`
 - `status`, `error_message`
 - `time_windows` (JSON: [{"start_ms", "end_ms"}, ...])
 - `created_at`, `completed_at`
 
-## serve_attempts
+## serve_windows
 
-Stores serve attempts and metrics derived from video analysis.
+Stores serve windows (manual or auto-detected) and review metadata.
 
 - `id` (PK)
 - `video_id` (FK -> `videos.id`)
 - `user_id` (owner)
-- `player_id` (FK -> `players.id`, required)
+- `player_id` (FK -> `players.id`, nullable while pending)
 - `start_timestamp`, `end_timestamp`, `contact_timestamp`
-- `analysis_version`, `elbow_angle_at_contact`, `knee_bend_*`, `court_side`,
-  `serve_number`, `serve_subtype`, `in_out`
-- `toss_peak_height` (nullable, from ball detection; normalized by player height)
-- `toss_peak_timestamp` (nullable, video time in seconds)
-- `source_proposal_id` (FK -> `serve_window_proposals.id`, nullable, indexed)
+- `court_side`, `serve_number`, `serve_subtype`, `in_out`
+- `source` (`manual` or `auto`)
+- `status` (`pending`, `accepted`, `rejected`, `edited`)
+- `model_version`, `confidence`, `detection_features` (nullable; for auto detection)
+- `reviewed_at`, `original_start_timestamp`, `original_end_timestamp`
+
+## serve_biomechanics_reports
+
+Computed phase segmentation and raw biomechanics metrics for a single serve
+window. Separate from `serve_windows` because it's a computed artifact.
+No scoring, ratings, or coaching text — phases + metrics only.
+
+- `id` (PK)
+- `serve_window_id` (FK -> `serve_windows.id`, CASCADE)
+- `user_id` (owner)
+- `player_id` (FK -> `players.id`, CASCADE)
+- `phase_segmentation_json` (TEXT, JSON-serialized phase boundaries)
+- `metrics` (JSONB, nested by phase: `{"loading": {"knee_flexion_min_deg": 95.5}, "release": {...}}`)
+- `analysis_version`
+- `created_at`
+- Indexes:
+  - `ix_biomechanics_reports_player_created` on (`player_id`, `created_at`)
+  - `ix_biomechanics_reports_user_player` on (`user_id`, `player_id`)

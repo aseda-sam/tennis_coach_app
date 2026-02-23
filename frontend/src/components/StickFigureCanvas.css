@@ -5,6 +5,21 @@
   width: 100%;
   height: 100%;
   background: #1a1a2e;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(27, 75, 122, 0.06) 0,
+      rgba(27, 75, 122, 0.06) 1px,
+      transparent 1px,
+      transparent 48px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(27, 75, 122, 0.06) 0,
+      rgba(27, 75, 122, 0.06) 1px,
+      transparent 1px,
+      transparent 48px
+    );
   z-index: 5;
 }
 
@@ -32,7 +47,7 @@
 
 /* Smooth transition when toggling */
 .stick-figure-canvas-container {
-  animation: stick-figure-fade-in 0.2s ease-out;
+  animation: stick-figure-fade-in var(--duration-normal) var(--ease-out);
 }
 
 @keyframes stick-figure-fade-in {
@@ -41,5 +56,11 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stick-figure-canvas-container {
+    animation: none;
   }
 }

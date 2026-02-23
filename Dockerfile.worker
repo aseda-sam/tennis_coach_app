@@ -1,5 +1,5 @@
 # Optimized Worker Dockerfile for Fly.io
-# Pose detection (MediaPipe) + ball detection (Ultralytics YOLO) for RQ worker
+# Pose detection (MediaPipe) + ball detection (YOLOv8) for RQ worker
 
 # Build stage - for installing dependencies
 FROM python:3.11-slim AS builder
@@ -18,7 +18,7 @@ WORKDIR /app/backend
 # Install opencv-python-headless (no GUI dependencies needed - encoding removed)
 RUN pip install --no-cache-dir opencv-python-headless
 
-# Install worker extras (MediaPipe + Ultralytics for pose and ball detection)
+# Install worker extras (MediaPipe + YOLO for pose and ball detection)
 RUN pip install --no-cache-dir -e ".[worker]"
 
 # Development stage - for local development with docker-compose
@@ -48,9 +48,9 @@ COPY backend/ ./backend/
 
 WORKDIR /app/backend
 
-# Create required directories (YOLO_CONFIG_DIR so Ultralytics has a writable config/cache path)
-RUN mkdir -p ml_models data/videos/raw data/videos/processed data/analysis_cache data/database data/analysis_cache/ultralytics
-ENV YOLO_CONFIG_DIR=/app/backend/data/analysis_cache/ultralytics
+# Create required directories
+# ml_models/ is where yolo_tennis_ball.pt is placed (see docs/ball-detection-fine-tuning.md)
+RUN mkdir -p ml_models data/videos/raw data/videos/processed data/analysis_cache data/database
 
 EXPOSE 8000
 CMD ["python", "scripts/start_rq_worker.py"]
@@ -92,11 +92,11 @@ RUN rm -rf tests/ \
     find . -type f -name "*.pyc" -delete 2>/dev/null || true && \
     find . -type f -name "*.pyo" -delete 2>/dev/null || true
 
-# Create required directories (models will be downloaded here at runtime)
-# YOLO_CONFIG_DIR so Ultralytics has a writable config/cache path (no /root/.config warning)
-RUN mkdir -p ml_models data/videos/raw data/videos/processed data/analysis_cache data/database data/analysis_cache/ultralytics && \
+# Create required directories
+# ml_models/yolo_tennis_ball.pt must be present (see docs/ball-detection-fine-tuning.md).
+# For Fly.io production, bake the weights into the image or download in a startup script.
+RUN mkdir -p ml_models data/videos/raw data/videos/processed data/analysis_cache data/database && \
     chown -R appuser:appuser /app
-ENV YOLO_CONFIG_DIR=/app/backend/data/analysis_cache/ultralytics
 
 # Switch to non-root user
 USER appuser
@@ -105,6 +105,6 @@ USER appuser
 WORKDIR /app/backend
 
 # Worker runs the RQ worker script
-# Models will be downloaded automatically on first use (not in image)
+# YOLO weights are loaded lazily on first use from ml_models/yolo_tennis_ball.pt
 # Fly.io will restart the container if this process exits
 CMD ["python", "scripts/start_rq_worker.py"]

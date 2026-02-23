@@ -72,8 +72,9 @@ def get_video_rotation(video_path: Path) -> int:
         json.JSONDecodeError,
         ValueError,
     ):
-        # ffprobe not available or failed - fall back to no rotation
-        pass
+        logger.debug(
+            "ffprobe unavailable or failed; assuming no rotation for %s", video_path
+        )
 
     return 0
 
@@ -84,6 +85,7 @@ def get_video_creation_time(video_path: Path) -> Optional[datetime]:
 
     Extracts `creation_time` from format tags first, then stream tags.
     Returns timezone-aware datetime if found, None otherwise.
+    Missing ffprobe or missing metadata is treated as a non-fatal fallback.
     """
     try:
         result = subprocess.run(  # noqa: S603 - ffprobe is trusted
@@ -144,14 +146,20 @@ def get_video_creation_time(video_path: Path) -> Optional[datetime]:
                         parsed = parsed.replace(tzinfo=timezone.utc)
                     return parsed
 
+    except FileNotFoundError:
+        logger.warning(
+            "ffprobe is unavailable; skipping creation_time extraction for %s",
+            video_path,
+        )
     except (
         subprocess.TimeoutExpired,
-        FileNotFoundError,
         json.JSONDecodeError,
         ValueError,
         AttributeError,
     ):
-        logger.exception("Failed to extract video creation time from %s", video_path)
-        pass
+        logger.warning(
+            "Could not parse creation_time metadata for %s; falling back to upload/client timestamp",
+            video_path,
+        )
 
     return None

@@ -1,0 +1,417 @@
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import React from 'react';
+import { renderWithProviders } from '../test-utils';
+import { VideoMetadata } from '../types/video';
+import VideoList from './VideoList';
+
+// --- Mocks ---
+
+// Mock Icons
+jest.mock('./Icons', () => ({
+  CloseIcon: () => <span data-testid="close-icon">Close</span>,
+  DeleteIcon: () => <span data-testid="delete-icon">Delete</span>,
+  UploadIcon: () => <span data-testid="upload-icon">Upload</span>,
+  VideoIcon: () => <span data-testid="video-icon">Video</span>,
+}));
+
+// Mock child components
+jest.mock('./VideoUpload', () => {
+  return function MockVideoUpload() {
+    return <div data-testid="video-upload">Video Upload Form</div>;
+  };
+});
+
+jest.mock('./VideoEditModal', () => {
+  return function MockVideoEditModal({
+    onClose,
+  }: {
+    video: VideoMetadata;
+    onClose: () => void;
+  }) {
+    return (
+      <div data-testid="video-edit-modal">
+        <button onClick={onClose}>Close Edit</button>
+      </div>
+    );
+  };
+});
+
+jest.mock('./LoadingIndicator', () => {
+  return function MockLoadingIndicator({ label }: { label?: string }) {
+    return <div data-testid="loading-indicator">{label ?? 'Loading...'}</div>;
+  };
+});
+
+// Mock CSS import
+jest.mock('./VideoList.css', () => ({}));
+
+// Hook mocks — default return values, overridden per test as needed
+const mockMutateAsync = jest.fn();
+const mockRefetch = jest.fn();
+
+const mockUseVideos = jest.fn();
+const mockUseVideoAnalysisStatuses = jest.fn();
+const mockUseDeleteVideo = jest.fn();
+const mockUseUpdateVideoMetadata = jest.fn();
+
+jest.mock('../hooks/useVideos', () => ({
+  useVideos: (...args: unknown[]) => mockUseVideos(...args),
+  useVideoAnalysisStatuses: (...args: unknown[]) =>
+    mockUseVideoAnalysisStatuses(...args),
+  useDeleteVideo: (...args: unknown[]) => mockUseDeleteVideo(...args),
+  useUpdateVideoMetadata: (...args: unknown[]) =>
+    mockUseUpdateVideoMetadata(...args),
+}));
+
+const mockUsePlayerProfile = jest.fn();
+
+jest.mock('../hooks/usePlayerProfile', () => ({
+  usePlayerProfile: (...args: unknown[]) => mockUsePlayerProfile(...args),
+}));
+
+// --- Test data ---
+
+const mockVideos: VideoMetadata[] = [
+  {
+    id: 1,
+    filename: 'serve_practice_1.mp4',
+    file_path: '/videos/serve_practice_1.mp4',
+    file_size: 5242880, // 5 MB
+    created_at: new Date().toISOString(), // "Today"
+    status: 'completed',
+    primary_player_id: 10,
+  },
+  {
+    id: 2,
+    filename: 'match_clip.mp4',
+    file_path: '/videos/match_clip.mp4',
+    file_size: 10485760, // 10 MB
+    created_at: '2024-06-15T10:00:00Z',
+    recorded_at: '2024-06-15T09:30:00Z',
+    status: 'completed',
+    primary_player_id: null,
+  },
+];
+
+// --- Helpers ---
+
+function setDefaultMocks({
+  videos = mockVideos,
+  videosLoading = false,
+  videosError = null as Error | null,
+  statusesLoading = false,
+  playerProfile = { id: 10, name: 'Alice' } as {
+    id: number;
+    name: string;
+  } | null,
+  deletePending = false,
+  updatePending = false,
+} = {}) {
+  mockUseVideos.mockReturnValue({
+    data: videos,
+    isLoading: videosLoading,
+    error: videosError,
+    refetch: mockRefetch,
+  });
+
+  mockUseVideoAnalysisStatuses.mockReturnValue({
+    isLoading: statusesLoading,
+  });
+
+  mockUsePlayerProfile.mockReturnValue({
+    data: playerProfile,
+  });
+
+  mockUseDeleteVideo.mockReturnValue({
+    mutateAsync: mockMutateAsync,
+    isPending: deletePending,
+  });
+
+  mockUseUpdateVideoMetadata.mockReturnValue({
+    isPending: updatePending,
+  });
+}
+
+// --- Tests ---
+
+describe('VideoList', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setDefaultMocks();
+  });
+
+  describe('Loading state', () => {
+    it('shows loading indicator when videos are loading', () => {
+      setDefaultMocks({ videosLoading: true });
+
+      renderWithProviders(<VideoList />);
+
+      expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+      expect(screen.getByText('Loading videos...')).toBeInTheDocument();
+    });
+
+    it('shows loading indicator when analysis statuses are loading', () => {
+      setDefaultMocks({ statusesLoading: true });
+
+      renderWithProviders(<VideoList />);
+
+      expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+    });
+  });
+
+  describe('Error state', () => {
+    it('shows error message and retry button when videos fail to load', () => {
+      setDefaultMocks({ videosError: new Error('Network error') });
+
+      renderWithProviders(<VideoList />);
+
+      expect(
+        screen.getByText('Failed to load videos. Please try again.')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /try again/i })
+      ).toBeInTheDocument();
+    });
+
+    it('calls refetch when retry button is clicked', async () => {
+      const user = userEvent.setup();
+      setDefaultMocks({ videosError: new Error('Network error') });
+
+      renderWithProviders(<VideoList />);
+
+      await user.click(screen.getByRole('button', { name: /try again/i }));
+      expect(mockRefetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Empty state', () => {
+    it('shows empty state when there are no videos', () => {
+      setDefaultMocks({ videos: [] });
+
+      renderWithProviders(<VideoList />);
+
+      expect(screen.getByText('No videos uploaded yet')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Upload your first tennis video to get started with analysis'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('still shows header with upload button when empty', () => {
+      setDefaultMocks({ videos: [] });
+
+      renderWithProviders(<VideoList />);
+
+      expect(screen.getByText('Video Library')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /upload/i })
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Rendering video cards', () => {
+    it('renders a card for each video with filename', () => {
+      renderWithProviders(<VideoList />);
+
+      expect(screen.getByText('serve_practice_1.mp4')).toBeInTheDocument();
+      expect(screen.getByText('match_clip.mp4')).toBeInTheDocument();
+    });
+
+    it('shows formatted file size on each card', () => {
+      renderWithProviders(<VideoList />);
+
+      expect(screen.getByText('5.00 MB')).toBeInTheDocument();
+      expect(screen.getByText('10.00 MB')).toBeInTheDocument();
+    });
+
+    it('shows video count in header', () => {
+      renderWithProviders(<VideoList />);
+
+      expect(screen.getByText('2 of 2 sessions')).toBeInTheDocument();
+    });
+
+    it('shows player name from profile when primary_player_id matches', () => {
+      renderWithProviders(<VideoList />);
+
+      // Both videos resolve to "Alice": video 1 matches by id, video 2 has null primary_player_id
+      const labels = screen.getAllByText('Alice');
+      expect(labels.length).toBeGreaterThan(0);
+    });
+
+    it('shows "Your Profile" when no player profile name is available', () => {
+      setDefaultMocks({ playerProfile: null });
+
+      renderWithProviders(<VideoList />);
+
+      const labels = screen.getAllByText('Your Profile');
+      expect(labels.length).toBeGreaterThan(0);
+    });
+
+    it('shows "Someone Else" when primary_player_id does not match profile', () => {
+      // Profile id = 10, second video has primary_player_id = null (handled differently),
+      // so set a video where primary_player_id is a different non-null value
+      const videosWithOther: VideoMetadata[] = [
+        {
+          ...mockVideos[0],
+          primary_player_id: 999, // does not match profile id 10
+        },
+      ];
+      setDefaultMocks({ videos: videosWithOther });
+
+      renderWithProviders(<VideoList />);
+
+      expect(screen.getByText('Someone Else')).toBeInTheDocument();
+    });
+  });
+
+  describe('Delete interaction', () => {
+    it('calls deleteVideo mutation when delete button is clicked', async () => {
+      const user = userEvent.setup();
+      mockMutateAsync.mockResolvedValue(undefined);
+
+      renderWithProviders(<VideoList />);
+
+      const deleteButtons = screen.getAllByTitle('Delete');
+      await user.click(deleteButtons[0]);
+
+      expect(mockMutateAsync).toHaveBeenCalledWith(1);
+    });
+
+    it('calls onVideoDeleted callback after successful deletion', async () => {
+      const user = userEvent.setup();
+      const onVideoDeleted = jest.fn();
+      mockMutateAsync.mockResolvedValue(undefined);
+
+      renderWithProviders(<VideoList onVideoDeleted={onVideoDeleted} />);
+
+      const deleteButtons = screen.getAllByTitle('Delete');
+      await user.click(deleteButtons[0]);
+
+      expect(onVideoDeleted).toHaveBeenCalledTimes(1);
+    });
+
+    it('disables delete buttons when deletion is pending', () => {
+      setDefaultMocks({ deletePending: true });
+
+      renderWithProviders(<VideoList />);
+
+      const deleteButtons = screen.getAllByTitle('Delete');
+      deleteButtons.forEach((btn) => {
+        expect(btn).toBeDisabled();
+      });
+    });
+
+    it('does not propagate click to card when delete is clicked', async () => {
+      const user = userEvent.setup();
+      const onViewAnalysis = jest.fn();
+      mockMutateAsync.mockResolvedValue(undefined);
+
+      renderWithProviders(<VideoList onViewAnalysis={onViewAnalysis} />);
+
+      const deleteButtons = screen.getAllByTitle('Delete');
+      await user.click(deleteButtons[0]);
+
+      // onViewAnalysis should NOT have been called because stopPropagation
+      expect(onViewAnalysis).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Video selection (view analysis)', () => {
+    it('calls onViewAnalysis with the video when card is clicked', async () => {
+      const user = userEvent.setup();
+      const onViewAnalysis = jest.fn();
+
+      renderWithProviders(<VideoList onViewAnalysis={onViewAnalysis} />);
+
+      /* eslint-disable testing-library/no-node-access */
+      const firstCard = screen
+        .getByText('serve_practice_1.mp4')
+        .closest('.video-card') as HTMLElement;
+      /* eslint-enable testing-library/no-node-access */
+      await user.click(firstCard);
+
+      expect(onViewAnalysis).toHaveBeenCalledTimes(1);
+      expect(onViewAnalysis).toHaveBeenCalledWith(mockVideos[0]);
+    });
+
+    it('does not throw when card is clicked without onViewAnalysis prop', async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(<VideoList />);
+
+      /* eslint-disable testing-library/no-node-access */
+      const firstCard = screen
+        .getByText('serve_practice_1.mp4')
+        .closest('.video-card') as HTMLElement;
+      /* eslint-enable testing-library/no-node-access */
+
+      // Should not throw
+      await user.click(firstCard);
+    });
+  });
+
+  describe('Upload modal', () => {
+    it('opens upload modal when Upload button is clicked', async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(<VideoList />);
+
+      expect(screen.queryByTestId('video-upload')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /upload/i }));
+
+      expect(screen.getByTestId('video-upload')).toBeInTheDocument();
+      expect(screen.getByText('Upload Video')).toBeInTheDocument();
+    });
+
+    it('closes upload modal when close button is clicked', async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(<VideoList />);
+
+      await user.click(screen.getByRole('button', { name: /upload/i }));
+      expect(screen.getByTestId('video-upload')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /close/i }));
+      expect(screen.queryByTestId('video-upload')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Edit modal', () => {
+    it('opens edit modal when Edit button is clicked', async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(<VideoList />);
+
+      const editButtons = screen.getAllByTitle('Edit');
+      await user.click(editButtons[0]);
+
+      expect(screen.getByTestId('video-edit-modal')).toBeInTheDocument();
+    });
+
+    it('does not propagate click to card when edit is clicked', async () => {
+      const user = userEvent.setup();
+      const onViewAnalysis = jest.fn();
+
+      renderWithProviders(<VideoList onViewAnalysis={onViewAnalysis} />);
+
+      const editButtons = screen.getAllByTitle('Edit');
+      await user.click(editButtons[0]);
+
+      expect(onViewAnalysis).not.toHaveBeenCalled();
+    });
+
+    it('disables edit buttons when update mutation is pending', () => {
+      setDefaultMocks({ updatePending: true });
+
+      renderWithProviders(<VideoList />);
+
+      const editButtons = screen.getAllByTitle('Edit');
+      editButtons.forEach((btn) => {
+        expect(btn).toBeDisabled();
+      });
+    });
+  });
+});

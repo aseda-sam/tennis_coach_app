@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { AnalysisStartResponse } from '../types/analysis';
 import { AppConfig } from '../types/config';
 import {
   DemoVideoListItem,
@@ -8,17 +9,10 @@ import {
   VideoUploadResponse,
 } from '../types/video';
 import { createAuthInterceptor } from '../utils/authInterceptor';
-import { supabase } from './supabaseClient';
 
 // API configuration
 const API_BASE_URL =
   process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
-
-// Create axios instance for analysis API
-const analysisApiInstance = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-});
 
 // Create main API instance
 const api = axios.create({
@@ -26,53 +20,8 @@ const api = axios.create({
   timeout: 30000,
 });
 
-// Add auth interceptor to analysisApiInstance (used by analysisApi.startAnalysis)
-createAuthInterceptor(analysisApiInstance, 'Analysis API Instance');
-
-// Normalize errors for analysisApiInstance too
-analysisApiInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Normalize FastAPI error responses to always have string detail
-    if (
-      error.response?.data?.detail &&
-      Array.isArray(error.response.data.detail)
-    ) {
-      const messages = error.response.data.detail
-        .map((err: { type?: string; loc?: unknown[]; msg?: string }) => {
-          if (typeof err === 'object' && err !== null && 'msg' in err) {
-            const loc = Array.isArray(err.loc)
-              ? err.loc.slice(1).join('.')
-              : '';
-            return loc ? `${loc}: ${err.msg}` : err.msg;
-          }
-          return String(err);
-        })
-        .filter(Boolean);
-      error.response.data.detail =
-        messages.length > 0 ? messages.join('; ') : 'Validation error';
-    }
-    return Promise.reject(error);
-  }
-);
-
 // Add request/response interceptors
-api.interceptors.request.use(async (config) => {
-  const profile = process.env.REACT_APP_PROFILE || 'local';
-
-  // Only add auth headers if profile is not 'local' and supabase is available
-  if (profile !== 'local' && supabase) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (session?.access_token) {
-      config.headers.Authorization = `Bearer ${session.access_token}`;
-    }
-  }
-
-  return config;
-});
+createAuthInterceptor(api);
 
 api.interceptors.response.use(
   (response) => response,
@@ -197,6 +146,9 @@ export const videoApi = {
     video_id: number;
     has_analysis: boolean;
     analysis_types: string[];
+    has_ball_detection: boolean;
+    ball_detection_rate: number | null;
+    ball_detection_status: string | null;
   }> => {
     const response = await api.get(`/videos/${videoId}/analysis-status`);
     return response.data;
@@ -220,6 +172,9 @@ export const videoApi = {
       video_id: number;
       has_analysis: boolean;
       analysis_types: string[];
+      has_ball_detection: boolean;
+      ball_detection_rate: number | null;
+      ball_detection_status: string | null;
     }[]
   > => {
     const response = await api.post<{
@@ -227,6 +182,9 @@ export const videoApi = {
         video_id: number;
         has_analysis: boolean;
         analysis_types: string[];
+        has_ball_detection: boolean;
+        ball_detection_rate: number | null;
+        ball_detection_status: string | null;
       }[];
     }>('/videos/analysis-status/bulk', { video_ids: videoIds });
     return response.data.statuses;
@@ -327,70 +285,6 @@ export const videoApi = {
       }
       throw error;
     }
-  },
-};
-
-// Updated to match backend AnalysisStartResponse
-export interface AnalysisStartResponse {
-  analysis_id: number | null;
-  video_filename: string;
-  status: string;
-  message: string;
-  estimated_duration: number | null;
-  task_id: number | null;
-}
-
-export interface AnalysisData {
-  id: number;
-  video_id: number; // Required since all records now have video_id
-  video_filename: string;
-  analysis_type: string;
-  total_frames: number;
-  processing_time: number;
-  model_used?: string;
-  confidence_threshold?: number;
-  include_pose_detection?: boolean;
-  frames_with_pose?: number;
-  pose_detection_rate?: number;
-  pose_detections: unknown[];
-  created_at: string;
-  updated_at?: string;
-  // New timing information
-  timing?: {
-    frame_extraction?: number;
-    pose_detection?: number;
-    frame_annotation?: number;
-    video_creation?: number;
-    total_analysis?: number;
-  };
-  confidence_threshold_used?: number;
-}
-
-export const analysisApi = {
-  // Start analysis for a video - now returns AnalysisStartResponse with task_id
-  startAnalysis: async (
-    videoId: number,
-    analysisRequest: {
-      analysis_type: string;
-      confidence_threshold?: number;
-      include_pose_detection?: boolean;
-    }
-  ): Promise<AnalysisStartResponse> => {
-    const response = await analysisApiInstance.post<AnalysisStartResponse>(
-      `/analysis/videos/${videoId}`,
-      analysisRequest
-    );
-    return response.data;
-  },
-
-  // Cancel a job (RQ)
-  cancelTask: async (
-    jobId: string
-  ): Promise<{ message: string; job_id: string }> => {
-    const response = await api.delete<{ message: string; job_id: string }>(
-      `/analysis/tasks/${jobId}`
-    );
-    return response.data;
   },
 };
 

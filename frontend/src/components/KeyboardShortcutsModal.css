@@ -9,14 +9,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: var(--z-modal-backdrop);
   padding: 20px;
   animation: keyboard-modal-fade 0.12s ease-out;
 }
 
 .keyboard-modal {
-  background: white;
-  border-radius: 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-3xl);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   max-width: 480px;
   width: 100%;
@@ -38,25 +38,25 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .keyboard-modal__header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .keyboard-modal__close {
   background: none;
   border: none;
   font-size: 24px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   cursor: pointer;
   padding: 4px;
-  border-radius: 6px;
-  transition: all 0.15s ease;
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
   line-height: 1;
   width: 32px;
   height: 32px;
@@ -66,8 +66,8 @@
 }
 
 .keyboard-modal__close:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-border-light);
+  color: var(--color-text-secondary);
 }
 
 .keyboard-modal__content {
@@ -87,7 +87,7 @@
 .keyboard-modal__section h3 {
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0 0 12px 0;
@@ -99,10 +99,10 @@
 .keyboard-modal__demo-badge {
   font-size: 10px;
   font-weight: 500;
-  color: #92400e;
-  background: #fef3c7;
+  color: var(--color-warning-dark);
+  background: var(--color-warning-light);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   text-transform: none;
   letter-spacing: 0;
 }
@@ -122,8 +122,8 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #f9fafb;
-  border-radius: 8px;
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-md);
 }
 
 .keyboard-modal__shortcut kbd {
@@ -132,20 +132,20 @@
   justify-content: center;
   min-width: 28px;
   padding: 4px 8px;
-  background: white;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-xs);
   font-size: 12px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-secondary);
   font-family: inherit;
 }
 
 .keyboard-modal__shortcut span {
   flex: 1;
   font-size: 14px;
-  color: #4b5563;
+  color: var(--color-text-muted);
 }
 
 .keyboard-modal__toggle {
@@ -153,7 +153,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   cursor: pointer;
   flex: 0 0 auto;
 }
@@ -171,14 +171,14 @@
 
 .keyboard-modal__footer {
   padding: 16px 24px;
-  background: #f9fafb;
-  border-top: 1px solid #e5e7eb;
+  background: var(--color-surface-hover);
+  border-top: 1px solid var(--color-border);
   text-align: center;
 }
 
 .keyboard-modal__hint {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .keyboard-modal__hint kbd {
@@ -186,12 +186,12 @@
   align-items: center;
   justify-content: center;
   padding: 2px 6px;
-  background: white;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-xs);
   font-size: 11px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-secondary);
   font-family: inherit;
   margin: 0 2px;
 }
@@ -209,5 +209,11 @@
 
   .keyboard-modal__content {
     padding: 16px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .keyboard-modal-overlay {
+    animation: none;
   }
 }

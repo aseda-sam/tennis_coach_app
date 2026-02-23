@@ -30,6 +30,7 @@ repos:
       - id: check-json
       - id: check-added-large-files
         args: ['--maxkb=1000']  # 1 MB — catches accidental video/model commits
+        exclude: ^backend/uv\.lock$
       - id: check-merge-conflict
       - id: detect-private-key
 
@@ -83,6 +84,6 @@ repos:
         name: "diagrams · mermaid validation (pre-push)"
         entry: python .cursor/skills/diagram-maintainer/scripts/validate_mermaid.py
         language: system
-        files: ^project_docs/diagrams/.*\.md$
+        files: ^docs/diagrams/.*\.md$
         pass_filenames: false
         stages: [pre-push]

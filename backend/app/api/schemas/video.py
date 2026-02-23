@@ -1,9 +1,10 @@
 """Video-related API schemas."""
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import List, Literal, Optional
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 class VideoMetadata(BaseModel):
@@ -156,8 +157,73 @@ class VideoMetadataUpdateRequest(BaseModel):
     )
     apply_to_existing_serves: Optional[bool] = Field(
         default=False,
-        description="If true, reassign existing serve attempts for this video",
+        description="If true, reassign existing serve windows for this video",
     )
+
+
+class VideoAnalysisStatus(BaseModel):
+    """Response model for video analysis status check."""
+
+    video_id: int
+    has_analysis: bool
+    analysis_types: List[str] = []
+    has_ball_detection: bool = False
+    ball_detection_rate: Optional[float] = Field(
+        default=None, description="Ball detection rate (0.0-1.0)"
+    )
+    ball_detection_status: Optional[str] = Field(
+        default=None, description="Ball detection status: completed, failed, or null"
+    )
+
+
+class BulkAnalysisStatusRequest(BaseModel):
+    """Request model for bulk analysis status check."""
+
+    video_ids: List[int] = Field(
+        description="List of video IDs to check analysis status for",
+        min_length=1,
+        max_length=100,
+    )
+
+
+class BulkAnalysisStatusResponse(BaseModel):
+    """Response model for bulk analysis status check."""
+
+    statuses: List[VideoAnalysisStatus] = Field(
+        description="Analysis status for each requested video"
+    )
+
+
+class BallContactTimestampsResponse(BaseModel):
+    """Response model for ball contact timestamps in a video (serve contact points)."""
+
+    ball_contact_timestamps: List[float] = Field(
+        default_factory=list,
+        description="Sorted list of ball contact timestamps in seconds (unique, ascending)",
+    )
+
+
+class VideoJobResponse(BaseModel):
+    """Response schema for video job status."""
+
+    id: UUID
+    video_id: int
+    job_type: str
+    status: str
+    error: Optional[str] = None
+    stage: Optional[str] = None
+    progress_percent: int = 0
+    serve_windows_found: Optional[int] = None
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("id")
+    def serialize_id(self, id: UUID) -> str:
+        """Convert UUID to string for JSON serialization."""
+        return str(id)
 
 
 # Validation functions

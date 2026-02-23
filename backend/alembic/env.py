@@ -13,8 +13,12 @@ from app.core.database import Base
 from app.models import ball_detection as _ball_detection_model  # noqa: F401
 from app.models import player as _player_model  # noqa: F401
 from app.models import pose_detection as _pose_detection_model  # noqa: F401
-from app.models import serve_attempt as _serve_attempt_model  # noqa: F401
+from app.models import (
+    serve_biomechanics_report as _serve_biomechanics_report_model,  # noqa: F401
+)
+from app.models import serve_window as _serve_window_model  # noqa: F401
 from app.models import video as _video_model  # noqa: F401
+from app.models import video_job as _video_job_model  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

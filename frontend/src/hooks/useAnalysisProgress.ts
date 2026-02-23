@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnalysisData } from '../services/api';
-import unifiedAnalysisApi, { VideoJob } from '../services/unifiedAnalysisApi';
+import unifiedAnalysisApi from '../services/unifiedAnalysisApi';
+import { AnalysisData, VideoJob } from '../types/analysis';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export interface AnalysisProgress {
   jobId: string;
   videoId: number;
-  analysisType:
-    | 'pose_only'
-    | 'video_annotation_only'
-    | 'pose_with_annotation'
-    | 'contact_metrics';
+  analysisType: 'pose_only';
   status: 'queued' | 'processing' | 'completed' | 'failed';
   progress: number;
   error?: string;
@@ -150,14 +147,10 @@ export function useAnalysisProgress(
         }
       } catch (err: unknown) {
         // Error detail is already normalized to string by axios interceptor
-        const axiosError = err as {
-          response?: { data?: { detail?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          axiosError?.response?.data?.detail ||
-          axiosError?.message ||
-          'Failed to get job status';
+        const errorMessage = getApiErrorMessage(
+          err,
+          'Failed to get job status'
+        );
         setError(errorMessage);
         setIsLoading(false);
         // Keep polling on transient errors

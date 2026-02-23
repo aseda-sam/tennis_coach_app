@@ -6,6 +6,9 @@ export type VideoAnalysisStatus = {
   video_id: number;
   has_analysis: boolean;
   analysis_types: string[];
+  has_ball_detection: boolean;
+  ball_detection_rate: number | null;
+  ball_detection_status: string | null;
 };
 
 export type VideoAnalysisStatusById = Record<number, VideoAnalysisStatus>;
@@ -23,18 +26,7 @@ export const useVideos = () => {
 export const useVideoAnalysisStatus = (videoId: number) => {
   return useQuery<VideoAnalysisStatus, Error>({
     queryKey: ['video-analysis-status', videoId],
-    queryFn: async () => {
-      try {
-        return await videoApi.getVideoAnalysisStatus(videoId);
-      } catch (error) {
-        // Return default status if no analysis exists
-        return {
-          video_id: videoId,
-          has_analysis: false,
-          analysis_types: [],
-        };
-      }
-    },
+    queryFn: () => videoApi.getVideoAnalysisStatus(videoId),
     staleTime: 2 * 60 * 1000, // 2 minutes - analysis status doesn't change often
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
     refetchOnMount: false, // Don't refetch on component mount if data is fresh
@@ -48,29 +40,15 @@ export const useVideoAnalysisStatuses = (videoIds: number[]) => {
   return useQuery<VideoAnalysisStatusById, Error>({
     queryKey: ['video-analysis-statuses', key],
     queryFn: async () => {
-      // Use bulk endpoint for efficient fetching
       if (videoIds.length === 0) {
         return {};
       }
 
-      try {
-        const statuses = await videoApi.getBulkVideoAnalysisStatus(videoIds);
-        // Convert to plain object for React Query serialization
-        return statuses.reduce((acc, status) => {
-          acc[status.video_id] = status;
-          return acc;
-        }, {} as VideoAnalysisStatusById);
-      } catch (error) {
-        // Fallback: return empty statuses for all videos
-        return videoIds.reduce((acc, videoId) => {
-          acc[videoId] = {
-            video_id: videoId,
-            has_analysis: false,
-            analysis_types: [],
-          };
-          return acc;
-        }, {} as VideoAnalysisStatusById);
-      }
+      const statuses = await videoApi.getBulkVideoAnalysisStatus(videoIds);
+      return statuses.reduce((acc, status) => {
+        acc[status.video_id] = status;
+        return acc;
+      }, {} as VideoAnalysisStatusById);
     },
     enabled: videoIds.length > 0,
     staleTime: 2 * 60 * 1000,

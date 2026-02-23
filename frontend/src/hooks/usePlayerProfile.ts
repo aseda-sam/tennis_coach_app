@@ -1,16 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  playerApi,
-  PlayerInfo,
-  PlayerProfileUpdate,
-} from '../services/playerApi';
+import { playerApi } from '../services/playerApi';
+import { PlayerInfo, PlayerProfileUpdate } from '../types/player';
 import { useAuth } from './useAuth';
 
 export const usePlayerProfile = () => {
   const { user } = useAuth();
 
   return useQuery<PlayerInfo, Error>({
-    queryKey: ['playerProfile', user?.id],
+    queryKey: ['player-profile', user?.id],
     queryFn: playerApi.getMe,
     enabled: !!user,
     retry: 1,
@@ -23,7 +20,7 @@ export const useUpsertPlayerProfile = () => {
   return useMutation({
     mutationFn: (profile: PlayerProfileUpdate) => playerApi.upsertMe(profile),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['playerProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['player-profile'] });
     },
   });
 };

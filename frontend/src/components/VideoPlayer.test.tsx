@@ -1,21 +1,8 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { renderWithProviders } from '../test-utils';
 import VideoPlayer from './VideoPlayer';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-  },
-});
-
-const renderWithProviders = (ui: React.ReactElement) => {
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
-};
 
 // Mock the Icons component
 jest.mock('./Icons', () => ({
@@ -46,30 +33,30 @@ jest.mock('../hooks/useVideos', () => ({
   }),
 }));
 
-jest.mock('../hooks/useServeAttempts', () => ({
-  useServeAttempts: () => ({
-    serveAttempts: [],
-    updateServeAttempt: jest.fn(),
-    deleteServeAttempt: jest.fn(),
-    createServeAttempt: jest.fn(),
+jest.mock('../hooks/useServeWindows', () => ({
+  useServeWindows: () => ({
+    serveWindows: [],
+    updateServeWindow: jest.fn(),
+    deleteServeWindow: jest.fn(),
+    createServeWindow: jest.fn(),
   }),
 }));
 
-jest.mock('./AddServeAttemptButton', () => {
-  return function MockAddServeAttemptButton() {
-    return <div data-testid="add-serve-attempt-button">Add Serve Attempt</div>;
+jest.mock('./AddServeWindowButton', () => {
+  return function MockAddServeWindowButton() {
+    return <div data-testid="add-serve-window-button">Add Serve Attempt</div>;
   };
 });
 
-jest.mock('./ServeAttemptRange', () => {
-  return function MockServeAttemptRange() {
-    return <div data-testid="serve-attempt-range">Serve Attempt Range</div>;
+jest.mock('./ServeWindowRange', () => {
+  return function MockServeWindowRange() {
+    return <div data-testid="serve-window-range">Serve Attempt Range</div>;
   };
 });
 
-jest.mock('./ServeAttemptModal', () => {
-  return function MockServeAttemptModal() {
-    return <div data-testid="serve-attempt-modal">Serve Attempt Modal</div>;
+jest.mock('./ServeWindowModal', () => {
+  return function MockServeWindowModal() {
+    return <div data-testid="serve-window-modal">Serve Attempt Modal</div>;
   };
 });
 
@@ -95,8 +82,6 @@ describe('VideoPlayer', () => {
   beforeEach(() => {
     // Mock console.log to reduce noise in tests
     jest.spyOn(console, 'log').mockImplementation(() => {});
-    // Clear query cache before each test
-    queryClient.clear();
   });
 
   afterEach(() => {
@@ -158,7 +143,8 @@ describe('VideoPlayer', () => {
       expect(screen.queryByTestId('volume-icon')).not.toBeInTheDocument();
     });
 
-    it('calls onClose when close button is clicked', () => {
+    it('calls onClose when close button is clicked', async () => {
+      const user = userEvent.setup();
       const onCloseMock = jest.fn();
 
       renderWithProviders(
@@ -166,7 +152,7 @@ describe('VideoPlayer', () => {
       );
 
       const closeButton = screen.getByRole('button', { name: /close/i });
-      fireEvent.click(closeButton);
+      await user.click(closeButton);
       expect(onCloseMock).toHaveBeenCalledTimes(1);
     });
   });

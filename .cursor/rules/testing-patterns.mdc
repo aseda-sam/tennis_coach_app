@@ -12,19 +12,23 @@ alwaysApply: false
 
 - **Protect contracts** (API response shapes, service behavior) with fast, reliable tests.
 
-## TDD Workflow (Required)
+## When to Write Tests First (TDD)
 
-- **Red**: Write failing test first that defines the contract/behavior you want.
-- **Green**: Implement minimum code to pass the test.
-- **Refactor**: Clean up code while keeping tests green.
-- **Work in small steps**: 5-10 minute cycles, commit after each passing test.
+TDD (Red → Green → Refactor) works well when the contract is known upfront. Use it for:
 
-## What to Write (Required - Default Order)
+- **Bug fixes**: Write a failing test that reproduces the bug, then fix it. Non-negotiable.
+- **API contract changes**: If you're adding/removing fields on a response schema, write the contract test asserting the new shape before changing the schema. The contract is known — test it first.
+- **Service logic with clear inputs/outputs**: Pure functions, validators, calculators — if you can define expected behavior before writing code, do it.
+
+TDD is less useful when you're **designing a new data structure** or **exploring** what the output should look like. If you don't know the shape yet, implement first, then write tests that lock down the result. Don't write throwaway tests just to say you did TDD.
+
+**The rule**: write tests before implementation when the contract is known. Write tests after implementation when you're discovering the contract. Either way, tests must exist before the code is merged.
+
+## What to Write (Required)
 
 - **Contract tests (API)** for new/changed endpoints: status codes + response shape + auth behavior.
   - **REQUIRED**: If you change an API schema (add/remove fields), you MUST update/add a test that asserts the response shape includes those fields.
   - **REQUIRED**: If you add fields needed by UI (e.g., `session_type`, `camera_angle`, `primary_player_id`), list endpoint tests MUST verify those fields are present in the response.
-  - **REQUIRED**: Write the failing test BEFORE implementing the change (TDD).
 - **Unit tests (services/utils)** for business logic with dependencies mocked.
 - **Integration tests** only when the workflow contract needs it (upload → job → results).
 
@@ -38,6 +42,56 @@ alwaysApply: false
 ## Storage-aware pragmatism
 
 - If a test requires local filesystem access and storage is cloud, **skip** with a clear message.
+
+## Test structure
+
+```
+backend/tests/
+  conftest.py                  # Root fixtures: client, db_session, test_user_id, temp_upload_dir
+  biomechanics_fixtures.py     # Shared helpers: _make_pose(), _make_serve_sequence()
+  api/                         # Contract tests (route-level)
+    test_serve_biomechanics_routes.py
+  services/                    # Unit tests (service-level)
+    biomechanics/
+      conftest.py              # Biomechanics-specific fixtures
+      test_metrics.py
+      test_phase_segmentation.py
+      test_posture_analysis.py
+      test_serve_biomechanics_service.py
+      test_toss_metrics.py
+    ball_detection/
+      test_contact_detector.py
+  test_*.py                    # Top-level: contract, unit, and integration tests
+```
+
+**Naming:** `test_<module_or_feature>.py`. Classes: `TestFeatureBehavior`. Methods: `test_<scenario>`.
+
+## Fixtures
+
+**Root `conftest.py` fixtures:**
+- `client` — `TestClient` with DB override + mock auth (returns `test_user_id`). Use for contract/API tests.
+- `db_session` — isolated DB session per test (rollback on teardown). Use when you need DB without HTTP.
+- `test_user_id` — `"00000000-0000-0000-0000-000000000000"`. Matches the mock auth user.
+- `temp_upload_dir` — `Path` to a temp directory, cleaned up after test.
+- `sample_video_content` — minimal MP4-like bytes for API upload tests.
+- `ensure_local_profile` (autouse) — forces `PROFILE=local` for all tests.
+
+**`biomechanics_fixtures.py` helpers** (import directly, not via conftest):
+- `_make_pose(left_wrist_y=..., right_wrist_y=..., knee_y=..., ...)` — build a single pose dict.
+- `_make_serve_sequence(num_frames=60, fps=30.0)` — build a full serve pose sequence with realistic phase progression.
+
+## Mock patches
+
+- **Patch where imported, not where defined.** If `app.services.foo` imports `bar` from `app.utils.bar`, patch `app.services.foo.bar`, not `app.utils.bar.bar`.
+- **Storage:** Patch `app.services.storage_service.storage_service` for file operations.
+- **Auth:** Already handled by `client` fixture (overrides `get_current_user`). For auth-specific tests, override manually.
+- **Redis/RQ:** Patch `rq.Queue` or the specific enqueue call. Don't start a real Redis connection.
+- **Settings:** Use `patch.object(settings, "FIELD", value)` — don't monkeypatch env vars directly.
+
+## DB vs pure unit tests
+
+- **Needs DB:** Any test using `client` or `db_session` fixtures (contract tests, integration tests).
+- **Pure unit:** Biomechanics service tests, utility tests — no DB fixture needed, run without Postgres.
 
 ## Where to look (canonical examples)
 

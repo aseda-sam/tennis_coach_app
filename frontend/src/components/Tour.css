@@ -115,6 +115,12 @@
   background: var(--color-primary-dark);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .tour-tooltip {
+    animation: none;
+  }
+}
+
 @media (max-width: 640px) {
   .tour-tooltip {
     max-width: calc(100vw - var(--spacing-4xl));

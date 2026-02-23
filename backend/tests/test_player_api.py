@@ -70,7 +70,7 @@ class TestPlayerAPI:
         response = client.post("/v0/players/", json=player_data)
 
         assert response.status_code == 400
-        assert "already exists" in response.json()["detail"]
+        assert "already exists" in response.json()["error"]["message"]
 
     def test_create_player_invalid_data(
         self, client: TestClient, db_session: Session
@@ -203,7 +203,7 @@ class TestPlayerAPI:
         response = client.get("/v0/players/999")
 
         assert response.status_code == 404
-        assert "not found" in response.json()["detail"]
+        assert "not found" in response.json()["error"]["message"]
 
     def test_update_player_success(
         self, client: TestClient, db_session: Session
@@ -280,7 +280,7 @@ class TestPlayerAPI:
         response = client.put("/v0/players/999", json=update_data)
 
         assert response.status_code == 404
-        assert "not found" in response.json()["detail"]
+        assert "not found" in response.json()["error"]["message"]
 
     def test_update_player_duplicate_name(
         self, client: TestClient, db_session: Session
@@ -341,4 +341,4 @@ class TestPlayerAPI:
         response = client.delete("/v0/players/999")
 
         assert response.status_code == 404
-        assert "not found" in response.json()["detail"]
+        assert "not found" in response.json()["error"]["message"]

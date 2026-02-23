@@ -1,0 +1,339 @@
+.hero-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+}
+
+.hero-view__display {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+}
+
+.hero-view__video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  cursor: pointer;
+}
+
+.hero-view__canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* PiP video in analysis-focus mode */
+.hero-view__pip-video {
+  position: absolute;
+  bottom: var(--spacing-md);
+  right: var(--spacing-md);
+  width: 160px;
+  height: 90px;
+  border-radius: var(--radius-md);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  object-fit: cover;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: var(--transition-normal);
+}
+
+.hero-view__pip-video:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.04);
+}
+
+/* Controls */
+.hero-view__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-top: 1px solid var(--color-border);
+}
+
+.hero-view__play-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.hero-view__play-btn:hover {
+  background: var(--color-court-blue-soft);
+  border-color: var(--color-court-blue);
+  color: var(--color-court-blue);
+}
+
+.hero-view__timestamp {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  min-width: 52px;
+  text-align: center;
+}
+
+.hero-view__timestamp--end {
+  color: var(--color-text-disabled);
+}
+
+/* Scrubber container — holds phase track behind the range input */
+.hero-view__scrubber-container {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 20px;
+}
+
+/* Phase segments track — positioned behind the range input */
+.hero-view__phase-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 6px;
+  transform: translateY(-50%);
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hero-view__phase-segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--color-border-dark);
+  opacity: 0.5;
+  border-radius: var(--radius-full);
+  transition: opacity var(--duration-fast) var(--ease-in-out);
+}
+
+.hero-view__phase-segment--active {
+  background: var(--color-court-blue);
+  opacity: 1;
+  z-index: 1;
+}
+
+/* Contact marker — vertical line on the phase track */
+.hero-view__contact-marker {
+  position: absolute;
+  top: -1px;
+  width: 2px;
+  height: calc(100% + 2px);
+  background: var(--color-court-blue);
+  transform: translateX(-50%);
+  z-index: 2;
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+/* Range input — transparent track so phase segments show through */
+.hero-view__scrubber {
+  position: relative;
+  z-index: 3;
+  flex: 1;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* WebKit (Chrome, Safari, Edge) — transparent track */
+.hero-view__scrubber::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+  border-radius: var(--radius-full);
+}
+
+/* WebKit — custom thumb */
+.hero-view__scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-court-blue);
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  margin-top: -4px;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-in-out);
+}
+
+.hero-view__scrubber:hover::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+.hero-view__scrubber:active::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+
+/* Firefox — transparent track */
+.hero-view__scrubber::-moz-range-track {
+  height: 6px;
+  background: transparent;
+  border-radius: var(--radius-full);
+  border: none;
+}
+
+/* Firefox — custom thumb */
+.hero-view__scrubber::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-court-blue);
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.hero-view__scrubber:hover::-moz-range-thumb {
+  transform: scale(1.15);
+}
+
+/* When no phases are present, show a simple track behind the thumb */
+.hero-view__scrubber-container:not(:has(.hero-view__phase-track))
+  .hero-view__scrubber::-webkit-slider-runnable-track {
+  background: var(--color-border);
+}
+
+.hero-view__scrubber-container:not(:has(.hero-view__phase-track))
+  .hero-view__scrubber::-moz-range-track {
+  background: var(--color-border);
+}
+
+/* Speed selector — compact segmented group */
+.hero-view__speed-selector {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.hero-view__speed-btn {
+  padding: 4px 8px;
+  border: none;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-mono);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  line-height: 1;
+}
+
+.hero-view__speed-btn:last-child {
+  border-right: none;
+}
+
+.hero-view__speed-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface-secondary);
+}
+
+.hero-view__speed-btn--active {
+  background: var(--color-court-blue-soft);
+  color: var(--color-court-blue);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Loop button — icon-only */
+.hero-view__loop-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.hero-view__loop-btn:hover:not(:disabled) {
+  border-color: var(--color-border-dark);
+  color: var(--color-text);
+}
+
+.hero-view__loop-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.hero-view__loop-btn--active {
+  border-color: var(--color-court-blue);
+  background: var(--color-court-blue-soft);
+  color: var(--color-court-blue);
+}
+
+@media (max-width: 768px) {
+  .hero-view__controls {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .hero-view__scrubber-container {
+    order: 3;
+    width: 100%;
+    flex: none;
+  }
+
+  .hero-view__pip-video {
+    width: 120px;
+    height: 68px;
+  }
+}
+
+/* 1080p laptops */
+@media (min-width: 1024px) and (max-width: 1280px) {
+  .hero-view__controls {
+    padding: var(--spacing-sm) var(--spacing-lg);
+  }
+
+  .hero-view__pip-video {
+    width: 120px;
+    height: 68px;
+  }
+}
+
+/* Large screens */
+@media (min-width: 1440px) {
+  .hero-view__controls {
+    padding: var(--spacing-md) var(--spacing-2xl);
+  }
+}

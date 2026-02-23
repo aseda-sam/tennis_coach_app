@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.pose_detection import PoseDetection
-from app.models.serve_attempt import ServeAttempt
+from app.models.serve_window import ServeWindow
 from app.models.video import Video
 from app.models.video_job import VideoJob
 from app.services import video_service
@@ -45,9 +45,9 @@ def list_demo_videos_with_status(db: Session) -> List[dict]:
     }
 
     serve_count_rows = (
-        db.query(ServeAttempt.video_id, func.count(ServeAttempt.id))
-        .filter(ServeAttempt.video_id.in_(video_ids))
-        .group_by(ServeAttempt.video_id)
+        db.query(ServeWindow.video_id, func.count(ServeWindow.id))
+        .filter(ServeWindow.video_id.in_(video_ids))
+        .group_by(ServeWindow.video_id)
         .all()
     )
     serve_counts = {video_id: count for video_id, count in serve_count_rows}
@@ -64,7 +64,7 @@ def list_demo_videos_with_status(db: Session) -> List[dict]:
                 "file_path": video.file_path,
                 "is_active_demo": video.is_active_demo,
                 "has_pose_analysis": has_pose_analysis,
-                "serve_attempt_count": serve_count,
+                "serve_window_count": serve_count,
                 "created_at": video.created_at,
             }
         )

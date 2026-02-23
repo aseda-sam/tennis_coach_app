@@ -2,8 +2,8 @@
 
 If you deploy, keep it simple:
 
-- **API**: Fly.io app
-- **Worker**: Fly.io app (RQ worker)
+- **API**: Fly.io app (`tennis-coach-api`, config in `fly.api.toml`)
+- **Worker**: Fly.io app (`tennis-coach-worker`, config in `fly.toml`)
 - **Redis**: Upstash
 - **DB/Auth/Storage**: Supabase
 
@@ -19,6 +19,10 @@ SUPABASE_SECRET_KEY=...
 SUPABASE_STORAGE_BUCKET=...
 
 REDIS_URL=rediss://...
+
+# Optional but needed for admin/demo features:
+ADMIN_USER_IDS=uuid1,uuid2
+SUPABASE_DEMO_BUCKET=demo-videos
 ```
 
 ## First deploy checklist

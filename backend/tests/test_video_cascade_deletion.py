@@ -4,7 +4,10 @@ Test video cascade deletion to ensure all related records are properly deleted.
 
 from sqlalchemy.orm import Session
 
+from app.models.player import Player
 from app.models.pose_detection import PoseDetection
+from app.models.serve_biomechanics_report import ServeBiomechanicsReport
+from app.models.serve_window import ServeWindow
 from app.models.video import Video
 from app.services import video_service
 
@@ -123,3 +126,73 @@ class TestVideoCascadeDeletion:
             .first()
         )
         assert deleted_pose_detection is None
+
+    def test_video_deletion_cascades_to_biomechanics_reports(
+        self, db_session: Session, test_user_id: str
+    ) -> None:
+        """Deleting a video should also delete serve biomechanics reports."""
+        player = Player(
+            name="Cascade Player",
+            dominant_hand="right",
+            user_id=test_user_id,
+        )
+        db_session.add(player)
+        db_session.commit()
+        db_session.refresh(player)
+
+        video = Video(
+            filename="test_biomechanics_cascade.mp4",
+            file_path="/path/to/test_biomechanics_cascade.mp4",
+            file_size=2000,
+            user_id=test_user_id,
+        )
+        db_session.add(video)
+        db_session.commit()
+        db_session.refresh(video)
+
+        serve_window = ServeWindow(
+            video_id=video.id,
+            user_id=test_user_id,
+            player_id=player.id,
+            start_timestamp=1.0,
+            end_timestamp=2.0,
+            contact_timestamp=1.5,
+            status="accepted",
+            source="manual",
+        )
+        db_session.add(serve_window)
+        db_session.commit()
+        db_session.refresh(serve_window)
+
+        report = ServeBiomechanicsReport(
+            serve_window_id=serve_window.id,
+            user_id=test_user_id,
+            player_id=player.id,
+            phase_segmentation_json='{"phases":[]}',
+            metrics=[],
+            analysis_version="phase-metrics-v1",
+        )
+        db_session.add(report)
+        db_session.commit()
+        db_session.refresh(report)
+        report_id = report.id
+
+        success, _, deleted_video_id = video_service.delete_video_with_analyses(
+            db_session, video.id
+        )
+
+        assert success is True
+        assert deleted_video_id == video.id
+        assert db_session.query(Video).filter(Video.id == video.id).first() is None
+        assert (
+            db_session.query(ServeWindow)
+            .filter(ServeWindow.id == serve_window.id)
+            .first()
+            is None
+        )
+        assert (
+            db_session.query(ServeBiomechanicsReport)
+            .filter(ServeBiomechanicsReport.id == report_id)
+            .first()
+            is None
+        )

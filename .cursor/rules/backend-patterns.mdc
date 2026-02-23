@@ -32,10 +32,19 @@ alwaysApply: false
 - **If you change models/relationships**:
   - Update `backend/docs/database_schema.md`
   - Create/adjust Alembic migrations under `backend/alembic/`
+- **If you change env vars or PROFILE behaviour**: update `backend/docs/config.md`.
+- **If you change a background job task or queue**: update `backend/docs/background-jobs.md`.
+- **If you change a script's CLI flags**: update `backend/docs/demo-videos.md` (for demo/admin scripts).
+
+## Imports
+
+- Imports at module top level by default.
+- Lazy imports are acceptable for heavy dependencies (ML model libraries like MediaPipe, YOLO, large numerical libraries) to avoid slowing down startup and test collection. Also fine inside RQ task functions to avoid import/fork issues.
+- Don't lazy-import standard library or lightweight project modules — that's unnecessary indirection.
 
 ## Errors
 
-- **Services**: raise standard Python exceptions (`ValueError`, `RuntimeError`, `FileNotFoundError`).
+- **Services**: raise standard Python exceptions (`ValueError`, `RuntimeError`, `FileNotFoundError`). **Never raise `HTTPException` in a service** — it couples the service to HTTP and bypasses `handle_service_error` silently.
 - **Routes**: translate exceptions using `backend/app/utils/error_handling.py` (`APIError`, `handle_*`, `log_and_raise_error`).
 - **Prefer standardized errors** over ad-hoc `HTTPException`; use `HTTPException` only for simple request validation when it’s truly local to the route.
 

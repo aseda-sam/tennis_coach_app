@@ -1,0 +1,57 @@
+---
+description: Frontend API layer, React Query, and error handling conventions
+globs:
+  - frontend/src/services/**/*.ts
+  - frontend/src/hooks/**/*.ts
+alwaysApply: false
+---
+
+# Frontend API Patterns
+
+## Axios Instance (Required)
+
+- One shared Axios instance (`services/api.ts`). Don't create additional instances.
+- Auth interceptor must use the shared `createAuthInterceptor()` from `utils/authInterceptor.ts` — no inline duplication.
+- Response error normalization (FastAPI validation errors -> string) lives in the interceptor, not in service methods.
+
+## Service Layer Pattern (Required)
+
+- Each API domain gets one service file in `services/` (e.g., `videoApi`, `serveWindowApi`, `biomechanicsApi`).
+- Service files export a plain object with async methods — not classes.
+- Service methods handle request construction and return typed data. No React hooks or UI logic.
+- All API response/request types go in `types/` directory, not co-located in service files. Service files import from `types/`.
+- Don't duplicate error handling in service methods if the interceptor already normalizes it. Only add service-level error handling for domain-specific transformations (e.g., 404 -> "Pose data not found").
+
+## React Query Conventions (Required)
+
+- Every API call accessed by components goes through a custom hook in `hooks/`.
+- Query keys: kebab-case array — `['domain-entity', id?, filters?]`. Include all variables that affect the response.
+- `enabled` guard: Always gate queries on their dependencies (`enabled: !!videoId`). Never let a query fire with undefined/null IDs.
+- Stale time: tune based on how often the data changes and how stale is acceptable for the UX. General guidance:
+  - Rarely-changing data (config, profile): longer stale times (minutes)
+  - Entity lists: moderate stale times
+  - Polling/progress: short stale times
+  - Signed URLs: dynamic, based on token expiry
+- Mutations must invalidate all related queries in `onSuccess`. If a mutation changes data that multiple query keys depend on, invalidate all of them.
+- Use partial key matching for broadcast invalidation: `invalidateQueries({ queryKey: ['serve-proposals'] })` matches all `['serve-proposals', videoId]` variants.
+- Don't manually sync cache state — invalidate and let React Query refetch. Exception: `setQueryData` for optimistic updates when you have the full response from the mutation.
+
+## Error Handling (Required)
+
+- Use `getApiErrorMessage(err, fallback)` from `utils/apiError.ts` for all user-facing error messages.
+- Hooks expose errors via React Query's `.error` / `.isError` or via `onError` callbacks — don't swallow errors silently.
+- For background job polling: continue polling on transient errors, surface error to UI via callback.
+
+## Polling Pattern (for background jobs)
+
+- Use visibility API to pause/resume polling when tab is hidden.
+- Fixed interval (not exponential backoff) is fine for short-lived jobs (<5 min). Document the interval in the hook.
+
+## Canonical Examples
+
+- Shared Axios instance: `frontend/src/services/api.ts`
+- Auth interceptor: `frontend/src/utils/authInterceptor.ts`
+- Error utility: `frontend/src/utils/apiError.ts`
+- Service files: `frontend/src/services/serveWindowApi.ts`, `frontend/src/services/biomechanicsApi.ts`
+- Custom hooks: `frontend/src/hooks/useServeWindows.ts`, `frontend/src/hooks/useVideos.ts`
+- Types: `frontend/src/types/video.ts`, `frontend/src/types/biomechanics.ts`
