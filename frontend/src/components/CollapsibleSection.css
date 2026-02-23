@@ -13,7 +13,7 @@
   align-items: center;
   gap: var(--spacing-sm);
   width: 100%;
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm);
   border: none;
   background: none;
   cursor: pointer;
