@@ -171,6 +171,9 @@ const VideoList: React.FC<VideoListProps> = ({
       ) : (
         <div className="video-grid">
           {videos.map((video: VideoMetadata) => {
+            const isOwnVideo =
+              !video.primary_player_id ||
+              video.primary_player_id === playerProfile?.id;
             return (
               <div
                 key={video.id}
@@ -190,7 +193,9 @@ const VideoList: React.FC<VideoListProps> = ({
                   <h3 className="video-card-filename">{video.filename}</h3>
 
                   <div className="video-card-meta-row">
-                    <span className="user-info">
+                    <span
+                      className={`user-info${isOwnVideo ? ' user-info--own' : ''}`}
+                    >
                       <svg
                         width="14"
                         height="14"

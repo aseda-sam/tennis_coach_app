@@ -237,6 +237,11 @@
   border-top: 1px solid var(--color-border-light);
 }
 
+.user-info--own {
+  color: var(--color-warning-dark);
+  font-weight: var(--font-weight-semibold);
+}
+
 .user-info,
 .date-info {
   display: flex;
