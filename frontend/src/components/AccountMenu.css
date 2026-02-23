@@ -193,8 +193,34 @@
 }
 
 .account-menu-profile--edit {
-  background: var(--color-surface-secondary);
   border-bottom: 1px solid var(--color-border);
+}
+
+.account-menu-edit-section {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-secondary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.account-menu-edit-section-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-sm);
+}
+
+.account-menu-edit-section-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+}
+
+.account-menu-edit-section-grid .account-menu-field {
+  margin-bottom: 0;
 }
 
 .account-menu-field {
@@ -233,7 +259,7 @@ select.account-menu-input {
 
 .account-menu-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(0, 188, 125, 0.12);
+  box-shadow: var(--shadow-primary-sm);
 }
 
 .account-menu-input:disabled {
