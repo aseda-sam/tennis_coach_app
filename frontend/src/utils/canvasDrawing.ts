@@ -49,6 +49,48 @@ export const BALL_COLOR = '#FF1493';
 export const BALL_TRAIL_LENGTH = 30; // ~1 second at 30fps
 export const ANNOTATION_COLOR = '#00D4FF';
 
+/** Per-bone thickness — keyed by "startKey:endKey". */
+export const BONE_THICKNESS: Record<string, number> = {
+  // Torso frame
+  'left_shoulder:right_shoulder': 4,
+  'right_shoulder:left_shoulder': 4,
+  'left_hip:right_hip': 4,
+  'right_hip:left_hip': 4,
+  'left_shoulder:left_hip': 4,
+  'right_shoulder:right_hip': 4,
+  // Upper arms
+  'left_shoulder:left_elbow': 2.5,
+  'right_shoulder:right_elbow': 2.5,
+  // Lower arms
+  'left_elbow:left_wrist': 2,
+  'right_elbow:right_wrist': 2,
+  // Upper legs
+  'left_hip:left_knee': 3,
+  'right_hip:right_knee': 3,
+  // Lower legs
+  'left_knee:left_ankle': 2.5,
+  'right_knee:right_ankle': 2.5,
+};
+
+/** Joints that get the ring effect (shoulder + hip pivots). */
+export const MAJOR_JOINTS = new Set([
+  'left_shoulder',
+  'right_shoulder',
+  'left_hip',
+  'right_hip',
+]);
+
+export const JOINT_RADIUS_MAJOR = 4;
+export const JOINT_RADIUS_MINOR = 2.5;
+export const HEAD_OFFSET_RATIO = 0.35;
+export const HEAD_RADIUS = 6;
+export const GROUND_PLANE_GLOW_BLUR = 10;
+export const GROUND_PLANE_Y_OFFSET = 12;
+export const SKELETON_GLOW_BLUR = 4;
+export const STICK_BALL_HEAD_RADIUS = 7;
+export const STICK_BALL_HEAD_GLOW_BLUR = 6;
+export const ANNOTATION_Y_MARGIN = 18;
+
 // ---------------------------------------------------------------------------
 // Geometry helpers
 // ---------------------------------------------------------------------------
@@ -360,17 +402,17 @@ export function drawGrid(
   }
 }
 
-/** Draw skeleton connections with glow effect on the stick-figure canvas. */
+/** Draw skeleton connections with glow effect and variable bone thickness. */
 export function drawStickSkeleton(
   ctx: CanvasRenderingContext2D,
   normalizedPose: Record<string, { x: number; y: number }>,
   color: string
 ): void {
   ctx.shadowColor = color;
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = SKELETON_GLOW_BLUR;
   ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
   ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
 
   for (const [startKey, endKey] of SKELETON_CONNECTIONS) {
     const start = normalizedPose[startKey];
@@ -378,7 +420,7 @@ export function drawStickSkeleton(
 
     if (start && end) {
       ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = BONE_THICKNESS[`${startKey}:${endKey}`] ?? 3;
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
@@ -387,24 +429,134 @@ export function drawStickSkeleton(
   }
 }
 
-/** Draw white joint circles on key points. */
+/** Draw differentiated joints: stroked rings for major pivots, dots for minor. */
 export function drawJoints(
   ctx: CanvasRenderingContext2D,
-  normalizedPose: Record<string, { x: number; y: number }>
+  normalizedPose: Record<string, { x: number; y: number }>,
+  color: string
 ): void {
-  ctx.shadowBlur = 4;
-  ctx.fillStyle = '#ffffff';
+  ctx.shadowBlur = 0;
 
   for (const jointName of JOINT_POINTS) {
     const joint = normalizedPose[jointName];
-    if (joint) {
+    if (!joint) continue;
+
+    if (MAJOR_JOINTS.has(jointName)) {
+      // Major joints: stroked ring + faint fill
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.beginPath();
-      ctx.arc(joint.x, joint.y, 5, 0, Math.PI * 2);
+      ctx.arc(joint.x, joint.y, JOINT_RADIUS_MAJOR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else {
+      // Minor joints: solid white dot
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(joint.x, joint.y, JOINT_RADIUS_MINOR, 0, Math.PI * 2);
       ctx.fill();
     }
   }
+}
+
+/** Draw a head hint circle above the shoulder midpoint. */
+export function drawHead(
+  ctx: CanvasRenderingContext2D,
+  normalizedPose: Record<string, { x: number; y: number }>,
+  color: string
+): void {
+  const ls = normalizedPose['left_shoulder'];
+  const rs = normalizedPose['right_shoulder'];
+  const lh = normalizedPose['left_hip'];
+  const rh = normalizedPose['right_hip'];
+  if (!ls || !rs || !lh || !rh) return;
+
+  const shoulderMidX = (ls.x + rs.x) / 2;
+  const shoulderMidY = (ls.y + rs.y) / 2;
+  const hipMidX = (lh.x + rh.x) / 2;
+  const hipMidY = (lh.y + rh.y) / 2;
+  const torsoLength = Math.sqrt(
+    (shoulderMidX - hipMidX) ** 2 + (shoulderMidY - hipMidY) ** 2
+  );
+  if (torsoLength === 0) return;
+
+  // Direction from hip to shoulder (up the torso)
+  const dx = (shoulderMidX - hipMidX) / torsoLength;
+  const dy = (shoulderMidY - hipMidY) / torsoLength;
+
+  const headCenterX = shoulderMidX + dx * torsoLength * HEAD_OFFSET_RATIO;
+  const headCenterY = shoulderMidY + dy * torsoLength * HEAD_OFFSET_RATIO;
+
+  // Neck line
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = SKELETON_GLOW_BLUR;
+  ctx.beginPath();
+  ctx.moveTo(shoulderMidX, shoulderMidY);
+  ctx.lineTo(headCenterX, headCenterY);
+  ctx.stroke();
+
+  // Head circle (ring, not filled)
+  ctx.beginPath();
+  ctx.arc(headCenterX, headCenterY, HEAD_RADIUS, 0, Math.PI * 2);
+  ctx.stroke();
 
   ctx.shadowBlur = 0;
+}
+
+/** Draw a glowing ground plane line beneath the figure. */
+export function drawGroundPlane(
+  ctx: CanvasRenderingContext2D,
+  normalizedPose: Record<string, { x: number; y: number }>,
+  canvasWidth: number,
+  color: string
+): void {
+  const la = normalizedPose['left_ankle'];
+  const ra = normalizedPose['right_ankle'];
+  if (!la && !ra) return;
+
+  const lowestY = Math.max(la?.y ?? 0, ra?.y ?? 0);
+  const groundY = lowestY + GROUND_PLANE_Y_OFFSET;
+
+  // Center on the figure, ~60% canvas width
+  const figureCenterX = ((la?.x ?? 0) + (ra?.x ?? 0)) / (la && ra ? 2 : 1);
+  const lineWidth = canvasWidth * 0.6;
+  const startX = figureCenterX - lineWidth / 2;
+  const endX = figureCenterX + lineWidth / 2;
+
+  // Gradient: transparent → color → transparent
+  const grad = ctx.createLinearGradient(startX, groundY, endX, groundY);
+  grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  grad.addColorStop(0.3, color);
+  grad.addColorStop(0.7, color);
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+  // Pass 1: glow halo
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = GROUND_PLANE_GLOW_BLUR;
+  ctx.beginPath();
+  ctx.moveTo(startX, groundY);
+  ctx.lineTo(endX, groundY);
+  ctx.stroke();
+  ctx.restore();
+
+  // Pass 2: crisp center line
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1;
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.moveTo(startX, groundY);
+  ctx.lineTo(endX, groundY);
+  ctx.stroke();
+  ctx.restore();
 }
 
 /** Draw the ball trail line and head dot on the stick-figure canvas. */
@@ -428,13 +580,16 @@ export function drawStickBallTrail(
 
   if (trail.length >= 1) {
     const head = trail[trail.length - 1];
+    ctx.shadowColor = BALL_COLOR;
+    ctx.shadowBlur = STICK_BALL_HEAD_GLOW_BLUR;
     ctx.fillStyle = BALL_COLOR;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(head.x, head.y, 5, 0, Math.PI * 2);
+    ctx.arc(head.x, head.y, STICK_BALL_HEAD_RADIUS, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    ctx.shadowBlur = 0;
   }
 }
 
@@ -535,6 +690,7 @@ export interface TossHeightAnnotationParams {
   ballY: number;
   shoulderY: number;
   canvasWidth: number;
+  canvasHeight: number;
   value: number;
   opacity: number;
 }
@@ -542,40 +698,47 @@ export interface TossHeightAnnotationParams {
 /**
  * Draw toss height annotation: horizontal dashed line at ball peak Y with glow,
  * vertical measurement bracket from shoulder to ball, rounded-rect label backdrop,
- * and "Peak Height" sub-label.
+ * and "Peak Height" sub-label. Ball Y is clamped to canvas bounds.
  */
 export function drawTossHeightAnnotation(
   params: TossHeightAnnotationParams
 ): void {
-  const { ctx, ballY, shoulderY, canvasWidth, value, opacity } = params;
+  const { ctx, shoulderY, canvasWidth, canvasHeight, value, opacity } = params;
+
+  // Clamp ballY to canvas bounds
+  const ballY = Math.max(
+    ANNOTATION_Y_MARGIN,
+    Math.min(params.ballY, canvasHeight - ANNOTATION_Y_MARGIN)
+  );
 
   ctx.save();
   ctx.globalAlpha = opacity;
 
-  // Horizontal dashed line at peak height with glow
+  // Shortened horizontal dashed line (~120px) centered on bracket
+  const bracketX = canvasWidth - 40;
+  const dashHalfWidth = 60;
   ctx.shadowColor = ANNOTATION_COLOR;
   ctx.shadowBlur = 6;
   ctx.strokeStyle = ANNOTATION_COLOR;
   ctx.lineWidth = 1;
   ctx.setLineDash([6, 4]);
   ctx.beginPath();
-  ctx.moveTo(0, ballY);
-  ctx.lineTo(canvasWidth, ballY);
+  ctx.moveTo(Math.max(0, bracketX - dashHalfWidth), ballY);
+  ctx.lineTo(Math.min(canvasWidth, bracketX + dashHalfWidth), ballY);
   ctx.stroke();
   ctx.shadowBlur = 0;
 
   // Vertical bracket from shoulder to ball
-  const bracketX = canvasWidth - 40;
   ctx.setLineDash([]);
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(bracketX, shoulderY);
   ctx.lineTo(bracketX, ballY);
   ctx.stroke();
 
-  // Bracket caps
-  const capWidth = 8;
-  ctx.lineWidth = 2;
+  // Bracket caps (bolder)
+  const capWidth = 10;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(bracketX - capWidth, shoulderY);
   ctx.lineTo(bracketX + capWidth, shoulderY);
@@ -586,7 +749,7 @@ export function drawTossHeightAnnotation(
   ctx.stroke();
 
   // Value label with rounded-rect backdrop
-  const labelY = (shoulderY + ballY) / 2;
+  const midY = (shoulderY + ballY) / 2;
   const valueText = `${value.toFixed(2)}x`;
   const subLabel = 'Peak Height';
   ctx.font = 'bold 13px monospace';
@@ -596,11 +759,16 @@ export function drawTossHeightAnnotation(
   const labelWidth = Math.max(valueWidth, subWidth) + 16;
   const labelHeight = 36;
   const labelLeft = bracketX - labelWidth - 10;
-  const labelTop = labelY - labelHeight / 2;
+  // Clamp label Y within canvas
+  const rawLabelTop = midY - labelHeight / 2;
+  const labelTop = Math.max(
+    ANNOTATION_Y_MARGIN,
+    Math.min(rawLabelTop, canvasHeight - ANNOTATION_Y_MARGIN - labelHeight)
+  );
 
   // Backdrop
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
   const r = 6;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
   ctx.beginPath();
   ctx.moveTo(labelLeft + r, labelTop);
   ctx.lineTo(labelLeft + labelWidth - r, labelTop);
@@ -629,6 +797,11 @@ export function drawTossHeightAnnotation(
   ctx.arcTo(labelLeft, labelTop, labelLeft + r, labelTop, r);
   ctx.closePath();
   ctx.fill();
+
+  // Subtle cyan border on backdrop
+  ctx.strokeStyle = `rgba(0, 212, 255, 0.25)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   // Value text
   ctx.fillStyle = ANNOTATION_COLOR;
@@ -668,13 +841,14 @@ export function drawTossLateralityAnnotation(
   ctx.save();
   ctx.globalAlpha = opacity;
 
-  // Vertical reference line at body center
+  // Shortened vertical reference line at body center (~100px around ball Y)
+  const refHalf = 50;
   ctx.strokeStyle = ANNOTATION_COLOR;
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
   ctx.beginPath();
-  ctx.moveTo(bodyCenterX, 0);
-  ctx.lineTo(bodyCenterX, canvasHeight);
+  ctx.moveTo(bodyCenterX, Math.max(0, ballY - refHalf));
+  ctx.lineTo(bodyCenterX, Math.min(canvasHeight, ballY + refHalf));
   ctx.stroke();
 
   // Horizontal line from body center to ball
@@ -741,6 +915,11 @@ export function drawTossLateralityAnnotation(
   ctx.arcTo(labelX, labelTop, labelX + r, labelTop, r);
   ctx.closePath();
   ctx.fill();
+
+  // Subtle cyan border on backdrop
+  ctx.strokeStyle = `rgba(0, 212, 255, 0.25)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   // Value text
   ctx.fillStyle = ANNOTATION_COLOR;
@@ -839,6 +1018,11 @@ export function drawContactPointAnnotation(
   ctx.arcTo(labelX, labelY, labelX + br, labelY, br);
   ctx.closePath();
   ctx.fill();
+
+  // Subtle cyan border on backdrop
+  ctx.strokeStyle = `rgba(0, 212, 255, 0.25)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   ctx.fillStyle = ANNOTATION_COLOR;
   ctx.textAlign = 'left';

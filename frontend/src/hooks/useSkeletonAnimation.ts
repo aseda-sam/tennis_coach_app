@@ -6,6 +6,8 @@ import {
   STICK_FIGURE_SKELETON_COLOR,
   computeAnnotationOpacity,
   drawGrid,
+  drawGroundPlane,
+  drawHead,
   drawJoints,
   drawStickBallTrail,
   drawStickHud,
@@ -90,10 +92,12 @@ export function useSkeletonAnimation({
     );
     if (!normalizedPose) return;
 
-    // Skeleton + joints
+    // Ground plane → skeleton → joints → head
     const baseColor = phaseColor || STICK_FIGURE_SKELETON_COLOR;
+    drawGroundPlane(ctx, normalizedPose, containerWidth, baseColor);
     drawStickSkeleton(ctx, normalizedPose, baseColor);
-    drawJoints(ctx, normalizedPose);
+    drawJoints(ctx, normalizedPose, baseColor);
+    drawHead(ctx, normalizedPose, baseColor);
 
     // Clear ball trail on seek (time jump > 0.1s)
     const timeDelta = Math.abs(currentTime - lastRenderedTimeRef.current);
@@ -171,6 +175,7 @@ export function useSkeletonAnimation({
             ballY: peakNorm._ball.y,
             shoulderY: peakNorm._shoulder_mid.y,
             canvasWidth: containerWidth,
+            canvasHeight: containerHeight,
             value: metric.value,
             opacity,
           });
