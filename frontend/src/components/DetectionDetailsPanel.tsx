@@ -340,35 +340,36 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
         onFrameClick={handleFrameClick}
       />
       <div className="detection-details__contact-footer">
-        {canEditContact && (
-          <div className="detection-details__contact-edit">
-            <button
-              type="button"
-              className="detection-details__contact-btn"
-              onClick={handleSetContact}
-              title="Set ball contact to current playback time"
-            >
-              {contactTimestamp !== null ? 'Move contact' : 'Set contact'} →{' '}
-              {currentTime.toFixed(2)}s
-            </button>
-            {contactTimestamp !== null && (
-              <span className="detection-details__contact-current">
-                Current: {contactTimestamp.toFixed(2)}s
-              </span>
-            )}
-          </div>
+        <svg
+          className="detection-details__legend-diamond"
+          width="10"
+          height="10"
+          viewBox="-6 -6 12 12"
+        >
+          <polygon
+            points="0,-5 5,0 0,5 -5,0"
+            fill="#f5a623"
+            stroke="white"
+            strokeWidth="1.5"
+          />
+        </svg>
+        <span className="detection-details__legend-label">Ball contact</span>
+        {contactTimestamp !== null && (
+          <span className="detection-details__contact-current">
+            {contactTimestamp.toFixed(2)}s
+          </span>
         )}
-        <div className="detection-details__legend">
-          <svg width="14" height="14" viewBox="-7 -7 14 14">
-            <polygon
-              points="0,-6 6,0 0,6 -6,0"
-              fill="#f5a623"
-              stroke="white"
-              strokeWidth="1.5"
-            />
-          </svg>
-          <span>Ball contact</span>
-        </div>
+        {canEditContact && (
+          <button
+            type="button"
+            className="detection-details__contact-btn"
+            onClick={handleSetContact}
+            title="Set ball contact to current playback time"
+          >
+            {contactTimestamp !== null ? 'move to' : 'set'}{' '}
+            {currentTime.toFixed(2)}s
+          </button>
+        )}
       </div>
     </div>
   );
