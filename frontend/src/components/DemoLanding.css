@@ -11,19 +11,10 @@
   background:
     radial-gradient(
       900px 500px at 20% 10%,
-      rgba(0, 188, 125, 0.12),
+      rgba(0, 188, 125, 0.08),
       transparent 60%
     ),
-    radial-gradient(
-      800px 450px at 90% 30%,
-      rgba(67, 45, 215, 0.1),
-      transparent 55%
-    ),
-    linear-gradient(
-      135deg,
-      var(--color-background-alt) 0%,
-      var(--color-background) 100%
-    );
+    var(--color-background);
   z-index: -1;
   width: 100vw;
   left: 50%;
@@ -64,7 +55,6 @@
   margin: 0 0 var(--spacing-lg);
   line-height: var(--line-height-tight);
   letter-spacing: var(--letter-spacing-normal);
-  animation: fadeInUp 0.6s ease-out 0.1s both;
 }
 
 .demo-landing__subtitle {
@@ -72,7 +62,6 @@
   color: var(--color-text-secondary);
   margin: 0;
   line-height: 1.6;
-  animation: fadeInUp 0.6s ease-out 0.2s both;
 }
 
 .demo-landing__watch-tutorial {
@@ -89,7 +78,6 @@
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: var(--transition-normal);
-  animation: fadeInUp 0.6s ease-out 0.3s both;
 }
 
 .demo-landing__watch-tutorial:hover {
@@ -139,7 +127,6 @@
   position: relative;
   width: 100%;
   padding: var(--spacing-3xl);
-  animation: fadeInUp 0.6s ease-out 0.3s both;
 }
 
 .demo-landing__card--upload {
@@ -320,11 +307,11 @@
   line-height: 1.7;
   margin-top: var(--spacing-lg);
   opacity: 0.95;
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-base);
 }
 
 .demo-landing__card--gradient .demo-landing__card-body {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-lg);
   opacity: 0.98;
 }
 
@@ -374,7 +361,6 @@
   justify-content: center;
   margin-top: var(--spacing-2xl);
   padding: 0;
-  animation: fadeInUp 0.6s ease-out 0.7s both;
 }
 
 .demo-landing__cta-primary,
@@ -464,19 +450,19 @@
 }
 
 .demo-landing__feature-icon--pose {
-  background: #7c3aed;
+  background: var(--color-court-blue);
 }
 
 .demo-landing__feature-icon--contact {
-  background: #f97316;
+  background: var(--color-court-clay);
 }
 
 .demo-landing__feature-icon--metrics {
-  background: #0ea5e9;
+  background: var(--color-primary);
 }
 
 .demo-landing__feature-icon--video {
-  background: #0f172a;
+  background: var(--color-ink-heavy);
 }
 
 .demo-landing__feature-title {
@@ -491,28 +477,6 @@
   color: var(--color-text-secondary);
   margin: 0;
   line-height: 1.5;
-}
-
-/* Animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .demo-landing__title,
-  .demo-landing__subtitle,
-  .demo-landing__watch-tutorial,
-  .demo-landing__card--gradient,
-  .demo-landing__cta {
-    animation: none;
-  }
 }
 
 /* Responsive */
