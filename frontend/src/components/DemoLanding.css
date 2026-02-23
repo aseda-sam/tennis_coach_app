@@ -449,19 +449,7 @@
   margin-bottom: var(--spacing-sm);
 }
 
-.demo-landing__feature-icon--pose {
-  background: var(--color-court-blue);
-}
-
-.demo-landing__feature-icon--contact {
-  background: var(--color-court-clay);
-}
-
-.demo-landing__feature-icon--metrics {
-  background: var(--color-primary);
-}
-
-.demo-landing__feature-icon--video {
+.demo-landing__feature-icon {
   background: var(--color-ink-heavy);
 }
 

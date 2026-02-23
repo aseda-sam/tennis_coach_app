@@ -8,7 +8,8 @@ import {
   useVideos,
 } from '../hooks/useVideos';
 import { VideoMetadata } from '../types/video';
-import { CloseIcon, DeleteIcon, UploadIcon, VideoIcon } from './Icons';
+import { Upload, Video } from 'lucide-react';
+import { CloseIcon, DeleteIcon } from './Icons';
 import LoadingIndicator from './LoadingIndicator';
 import VideoEditModal from './VideoEditModal';
 import './VideoList.css';
@@ -154,7 +155,7 @@ const VideoList: React.FC<VideoListProps> = ({
             onClick={() => setIsUploadModalOpen(true)}
             type="button"
           >
-            <UploadIcon size={18} />
+            <Upload size={16} strokeWidth={2.5} />
             Upload
           </button>
         </div>
@@ -163,7 +164,11 @@ const VideoList: React.FC<VideoListProps> = ({
       {videos.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">
-            <VideoIcon size={64} color="var(--color-text-disabled)" />
+            <Video
+              size={48}
+              color="var(--color-text-disabled)"
+              strokeWidth={1.5}
+            />
           </div>
           <h3>No videos uploaded yet</h3>
           <p>Upload your first tennis video to get started with analysis</p>
@@ -181,13 +186,6 @@ const VideoList: React.FC<VideoListProps> = ({
                 onClick={() => handleViewAnalysis(video.id)}
                 style={{ cursor: 'pointer' }}
               >
-                {/* Thumbnail Area */}
-                <div className="video-card-thumbnail">
-                  <div className="video-card-thumbnail-placeholder">
-                    <VideoIcon size={48} color="var(--color-text-muted)" />
-                  </div>
-                </div>
-
                 {/* Metadata Section */}
                 <div className="video-card-content">
                   <h3 className="video-card-filename">{video.filename}</h3>

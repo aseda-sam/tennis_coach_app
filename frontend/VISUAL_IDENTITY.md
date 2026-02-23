@@ -71,10 +71,13 @@ CONTACT TIME      ← DM Sans, xs, uppercase, letter-spacing-wide, --color-text-
 The hex values are in `design-tokens.css`. This section explains the *intent* — what each part of the palette is *for*. Use this to make color decisions, not just the values.
 
 ### Green (`--color-primary: #00bc7d`)
-**One job: action and positive state.** Primary buttons. Completed status badges. Active state indicators. Positive metric highlights. If you're using green for a heading, a section background, or decoration — stop. The scarcity of green is what makes it work.
+**One job: action and positive state.** Primary action buttons (e.g., "Analyze", "Save"). Completed status badges. Positive metric highlights. If you're using green for brand identity, decoration, or a button that isn't a primary action — stop. The scarcity of green is what makes it work. The app logo and secondary CTAs like "Upload" use `--color-ink-heavy`, not green.
 
 ### Court Blue (`--color-court-blue: #1B4B7A`)
 **One job: spatial identity and wayfinding.** Active segment in the view mode toggle. Header nav active tab. Breadcrumb hover color. Active thumbnail border. Scrubber accent. Edit-button hover accent on cards. It says "tennis court" without being literal. Use the `--soft` variant for hover backgrounds.
+
+### Amber Gold (`--color-amber: #c8941a`)
+**Second accent for non-action highlights.** Active nav tab state. Interesting data moments. Status indicators that aren't success/error. Think of it as "this is noteworthy but not a call to action." Not for primary buttons — those are either green (action) or ink-heavy (neutral CTA).
 
 ### Court Clay (`--color-court-clay: #D4784A`)
 **Reserved.** Available for future court-surface theming or accent moments. Not currently used in active UI — kept in the palette for consistency.
@@ -95,7 +98,7 @@ Three colors for canvas-rendered measurement overlays:
 **One job: warmth without color.** Use as a background for "highlight" sections — a personal best, an onboarding card, a progress summary. Adds warmth without competing with the green accent. Sparingly: one such region per page, if at all.
 
 ### Everything else
-- `--color-background` (#fafbfc): the page canvas. Barely visible. Just slightly off-white so pure-white cards read as surfaces.
+- `--color-background` (#f8f5f1): warm parchment. The page canvas. Slightly warm so pure-white cards read as surfaces without needing shadows. Do not use cold blue-tinted backgrounds.
 - `--color-surface` (#ffffff): cards, panels, modals. Crisp white.
 - `--color-border` (#e5e7eb): the primary depth tool. Cards and dividers are defined by their border, not their shadow.
 - `--color-text` (#101828): body text, card content, standard UI text.

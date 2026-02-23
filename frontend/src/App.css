@@ -21,10 +21,10 @@
   top: 0;
   z-index: var(--z-sticky);
   width: 100%;
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(248, 245, 241, 0.97);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-sand-dark);
   box-shadow: var(--shadow-xs);
 }
 
@@ -63,7 +63,7 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-lg);
-  background: var(--color-primary);
+  background: var(--color-ink-heavy);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -115,9 +115,9 @@
 }
 
 .view-toggle-btn.active {
-  color: var(--color-court-blue);
-  background: var(--color-court-blue-soft);
-  font-weight: var(--font-weight-medium);
+  color: var(--color-amber-dark);
+  background: var(--color-amber-soft);
+  font-weight: var(--font-weight-semibold);
 }
 
 .app-title {

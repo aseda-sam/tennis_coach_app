@@ -3,7 +3,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AccountMenu } from '../AccountMenu';
 import ErrorBoundary from '../ErrorBoundary';
-import { CloseIcon, VideoIcon } from '../Icons';
+import { Activity } from 'lucide-react';
+import { CloseIcon } from '../Icons';
 import LoadingIndicator from '../LoadingIndicator';
 import LoomVideoModal from '../LoomVideoModal';
 import { QuickSetup } from '../QuickSetup';
@@ -179,7 +180,7 @@ export function AppLayout() {
               <div className="app-header-left">
                 <NavLink to="/" className="app-brand" aria-label="Go to home">
                   <div className="app-logo">
-                    <VideoIcon size={20} color="white" />
+                    <Activity size={18} color="white" strokeWidth={2.5} />
                   </div>
                   <h1 className="app-title">Serve Tennis Coach</h1>
                 </NavLink>

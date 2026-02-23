@@ -30,7 +30,7 @@
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-sm) var(--spacing-lg);
-  background: var(--color-primary);
+  background: var(--color-ink-heavy);
   color: var(--color-surface);
   border: none;
   border-radius: var(--radius-md);
@@ -38,11 +38,10 @@
   font-weight: var(--font-weight-medium);
   cursor: pointer;
   transition: var(--transition-normal);
-  box-shadow: var(--shadow-primary-sm);
 }
 
 .upload-btn:hover {
-  background: var(--color-primary-dark);
+  background: var(--color-text-secondary);
 }
 
 .upload-btn:active {
@@ -125,23 +124,19 @@
   color: var(--color-text-disabled);
 }
 
-/* Video Grid - Card Layout */
+/* Video Grid */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(var(--layout-card-grid-min), 1fr)
-  );
-  gap: var(--layout-card-gap);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
   margin-top: 0;
 }
 
-/* Video Card */
+/* Video Card — clean content card, no thumbnail */
 .video-card {
   background: var(--color-surface);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   box-shadow: none;
-  overflow: hidden;
   transition: var(--transition-normal);
   border: 1px solid var(--color-border);
   display: flex;
@@ -150,29 +145,16 @@
 }
 
 .video-card:hover {
-  box-shadow: none;
   border-color: var(--color-border-dark);
 }
 
-/* Thumbnail Area (top 2/3 of card) */
+/* Hidden — no real thumbnails yet */
 .video-card-thumbnail {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 2 / 1;
-  background: var(--color-surface-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  display: none;
 }
 
 .video-card-thumbnail-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  background: var(--color-surface-tertiary);
+  display: none;
 }
 
 .serves-badge {
@@ -187,13 +169,14 @@
   font-weight: var(--font-weight-semibold);
 }
 
-/* Card Content (bottom 1/3) */
+/* Card Content */
 .video-card-content {
-  padding: var(--spacing-xl);
+  padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-md);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
   flex: 1;
+  min-width: 0;
 }
 
 .video-card-filename {

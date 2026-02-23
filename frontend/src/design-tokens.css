@@ -48,17 +48,23 @@
   --color-border-dark: #d1d5db;
 
   --color-surface: #ffffff;
-  --color-surface-secondary: #f8fafc;
-  --color-surface-tertiary: #f1f5f9;
-  --color-surface-hover: #f9fafb;
+  --color-surface-secondary: #f4f0eb;
+  --color-surface-tertiary: #edeae5;
+  --color-surface-hover: #f5f2ee;
 
-  --color-background: #fafbfc;
-  --color-background-alt: #f8fafc;
+  --color-background: #f8f5f1;
+  --color-background-alt: #f4f0eb;
 
   /* Display & Accent Colors */
   --color-ink-heavy: #0a0f1a; /* Near-black for metric values and display headings */
   --color-sand: #f5f0e8; /* Warm neutral for milestone/highlight sections */
   --color-sand-dark: #ede8de; /* Border color on sand backgrounds */
+
+  /* Amber Gold — second accent for highlights, active states, non-action moments */
+  --color-amber: #c8941a;
+  --color-amber-dark: #a97a14;
+  --color-amber-soft: rgba(200, 148, 26, 0.1);
+  --color-amber-softest: rgba(200, 148, 26, 0.06);
 
   /* Court-Inspired Palette */
   --color-court-blue: #1b4b7a;
@@ -75,7 +81,7 @@
   --color-annotation-skeleton: #00ff88;
 
   /* Court-Line Pattern */
-  --court-line-color: rgba(27, 75, 122, 0.06);
+  --court-line-color: rgba(160, 120, 80, 0.07);
   --court-line-width: 1px;
   --court-line-spacing: 48px;
 

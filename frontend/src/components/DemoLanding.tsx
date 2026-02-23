@@ -1,14 +1,14 @@
 import React from 'react';
 import './DemoLanding.css';
 import {
-  BodyTrackingIcon,
-  FrameStepIcon,
-  PlayIcon,
-  ServeBreakdownIcon,
-  TrendUpIcon,
-  UploadIcon,
-  VideoIcon,
-} from './Icons';
+  Activity,
+  ChartNoAxesColumn,
+  Play,
+  ScanLine,
+  StepForward,
+  Upload,
+  Video,
+} from 'lucide-react';
 
 import { User } from '@supabase/supabase-js';
 
@@ -39,7 +39,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               onClick={onWatchTutorial}
               type="button"
             >
-              <VideoIcon size={16} color="var(--color-primary)" />
+              <Video size={16} color="var(--color-primary)" />
               Watch Intro Video
             </button>
           </div>
@@ -51,7 +51,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__card-inner">
                 <div className="demo-landing__card-header">
                   <div className="demo-landing__card-icon demo-landing__card-icon--primary">
-                    <PlayIcon size={20} color="white" />
+                    <Play size={20} color="white" />
                   </div>
                   <div className="demo-landing__card-title-wrap">
                     <div className="demo-landing__card-eyebrow">
@@ -83,7 +83,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__card-inner">
                 <div className="demo-landing__card-header">
                   <div className="demo-landing__card-icon demo-landing__card-icon--outline">
-                    <UploadIcon size={20} color="var(--color-primary)" />
+                    <Upload size={20} color="var(--color-primary)" />
                   </div>
                   <div className="demo-landing__card-title-wrap">
                     <div className="demo-landing__card-eyebrow">Your Turn</div>
@@ -115,8 +115,8 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
 
           <div className="demo-landing__feature-grid">
             <div className="demo-landing__feature-card">
-              <div className="demo-landing__feature-icon demo-landing__feature-icon--pose">
-                <BodyTrackingIcon size={20} color="white" />
+              <div className="demo-landing__feature-icon">
+                <Activity size={20} color="white" strokeWidth={2} />
               </div>
               <h4 className="demo-landing__feature-title">Body Tracking</h4>
               <p className="demo-landing__feature-description">
@@ -126,8 +126,8 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
             </div>
 
             <div className="demo-landing__feature-card">
-              <div className="demo-landing__feature-icon demo-landing__feature-icon--contact">
-                <ServeBreakdownIcon size={20} color="white" />
+              <div className="demo-landing__feature-icon">
+                <ScanLine size={20} color="white" strokeWidth={2} />
               </div>
               <h4 className="demo-landing__feature-title">Serve Breakdown</h4>
               <p className="demo-landing__feature-description">
@@ -136,8 +136,8 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
             </div>
 
             <div className="demo-landing__feature-card">
-              <div className="demo-landing__feature-icon demo-landing__feature-icon--metrics">
-                <TrendUpIcon size={20} color="white" />
+              <div className="demo-landing__feature-icon">
+                <ChartNoAxesColumn size={20} color="white" strokeWidth={2} />
               </div>
               <h4 className="demo-landing__feature-title">
                 Progress Over Time
@@ -148,8 +148,8 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
             </div>
 
             <div className="demo-landing__feature-card">
-              <div className="demo-landing__feature-icon demo-landing__feature-icon--video">
-                <FrameStepIcon size={20} color="white" />
+              <div className="demo-landing__feature-icon">
+                <StepForward size={20} color="white" strokeWidth={2} />
               </div>
               <h4 className="demo-landing__feature-title">
                 Frame-by-Frame Control
