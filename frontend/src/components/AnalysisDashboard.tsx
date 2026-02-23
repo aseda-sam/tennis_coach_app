@@ -20,7 +20,6 @@ import { ArrowLeft, Upload } from 'lucide-react';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
 import ServeThumbnailStrip from './ServeThumbnailStrip';
-import Tour, { TourStep } from './Tour';
 
 const METRIC_DISPLAY_NAMES: Record<string, string> = {
   knee_flexion_min_deg: 'Knee Flexion',
@@ -123,9 +122,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
-
-  // Demo tour state
-  const [isTourOpen, setIsTourOpen] = useState(false);
 
   const { serveWindows, updateServeWindow } = useServeWindows({
     videoId,
@@ -369,53 +365,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const showDemoStatusWarning =
     isDemo && isAdmin && (!hasPoseAnalysis || serveWindows.length === 0);
 
-  // Demo: tour steps
-  const tourSteps: TourStep[] = useMemo(
-    () => [
-      {
-        target: 'video-player',
-        title: 'Video Player',
-        content:
-          'Play the demo clip and scrub through frames using the timeline below.',
-        placement: 'bottom',
-      },
-      {
-        target: 'serve-window-ranges',
-        title: 'Key Moments',
-        content: 'Navigate key moments directly from the timeline.',
-        placement: 'top',
-      },
-      {
-        target: 'analysis-panel',
-        title: 'Metrics & Analysis',
-        content:
-          'Review pose and key-moment metrics to understand your serve mechanics.',
-        placement: 'left',
-      },
-      {
-        target: 'upload-cta',
-        title: 'Ready to Upload?',
-        content:
-          'Ready to analyze your own video? Upload to see personalized feedback on your technique.',
-        placement: 'left',
-      },
-    ],
-    []
-  );
-
-  useEffect(() => {
-    if (!isDemo) return;
-    const tourCompleted = localStorage.getItem('demoTourCompleted');
-    if (!tourCompleted) {
-      const timer = setTimeout(() => setIsTourOpen(true), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isDemo]);
-
-  const handleTourComplete = useCallback(() => {
-    localStorage.setItem('demoTourCompleted', 'true');
-  }, []);
-
   // Analysis in progress -- show progress view
   const analysisInProgress =
     !analysisStatus?.has_analysis &&
@@ -551,10 +500,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         <div className="analysis-dashboard__focus-view">
           {hasServes ? (
             <>
-              <div
-                className="analysis-dashboard__main-col"
-                data-tour="video-player"
-              >
+              <div className="analysis-dashboard__main-col">
                 {/* Hero View (left column at desktop) */}
                 <ErrorBoundary fallbackMessage="Video player encountered an error.">
                   <HeroView
@@ -631,16 +577,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 )}
               </div>
 
-              <div
-                className="analysis-dashboard__side-col"
-                data-tour="analysis-panel"
-              >
+              <div className="analysis-dashboard__side-col">
                 {/* Demo: Upload CTA */}
                 {isDemo && onExitToUpload && (
-                  <div
-                    className="analysis-dashboard__upload-cta"
-                    data-tour="upload-cta"
-                  >
+                  <div className="analysis-dashboard__upload-cta">
                     <div className="analysis-dashboard__upload-cta-content">
                       <button
                         className="analysis-dashboard__back-button"
@@ -800,16 +740,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         naturalScroll={naturalScroll}
         onNaturalScrollChange={setNaturalScroll}
       />
-
-      {isDemo && (
-        <Tour
-          steps={tourSteps}
-          isOpen={isTourOpen}
-          onClose={() => setIsTourOpen(false)}
-          onComplete={handleTourComplete}
-          showSkip={true}
-        />
-      )}
     </div>
   );
 };
