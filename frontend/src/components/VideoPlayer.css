@@ -361,6 +361,32 @@
 }
 
 /* Inline Zoom Controls (in video controls overlay) */
+/* Contact point button in controls row */
+.contact-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-family: var(--font-family-mono);
+  color: rgba(255, 255, 255, 0.75);
+  padding: 4px 8px;
+  border-radius: 999px;
+  transition: var(--transition-normal);
+  white-space: nowrap;
+}
+
+.contact-btn:hover {
+  background: rgba(245, 166, 35, 0.2) !important;
+  color: #f5a623;
+  transform: none !important;
+}
+
+.contact-btn__diamond {
+  font-size: 9px;
+  color: #f5a623;
+  line-height: 1;
+}
+
 .zoom-controls-inline {
   display: flex;
   align-items: center;

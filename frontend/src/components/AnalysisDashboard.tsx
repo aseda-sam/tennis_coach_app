@@ -116,7 +116,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
 
-  const { serveWindows, updateServeWindow } = useServeWindows({
+  const { serveWindows } = useServeWindows({
     videoId,
     filters: { video_id: videoId },
     autoRefresh: true,
@@ -511,16 +511,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                         contactTimestamp={
                           currentServe!.contact_timestamp ?? null
                         }
-                        serveWindowId={currentServe!.id}
                         onSeek={handleSeek}
-                        onUpdateContactTimestamp={async (ts) => {
-                          await updateServeWindow(currentServe!.id, {
-                            contact_timestamp: ts,
-                          });
-                          await queryClient.invalidateQueries({
-                            queryKey: ['biomechanics-report', currentServe!.id],
-                          });
-                        }}
                       />
                     </CollapsibleSection>
                   </>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   type UseVideoPlayerStateReturn,
   ZOOM_LEVELS,
@@ -65,6 +65,40 @@ const VideoPlayerControls: React.FC<VideoPlayerControlsProps> = ({
     updateServeWindow,
     queryClient,
   } = state;
+
+  // Serve window containing current playback time (if any)
+  const activeServeWindow = useMemo(
+    () =>
+      serveWindows.find(
+        (sw) =>
+          currentTime >= sw.start_timestamp && currentTime <= sw.end_timestamp
+      ) ?? null,
+    [serveWindows, currentTime]
+  );
+
+  const handleSetContact = async () => {
+    if (!activeServeWindow) return;
+    try {
+      await updateServeWindow(activeServeWindow.id, {
+        contact_timestamp: currentTime,
+      });
+      if (videoId) {
+        queryClient.invalidateQueries({
+          queryKey: contactTimestampsQueryKey(videoId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['biomechanics-report', activeServeWindow.id],
+        });
+      }
+    } catch (err) {
+      console.error('Failed to set contact:', err);
+    }
+  };
+
+  // Prevent control buttons from stealing keyboard focus from the video
+  // container. Clicks still fire normally (via mouseup/click), but focus stays
+  // where it is so keyboard shortcuts remain responsive.
+  const noFocusSteal = (e: React.MouseEvent) => e.preventDefault();
 
   return (
     <div className="video-controls">
@@ -205,12 +239,20 @@ const VideoPlayerControls: React.FC<VideoPlayerControlsProps> = ({
 
       <div className="controls-row">
         <div className="left-controls">
-          <button className="control-btn play-btn" onClick={togglePlay}>
+          <button
+            className="control-btn play-btn"
+            onClick={togglePlay}
+            onMouseDown={noFocusSteal}
+          >
             {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
           </button>
 
           <div className="volume-control">
-            <button className="control-btn volume-btn" onClick={toggleMute}>
+            <button
+              className="control-btn volume-btn"
+              onClick={toggleMute}
+              onMouseDown={noFocusSteal}
+            >
               {isMuted ? <VolumeOffIcon size={20} /> : <VolumeIcon size={20} />}
             </button>
             <input
@@ -223,6 +265,21 @@ const VideoPlayerControls: React.FC<VideoPlayerControlsProps> = ({
               onChange={handleVolumeChange}
             />
           </div>
+
+          {/* Contact point button — only shown when inside a serve window */}
+          {!isDemo && activeServeWindow && (
+            <button
+              className="control-btn contact-btn"
+              onClick={handleSetContact}
+              onMouseDown={noFocusSteal}
+              title="Set ball contact at current time (C)"
+            >
+              <span className="contact-btn__diamond">◆</span>
+              {activeServeWindow.contact_timestamp !== null
+                ? activeServeWindow.contact_timestamp.toFixed(2) + 's'
+                : 'Contact'}
+            </button>
+          )}
         </div>
 
         <div className="right-controls">
@@ -231,6 +288,7 @@ const VideoPlayerControls: React.FC<VideoPlayerControlsProps> = ({
             <button
               className="control-btn"
               onClick={zoomOut}
+              onMouseDown={noFocusSteal}
               disabled={zoomLevel === ZOOM_LEVELS[0]}
               title="Zoom out (-)"
             >
@@ -246,6 +304,7 @@ const VideoPlayerControls: React.FC<VideoPlayerControlsProps> = ({
             <button
               className="control-btn"
               onClick={zoomIn}
+              onMouseDown={noFocusSteal}
               disabled={zoomLevel === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
               title="Zoom in (+)"
             >
@@ -255,6 +314,7 @@ const VideoPlayerControls: React.FC<VideoPlayerControlsProps> = ({
           <button
             className="control-btn fullscreen-btn"
             onClick={toggleFullscreen}
+            onMouseDown={noFocusSteal}
           >
             <FullscreenIcon size={20} />
           </button>

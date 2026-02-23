@@ -262,9 +262,7 @@ interface FeatureChartsSectionProps {
   currentTime: number;
   serveStart: number;
   contactTimestamp: number | null;
-  serveWindowId?: number;
   onSeek: (t: number) => void;
-  onUpdateContactTimestamp?: (timestamp: number) => Promise<void>;
 }
 
 export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
@@ -272,9 +270,7 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
   currentTime,
   serveStart,
   contactTimestamp,
-  serveWindowId,
   onSeek,
-  onUpdateContactTimestamp,
 }) => {
   const { fps, total_frames } = useDetectionHelpers(detectionMeta, serveStart);
   const { feature_curves } = detectionMeta;
@@ -300,13 +296,6 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
     },
     [fps, serveStart, onSeek]
   );
-
-  const handleSetContact = useCallback(async () => {
-    if (!onUpdateContactTimestamp || !serveWindowId) return;
-    await onUpdateContactTimestamp(currentTime);
-  }, [onUpdateContactTimestamp, serveWindowId, currentTime]);
-
-  const canEditContact = !!onUpdateContactTimestamp && !!serveWindowId;
 
   return (
     <div className="detection-details__section">
@@ -358,17 +347,6 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
           <span className="detection-details__contact-current">
             {contactTimestamp.toFixed(2)}s
           </span>
-        )}
-        {canEditContact && (
-          <button
-            type="button"
-            className="detection-details__contact-btn"
-            onClick={handleSetContact}
-            title="Set ball contact to current playback time"
-          >
-            {contactTimestamp !== null ? 'move to' : 'set'}{' '}
-            {currentTime.toFixed(2)}s
-          </button>
         )}
       </div>
     </div>

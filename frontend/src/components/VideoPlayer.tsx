@@ -221,6 +221,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             className={`video-container video-container-${aspectRatioMode} ${s.isPlaying ? 'playing' : 'paused'} ${s.isScrubbing ? 'scrubbing' : ''}`}
             onClick={s.handleVideoClick}
             style={{ position: 'relative' }}
+            tabIndex={0}
+            // Suppress visible focus ring on the container — keyboard focus is
+            // intentional here but the outline would look odd on the video.
+            onFocus={(e) => {
+              e.currentTarget.style.outline = 'none';
+            }}
           >
             {s.resolvedVideoUrl && (
               <div

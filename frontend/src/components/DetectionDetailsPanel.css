@@ -110,20 +110,3 @@
   margin-right: 6px;
   color: var(--color-border);
 }
-
-.detection-details__contact-btn {
-  margin-left: auto;
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: #f5a623;
-  background: rgba(245, 166, 35, 0.1);
-  border: none;
-  border-radius: 999px;
-  padding: 2px 8px;
-  cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-in-out);
-}
-
-.detection-details__contact-btn:hover {
-  background: rgba(245, 166, 35, 0.2);
-}
