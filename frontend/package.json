@@ -30,7 +30,8 @@
     "nth-check": "^2.0.1",
     "postcss": "^8.4.31",
     "jsonpath": "npm:jsonpath-plus@^10.3.0",
-    "minimatch": "^10.2.1"
+    "minimatch": "^10.2.1",
+    "test-exclude": "^7.0.2"
   },
   "scripts": {
     "start": "react-scripts start",
