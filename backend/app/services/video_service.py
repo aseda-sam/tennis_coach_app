@@ -327,7 +327,7 @@ def get_active_demo_video(db: Session) -> Optional[Video]:
     Returns:
         Video object or None if no active demo exists
     """
-    return db.query(Video).filter(Video.is_active_demo).first()
+    return db.query(Video).filter(Video.is_active_demo == True).first()  # noqa: E712
 
 
 def delete_video_record(db: Session, video_id: int) -> bool:
