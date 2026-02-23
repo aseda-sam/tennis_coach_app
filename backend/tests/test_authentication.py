@@ -37,9 +37,10 @@ class TestSupabaseAuth:
 
     def test_get_supabase_client_adds_trailing_slash(self) -> None:
         """Test that URL gets trailing slash added if missing."""
-        with patch("app.utils.supabase_auth.settings") as mock_settings, patch(
-            "app.utils.supabase_auth.create_client"
-        ) as mock_create:
+        with (
+            patch("app.utils.supabase_auth.settings") as mock_settings,
+            patch("app.utils.supabase_auth.create_client") as mock_create,
+        ):
             mock_settings.SUPABASE_URL = "https://test.supabase.co"
             mock_settings.SUPABASE_SECRET_KEY = "test-key"  # noqa: S105
 
@@ -203,9 +204,10 @@ class TestAuthDependency:
             "user_metadata": {},
         }
 
-        with patch("app.dependencies.auth.settings") as mock_settings, patch(
-            "app.dependencies.auth.verify_supabase_token"
-        ) as mock_verify:
+        with (
+            patch("app.dependencies.auth.settings") as mock_settings,
+            patch("app.dependencies.auth.verify_supabase_token") as mock_verify,
+        ):
             mock_settings.PROFILE = "production"
             mock_verify.return_value = mock_user
 
@@ -224,9 +226,10 @@ class TestAuthDependency:
         mock_credentials = Mock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "invalid-token"
 
-        with patch("app.dependencies.auth.settings") as mock_settings, patch(
-            "app.dependencies.auth.verify_supabase_token"
-        ) as mock_verify:
+        with (
+            patch("app.dependencies.auth.settings") as mock_settings,
+            patch("app.dependencies.auth.verify_supabase_token") as mock_verify,
+        ):
             mock_settings.PROFILE = "production"
             mock_verify.return_value = None
 

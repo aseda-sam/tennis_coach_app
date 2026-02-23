@@ -97,11 +97,14 @@ class TestVideoAPI:
             # Mock the enqueue function to verify it's called when enabled
             mock_job = MagicMock()
             mock_job.id = "test-job-id-123"
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
-                settings, "TRANSCODE_ENABLED", False
-            ), patch(
-                "app.core.redis_config.analysis_queue.enqueue", return_value=mock_job
-            ) as mock_enqueue:
+            with (
+                patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True),
+                patch.object(settings, "TRANSCODE_ENABLED", False),
+                patch(
+                    "app.core.redis_config.analysis_queue.enqueue",
+                    return_value=mock_job,
+                ) as mock_enqueue,
+            ):
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test.mp4", f, "video/mp4")}
                     response = client.post("/v0/videos/upload", files=files)
@@ -134,11 +137,13 @@ class TestVideoAPI:
 
         try:
             # Mock enqueue to return None (simulating Redis failure)
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
-                settings, "TRANSCODE_ENABLED", False
-            ), patch(
-                "app.core.redis_config.analysis_queue.enqueue", return_value=None
-            ) as mock_enqueue:
+            with (
+                patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True),
+                patch.object(settings, "TRANSCODE_ENABLED", False),
+                patch(
+                    "app.core.redis_config.analysis_queue.enqueue", return_value=None
+                ) as mock_enqueue,
+            ):
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test.mp4", f, "video/mp4")}
                     response = client.post("/v0/videos/upload", files=files)
@@ -169,12 +174,14 @@ class TestVideoAPI:
 
         try:
             # Mock enqueue to raise RedisConnectionError
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
-                settings, "TRANSCODE_ENABLED", False
-            ), patch(
-                "app.core.redis_config.analysis_queue.enqueue",
-                side_effect=RedisConnectionError("Redis unavailable"),
-            ) as mock_enqueue:
+            with (
+                patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True),
+                patch.object(settings, "TRANSCODE_ENABLED", False),
+                patch(
+                    "app.core.redis_config.analysis_queue.enqueue",
+                    side_effect=RedisConnectionError("Redis unavailable"),
+                ) as mock_enqueue,
+            ):
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test.mp4", f, "video/mp4")}
                     response = client.post("/v0/videos/upload", files=files)
@@ -205,11 +212,14 @@ class TestVideoAPI:
         try:
             mock_job = MagicMock()
             mock_job.id = "test-transcode-job-id"
-            with patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True), patch.object(
-                settings, "TRANSCODE_ENABLED", True
-            ), patch(
-                "app.core.redis_config.analysis_queue.enqueue", return_value=mock_job
-            ) as mock_enqueue:
+            with (
+                patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", True),
+                patch.object(settings, "TRANSCODE_ENABLED", True),
+                patch(
+                    "app.core.redis_config.analysis_queue.enqueue",
+                    return_value=mock_job,
+                ) as mock_enqueue,
+            ):
                 with open(tmp_file_path, "rb") as f:
                     files = {"file": ("test_video.mp4", f, "video/mp4")}
                     response = client.post("/v0/videos/upload", files=files)

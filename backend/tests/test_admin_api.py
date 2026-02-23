@@ -229,11 +229,12 @@ class TestUploadForUserEndpoint:
         """Test successful upload-for-user assigns video to target user."""
         target_user_id = "22222222-2222-2222-2222-222222222222"
 
-        with patch("app.api.routes.admin.get_user_by_id") as mock_get_user, patch(
-            "app.services.storage_service.storage_service"
-        ) as mock_storage, patch.object(
-            settings, "AUTO_ENQUEUE_ON_UPLOAD", False
-        ), patch.object(settings, "TRANSCODE_ENABLED", False):
+        with (
+            patch("app.api.routes.admin.get_user_by_id") as mock_get_user,
+            patch("app.services.storage_service.storage_service") as mock_storage,
+            patch.object(settings, "AUTO_ENQUEUE_ON_UPLOAD", False),
+            patch.object(settings, "TRANSCODE_ENABLED", False),
+        ):
             # Mock user exists
             mock_get_user.return_value = {
                 "id": target_user_id,
@@ -445,9 +446,10 @@ class TestGetUserById:
         mock_response.user = mock_user
         mock_response.error = None
 
-        with patch.object(settings, "PROFILE", "production"), patch(
-            "app.utils.supabase_auth.get_supabase_client"
-        ) as mock_get_client:
+        with (
+            patch.object(settings, "PROFILE", "production"),
+            patch("app.utils.supabase_auth.get_supabase_client") as mock_get_client,
+        ):
             mock_client = Mock()
             mock_client.auth.admin.get_user_by_id.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -467,9 +469,10 @@ class TestGetUserById:
         mock_response.error = Mock()
         mock_response.error.message = "User not found"
 
-        with patch.object(settings, "PROFILE", "production"), patch(
-            "app.utils.supabase_auth.get_supabase_client"
-        ) as mock_get_client:
+        with (
+            patch.object(settings, "PROFILE", "production"),
+            patch("app.utils.supabase_auth.get_supabase_client") as mock_get_client,
+        ):
             mock_client = Mock()
             mock_client.auth.admin.get_user_by_id.return_value = mock_response
             mock_get_client.return_value = mock_client
@@ -482,9 +485,10 @@ class TestGetUserById:
         """Test get_user_by_id handles exceptions gracefully."""
         from app.utils.supabase_auth import get_user_by_id
 
-        with patch.object(settings, "PROFILE", "production"), patch(
-            "app.utils.supabase_auth.get_supabase_client"
-        ) as mock_get_client:
+        with (
+            patch.object(settings, "PROFILE", "production"),
+            patch("app.utils.supabase_auth.get_supabase_client") as mock_get_client,
+        ):
             mock_client = Mock()
             mock_client.auth.admin.get_user_by_id.side_effect = Exception("API error")
             mock_get_client.return_value = mock_client
