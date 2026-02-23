@@ -11,7 +11,6 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-2xl);
   padding: var(--spacing-xl);
-  box-shadow: var(--shadow-sm);
 }
 
 /* Serve Info Card */
@@ -205,10 +204,10 @@
 
 .analysis-right-panel__measurement-value span:first-child {
   font-size: var(--font-size-base);
-  font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-mono);
   color: var(--color-text);
   line-height: var(--line-height-normal);
-  letter-spacing: var(--letter-spacing-tight);
 }
 
 .analysis-right-panel__measurement-unit {
@@ -224,11 +223,11 @@
 }
 
 .analysis-right-panel__measurement-value-large span:first-child {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-normal);
-  color: var(--color-text);
-  line-height: var(--line-height-normal);
-  letter-spacing: var(--letter-spacing-tight);
+  font-size: var(--font-size-display-sm);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-mono);
+  color: var(--color-ink-heavy);
+  line-height: 1;
 }
 
 .analysis-right-panel__measurement-timing {
@@ -308,7 +307,6 @@
 
 .analysis-right-panel__metric-item:hover {
   border-color: var(--color-border);
-  box-shadow: var(--shadow-sm);
 }
 
 .analysis-right-panel__metric-header {
@@ -374,8 +372,10 @@
 }
 
 .analysis-right-panel__angle-value {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-display-sm);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-mono);
+  color: var(--color-ink-heavy);
   line-height: 1;
 }
 

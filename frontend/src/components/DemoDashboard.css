@@ -139,10 +139,6 @@
   overflow: hidden;
 }
 
-.demo-dashboard__upload-cta-content::before {
-  content: none;
-}
-
 .demo-dashboard__upload-cta-title {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-semibold);
@@ -191,7 +187,7 @@
   background: var(--color-primary);
   color: white;
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-pill);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
@@ -200,10 +196,7 @@
 
 .demo-dashboard__upload-cta-button:hover {
   background: var(--color-primary-dark);
-}
-
-.demo-dashboard__upload-cta-button:active {
-  transform: translateY(0);
+  box-shadow: var(--shadow-primary-md);
 }
 
 /* Status Warning Banner */
