@@ -9,3 +9,8 @@ query-filters:
       id:
         - js/log-injection
         - py/log-injection
+
+# Exclude paths that produce false positives
+paths-ignore:
+  - backend/alembic/versions
+  - backend/alembic/env.py
