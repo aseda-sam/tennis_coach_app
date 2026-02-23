@@ -2,6 +2,8 @@
 
 This document is the aesthetic north star. **Read this before writing any component, page, or CSS.** It gives the agent (and the developer) a shared vision to produce — not just rules about *how* to write CSS, but a clear picture of *what to produce*.
 
+> **Name in testing:** The app is currently trialling the name **"Second Serve"** in the UI. The repo and codebase still use the old name. This will be confirmed or revisited after a few weeks of feedback.
+
 ---
 
 ## In one sentence

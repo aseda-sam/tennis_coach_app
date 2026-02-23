@@ -181,7 +181,7 @@ export function AppLayout() {
                   <div className="app-logo">
                     <Activity size={18} color="white" strokeWidth={2.5} />
                   </div>
-                  <h1 className="app-title">Serve Tennis Coach</h1>
+                  <h1 className="app-title">Second Serve</h1>
                 </NavLink>
               </div>
 
