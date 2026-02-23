@@ -161,9 +161,6 @@ export interface UseVideoPlayerStateReturn {
 
   // Refs exposed for JSX callbacks
   wasPlayingRef: React.MutableRefObject<boolean>;
-  setOpenRange: React.Dispatch<
-    React.SetStateAction<{ start: number; end: number } | null>
-  >;
 }
 
 export function useVideoPlayerState({
@@ -1033,6 +1030,5 @@ export function useVideoPlayerState({
 
     // Refs exposed for JSX callbacks
     wasPlayingRef,
-    setOpenRange,
   };
 }
