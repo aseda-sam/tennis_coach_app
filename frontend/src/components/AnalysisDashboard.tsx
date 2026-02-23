@@ -116,7 +116,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
 
-  const { serveWindows } = useServeWindows({
+  const { serveWindows, updateServeWindow } = useServeWindows({
     videoId,
     filters: { video_id: videoId },
     autoRefresh: true,
@@ -199,6 +199,17 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     [handleContactJump, phases]
   );
 
+  const handleSetContactAtCurrentTime = useCallback(
+    async (serveWindowId: number, timestamp: number) => {
+      await updateServeWindow(serveWindowId, { contact_timestamp: timestamp });
+      queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
+      queryClient.invalidateQueries({
+        queryKey: ['biomechanics-report', serveWindowId],
+      });
+    },
+    [updateServeWindow, queryClient]
+  );
+
   const handleToggleLoopWithPhase = useCallback(() => {
     handleToggleLoopCurrentPhase(currentPhase);
   }, [handleToggleLoopCurrentPhase, currentPhase]);
@@ -232,12 +243,45 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault();
         setShowKeyboardShortcuts(true);
+        return;
+      }
+
+      switch (e.key) {
+        case ' ':
+        case 'Space':
+          e.preventDefault();
+          handlePlayPause();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          handleServeNavigate(currentServeIndex - 1);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          handleServeNavigate(currentServeIndex + 1);
+          break;
+        case 'c':
+        case 'C':
+          e.preventDefault();
+          if (currentServe) {
+            handleSetContactAtCurrentTime(currentServe.id, currentTime);
+          }
+          break;
+        default:
+          break;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [
+    handlePlayPause,
+    handleServeNavigate,
+    currentServeIndex,
+    currentServe,
+    currentTime,
+    handleSetContactAtCurrentTime,
+  ]);
 
   // Find serves handler for the no-serves fallback state
   const handleFindServes = useCallback(async () => {
@@ -390,6 +434,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     phases={phases}
                     activePhase={currentPhase?.phase}
                     contactTimestamp={currentServe!.contact_timestamp ?? null}
+                    onSetContact={async (ts) =>
+                      handleSetContactAtCurrentTime(currentServe!.id, ts)
+                    }
                   />
                 </ErrorBoundary>
 

@@ -301,6 +301,34 @@
   color: var(--color-court-blue);
 }
 
+.hero-view__contact-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.hero-view__contact-btn:hover {
+  border-color: #f5a623;
+  color: #f5a623;
+}
+
+.hero-view__contact-diamond {
+  font-size: 9px;
+  color: #f5a623;
+  line-height: 1;
+}
+
 @media (max-width: 768px) {
   .hero-view__controls {
     flex-wrap: wrap;

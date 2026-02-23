@@ -27,6 +27,7 @@ interface HeroViewProps {
   phases?: PhaseWindow[];
   activePhase?: string | null;
   contactTimestamp?: number | null;
+  onSetContact?: (timestamp: number) => Promise<void>;
 }
 
 const HeroView: React.FC<HeroViewProps> = ({
@@ -51,6 +52,7 @@ const HeroView: React.FC<HeroViewProps> = ({
   phases = [],
   activePhase = null,
   contactTimestamp = null,
+  onSetContact,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pipVideoRef = useRef<HTMLVideoElement>(null);
@@ -252,6 +254,20 @@ const HeroView: React.FC<HeroViewProps> = ({
             title={loopActive ? 'Stop looping phase' : 'Loop current phase'}
           >
             &#x21bb;
+          </button>
+        )}
+
+        {onSetContact && (
+          <button
+            type="button"
+            className="hero-view__contact-btn"
+            onClick={() => onSetContact(currentTime)}
+            title="Set ball contact at current time (C)"
+          >
+            <span className="hero-view__contact-diamond">◆</span>
+            {contactTimestamp !== null
+              ? contactTimestamp.toFixed(2) + 's'
+              : 'Contact'}
           </button>
         )}
       </div>
