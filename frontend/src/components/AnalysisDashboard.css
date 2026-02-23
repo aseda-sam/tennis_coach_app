@@ -32,22 +32,6 @@
   padding: var(--spacing-xs) 0;
 }
 
-.analysis-dashboard__header-right {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-lg);
-}
-
-.analysis-dashboard__page-title {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-  margin: 0;
-  line-height: 1.3;
-  letter-spacing: var(--letter-spacing-wide);
-  text-transform: uppercase;
-}
-
 /* Serve Navigation Rail — thumbnails left, view toggle right */
 .analysis-dashboard__serve-nav {
   display: flex;

@@ -30,9 +30,6 @@ const AnalysisDashboardHeader: React.FC<AnalysisDashboardHeaderProps> = ({
   return (
     <div className="analysis-dashboard__header">
       <Breadcrumb segments={segments} />
-      <div className="analysis-dashboard__header-right">
-        <h1 className="analysis-dashboard__page-title">Serve Analysis</h1>
-      </div>
     </div>
   );
 };
