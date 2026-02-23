@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import { ViewMode } from './AnalysisViewToggle';
-import { PauseIcon, PlayIcon } from './Icons';
+import { Pause, Play } from 'lucide-react';
 import StickFigureCanvas from './StickFigureCanvas';
 import './HeroView.css';
 
@@ -190,7 +190,7 @@ const HeroView: React.FC<HeroViewProps> = ({
           type="button"
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
+          {isPlaying ? <Pause size={18} /> : <Play size={18} />}
         </button>
 
         <span className="hero-view__timestamp">{formatTime(currentTime)}</span>

@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  AnalyticsIcon,
-  FrameExtractionIcon,
-  PoseDetectionIcon,
-  VideoAnnotationIcon,
-  VideoIcon,
-} from './Icons';
+import { BarChart3, FileVideo, Film, Scan, Video } from 'lucide-react';
 import './TimingPerformance.css';
 
 interface TimingData {
@@ -35,17 +29,17 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
   const getStageIcon = (stageName: string): React.ReactNode => {
     switch (stageName) {
       case 'frame_extraction':
-        return <FrameExtractionIcon size={16} />;
+        return <Film size={16} />;
       case 'pose_detection':
-        return <PoseDetectionIcon size={16} />;
+        return <Scan size={16} />;
       case 'frame_annotation':
-        return <VideoAnnotationIcon size={16} />;
+        return <FileVideo size={16} />;
       case 'video_creation':
-        return <VideoIcon size={16} />;
+        return <Video size={16} />;
       case 'total_analysis':
-        return <AnalyticsIcon size={16} />;
+        return <BarChart3 size={16} />;
       default:
-        return <AnalyticsIcon size={16} />;
+        return <BarChart3 size={16} />;
     }
   };
 
@@ -144,7 +138,7 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
       <div className="timing-insights" data-testid="timing-insights">
         <div className="insight-item">
           <span className="insight-icon" aria-hidden="true">
-            <AnalyticsIcon size={16} />
+            <BarChart3 size={16} />
           </span>
           <span className="insight-text">
             {totalTime > 10
@@ -156,7 +150,7 @@ const TimingPerformance: React.FC<TimingPerformanceProps> = ({
         {timing.pose_detection && (
           <div className="insight-item">
             <span className="insight-icon" aria-hidden="true">
-              <PoseDetectionIcon size={16} />
+              <Scan size={16} />
             </span>
             <span className="insight-text">
               Pose detection took{' '}

@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { UploadIcon } from './Icons';
+import { Upload } from 'lucide-react';
 
 interface VideoUploadDropzoneProps {
   selectedFile: File | null;
@@ -78,7 +78,7 @@ const VideoUploadDropzone: React.FC<VideoUploadDropzoneProps> = ({
         ) : isUploadSuccess ? (
           <div className="upload-success">
             <div className="upload-icon" aria-hidden="true">
-              <UploadIcon size={48} color="var(--color-success)" />
+              <Upload size={48} color="var(--color-success)" />
             </div>
             <p className="upload-main-text">Uploaded: {selectedFile?.name}</p>
             <button
@@ -92,7 +92,7 @@ const VideoUploadDropzone: React.FC<VideoUploadDropzoneProps> = ({
         ) : (
           <>
             <div className="upload-icon" aria-hidden="true">
-              <UploadIcon size={48} color="var(--color-text-muted)" />
+              <Upload size={48} color="var(--color-text-muted)" />
             </div>
             <p className="upload-main-text">
               Drag and drop your tennis video here

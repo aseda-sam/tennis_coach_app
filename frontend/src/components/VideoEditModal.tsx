@@ -4,7 +4,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { useUpdateVideoMetadata } from '../hooks/useVideos';
 import { VideoMetadata } from '../types/video';
-import { CloseIcon } from './Icons';
+import { X } from 'lucide-react';
 
 interface VideoEditModalProps {
   video: VideoMetadata;
@@ -90,7 +90,7 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
             aria-label="Close"
             type="button"
           >
-            <CloseIcon size={18} />
+            <X size={18} />
           </button>
         </div>
         <div className="modal-content">

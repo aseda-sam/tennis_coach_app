@@ -1,5 +1,5 @@
 import React from 'react';
-import { CloseIcon } from './Icons';
+import { X } from 'lucide-react';
 import './LoomVideoModal.css';
 
 interface LoomVideoModalProps {
@@ -36,7 +36,7 @@ const LoomVideoModal: React.FC<LoomVideoModalProps> = ({
             aria-label="Close video"
             type="button"
           >
-            <CloseIcon size={20} />
+            <X size={20} />
           </button>
         </div>
         <div className="loom-video-modal__content">

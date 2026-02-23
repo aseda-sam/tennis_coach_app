@@ -16,7 +16,7 @@ import CollapsibleSection from './CollapsibleSection';
 import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
-import { ArrowBackIcon, UploadIcon } from './Icons';
+import { ArrowLeft, Upload } from 'lucide-react';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
 import ServeThumbnailStrip from './ServeThumbnailStrip';
@@ -615,7 +615,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                         onClick={onClose}
                         type="button"
                       >
-                        <ArrowBackIcon size={16} />
+                        <ArrowLeft size={16} />
                         Back to Home
                       </button>
                       <h3 className="analysis-dashboard__upload-cta-title">
@@ -630,7 +630,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                         onClick={onExitToUpload}
                         type="button"
                       >
-                        <UploadIcon size={20} />
+                        <Upload size={20} />
                         Upload Your Video
                       </button>
                     </div>

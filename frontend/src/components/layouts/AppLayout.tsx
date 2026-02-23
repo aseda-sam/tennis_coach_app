@@ -3,8 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AccountMenu } from '../AccountMenu';
 import ErrorBoundary from '../ErrorBoundary';
-import { Activity } from 'lucide-react';
-import { CloseIcon } from '../Icons';
+import { Activity, X } from 'lucide-react';
 import LoadingIndicator from '../LoadingIndicator';
 import LoomVideoModal from '../LoomVideoModal';
 import { QuickSetup } from '../QuickSetup';
@@ -275,7 +274,7 @@ export function AppLayout() {
                     onClick={() => setIsUploadModalOpen(false)}
                     aria-label="Close"
                   >
-                    <CloseIcon size={18} />
+                    <X size={18} />
                   </button>
                 </div>
                 <div className="modal-content">

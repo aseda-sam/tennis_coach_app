@@ -8,8 +8,7 @@ import {
   useVideos,
 } from '../hooks/useVideos';
 import { VideoMetadata } from '../types/video';
-import { Upload, Video } from 'lucide-react';
-import { CloseIcon, DeleteIcon } from './Icons';
+import { Trash2, Upload, Video, X } from 'lucide-react';
 import LoadingIndicator from './LoadingIndicator';
 import VideoEditModal from './VideoEditModal';
 import './VideoList.css';
@@ -254,7 +253,7 @@ const VideoList: React.FC<VideoListProps> = ({
                       title="Delete"
                       type="button"
                     >
-                      <DeleteIcon size={18} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </div>
@@ -278,7 +277,7 @@ const VideoList: React.FC<VideoListProps> = ({
                 onClick={() => setIsUploadModalOpen(false)}
                 aria-label="Close"
               >
-                <CloseIcon size={18} />
+                <X size={18} />
               </button>
             </div>
             <div className="modal-content">
