@@ -191,7 +191,10 @@ def handle_video_upload(
         base_upload_dir = Path(settings.UPLOAD_DIR).parent
         upload_dir = base_upload_dir / path_prefix.rstrip("/")
         upload_dir.mkdir(parents=True, exist_ok=True)
-        unique_filename = ensure_unique_filename(safe_filename, upload_dir)
+        # Check DB uniqueness first, then filesystem — avoids IntegrityError when a
+        # file was previously uploaded (DB record exists) but later deleted from disk.
+        db_unique_filename = _ensure_unique_db_filename(db, safe_filename)
+        unique_filename = ensure_unique_filename(db_unique_filename, upload_dir)
         storage_file_path = str(Path(path_prefix.rstrip("/")) / unique_filename)
     else:
         unique_filename = _ensure_unique_db_filename(db, safe_filename)
