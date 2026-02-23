@@ -29,11 +29,7 @@
   width: 32px;
   height: 32px;
   border-radius: var(--radius-full);
-  background: linear-gradient(
-    135deg,
-    var(--color-court-blue-light) 0%,
-    var(--color-court-blue) 100%
-  );
+  background: var(--color-ink-heavy);
   color: white;
   display: flex;
   align-items: center;
@@ -97,7 +93,7 @@
   align-items: center;
   gap: var(--spacing-md);
   padding: var(--spacing-lg);
-  background: var(--color-court-blue-soft);
+  background: var(--color-surface-secondary);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -105,11 +101,7 @@
   width: 48px;
   height: 48px;
   border-radius: var(--radius-full);
-  background: linear-gradient(
-    135deg,
-    var(--color-court-blue-light) 0%,
-    var(--color-court-blue) 100%
-  );
+  background: var(--color-ink-heavy);
   color: white;
   display: flex;
   align-items: center;
@@ -342,12 +334,12 @@ select.account-menu-input {
 }
 
 .account-menu-action-btn.logout {
-  color: var(--color-error);
+  color: var(--color-text-muted);
 }
 
 .account-menu-action-btn.logout:hover {
-  background: rgba(220, 38, 38, 0.1);
-  color: var(--color-error-dark);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--color-text);
 }
 
 .account-menu-action-btn svg {
