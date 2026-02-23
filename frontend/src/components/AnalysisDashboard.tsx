@@ -517,6 +517,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                           await updateServeWindow(currentServe!.id, {
                             contact_timestamp: ts,
                           });
+                          await queryClient.invalidateQueries({
+                            queryKey: ['biomechanics-report', currentServe!.id],
+                          });
                         }}
                       />
                     </CollapsibleSection>
