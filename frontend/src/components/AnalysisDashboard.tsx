@@ -210,6 +210,25 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     [updateServeWindow, queryClient]
   );
 
+  // Pending contact — two-step confirm before committing a contact timestamp
+  const [pendingContactTime, setPendingContactTime] = useState<number | null>(
+    null
+  );
+
+  const handleArmContact = useCallback((time: number) => {
+    setPendingContactTime(time);
+  }, []);
+
+  const handleConfirmContact = useCallback(async () => {
+    if (pendingContactTime == null || !currentServe) return;
+    await handleSetContactAtCurrentTime(currentServe.id, pendingContactTime);
+    setPendingContactTime(null);
+  }, [pendingContactTime, currentServe, handleSetContactAtCurrentTime]);
+
+  const handleCancelContact = useCallback(() => {
+    setPendingContactTime(null);
+  }, []);
+
   const handleToggleLoopWithPhase = useCallback(() => {
     handleToggleLoopCurrentPhase(currentPhase);
   }, [handleToggleLoopCurrentPhase, currentPhase]);
@@ -263,8 +282,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         case 'c':
         case 'C':
           e.preventDefault();
-          if (currentServe) {
-            handleSetContactAtCurrentTime(currentServe.id, currentTime);
+          if (pendingContactTime !== null) {
+            handleConfirmContact();
+          } else if (currentServe) {
+            handleArmContact(currentTime);
           }
           break;
         default:
@@ -280,7 +301,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     currentServeIndex,
     currentServe,
     currentTime,
-    handleSetContactAtCurrentTime,
+    pendingContactTime,
+    handleArmContact,
+    handleConfirmContact,
   ]);
 
   // Find serves handler for the no-serves fallback state
@@ -434,9 +457,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     phases={phases}
                     activePhase={currentPhase?.phase}
                     contactTimestamp={currentServe!.contact_timestamp ?? null}
-                    onSetContact={async (ts) =>
-                      handleSetContactAtCurrentTime(currentServe!.id, ts)
-                    }
+                    pendingContactTime={pendingContactTime}
+                    onArmContact={handleArmContact}
+                    onConfirmContact={handleConfirmContact}
+                    onCancelContact={handleCancelContact}
                   />
                 </ErrorBoundary>
 

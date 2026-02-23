@@ -28,6 +28,10 @@ interface HeroViewProps {
   activePhase?: string | null;
   contactTimestamp?: number | null;
   onSetContact?: (timestamp: number) => Promise<void>;
+  pendingContactTime?: number | null;
+  onArmContact?: (time: number) => void;
+  onConfirmContact?: () => void;
+  onCancelContact?: () => void;
 }
 
 const HeroView: React.FC<HeroViewProps> = ({
@@ -53,9 +57,20 @@ const HeroView: React.FC<HeroViewProps> = ({
   activePhase = null,
   contactTimestamp = null,
   onSetContact,
+  pendingContactTime = null,
+  onArmContact,
+  onConfirmContact,
+  onCancelContact,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pipVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Auto-dismiss pending contact after 4 seconds of no action
+  useEffect(() => {
+    if (pendingContactTime == null || !onCancelContact) return;
+    const timer = setTimeout(onCancelContact, 4000);
+    return () => clearTimeout(timer);
+  }, [pendingContactTime, onCancelContact]);
 
   const isVideoMode = viewMode === 'video-focus';
   const activeVideoRef = isVideoMode ? videoRef : pipVideoRef;
@@ -257,19 +272,47 @@ const HeroView: React.FC<HeroViewProps> = ({
           </button>
         )}
 
-        {onSetContact && (
-          <button
-            type="button"
-            className="hero-view__contact-btn"
-            onClick={() => onSetContact(currentTime)}
-            title="Set ball contact at current time (C)"
-          >
-            <span className="hero-view__contact-diamond">◆</span>
-            {contactTimestamp !== null
-              ? contactTimestamp.toFixed(2) + 's'
-              : 'Contact'}
-          </button>
-        )}
+        {(onArmContact || onSetContact) &&
+          (pendingContactTime !== null ? (
+            <div className="hero-view__contact-confirm" role="group">
+              <span className="hero-view__contact-confirm-label">
+                <span className="hero-view__contact-diamond">◆</span>
+                {pendingContactTime.toFixed(2)}s?
+              </span>
+              <button
+                type="button"
+                className="hero-view__contact-confirm-btn hero-view__contact-confirm-btn--yes"
+                onClick={onConfirmContact}
+                title="Confirm contact timestamp"
+              >
+                ✓
+              </button>
+              <button
+                type="button"
+                className="hero-view__contact-confirm-btn hero-view__contact-confirm-btn--no"
+                onClick={onCancelContact}
+                title="Cancel"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="hero-view__contact-btn"
+              onClick={() =>
+                onArmContact
+                  ? onArmContact(currentTime)
+                  : onSetContact!(currentTime)
+              }
+              title="Set ball contact at current time (C)"
+            >
+              <span className="hero-view__contact-diamond">◆</span>
+              {contactTimestamp !== null
+                ? contactTimestamp.toFixed(2) + 's'
+                : 'Contact'}
+            </button>
+          ))}
       </div>
     </div>
   );

@@ -329,6 +329,80 @@
   line-height: 1;
 }
 
+/* Two-step contact confirm UI */
+.hero-view__contact-confirm {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 6px;
+  border: 1px solid #f5a623;
+  border-radius: var(--radius-md);
+  background: rgba(245, 166, 35, 0.08);
+  flex-shrink: 0;
+  animation: contact-confirm-in 0.15s ease-out;
+}
+
+@keyframes contact-confirm-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.hero-view__contact-confirm-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: #f5a623;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+
+.hero-view__contact-confirm-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  transition: var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.hero-view__contact-confirm-btn--yes {
+  background: rgba(245, 166, 35, 0.15);
+  color: #f5a623;
+  border-color: rgba(245, 166, 35, 0.3);
+}
+
+.hero-view__contact-confirm-btn--yes:hover {
+  background: #f5a623;
+  color: white;
+  border-color: #f5a623;
+}
+
+.hero-view__contact-confirm-btn--no {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: transparent;
+}
+
+.hero-view__contact-confirm-btn--no:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--color-text-primary);
+}
+
 @media (max-width: 768px) {
   .hero-view__controls {
     flex-wrap: wrap;
