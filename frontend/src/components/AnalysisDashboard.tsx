@@ -485,6 +485,23 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               </div>
 
               <div className="analysis-dashboard__side-col">
+                {/* Feature Curves */}
+                {biomechanicsReport?.detection_meta && (
+                  <CollapsibleSection
+                    title="Feature Curves"
+                    expanded={chartsExpanded}
+                    onToggle={() => setChartsExpanded(!chartsExpanded)}
+                  >
+                    <FeatureChartsSection
+                      detectionMeta={biomechanicsReport.detection_meta}
+                      currentTime={currentTime}
+                      serveStart={currentServe!.start_timestamp}
+                      contactTimestamp={currentServe!.contact_timestamp ?? null}
+                      onSeek={handleSeek}
+                    />
+                  </CollapsibleSection>
+                )}
+
                 {/* Metrics */}
                 {metrics.length > 0 && (
                   <CollapsibleSection
@@ -532,36 +549,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   </CollapsibleSection>
                 )}
 
-                {/* Key Time Points + Feature Curves */}
+                {/* Key Time Points */}
                 {biomechanicsReport?.detection_meta && (
-                  <>
-                    <CollapsibleSection
-                      title="Key Time Points"
-                      expanded={ktpExpanded}
-                      onToggle={() => setKtpExpanded(!ktpExpanded)}
-                    >
-                      <KTPTable
-                        detectionMeta={biomechanicsReport.detection_meta}
-                        serveStart={currentServe!.start_timestamp}
-                        onSeek={handleSeek}
-                      />
-                    </CollapsibleSection>
-                    <CollapsibleSection
-                      title="Feature Curves"
-                      expanded={chartsExpanded}
-                      onToggle={() => setChartsExpanded(!chartsExpanded)}
-                    >
-                      <FeatureChartsSection
-                        detectionMeta={biomechanicsReport.detection_meta}
-                        currentTime={currentTime}
-                        serveStart={currentServe!.start_timestamp}
-                        contactTimestamp={
-                          currentServe!.contact_timestamp ?? null
-                        }
-                        onSeek={handleSeek}
-                      />
-                    </CollapsibleSection>
-                  </>
+                  <CollapsibleSection
+                    title="Key Time Points"
+                    expanded={ktpExpanded}
+                    onToggle={() => setKtpExpanded(!ktpExpanded)}
+                  >
+                    <KTPTable
+                      detectionMeta={biomechanicsReport.detection_meta}
+                      serveStart={currentServe!.start_timestamp}
+                      onSeek={handleSeek}
+                    />
+                  </CollapsibleSection>
                 )}
               </div>
             </>
