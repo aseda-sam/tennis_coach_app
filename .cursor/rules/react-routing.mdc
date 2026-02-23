@@ -1,0 +1,225 @@
+---
+description: React Router conventions, route structure, navigation, and page patterns
+globs:
+  - frontend/src/App.tsx
+  - frontend/src/router.tsx
+  - frontend/src/components/pages/**/*.{ts,tsx}
+  - frontend/src/components/layouts/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend Routing Conventions
+
+## Library
+
+- **React Router v6** (`react-router-dom`). No other routing libraries.
+
+## Route Map
+
+All routes are defined in one file: `frontend/src/router.tsx`. This is the single source of truth for the app's URL structure. Don't scatter route definitions across components.
+
+| Path | Page Component | Auth | Description |
+|------|---------------|------|-------------|
+| `/` | `HomePage` | No | Landing / marketing page |
+| `/demo` | `DemoPage` | No | Demo serve analysis (no login required) |
+| `/library` | `LibraryPage` | Yes | User's video library |
+| `/videos/:videoId` | `VideoAnalysisPage` | Yes | Analysis dashboard for a specific video |
+| `/admin/demos` | `AdminDemosPage` | Yes (admin) | Admin demo video management |
+
+**Naming conventions:**
+- URL segments: lowercase, kebab-case (`/admin/demos`, not `/adminDemos`)
+- Dynamic params: camelCase (`:videoId`, not `:video_id`)
+- Keep URLs shallow — avoid nesting beyond two segments unless the hierarchy is real
+
+## File Organization
+
+### Pages directory
+
+Page components live in `frontend/src/components/pages/`. A "page" is a top-level component that a route renders directly. It handles:
+- Reading URL params (`useParams`)
+- Wiring up data fetching hooks
+- Composing the view from child components
+- Page-level error boundaries or loading states
+
+```
+frontend/src/components/pages/
+  HomePage.tsx
+  DemoPage.tsx
+  LibraryPage.tsx
+  VideoAnalysisPage.tsx
+  AdminDemosPage.tsx
+```
+
+**Page components are thin.** They read params, call hooks, and render the existing feature component. They don't contain business logic or complex UI — that stays in the feature components (`AnalysisDashboard`, `VideoList`, etc.).
+
+```tsx
+// Good: page is a thin wrapper
+function VideoAnalysisPage() {
+  const { videoId } = useParams<{ videoId: string }>();
+  const navigate = useNavigate();
+
+  if (!videoId) {
+    return <Navigate to="/library" replace />;
+  }
+
+  return (
+    <AnalysisDashboard
+      videoId={videoId}
+      onClose={() => navigate('/library')}
+    />
+  );
+}
+```
+
+### Layouts directory
+
+Shared layout wrappers live in `frontend/src/components/layouts/`.
+
+```
+frontend/src/components/layouts/
+  AppLayout.tsx        # Header + main content area (used by most routes)
+  AppLayout.css
+```
+
+The layout renders the app header and wraps children in the content area. Routes that need a different layout (e.g., fullscreen analysis) can use a different layout or none.
+
+## Route Definition Pattern
+
+Define all routes in `router.tsx` using `createBrowserRouter`:
+
+```tsx
+// frontend/src/router.tsx
+import { createBrowserRouter } from 'react-router-dom';
+
+export const router = createBrowserRouter([
+  {
+    element: <AppLayout />,
+    errorElement: <RootErrorBoundary />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: 'demo', element: <DemoPage /> },
+      { path: 'library', element: <ProtectedRoute><LibraryPage /></ProtectedRoute> },
+      { path: 'videos/:videoId', element: <ProtectedRoute><VideoAnalysisPage /></ProtectedRoute> },
+      { path: 'admin/demos', element: <ProtectedRoute requireAdmin><AdminDemosPage /></ProtectedRoute> },
+      { path: '*', element: <Navigate to="/" replace /> },
+    ],
+  },
+]);
+```
+
+## Protected Routes
+
+A single `<ProtectedRoute>` component handles auth gating. It lives in `frontend/src/components/layouts/ProtectedRoute.tsx`.
+
+```tsx
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  requireAdmin?: boolean;
+}
+```
+
+**Behavior:**
+- If auth is loading → show loading indicator (not a blank screen)
+- If not authenticated (and not `local` profile) → render `<AuthForm />`
+- If `requireAdmin` and user is not admin → render access denied with link home
+- If authenticated → render children
+
+**Local profile bypass:** When `REACT_APP_PROFILE=local`, skip auth checks entirely (same as current behavior).
+
+## Navigation Patterns
+
+### Use `<Link>` for user-visible navigation
+
+Any clickable element that takes the user to a known route should use `<Link>` (or `<NavLink>` for nav items with active states). This gives users standard browser behavior: right-click to open in new tab, cmd-click, hover to see URL.
+
+```tsx
+// Good: nav tabs use NavLink
+<NavLink to="/library" className={({ isActive }) => isActive ? 'active' : ''}>
+  Library
+</NavLink>
+
+// Good: card click-through uses Link
+<Link to={`/videos/${video.id}`} className="video-card-link">
+  {video.filename}
+</Link>
+```
+
+### Use `useNavigate()` for programmatic navigation
+
+After mutations, form submissions, or conditional logic — use the `navigate` function.
+
+```tsx
+const navigate = useNavigate();
+
+// After successful upload
+const handleVideoUploaded = (video: VideoMetadata) => {
+  queryClient.invalidateQueries({ queryKey: ['videos'] });
+  navigate('/library');
+};
+
+// After logout
+const handleLogout = async () => {
+  await signOut();
+  navigate('/');
+};
+```
+
+### Callbacks become navigations
+
+Components that currently receive `onClose`, `onBackToList`, or `onViewAnalysis` callbacks for navigation should migrate to using `useNavigate()` internally or receiving a target path. Prefer internal navigation over callback props when the destination is a known route.
+
+```tsx
+// Before: callback prop for navigation
+<AnalysisDashboard onClose={handleBackToList} />
+
+// After: component navigates itself
+function VideoAnalysisPage() {
+  const navigate = useNavigate();
+  return <AnalysisDashboard onClose={() => navigate('/library')} />;
+}
+```
+
+## URL Params and Data Fetching
+
+URL params replace prop-drilled IDs. The page component reads params and passes them to hooks.
+
+```tsx
+function VideoAnalysisPage() {
+  const { videoId } = useParams<{ videoId: string }>();
+  // videoId feeds into React Query hooks inside AnalysisDashboard
+}
+```
+
+**Guard params:** Always handle the case where a param is missing or invalid. Redirect to a sensible fallback (usually the parent list view).
+
+**Don't put transient UI state in the URL.** Selected tab, modal open/closed, expanded sections — these stay in component state. The URL represents the *resource*, not the UI configuration.
+
+## Code Splitting
+
+Page components must be lazy-loaded (consistent with existing `react-frontend.mdc` rule):
+
+```tsx
+const HomePage = React.lazy(() => import('./components/pages/HomePage'));
+const VideoAnalysisPage = React.lazy(() => import('./components/pages/VideoAnalysisPage'));
+```
+
+The `<Suspense>` boundary wraps route content inside the layout, not around the entire app.
+
+## Adding a New Route — Checklist
+
+When adding a new page to the app:
+
+1. **Create the page component** in `frontend/src/components/pages/NewPage.tsx`
+2. **Add the route** to `frontend/src/router.tsx`
+3. **Wrap in `<ProtectedRoute>`** if auth is required
+4. **Lazy-load** the page component in `router.tsx`
+5. **Add nav link** to the header if the page should appear in primary navigation
+6. **Update this route map** (the table above in this file) to keep it current
+
+## Anti-Patterns
+
+- **Don't use state for navigation.** No `useState<'list' | 'dashboard'>` to switch views. Every distinct view has a URL.
+- **Don't build route-like logic in components.** If you're writing a switch statement to pick which component to render based on a string, that's routing — put it in `router.tsx`.
+- **Don't nest routers.** One router for the app. Use nested `<Route>` elements for sub-layouts, not separate router instances.
+- **Don't put query params in paths.** Use URL search params (`?tab=metrics`) for filters and UI state that should survive refresh, not path segments.
+- **Don't redirect for loading states.** Show a loading indicator in place, don't navigate away and back.
