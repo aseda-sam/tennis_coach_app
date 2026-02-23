@@ -54,7 +54,8 @@ Stores serve windows (manual or auto-detected) and review metadata.
 - `video_id` (FK -> `videos.id`)
 - `user_id` (owner)
 - `player_id` (FK -> `players.id`, nullable while pending)
-- `start_timestamp`, `end_timestamp`, `contact_timestamp`
+- `start_timestamp`, `end_timestamp`, `contact_timestamp`, `contact_source`
+  - `contact_source`: `"manual"` (user-tagged via API) or `"auto"` (set by ball detection pipeline or lazy fallback). `NULL` for rows that predate this column.
 - `court_side`, `serve_number`, `serve_subtype`, `in_out`
 - `source` (`manual` or `auto`)
 - `status` (`pending`, `accepted`, `rejected`, `edited`)

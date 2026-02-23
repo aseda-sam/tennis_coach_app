@@ -122,6 +122,10 @@ class ServeWindowInfo(BaseModel):
     serve_number: Optional[int] = Field(default=None, description="Serve number")
     serve_subtype: Optional[str] = Field(default=None, description="Serve subtype")
     in_out: Optional[str] = Field(default=None, description="Outcome")
+    contact_source: Optional[str] = Field(
+        default=None,
+        description="How contact_timestamp was set: 'manual' (user-tagged) or 'auto' (ball detection)",
+    )
     created_at: datetime = Field(description="Creation timestamp")
 
     model_config = ConfigDict(from_attributes=True)

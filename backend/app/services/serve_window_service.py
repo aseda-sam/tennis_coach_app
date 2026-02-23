@@ -140,6 +140,9 @@ def create_serve_window(
         start_timestamp=serve_window_data.start_timestamp,
         end_timestamp=serve_window_data.end_timestamp,
         contact_timestamp=serve_window_data.contact_timestamp,
+        contact_source="manual"
+        if serve_window_data.contact_timestamp is not None
+        else None,
         court_side=serve_window_data.court_side,
         serve_number=serve_window_data.serve_number,
         serve_subtype=serve_window_data.serve_subtype,
@@ -243,6 +246,13 @@ def update_serve_window(
     update_dict = updates.model_dump(exclude_unset=True)
     for key, value in update_dict.items():
         setattr(serve_window, key, value)
+
+    # Track that contact_timestamp was set manually
+    if (
+        "contact_timestamp" in update_dict
+        and update_dict["contact_timestamp"] is not None
+    ):
+        serve_window.contact_source = "manual"
 
     db.commit()
     db.refresh(serve_window)

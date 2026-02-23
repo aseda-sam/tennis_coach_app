@@ -86,6 +86,7 @@ def segment_serve_phases(
     dominant_hand: str,
     video_width: int,
     video_height: int,
+    contact_source: Optional[str] = None,
 ) -> PhaseSegmentationResult:
     """Segment a serve into Kovacs 8-stage phases using KTP-based detection.
 
@@ -101,6 +102,8 @@ def segment_serve_phases(
         dominant_hand: "left" or "right".
         video_width: Video width in pixels.
         video_height: Video height in pixels.
+        contact_source: How contact_timestamp was set — "manual", "auto", or None
+            (None treated as "manual" for backwards compatibility).
 
     Returns:
         PhaseSegmentationResult with detected phases.
@@ -145,16 +148,19 @@ def segment_serve_phases(
     )
     ktp_meta["trophy_position"] = tp_meta
 
-    # KTP 3: Ball Impact (from user-tagged contact timestamp)
+    # KTP 3: Ball Impact (from contact_timestamp, tagged manually or auto-detected)
     ball_impact = None
     bi_meta: Dict[str, Any] = {"frame": None, "timestamp": None, "method": "not_tagged"}
     if contact_timestamp is not None:
         ball_impact = int((contact_timestamp - serve_start) * fps)
         ball_impact = max(0, min(ball_impact, total_frames - 1))
+        # Use "ball_detection" when explicitly auto-detected; "user_tagged" for manual
+        # or None (backwards compat — older rows without contact_source were user-tagged).
+        bi_method = "ball_detection" if contact_source == "auto" else "user_tagged"
         bi_meta = {
             "frame": ball_impact,
             "timestamp": round(serve_start + ball_impact / fps, 4),
-            "method": "user_tagged",
+            "method": bi_method,
         }
     ktp_meta["ball_impact"] = bi_meta
 

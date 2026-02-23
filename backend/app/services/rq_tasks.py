@@ -240,6 +240,7 @@ def run_ball_detection_rq(
                         )
                         if contact_ts is not None:
                             sw.contact_timestamp = contact_ts
+                            sw.contact_source = "auto"
                             logger.info(
                                 "Auto-detected contact for serve window %s at %.2fs",
                                 sw.id,
@@ -937,6 +938,7 @@ def analyze_pose_detection_scout_refine_rq(
                             )
                             if contact_ts is not None:
                                 sw.contact_timestamp = contact_ts
+                                sw.contact_source = "auto"
                                 logger.info(
                                     "Auto-detected contact for serve window %s at %.2fs",
                                     sw.id,

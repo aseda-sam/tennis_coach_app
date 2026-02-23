@@ -116,6 +116,7 @@ class ServeBiomechanicsService:
                 )
                 if contact_ts is not None:
                     serve_window.contact_timestamp = contact_ts
+                    serve_window.contact_source = "auto"
                     db.commit()
                     logger.info(
                         "Auto-detected contact for serve window %s at %.2fs (lazy)",
@@ -143,6 +144,7 @@ class ServeBiomechanicsService:
             dominant_hand=dominant_hand,
             video_width=width,
             video_height=height,
+            contact_source=serve_window.contact_source,
         )
 
         metrics = compute_biomechanics_metrics(
