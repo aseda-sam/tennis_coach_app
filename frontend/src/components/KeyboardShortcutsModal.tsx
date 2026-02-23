@@ -54,11 +54,7 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
               </div>
               <div className="keyboard-modal__shortcut">
                 <kbd>←</kbd> <kbd>→</kbd>
-                <span>Previous / Next frame</span>
-              </div>
-              <div className="keyboard-modal__shortcut">
-                <kbd>[</kbd> <kbd>]</kbd>
-                <span>Previous / Next serve</span>
+                <span>Step ±3 frames</span>
               </div>
               <div className="keyboard-modal__shortcut">
                 <kbd>Scroll</kbd>

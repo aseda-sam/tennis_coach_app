@@ -403,6 +403,29 @@
   color: var(--color-text-primary);
 }
 
+/* Keyboard shortcuts hint — ghost icon at far right of controls */
+.hero-view__shortcuts-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-disabled);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.hero-view__shortcuts-hint:hover {
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  background: var(--color-surface-secondary);
+}
+
 @media (max-width: 768px) {
   .hero-view__controls {
     flex-wrap: wrap;

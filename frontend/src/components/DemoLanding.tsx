@@ -1,5 +1,3 @@
-import React from 'react';
-import './DemoLanding.css';
 import {
   Activity,
   ChartNoAxesColumn,
@@ -10,6 +8,8 @@ import {
   Upload,
   Video,
 } from 'lucide-react';
+import React from 'react';
+import './DemoLanding.css';
 
 import { User } from '@supabase/supabase-js';
 
@@ -32,11 +32,10 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
         {/* Hero Section with Integrated Demo Card */}
         <div className="demo-landing__hero-section">
           <div className="demo-landing__hero-content">
-            <h1 className="demo-landing__title">I filmed my serve.</h1>
+            <h1 className="demo-landing__title">Your serve, frame by frame!</h1>
             <p className="demo-landing__origin">
-              Watching it back was already useful, so I kept going. Cataloguing
-              sessions, then tracking pose, then full biomechanics phases. A
-              side project that got real.{' '}
+              I filmed my serve, watched it back, and kept going. Cataloguing
+              sessions, then tracking pose, then full biomechanics phases.{' '}
               <a
                 href="https://github.com/aseda-sam/tennis_coach_app"
                 className="demo-landing__origin-link"
@@ -209,7 +208,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
             target="_blank"
             rel="noopener noreferrer"
           >
-            Following the build →
+            Follow the build on Substack →
           </a>
         </div>
       </div>

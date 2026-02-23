@@ -107,7 +107,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   }, [startAnalysis]);
 
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
-  const [naturalScroll, setNaturalScroll] = useState(true);
+  const [naturalScroll, setNaturalScroll] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
 
   // Collapsible sidebar section state (persisted across sessions)
@@ -284,11 +284,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          handleServeNavigate(currentServeIndex - 1);
+          if (currentServe) {
+            handleSeek(
+              Math.max(currentServe.start_timestamp, currentTime - 3 / 30)
+            );
+          }
           break;
         case 'ArrowRight':
           e.preventDefault();
-          handleServeNavigate(currentServeIndex + 1);
+          if (currentServe) {
+            handleSeek(
+              Math.min(currentServe.end_timestamp, currentTime + 3 / 30)
+            );
+          }
           break;
         case 'c':
         case 'C':
@@ -309,8 +317,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [
     handlePlayPause,
-    handleServeNavigate,
-    currentServeIndex,
+    handleSeek,
     currentServe,
     currentTime,
     pendingContactTime,
@@ -318,6 +325,30 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     handleConfirmContact,
     isDemo,
   ]);
+
+  // Scroll wheel — frame navigation within current serve window
+  useEffect(() => {
+    if (!currentServe) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+      e.preventDefault();
+      const forward = naturalScroll ? e.deltaY > 0 : e.deltaY < 0;
+      const delta = (forward ? 1 : -1) * (1 / 30);
+      handleSeek(
+        Math.max(
+          currentServe.start_timestamp,
+          Math.min(currentServe.end_timestamp, currentTime + delta)
+        )
+      );
+    };
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    return () => document.removeEventListener('wheel', handleWheel);
+  }, [currentServe, currentTime, naturalScroll, handleSeek]);
 
   // Find serves handler for the no-serves fallback state
   const handleFindServes = useCallback(async () => {
@@ -552,6 +583,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     onArmContact={isDemo ? undefined : handleArmContact}
                     onConfirmContact={isDemo ? undefined : handleConfirmContact}
                     onCancelContact={isDemo ? undefined : handleCancelContact}
+                    onOpenShortcuts={() => setShowKeyboardShortcuts(true)}
                   />
                 </ErrorBoundary>
 
