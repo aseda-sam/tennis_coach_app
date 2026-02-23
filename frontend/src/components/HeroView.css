@@ -404,6 +404,52 @@
 }
 
 /* Keyboard shortcuts hint — ghost icon at far right of controls */
+.hero-view__shortcuts-hint-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.hero-view__kbd-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  white-space: nowrap;
+  background: var(--color-surface-elevated, var(--color-surface-secondary));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 5px 10px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  animation: kbd-tip-in 0.2s ease-out;
+  pointer-events: none;
+}
+
+.hero-view__kbd-tip kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text);
+  line-height: 1.4;
+}
+
+@keyframes kbd-tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .hero-view__shortcuts-hint {
   display: flex;
   align-items: center;
@@ -417,7 +463,6 @@
   cursor: pointer;
   transition: var(--transition-normal);
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .hero-view__shortcuts-hint:hover {

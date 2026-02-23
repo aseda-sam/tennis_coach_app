@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import { ViewMode } from './AnalysisViewToggle';
 import { Keyboard, Pause, Play } from 'lucide-react';
@@ -66,6 +72,23 @@ const HeroView: React.FC<HeroViewProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pipVideoRef = useRef<HTMLVideoElement>(null);
+
+  // One-time keyboard shortcut hint tooltip
+  const [showKbdTip, setShowKbdTip] = useState(false);
+  useEffect(() => {
+    if (!onOpenShortcuts) return;
+    if (localStorage.getItem('kbd-hint-seen')) return;
+    const show = setTimeout(() => setShowKbdTip(true), 800);
+    return () => clearTimeout(show);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!showKbdTip) return;
+    const hide = setTimeout(() => {
+      setShowKbdTip(false);
+      localStorage.setItem('kbd-hint-seen', '1');
+    }, 4000);
+    return () => clearTimeout(hide);
+  }, [showKbdTip]);
 
   // Auto-dismiss pending contact after 4 seconds of no action
   useEffect(() => {
@@ -315,16 +338,28 @@ const HeroView: React.FC<HeroViewProps> = ({
                 : 'Contact'}
             </button>
           ))}
+
         {onOpenShortcuts && (
-          <button
-            type="button"
-            className="hero-view__shortcuts-hint"
-            onClick={onOpenShortcuts}
-            title="Keyboard shortcuts (?)"
-            aria-label="Show keyboard shortcuts"
-          >
-            <Keyboard size={13} />
-          </button>
+          <div className="hero-view__shortcuts-hint-wrap">
+            {showKbdTip && (
+              <div className="hero-view__kbd-tip" role="tooltip">
+                Press <kbd>?</kbd> for keyboard shortcuts
+              </div>
+            )}
+            <button
+              type="button"
+              className="hero-view__shortcuts-hint"
+              onClick={() => {
+                setShowKbdTip(false);
+                localStorage.setItem('kbd-hint-seen', '1');
+                onOpenShortcuts();
+              }}
+              title="Keyboard shortcuts (?)"
+              aria-label="Show keyboard shortcuts"
+            >
+              <Keyboard size={13} />
+            </button>
+          </div>
         )}
       </div>
     </div>
