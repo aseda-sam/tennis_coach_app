@@ -29,7 +29,6 @@
     "webpack-dev-server": "^5.2.1",
     "nth-check": "^2.0.1",
     "postcss": "^8.4.31",
-    "minimatch": "^10.2.1",
     "jsonpath": "npm:jsonpath-plus@^10.3.0"
   },
   "scripts": {
