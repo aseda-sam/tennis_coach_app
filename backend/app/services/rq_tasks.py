@@ -776,7 +776,6 @@ def analyze_pose_detection_scout_refine_rq(
                         video_job.status = "completed"
                         video_job.finished_at = datetime.utcnow()
                         db.commit()
-                duration = time.time() - start_time
                 return {
                     "status": "completed",
                     "mode": "scout_only",
