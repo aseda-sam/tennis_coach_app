@@ -8,6 +8,7 @@ interface AnalysisDashboardHeaderProps {
   serveIndex?: number;
   serveCount?: number;
   onClose: () => void;
+  isDemo?: boolean;
 }
 
 const AnalysisDashboardHeader: React.FC<AnalysisDashboardHeaderProps> = ({
@@ -16,9 +17,10 @@ const AnalysisDashboardHeader: React.FC<AnalysisDashboardHeaderProps> = ({
   serveIndex,
   serveCount,
   onClose,
+  isDemo = false,
 }) => {
   const segments = [
-    { label: 'Library', onClick: onClose },
+    { label: isDemo ? 'Demo' : 'Library', onClick: onClose },
     { label: videoFilename },
   ];
 

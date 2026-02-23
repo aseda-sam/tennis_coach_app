@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAdmin } from '../hooks/useAdmin';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import usePersistedState from '../hooks/usePersistedState';
 import { useServeBiomechanicsReport } from '../hooks/useServeBiomechanicsReport';
@@ -15,9 +16,11 @@ import CollapsibleSection from './CollapsibleSection';
 import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
+import { ArrowBackIcon, UploadIcon } from './Icons';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
 import ServeThumbnailStrip from './ServeThumbnailStrip';
+import Tour, { TourStep } from './Tour';
 
 const METRIC_DISPLAY_NAMES: Record<string, string> = {
   knee_flexion_min_deg: 'Knee Flexion',
@@ -41,6 +44,8 @@ interface AnalysisDashboardProps {
   videoFilename: string;
   videoUrl: string;
   onClose: () => void;
+  isDemo?: boolean;
+  onExitToUpload?: () => void;
 }
 
 function findCurrentPhase(
@@ -63,8 +68,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   videoFilename,
   videoUrl,
   onClose,
+  isDemo = false,
+  onExitToUpload,
 }) => {
   const queryClient = useQueryClient();
+  const { isAdmin } = useAdmin();
 
   const { data: analysisStatus, refetch: refetchAnalysisStatus } =
     useVideoAnalysisStatus(videoId);
@@ -115,6 +123,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
+
+  // Demo tour state
+  const [isTourOpen, setIsTourOpen] = useState(false);
 
   const { serveWindows, updateServeWindow } = useServeWindows({
     videoId,
@@ -281,6 +292,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           break;
         case 'c':
         case 'C':
+          if (isDemo) break;
           e.preventDefault();
           if (pendingContactTime !== null) {
             handleConfirmContact();
@@ -304,6 +316,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     pendingContactTime,
     handleArmContact,
     handleConfirmContact,
+    isDemo,
   ]);
 
   // Find serves handler for the no-serves fallback state
@@ -319,6 +332,58 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       setIsFindingServes(false);
     }
   }, [analysisStatus, runDetection]);
+
+  // Demo: admin status warning
+  const hasPoseAnalysis = analysisStatus?.has_analysis || false;
+  const showDemoStatusWarning =
+    isDemo && isAdmin && (!hasPoseAnalysis || serveWindows.length === 0);
+
+  // Demo: tour steps
+  const tourSteps: TourStep[] = useMemo(
+    () => [
+      {
+        target: 'video-player',
+        title: 'Video Player',
+        content:
+          'Play the demo clip and scrub through frames using the timeline below.',
+        placement: 'bottom',
+      },
+      {
+        target: 'serve-window-ranges',
+        title: 'Key Moments',
+        content: 'Navigate key moments directly from the timeline.',
+        placement: 'top',
+      },
+      {
+        target: 'analysis-panel',
+        title: 'Metrics & Analysis',
+        content:
+          'Review pose and key-moment metrics to understand your serve mechanics.',
+        placement: 'left',
+      },
+      {
+        target: 'upload-cta',
+        title: 'Ready to Upload?',
+        content:
+          'Ready to analyze your own video? Upload to see personalized feedback on your technique.',
+        placement: 'left',
+      },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    if (!isDemo) return;
+    const tourCompleted = localStorage.getItem('demoTourCompleted');
+    if (!tourCompleted) {
+      const timer = setTimeout(() => setIsTourOpen(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isDemo]);
+
+  const handleTourComplete = useCallback(() => {
+    localStorage.setItem('demoTourCompleted', 'true');
+  }, []);
 
   // Analysis in progress -- show progress view
   const analysisInProgress =
@@ -341,6 +406,28 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   return (
     <div className="analysis-dashboard">
+      {/* Demo: Admin status warning */}
+      {showDemoStatusWarning && (
+        <div className="analysis-dashboard__status-warning">
+          <div className="analysis-dashboard__status-warning-content">
+            <strong>Demo Status:</strong>
+            {!hasPoseAnalysis && (
+              <span className="analysis-dashboard__status-item warning">
+                ⚠ Missing pose analysis
+              </span>
+            )}
+            {serveWindows.length === 0 && (
+              <span className="analysis-dashboard__status-item warning">
+                ⚠ No key moments tagged
+              </span>
+            )}
+            <span className="analysis-dashboard__status-hint">
+              Use the Admin tab to manage demo videos.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <AnalysisDashboardHeader
         videoFilename={videoFilename}
@@ -348,10 +435,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         serveIndex={hasServes ? currentServeIndex : undefined}
         serveCount={hasServes ? sortedServeWindows.length : undefined}
         onClose={onClose}
+        isDemo={isDemo}
       />
 
       {/* Analysis Required State */}
-      {analysisIdle && (
+      {analysisIdle && !isDemo && (
         <div className="analysis-dashboard__empty-state">
           <h2 className="analysis-dashboard__empty-title">Ready to Analyze</h2>
           <p className="analysis-dashboard__empty-desc">
@@ -370,7 +458,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       )}
 
       {/* Analysis Failed */}
-      {analysisFailed && (
+      {analysisFailed && !isDemo && (
         <div className="analysis-dashboard__empty-state analysis-dashboard__empty-state--error">
           <p className="analysis-dashboard__error-message">
             {analysisState.error || 'Analysis failed. Please try again.'}
@@ -387,7 +475,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       )}
 
       {/* Analysis In Progress */}
-      {analysisInProgress && (
+      {analysisInProgress && !isDemo && (
         <div className="analysis-dashboard__progress-state">
           <ProgressBar
             status={
@@ -432,7 +520,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         <div className="analysis-dashboard__focus-view">
           {hasServes ? (
             <>
-              <div className="analysis-dashboard__main-col">
+              <div
+                className="analysis-dashboard__main-col"
+                data-tour="video-player"
+              >
                 {/* Hero View (left column at desktop) */}
                 <ErrorBoundary fallbackMessage="Video player encountered an error.">
                   <HeroView
@@ -457,10 +548,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     phases={phases}
                     activePhase={currentPhase?.phase}
                     contactTimestamp={currentServe!.contact_timestamp ?? null}
-                    pendingContactTime={pendingContactTime}
-                    onArmContact={handleArmContact}
-                    onConfirmContact={handleConfirmContact}
-                    onCancelContact={handleCancelContact}
+                    pendingContactTime={isDemo ? null : pendingContactTime}
+                    onArmContact={isDemo ? undefined : handleArmContact}
+                    onConfirmContact={isDemo ? undefined : handleConfirmContact}
+                    onCancelContact={isDemo ? undefined : handleCancelContact}
                   />
                 </ErrorBoundary>
 
@@ -508,7 +599,44 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 )}
               </div>
 
-              <div className="analysis-dashboard__side-col">
+              <div
+                className="analysis-dashboard__side-col"
+                data-tour="analysis-panel"
+              >
+                {/* Demo: Upload CTA */}
+                {isDemo && onExitToUpload && (
+                  <div
+                    className="analysis-dashboard__upload-cta"
+                    data-tour="upload-cta"
+                  >
+                    <div className="analysis-dashboard__upload-cta-content">
+                      <button
+                        className="analysis-dashboard__back-button"
+                        onClick={onClose}
+                        type="button"
+                      >
+                        <ArrowBackIcon size={16} />
+                        Back to Home
+                      </button>
+                      <h3 className="analysis-dashboard__upload-cta-title">
+                        Ready to analyze your own video?
+                      </h3>
+                      <p className="analysis-dashboard__upload-cta-description">
+                        Now that you've seen how it works, upload your tennis
+                        video and get personalized feedback on your technique.
+                      </p>
+                      <button
+                        className="analysis-dashboard__upload-cta-button"
+                        onClick={onExitToUpload}
+                        type="button"
+                      >
+                        <UploadIcon size={20} />
+                        Upload Your Video
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Feature Curves */}
                 {biomechanicsReport?.detection_meta && (
                   <CollapsibleSection
@@ -618,14 +746,16 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 Serves are detected automatically during analysis. If no serves
                 were found, try re-running detection or adding them manually.
               </p>
-              <button
-                className="analysis-dashboard__action-btn analysis-dashboard__action-btn--find"
-                onClick={handleFindServes}
-                disabled={isFindingServes}
-                type="button"
-              >
-                {isFindingServes ? 'Finding...' : 'Find Serve Windows'}
-              </button>
+              {!isDemo && (
+                <button
+                  className="analysis-dashboard__action-btn analysis-dashboard__action-btn--find"
+                  onClick={handleFindServes}
+                  disabled={isFindingServes}
+                  type="button"
+                >
+                  {isFindingServes ? 'Finding...' : 'Find Serve Windows'}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -634,9 +764,20 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       <KeyboardShortcutsModal
         isOpen={showKeyboardShortcuts}
         onClose={() => setShowKeyboardShortcuts(false)}
+        isDemo={isDemo}
         naturalScroll={naturalScroll}
         onNaturalScrollChange={setNaturalScroll}
       />
+
+      {isDemo && (
+        <Tour
+          steps={tourSteps}
+          isOpen={isTourOpen}
+          onClose={() => setIsTourOpen(false)}
+          onComplete={handleTourComplete}
+          showSkip={true}
+        />
+      )}
     </div>
   );
 };
