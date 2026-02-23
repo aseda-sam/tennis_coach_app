@@ -257,6 +257,24 @@ def cleanup_test_files() -> Generator[None, None, None]:
     yield
     # Clean up any test-generated files
     test_dirs = [
+        Path("../data/videos/raw"),
+        Path("../data/videos/processed"),
+        Path("../data/analysis_cache"),
+    ]
+
+    for test_dir in test_dirs:
+        if test_dir.exists():
+            for file_path in test_dir.glob("test_*"):
+                if file_path.is_file():
+                    file_path.unlink(missing_ok=True)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def cleanup_test_files_session() -> Generator[None, None, None]:
+    """Session-scoped cleanup: remove test_* files from data dirs after full suite."""
+    yield
+    test_dirs = [
+        Path("../data/videos/raw"),
         Path("../data/videos/processed"),
         Path("../data/analysis_cache"),
     ]
