@@ -131,7 +131,7 @@ export function useSkeletonAnimation({
     });
 
     // Metric annotations (toss height / laterality)
-    if (annotations && annotations.length > 0 && overlayData) {
+    if (annotations && annotations.length > 0) {
       for (const metric of annotations) {
         if (metric.timestamp == null || metric.value == null) continue;
 

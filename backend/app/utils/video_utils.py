@@ -72,8 +72,9 @@ def get_video_rotation(video_path: Path) -> int:
         json.JSONDecodeError,
         ValueError,
     ):
-        # ffprobe not available or failed - fall back to no rotation
-        pass
+        logger.debug(
+            "ffprobe unavailable or failed; assuming no rotation for %s", video_path
+        )
 
     return 0
 
