@@ -102,8 +102,7 @@ def segment_serve_phases(
         dominant_hand: "left" or "right".
         video_width: Video width in pixels.
         video_height: Video height in pixels.
-        contact_source: How contact_timestamp was set — "manual", "auto", or None
-            (None treated as "manual" for backwards compatibility).
+        contact_source: How contact_timestamp was set — "manual" or "auto".
 
     Returns:
         PhaseSegmentationResult with detected phases.
@@ -154,8 +153,6 @@ def segment_serve_phases(
     if contact_timestamp is not None:
         ball_impact = int((contact_timestamp - serve_start) * fps)
         ball_impact = max(0, min(ball_impact, total_frames - 1))
-        # Use "ball_detection" when explicitly auto-detected; "user_tagged" for manual
-        # or None (backwards compat — older rows without contact_source were user-tagged).
         bi_method = "ball_detection" if contact_source == "auto" else "user_tagged"
         bi_meta = {
             "frame": ball_impact,
