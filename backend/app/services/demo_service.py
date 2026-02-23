@@ -27,7 +27,9 @@ def list_demo_videos_with_status(db: Session) -> List[dict]:
     Returns:
         List of demo video dictionaries with status information
     """
-    demo_videos = db.query(Video).filter(Video.is_demo).order_by(Video.id.desc()).all()
+    demo_videos = (
+        db.query(Video).filter(Video.is_demo.is_(True)).order_by(Video.id.desc()).all()
+    )
     if not demo_videos:
         return []
 
@@ -84,10 +86,10 @@ def validate_demo_eligibility(video: Video) -> None:
     if not video.is_demo:
         raise ValueError(f"Video {video.id} is not a demo video")
 
-    if not video.file_path.startswith("demo/"):
+    if "demo/" not in video.file_path:
         raise ValueError(
             f"Video {video.id} is not eligible to be active demo. "
-            f"File path must start with 'demo/'"
+            f"File path must include 'demo/'"
         )
 
 
