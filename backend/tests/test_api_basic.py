@@ -24,7 +24,9 @@ class TestBasicAPI:
 
     def test_upload_invalid_format(self, client: TestClient) -> None:
         """Test upload with unsupported file format."""
-        test_content = b"fake content"
+        test_content = (
+            b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 100
+        )
         files = {"file": ("test.txt", test_content, "text/plain")}
 
         response = client.post("/v0/videos/upload", files=files)

@@ -160,7 +160,7 @@ def handle_service_error(
             raise APIError(
                 status_code=status.HTTP_403_FORBIDDEN,
                 error_code="FORBIDDEN",
-                message=str(error),
+                message="Access denied",
             ) from error
         raise APIError(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -194,11 +194,11 @@ def log_and_raise_error(
         else:
             raise handle_validation_error("input", "invalid", str(error))
     elif isinstance(error, FileNotFoundError):
-        raise handle_not_found_error("file", str(error))
+        raise handle_not_found_error("file", "unknown")
     elif isinstance(error, OSError):
-        raise handle_processing_error(operation, str(error))
+        raise handle_processing_error(operation)
     else:
-        raise handle_processing_error(operation, str(error))
+        raise handle_processing_error(operation)
 
 
 # Global exception handlers
@@ -230,5 +230,5 @@ async def general_error_handler(request: Request, exc: Exception) -> JSONRespons
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         error_code=ErrorCodes.INTERNAL_ERROR,
         message="Internal server error",
-        details={"error": str(exc)},
+        details=None,
     )

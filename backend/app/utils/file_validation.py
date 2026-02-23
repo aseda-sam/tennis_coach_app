@@ -11,11 +11,35 @@ from app.core.config import env_limits, settings
 from app.utils.error_handling import handle_file_error
 
 
+def _validate_magic_bytes(file_content: bytes) -> bool:
+    """
+    Check file content against known video format magic bytes.
+
+    Args:
+        file_content: Raw file bytes (at least first 12 bytes needed)
+
+    Returns:
+        True if magic bytes match a known video format
+    """
+    if len(file_content) < 12:
+        return False
+
+    # MP4/MOV: 'ftyp' at offset 4
+    if file_content[4:8] == b"ftyp":
+        return True
+    # AVI: starts with 'RIFF'
+    if file_content[0:4] == b"RIFF":
+        return True
+    # WebM/MKV: EBML header
+    return file_content[0:4] == b"\x1a\x45\xdf\xa3"
+
+
 def validate_video_file(
     filename: str,
     file_size: int,
     content_type: Optional[str] = None,
     metadata: Optional[Dict[str, any]] = None,
+    file_content: Optional[bytes] = None,
 ) -> None:
     """
     Validate video file for upload.
@@ -68,6 +92,14 @@ def validate_video_file(
                 filename,
                 f"Content type {content_type} not supported",
             )
+
+    # Validate magic bytes (if file content provided)
+    if file_content and not _validate_magic_bytes(file_content):
+        raise handle_file_error(
+            "unsupported_format",
+            filename,
+            "File content does not match a supported video format",
+        )
 
     # Validate video metadata (optional)
     if metadata:

@@ -257,7 +257,13 @@ class TestProtectedEndpoint:
 
         # Try to upload without auth
         response = client.post(
-            "/v0/videos/upload", files={"file": ("test.mp4", b"fake")}
+            "/v0/videos/upload",
+            files={
+                "file": (
+                    "test.mp4",
+                    b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom",
+                )
+            },
         )
 
         assert response.status_code == 401
@@ -279,7 +285,13 @@ class TestProtectedEndpoint:
         # Upload should work with mock auth
         # Note: This will fail if video validation fails, but auth should pass
         response = client.post(
-            "/v0/videos/upload", files={"file": ("test.mp4", b"fake")}
+            "/v0/videos/upload",
+            files={
+                "file": (
+                    "test.mp4",
+                    b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom",
+                )
+            },
         )
 
         # Auth passed (might fail on validation, but not 401)

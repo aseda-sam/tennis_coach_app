@@ -182,7 +182,7 @@ def handle_video_upload(
     if not filename:
         raise handle_file_error("invalid", "", "No file provided")
 
-    validate_video_file(filename, file_size, content_type)
+    validate_video_file(filename, file_size, content_type, file_content=file_content)
 
     safe_filename = get_safe_filename(filename)
     path_prefix = "demo/" if is_demo else "raw/"

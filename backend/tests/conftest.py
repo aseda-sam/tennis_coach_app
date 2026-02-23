@@ -22,6 +22,10 @@ from app.core.database import Base, get_db
 from app.dependencies.auth import get_current_user
 from app.main import app
 
+# MP4 magic bytes header for creating valid test video content.
+# Use: MP4_HEADER + b"\x00" * desired_padding
+MP4_HEADER = b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom\x00\x00\x00\x08free"
+
 
 def skip_if_supabase_storage() -> None:
     """Skip test if using Supabase storage (requires local file access)."""

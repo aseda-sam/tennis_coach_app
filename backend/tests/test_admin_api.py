@@ -171,7 +171,10 @@ class TestUploadForUserEndpoint:
 
         try:
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-                tmp_file.write(b"fake video content" * 1000)
+                tmp_file.write(
+                    b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom"
+                    + b"\x00" * 10000
+                )
                 tmp_file_path = tmp_file.name
 
             try:
@@ -200,7 +203,10 @@ class TestUploadForUserEndpoint:
             mock_get_user.return_value = None  # User doesn't exist
 
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-                tmp_file.write(b"fake video content" * 1000)
+                tmp_file.write(
+                    b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom"
+                    + b"\x00" * 10000
+                )
                 tmp_file_path = tmp_file.name
 
             try:
@@ -239,7 +245,10 @@ class TestUploadForUserEndpoint:
 
             # Create test video file
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-                tmp_file.write(b"fake video content" * 1000)
+                tmp_file.write(
+                    b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom"
+                    + b"\x00" * 10000
+                )
                 tmp_file_path = tmp_file.name
 
             try:

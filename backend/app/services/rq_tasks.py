@@ -431,12 +431,19 @@ def transcode_video_rq(
         ]
 
         logger.info("Running ffmpeg: %s", " ".join(ffmpeg_cmd))
-        result = subprocess.run(  # noqa: S603 - ffmpeg args from config and validated storage path
-            ffmpeg_cmd,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(  # noqa: S603 - ffmpeg args from config and validated storage path
+                ffmpeg_cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=600,
+            )
+        except subprocess.TimeoutExpired:
+            logger.error("ffmpeg timed out after 600s for video %s", video_id)
+            raise RuntimeError(
+                f"ffmpeg transcoding timed out for video {video_id}"
+            ) from None
         if result.returncode != 0:
             logger.error("ffmpeg failed: %s", result.stderr)
             raise RuntimeError(f"ffmpeg transcoding failed: {result.stderr}")

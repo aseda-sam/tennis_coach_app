@@ -2,10 +2,10 @@
 
 If you deploy, keep it simple:
 
-- **API**: Fly.io app (`tennis-coach-api`, config in `fly.api.toml`)
-- **Worker**: Fly.io app (`tennis-coach-worker`, config in `fly.toml`)
-- **Redis**: Upstash
-- **DB/Auth/Storage**: Supabase
+- **API**: Fly.io app (`<your-fly-api-app>`, config in `fly.api.toml`)
+- **Worker**: Fly.io app (`<your-fly-worker-app>`, config in `fly.toml`)
+- **Redis**: Managed Redis provider (e.g., Upstash)
+- **DB/Auth/Storage**: Managed Postgres provider (e.g., Supabase)
 
 ## Required env vars (API + worker)
 
@@ -22,7 +22,7 @@ REDIS_URL=rediss://...
 
 # Optional but needed for admin/demo features:
 ADMIN_USER_IDS=uuid1,uuid2
-SUPABASE_DEMO_BUCKET=demo-videos
+SUPABASE_DEMO_BUCKET=<your-demo-bucket>
 ```
 
 ## First deploy checklist
@@ -79,19 +79,19 @@ If Fly deploy fails during `release_command` (`alembic upgrade head`):
 1. Confirm the current production Alembic version:
 
 ```bash
-fly ssh console -a tennis-coach-api -C "cd /app/backend && alembic current"
+fly ssh console -a <your-fly-api-app> -C "cd /app/backend && alembic current"
 ```
 
 2. List available revisions:
 
 ```bash
-fly ssh console -a tennis-coach-api -C "cd /app/backend && alembic heads && alembic history --verbose"
+fly ssh console -a <your-fly-api-app> -C "cd /app/backend && alembic heads && alembic history --verbose"
 ```
 
 3. Re-run migration manually to see the exact error:
 
 ```bash
-fly ssh console -a tennis-coach-api -C "cd /app/backend && alembic upgrade head"
+fly ssh console -a <your-fly-api-app> -C "cd /app/backend && alembic upgrade head"
 ```
 
 4. If migration still fails:
@@ -102,5 +102,5 @@ fly ssh console -a tennis-coach-api -C "cd /app/backend && alembic upgrade head"
 5. Verify success after fix:
 
 ```bash
-fly ssh console -a tennis-coach-api -C "cd /app/backend && alembic current"
+fly ssh console -a <your-fly-api-app> -C "cd /app/backend && alembic current"
 ```

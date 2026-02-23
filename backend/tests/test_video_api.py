@@ -64,7 +64,9 @@ class TestVideoAPI:
         """Test upload with unsupported file format."""
         # Create a temporary text file
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp_file:
-            tmp_file.write(b"fake content")
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 100
+            )
             tmp_file_path = tmp_file.name
 
         try:
@@ -85,8 +87,10 @@ class TestVideoAPI:
         """Test successful video upload with mock video file."""
         # Create a mock video file (just a file with .mp4 extension)
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            # Write some fake video content
-            tmp_file.write(b"fake video content" * 1000)  # Make it larger
+            # Write valid MP4 magic bytes + padding
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 10000
+            )  # Make it larger
             tmp_file_path = tmp_file.name
 
         try:
@@ -123,7 +127,9 @@ class TestVideoAPI:
         """Test that upload succeeds even if enqueue fails (Redis down)."""
         # Create a mock video file
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 1000)
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 10000
+            )
             tmp_file_path = tmp_file.name
 
         try:
@@ -156,7 +162,9 @@ class TestVideoAPI:
         """Test that upload succeeds even if enqueue raises exception."""
         # Create a mock video file
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 1000)
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 10000
+            )
             tmp_file_path = tmp_file.name
 
         try:
@@ -189,7 +197,9 @@ class TestVideoAPI:
     ) -> None:
         """Test that all uploads enqueue a transcode job (regardless of file size)."""
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 100)
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 1000
+            )
             tmp_file_path = tmp_file.name
 
         try:
@@ -403,7 +413,9 @@ class TestVideoAPI:
 
         # Create a mock video file
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
-            tmp_file.write(b"fake video content" * 1000)
+            tmp_file.write(
+                b"\x00\x00\x00\x20ftypmp41\x00\x00\x00\x00mp41isom" + b"\x00" * 10000
+            )
             tmp_file_path = tmp_file.name
 
         try:
