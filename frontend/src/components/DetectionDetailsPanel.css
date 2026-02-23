@@ -79,3 +79,54 @@
   border-top: 1px solid var(--color-border-light);
   margin: 0;
 }
+
+/* Contact footer — separated from charts with a clear gap */
+.detection-details__contact-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border-light);
+}
+
+/* Contact timestamp edit row */
+.detection-details__contact-edit {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.detection-details__contact-btn {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-court-clay);
+  background: none;
+  border: 1px solid var(--color-court-clay);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--spacing-xs);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-in-out),
+    color var(--duration-fast) var(--ease-in-out);
+}
+
+.detection-details__contact-btn:hover {
+  background: var(--color-court-clay);
+  color: var(--color-surface);
+}
+
+.detection-details__contact-current {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+}
+
+/* Legend */
+.detection-details__legend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
