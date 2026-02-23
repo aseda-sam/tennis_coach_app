@@ -122,7 +122,7 @@
 
 /* Action Buttons */
 .analysis-dashboard__action-btn {
-  padding: 10px 20px;
+  padding: var(--spacing-md) var(--spacing-xl);
   border: none;
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
@@ -142,21 +142,16 @@
 }
 
 .analysis-dashboard__action-btn--primary:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: var(--shadow-primary-md);
 }
 
 .analysis-dashboard__action-btn--find {
-  background: linear-gradient(
-    135deg,
-    var(--color-warning),
-    var(--color-warning-dark)
-  );
+  background: var(--color-warning);
   color: white;
 }
 
 .analysis-dashboard__action-btn--find:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  background: var(--color-warning-dark);
 }
 
 .analysis-dashboard__action-btn--accept-all {
@@ -166,7 +161,7 @@
 }
 
 .analysis-dashboard__action-btn--accept-all:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  box-shadow: var(--shadow-primary-md);
 }
 
 .analysis-dashboard__action-btn--clear-all {
@@ -313,11 +308,11 @@
 
 /* Toast */
 .analysis-dashboard__toast {
-  padding: 8px 12px;
+  padding: var(--spacing-sm) var(--spacing-md);
   background: rgba(17, 24, 39, 0.9);
   color: white;
   border-radius: var(--radius-md);
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   text-align: center;
   animation: toastSlide 0.2s ease-out;
   margin-top: var(--spacing-sm);
@@ -375,8 +370,8 @@
 
   .analysis-dashboard__side-col {
     position: sticky;
-    top: 56px;
-    max-height: calc(100vh - 56px - var(--spacing-sm));
+    top: var(--app-header-height);
+    max-height: calc(100vh - var(--app-header-height) - var(--spacing-sm));
     overflow-y: auto;
   }
 
