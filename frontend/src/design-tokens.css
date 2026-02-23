@@ -64,7 +64,14 @@
   --color-amber: #c8941a;
   --color-amber-dark: #a97a14;
   --color-amber-soft: rgba(200, 148, 26, 0.1);
-  --color-amber-softest: rgba(200, 148, 26, 0.06);
+  --color-amber-softest: rgba(200, 148, 26, 0.07);
+
+  /* Icon Badge — standard pattern for feature/category icon containers */
+  --icon-badge-bg: var(--color-amber-softest);
+  --icon-badge-border: var(--color-amber-soft);
+  --icon-badge-color: var(--color-amber);
+  --icon-badge-size: 36px;
+  --icon-badge-radius: var(--radius-md);
 
   /* Court-Inspired Palette */
   --color-court-blue: #1b4b7a;

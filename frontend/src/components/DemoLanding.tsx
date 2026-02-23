@@ -116,7 +116,11 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
           <div className="demo-landing__feature-grid">
             <div className="demo-landing__feature-card">
               <div className="demo-landing__feature-icon">
-                <Activity size={20} color="white" strokeWidth={2} />
+                <Activity
+                  size={20}
+                  color="var(--color-amber)"
+                  strokeWidth={2}
+                />
               </div>
               <h4 className="demo-landing__feature-title">Body Tracking</h4>
               <p className="demo-landing__feature-description">
@@ -127,7 +131,11 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
 
             <div className="demo-landing__feature-card">
               <div className="demo-landing__feature-icon">
-                <ScanLine size={20} color="white" strokeWidth={2} />
+                <ScanLine
+                  size={20}
+                  color="var(--color-amber)"
+                  strokeWidth={2}
+                />
               </div>
               <h4 className="demo-landing__feature-title">Serve Breakdown</h4>
               <p className="demo-landing__feature-description">
@@ -137,7 +145,11 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
 
             <div className="demo-landing__feature-card">
               <div className="demo-landing__feature-icon">
-                <ChartNoAxesColumn size={20} color="white" strokeWidth={2} />
+                <ChartNoAxesColumn
+                  size={20}
+                  color="var(--color-amber)"
+                  strokeWidth={2}
+                />
               </div>
               <h4 className="demo-landing__feature-title">
                 Progress Over Time
@@ -149,7 +161,11 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
 
             <div className="demo-landing__feature-card">
               <div className="demo-landing__feature-icon">
-                <StepForward size={20} color="white" strokeWidth={2} />
+                <StepForward
+                  size={20}
+                  color="var(--color-amber)"
+                  strokeWidth={2}
+                />
               </div>
               <h4 className="demo-landing__feature-title">
                 Frame-by-Frame Control
