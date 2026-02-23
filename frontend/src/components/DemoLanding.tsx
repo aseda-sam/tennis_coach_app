@@ -3,6 +3,7 @@ import './DemoLanding.css';
 import {
   Activity,
   ChartNoAxesColumn,
+  Github,
   Play,
   ScanLine,
   StepForward,
@@ -31,9 +32,21 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
         {/* Hero Section with Integrated Demo Card */}
         <div className="demo-landing__hero-section">
           <div className="demo-landing__hero-content">
-            <h1 className="demo-landing__title">
-              Tennis Feedback You Can See in Every Frame
-            </h1>
+            <h1 className="demo-landing__title">I filmed my serve.</h1>
+            <p className="demo-landing__origin">
+              Watching it back was already useful, so I kept going. Cataloguing
+              sessions, then tracking pose, then full biomechanics phases. A
+              side project that got real.{' '}
+              <a
+                href="https://github.com/aseda-sam/tennis_coach_app"
+                className="demo-landing__origin-link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                It&apos;s open source.
+                <Github size={13} className="demo-landing__origin-link-icon" />
+              </a>
+            </p>
             <button
               className="demo-landing__watch-tutorial"
               onClick={onWatchTutorial}
@@ -175,6 +188,29 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Footer strip */}
+        <div className="demo-landing__footer-strip">
+          <p className="demo-landing__feedback-note">
+            This is a work in progress.{' '}
+            <a
+              href="https://github.com/aseda-sam/tennis_coach_app/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open an issue
+            </a>{' '}
+            if something&apos;s broken or you have ideas.
+          </p>
+          <a
+            href="https://substack.com/@aseda"
+            className="demo-landing__substack-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Following the build →
+          </a>
         </div>
       </div>
     </div>
