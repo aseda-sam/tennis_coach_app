@@ -86,14 +86,6 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
               className={`keyboard-modal__shortcuts ${isDemo ? 'keyboard-modal__shortcuts--disabled' : ''}`}
             >
               <div className="keyboard-modal__shortcut">
-                <kbd>S</kbd>
-                <span>Mark serve start point</span>
-              </div>
-              <div className="keyboard-modal__shortcut">
-                <kbd>E</kbd>
-                <span>Mark serve end point</span>
-              </div>
-              <div className="keyboard-modal__shortcut">
                 <kbd>C</kbd>
                 <span>Mark contact point</span>
               </div>

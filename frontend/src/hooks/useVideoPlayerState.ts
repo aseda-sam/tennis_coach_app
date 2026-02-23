@@ -88,16 +88,6 @@ export interface UseVideoPlayerStateReturn {
   // Scroll hint
   showScrollHint: boolean;
 
-  // Range marks
-  rangeInTime: number | null;
-  rangeOutTime: number | null;
-  openRange: { start: number; end: number } | null;
-  openRequestId: number;
-  markedRange: { start: number; end: number } | null;
-  hasRangeMarks: boolean;
-  clearRangeMarks: () => void;
-  createServeWindowFromMarks: () => void;
-
   // Highlight
   highlightTimestamp: number | null;
   setHighlightTimestamp: React.Dispatch<React.SetStateAction<number | null>>;
@@ -153,8 +143,6 @@ export interface UseVideoPlayerStateReturn {
   // Formatted labels
   formattedCurrentTime: string;
   formattedDuration: string;
-  rangeInLabel: string;
-  rangeOutLabel: string;
 
   // Serve windows data (from hook)
   serveWindows: ServeWindow[];
@@ -233,15 +221,6 @@ export function useVideoPlayerState({
   const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(
     null
   );
-
-  // ── State: range marks ────────────────────────────────────────────────
-  const [openRequestId, setOpenRequestId] = useState(0);
-  const [openRange, setOpenRange] = useState<{
-    start: number;
-    end: number;
-  } | null>(null);
-  const [rangeInTime, setRangeInTime] = useState<number | null>(null);
-  const [rangeOutTime, setRangeOutTime] = useState<number | null>(null);
 
   // ── State: detection ──────────────────────────────────────────────────
   const [detectionMessage, setDetectionMessage] = useState<string | null>(null);
@@ -477,28 +456,6 @@ export function useVideoPlayerState({
     navigateFrame('backward');
   }, [navigateFrame]);
 
-  // ── Range marks ───────────────────────────────────────────────────────
-  const markedRange = useMemo(() => {
-    if (rangeInTime === null || rangeOutTime === null) return null;
-    const start = Math.min(rangeInTime, rangeOutTime);
-    const end = Math.max(rangeInTime, rangeOutTime);
-    return { start, end };
-  }, [rangeInTime, rangeOutTime]);
-
-  const hasRangeMarks = rangeInTime !== null || rangeOutTime !== null;
-
-  const clearRangeMarks = useCallback(() => {
-    setRangeInTime(null);
-    setRangeOutTime(null);
-    setOpenRange(null);
-  }, []);
-
-  const createServeWindowFromMarks = useCallback(() => {
-    if (!markedRange) return;
-    setOpenRange(markedRange);
-    setOpenRequestId((prev) => prev + 1);
-  }, [markedRange]);
-
   // ── Serve window navigation ───────────────────────────────────────────
   const navigateToServeWindowById = useCallback(
     (serveWindowId: number) => {
@@ -652,11 +609,6 @@ export function useVideoPlayerState({
     () => formatTime(duration),
     [duration, formatTime]
   );
-  const rangeInLabel =
-    rangeInTime !== null ? formatTime(rangeInTime) : '\u2014';
-  const rangeOutLabel =
-    rangeOutTime !== null ? formatTime(rangeOutTime) : '\u2014';
-
   // ── Effects ───────────────────────────────────────────────────────────
 
   // Cleanup toast timeout on unmount
@@ -854,18 +806,6 @@ export function useVideoPlayerState({
           event.preventDefault();
           navigateToNextServeWindow();
           break;
-        case 's':
-        case 'S':
-          event.preventDefault();
-          if (isDemo) break;
-          setRangeInTime(videoRef.current?.currentTime ?? currentTime);
-          break;
-        case 'e':
-        case 'E':
-          event.preventDefault();
-          if (isDemo) break;
-          setRangeOutTime(videoRef.current?.currentTime ?? currentTime);
-          break;
         case 'c':
         case 'C': {
           event.preventDefault();
@@ -1020,16 +960,6 @@ export function useVideoPlayerState({
     // Scroll hint
     showScrollHint,
 
-    // Range marks
-    rangeInTime,
-    rangeOutTime,
-    openRange,
-    openRequestId,
-    markedRange,
-    hasRangeMarks,
-    clearRangeMarks,
-    createServeWindowFromMarks,
-
     // Highlight
     highlightTimestamp,
     setHighlightTimestamp,
@@ -1085,8 +1015,6 @@ export function useVideoPlayerState({
     // Formatted labels
     formattedCurrentTime,
     formattedDuration,
-    rangeInLabel,
-    rangeOutLabel,
 
     // Serve windows data
     serveWindows,
