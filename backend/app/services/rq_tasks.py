@@ -1054,8 +1054,9 @@ def analyze_pose_detection_scout_refine_rq(
         duration = time.time() - start_time
 
         logger.error(
-            "RQ task failed for video %s: %s",
+            "RQ task failed for video %s after %.1fs: %s",
             video_id,
+            duration,
             e,
             exc_info=True,
             extra=get_log_extra(video_id=video_id, job_id=video_job_id),

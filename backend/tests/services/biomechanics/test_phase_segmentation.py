@@ -123,7 +123,7 @@ class TestKTPDetection:
         """A well-formed serve with contact should produce all 8 phases."""
         result = _run_standard()
         phase_names = [p.phase for p in result.phases]
-        for phase in ServePhase:
+        for phase in list(ServePhase):
             assert phase in phase_names, f"Missing phase: {phase.value}"
         assert result.total_phases_detected == 8
 
