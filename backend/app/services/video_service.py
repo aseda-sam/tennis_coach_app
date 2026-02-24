@@ -191,7 +191,10 @@ def handle_video_upload(
         base_upload_dir = Path(settings.UPLOAD_DIR).parent
         upload_dir = base_upload_dir / path_prefix.rstrip("/")
         upload_dir.mkdir(parents=True, exist_ok=True)
-        unique_filename = ensure_unique_filename(safe_filename, upload_dir)
+        # Check DB uniqueness first, then filesystem — avoids IntegrityError when a
+        # file was previously uploaded (DB record exists) but later deleted from disk.
+        db_unique_filename = _ensure_unique_db_filename(db, safe_filename)
+        unique_filename = ensure_unique_filename(db_unique_filename, upload_dir)
         storage_file_path = str(Path(path_prefix.rstrip("/")) / unique_filename)
     else:
         unique_filename = _ensure_unique_db_filename(db, safe_filename)
@@ -286,6 +289,9 @@ def list_user_videos(
     is_admin: bool = False,
     skip: int = 0,
     limit: int = 20,
+    camera_angle: Optional[str] = None,
+    player_id: Optional[int] = None,
+    exclude_player_id: Optional[int] = None,
 ) -> List[Video]:
     """List videos for a user with pagination.
 
@@ -298,6 +304,9 @@ def list_user_videos(
         is_admin: Whether the user is an admin
         skip: Number of videos to skip (for pagination)
         limit: Maximum number of videos to return
+        camera_angle: Optional filter by camera angle
+        player_id: Optional filter by primary player ID
+        exclude_player_id: Optional exclude videos with this player ID
 
     Returns:
         List of Video instances ordered by recorded_at (fallback created_at), newest first
@@ -306,6 +315,16 @@ def list_user_videos(
 
     if not is_admin:
         query = query.filter(Video.user_id == user_id)
+
+    if camera_angle is not None:
+        query = query.filter(Video.camera_angle == camera_angle)
+    if player_id is not None:
+        query = query.filter(Video.primary_player_id == player_id)
+    if exclude_player_id is not None:
+        query = query.filter(
+            Video.primary_player_id.isnot(None),
+            Video.primary_player_id != exclude_player_id,
+        )
 
     return (
         query.order_by(func.coalesce(Video.recorded_at, Video.created_at).desc())
@@ -324,7 +343,7 @@ def get_active_demo_video(db: Session) -> Optional[Video]:
     Returns:
         Video object or None if no active demo exists
     """
-    return db.query(Video).filter(Video.is_active_demo).first()
+    return db.query(Video).filter(Video.is_active_demo.is_(True)).first()
 
 
 def delete_video_record(db: Session, video_id: int) -> bool:
@@ -419,8 +438,11 @@ def update_video_metadata(
     session_type: Optional[str] = None,
     camera_angle: Optional[str] = None,
     primary_player_id: Optional[int] = None,
+    title: Optional[str] = None,
+    notes: Optional[str] = None,
+    recorded_at: Optional[datetime] = None,
 ) -> Optional[Video]:
-    """Update video metadata (session_type, camera_angle, primary_player_id).
+    """Update video metadata (session_type, camera_angle, primary_player_id, title, notes, recorded_at).
 
     Args:
         db: Database session
@@ -442,6 +464,13 @@ def update_video_metadata(
         video.camera_angle = camera_angle
     if primary_player_id is not None:
         video.primary_player_id = primary_player_id
+    if title is not None:
+        video.title = title
+    if notes is not None:
+        video.notes = notes
+    if recorded_at is not None:
+        video.recorded_at = recorded_at
+        video.recorded_at_source = "user"
 
     db.commit()
     db.refresh(video)

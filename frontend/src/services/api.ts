@@ -50,6 +50,12 @@ api.interceptors.response.use(
   }
 );
 
+export interface VideoFilters {
+  camera_angle?: string;
+  player_id?: number;
+  exclude_player_id?: number;
+}
+
 export const videoApi = {
   // Upload a video file
   uploadVideo: async (
@@ -98,8 +104,18 @@ export const videoApi = {
   },
 
   // Get list of uploaded videos
-  getVideos: async (): Promise<VideoListResponse> => {
-    const response = await api.get<VideoMetadata[]>('/videos/');
+  getVideos: async (filters?: VideoFilters): Promise<VideoListResponse> => {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const query = params.toString();
+    const url = query ? `/videos/?${query}` : '/videos/';
+    const response = await api.get<VideoMetadata[]>(url);
     return {
       videos: response.data,
       total: response.data.length,
@@ -123,12 +139,7 @@ export const videoApi = {
     await api.delete(`/videos/${videoId}`);
   },
 
-  // Stream original video (legacy - returns stream endpoint URL)
-  streamVideo: async (videoId: number): Promise<string> => {
-    return `${API_BASE_URL}/videos/${videoId}/stream`;
-  },
-
-  // Get signed URL for video (preferred - avoids redirect race conditions)
+  // Get signed URL for video (avoids redirect race conditions)
   getVideoUrl: async (
     videoId: number,
     expiresIn: number = 3600
@@ -259,7 +270,9 @@ export const videoApi = {
       session_type?: string;
       camera_angle?: string;
       player_tag?: 'you' | 'someone_else';
-      apply_to_existing_serves?: boolean;
+      title?: string;
+      notes?: string;
+      recorded_at?: string;
     }
   ): Promise<VideoMetadata> => {
     try {

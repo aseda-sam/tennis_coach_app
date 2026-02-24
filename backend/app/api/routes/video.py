@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import UUID
 
 from fastapi import (
@@ -140,6 +140,13 @@ async def get_video_job(
 @router.get("/", response_model=List[VideoListItem])
 async def list_videos(
     pagination: PaginationParams = Depends(),
+    camera_angle: Optional[Literal["behind", "profile"]] = Query(
+        default=None, description="Filter by camera angle"
+    ),
+    player_id: Optional[int] = Query(default=None, description="Filter by player ID"),
+    exclude_player_id: Optional[int] = Query(
+        default=None, description="Exclude videos with this player ID"
+    ),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> List[VideoListItem]:
@@ -147,16 +154,18 @@ async def list_videos(
     List all uploaded videos for the current user.
 
     Returns a paginated list of videos with basic information.
+    Supports optional filters: camera_angle, player_id, exclude_player_id.
     """
     try:
-        # Filter by user_id unless admin
-        # Exclude demo videos from user's library
         videos = video_service.list_user_videos(
             db=db,
             user_id=current_user["id"],
             is_admin=is_admin(current_user),
             skip=(pagination.page - 1) * pagination.size,
             limit=pagination.size,
+            camera_angle=camera_angle,
+            player_id=player_id,
+            exclude_player_id=exclude_player_id,
         )
 
         return [VideoListItem.model_validate(video) for video in videos]
@@ -573,12 +582,15 @@ async def update_video_metadata(
             session_type=metadata_update.session_type,
             camera_angle=metadata_update.camera_angle,
             primary_player_id=primary_player_id,
+            title=metadata_update.title,
+            notes=metadata_update.notes,
+            recorded_at=metadata_update.recorded_at,
         )
 
         if not updated_video:
             raise handle_not_found_error("video", str(video_id))
 
-        if metadata_update.apply_to_existing_serves:
+        if primary_player_id is not None:
             target_player_id = updated_video.primary_player_id
             if not target_player_id:
                 raise HTTPException(

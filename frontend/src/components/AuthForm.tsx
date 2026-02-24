@@ -44,8 +44,8 @@ export function AuthForm() {
         </h2>
         <p className="auth-form-subtitle">
           {isLogin
-            ? 'Sign in to continue to Serve Tennis Coach'
-            : 'Join Serve Tennis Coach to analyze your serve'}
+            ? 'Sign in to continue to Second Serve'
+            : 'Join Second Serve to analyze your serve'}
         </p>
       </div>
       {isLogin ? (

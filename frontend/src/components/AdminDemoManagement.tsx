@@ -121,6 +121,13 @@ const AdminDemoManagement: React.FC<AdminDemoManagementProps> = ({
     <div className="admin-demo-management">
       <div className="admin-demo-management__header">
         <h2>Demo Video Management</h2>
+        <button
+          className="admin-demo-management__action-btn primary"
+          onClick={() => setShowUploadModal(true)}
+          type="button"
+        >
+          Upload Demo Video
+        </button>
       </div>
 
       <div className="admin-demo-management__content">
@@ -171,20 +178,6 @@ const AdminDemoManagement: React.FC<AdminDemoManagementProps> = ({
             </div>
           </div>
         )}
-
-        {/* Actions */}
-        <div className="admin-demo-management__actions">
-          <button
-            className="admin-demo-management__action-btn primary"
-            onClick={() => setShowUploadModal(true)}
-            type="button"
-          >
-            Upload Demo Video
-          </button>
-          <span className="admin-demo-management__helper-text">
-            Open a video to tag key moments or review analysis.
-          </span>
-        </div>
 
         {/* Demo Videos List */}
         <div className="admin-demo-management__videos-section">

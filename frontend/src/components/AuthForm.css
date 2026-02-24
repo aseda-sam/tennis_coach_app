@@ -1,11 +1,10 @@
 .auth-form {
-  max-width: 420px;
-  margin: 50px auto;
+  max-width: var(--layout-auth-max-width);
+  margin: var(--spacing-6xl) auto;
   padding: var(--spacing-4xl);
   background: var(--color-surface);
-  border: 1px solid var(--color-border-light);
+  border: 1px solid var(--color-border);
   border-radius: var(--card-border-radius);
-  box-shadow: var(--card-shadow);
 }
 
 .auth-form-header {
@@ -76,11 +75,7 @@
 .auth-form .btn-primary {
   width: 100%;
   padding: var(--button-padding-lg);
-  background: linear-gradient(
-    135deg,
-    var(--color-primary) 0%,
-    var(--color-primary-dark) 100%
-  );
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: var(--button-border-radius);
@@ -88,17 +83,10 @@
   font-weight: var(--button-font-weight);
   cursor: pointer;
   transition: var(--transition-normal);
-  box-shadow: var(--shadow-primary-lg);
 }
 
 .auth-form .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(
-    135deg,
-    var(--color-primary-dark) 0%,
-    var(--color-primary-darker) 100%
-  );
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-primary-xl);
+  background: var(--color-primary-dark);
 }
 
 .auth-form .btn-primary:disabled {

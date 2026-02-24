@@ -55,6 +55,8 @@ class ServeWindow(Base):
     # Provenance tracking
     source = Column(String(20), nullable=False, default="manual")
     # Values: "manual", "auto"
+    contact_source = Column(String(10), nullable=True)
+    # Values: "manual" (user-tagged), "auto" (ball detection or lazy fallback)
 
     # Proposal metadata (one-table workflow)
     model_version = Column(String(50), nullable=True)  # e.g., "heuristic-v1"

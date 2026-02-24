@@ -160,6 +160,7 @@ Comprehensive coding conventions live in `.cursor/rules/`. These files are **not
 - `.cursor/rules/python-code-standards.mdc` — Python style, Pydantic v2, imports
 - `.cursor/rules/react-frontend.mdc` — Components, styling, form patterns, accessibility
 - `.cursor/rules/frontend-design.mdc` — Visual design patterns, component aesthetics
+- `.cursor/rules/react-routing.mdc` — React Router conventions, route structure, page patterns
 - `.cursor/rules/frontend-api-patterns.mdc` — Frontend API client conventions
 - `.cursor/rules/testing-patterns.mdc` — When to test first vs after, what to test, contract testing
 - `.cursor/rules/frontend-testing-patterns.mdc` — Frontend test patterns

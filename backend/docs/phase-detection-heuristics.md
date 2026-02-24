@@ -355,7 +355,7 @@ Ball data is used today for toss metrics and visualization; it is not yet used t
 
 ### Contact UI
 
-- Contact timestamp **can** be set in the UI: "Mark Contact" in `ServeWindowRange` (hover), click-to-set in `TimelineMarkers`, keyboard shortcut `C` in `AddServeWindowButton`, and editing in `ServeWindowModal`.
+- Contact timestamp can be set in the analysis player via the contact controls/keyboard shortcut (`C`) and edited from the analysis panel.
 - **Contact is the keystone:** without a set `contact_timestamp`, Contact, Deceleration, and Finish phases cannot be detected — so only 3 phases may appear (Start, Release, Loading) if contact is never tagged. Auto-detecting contact from ball + wrist data is intended to fill this gap when the user has not tagged it.
 
 ---

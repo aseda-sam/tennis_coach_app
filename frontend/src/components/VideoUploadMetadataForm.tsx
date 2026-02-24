@@ -1,5 +1,5 @@
 import React from 'react';
-import { UploadIcon } from './Icons';
+import { Upload } from 'lucide-react';
 
 interface VideoUploadMetadataFormProps {
   selectedFile: File | null;
@@ -32,7 +32,7 @@ const VideoUploadMetadataForm: React.FC<VideoUploadMetadataFormProps> = ({
     <div className="upload-details-step">
       <div className="uploaded-file-info">
         <div className="upload-icon" aria-hidden="true">
-          <UploadIcon size={32} color="var(--color-success)" />
+          <Upload size={32} color="var(--color-success)" strokeWidth={1.5} />
         </div>
         <div className="uploaded-file-details">
           <p className="uploaded-filename">{selectedFile?.name}</p>

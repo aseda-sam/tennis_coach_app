@@ -13,7 +13,7 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
   isOpen,
   onClose,
   isDemo = false,
-  naturalScroll = false,
+  naturalScroll = true,
   onNaturalScrollChange,
 }) => {
   const handleKeyDown = useCallback(
@@ -54,11 +54,7 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
               </div>
               <div className="keyboard-modal__shortcut">
                 <kbd>←</kbd> <kbd>→</kbd>
-                <span>Previous / Next frame</span>
-              </div>
-              <div className="keyboard-modal__shortcut">
-                <kbd>[</kbd> <kbd>]</kbd>
-                <span>Previous / Next serve</span>
+                <span>Step ±3 frames</span>
               </div>
               <div className="keyboard-modal__shortcut">
                 <kbd>Scroll</kbd>
@@ -89,14 +85,6 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
             <div
               className={`keyboard-modal__shortcuts ${isDemo ? 'keyboard-modal__shortcuts--disabled' : ''}`}
             >
-              <div className="keyboard-modal__shortcut">
-                <kbd>S</kbd>
-                <span>Mark serve start point</span>
-              </div>
-              <div className="keyboard-modal__shortcut">
-                <kbd>E</kbd>
-                <span>Mark serve end point</span>
-              </div>
               <div className="keyboard-modal__shortcut">
                 <kbd>C</kbd>
                 <span>Mark contact point</span>

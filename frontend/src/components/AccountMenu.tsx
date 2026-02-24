@@ -1,3 +1,4 @@
+import { LogOut } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
@@ -169,21 +170,7 @@ export function AccountMenu({ onLogout }: AccountMenuProps) {
               className="account-menu-action-btn logout"
               onClick={handleLogout}
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M6 14H3C2.44772 14 2 13.5523 2 13V3C2 2.44772 2.44772 2 3 2H6M10 11L14 7M14 7L10 3M14 7H6"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <LogOut size={16} strokeWidth={1.5} />
               Logout
             </button>
           </div>

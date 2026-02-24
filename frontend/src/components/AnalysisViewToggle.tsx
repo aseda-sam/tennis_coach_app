@@ -30,7 +30,7 @@ const AnalysisViewToggle: React.FC<AnalysisViewToggleProps> = ({
         aria-selected={viewMode === 'analysis-focus'}
         type="button"
       >
-        Analysis
+        Pose
       </button>
     </div>
   );

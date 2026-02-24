@@ -15,6 +15,9 @@ from app.api.schemas.serve_window import (
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
 from app.services import serve_window_service, video_service
+from app.services.biomechanics.serve_biomechanics_service import (
+    serve_biomechanics_service,
+)
 from app.utils.authorization import require_video_access, require_video_not_demo
 from app.utils.error_handling import handle_not_found_error, handle_service_error
 
@@ -88,6 +91,24 @@ async def update_serve_window(
             updates=updates,
             user_id=current_user["id"],
         )
+
+        if updates.contact_timestamp is not None:
+            try:
+                serve_biomechanics_service.compute_analysis(
+                    db=db,
+                    serve_window_id=serve_window_id,
+                    user_id=current_user["id"],
+                )
+                logger.info(
+                    "Recomputed biomechanics for serve window %s after contact update",
+                    serve_window_id,
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "Could not recompute biomechanics after contact update for %s: %s",
+                    serve_window_id,
+                    e,
+                )
 
         return ServeWindowInfo.model_validate(updated_serve_window)
 

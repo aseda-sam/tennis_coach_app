@@ -37,6 +37,26 @@ jest.mock('./VideoEditModal', () => {
   };
 });
 
+jest.mock('./VideoFilters', () => {
+  return function MockVideoFilters({
+    onChange,
+  }: {
+    filters: Record<string, unknown>;
+    onChange: (f: Record<string, unknown>) => void;
+  }) {
+    return (
+      <div data-testid="video-filters">
+        <button onClick={() => onChange({ camera_angle: 'behind' })}>
+          Filter Behind
+        </button>
+        <button onClick={() => onChange({})}>Clear filters</button>
+      </div>
+    );
+  };
+});
+
+jest.mock('./VideoFilters.css', () => ({}));
+
 jest.mock('./LoadingIndicator', () => {
   return function MockLoadingIndicator({ label }: { label?: string }) {
     return <div data-testid="loading-indicator">{label ?? 'Loading...'}</div>;
@@ -148,7 +168,9 @@ describe('VideoList', () => {
       renderWithProviders(<VideoList />);
 
       expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
-      expect(screen.getByText('Loading videos...')).toBeInTheDocument();
+      expect(
+        screen.getByText('Rounding up your videos...')
+      ).toBeInTheDocument();
     });
 
     it('shows loading indicator when analysis statuses are loading', () => {
@@ -229,23 +251,23 @@ describe('VideoList', () => {
     it('shows video count in header', () => {
       renderWithProviders(<VideoList />);
 
-      expect(screen.getByText('2 of 2 sessions')).toBeInTheDocument();
+      expect(screen.getByText('2 sessions')).toBeInTheDocument();
     });
 
-    it('shows player name from profile when primary_player_id matches', () => {
+    it('shows "Me" badge when primary_player_id matches', () => {
       renderWithProviders(<VideoList />);
 
-      // Both videos resolve to "Alice": video 1 matches by id, video 2 has null primary_player_id
-      const labels = screen.getAllByText('Alice');
+      // Both videos resolve to "Me": video 1 matches by id, video 2 has null primary_player_id
+      const labels = screen.getAllByText('Me');
       expect(labels.length).toBeGreaterThan(0);
     });
 
-    it('shows "Your Profile" when no player profile name is available', () => {
+    it('shows "Me" badge when no player profile is available', () => {
       setDefaultMocks({ playerProfile: null });
 
       renderWithProviders(<VideoList />);
 
-      const labels = screen.getAllByText('Your Profile');
+      const labels = screen.getAllByText('Me');
       expect(labels.length).toBeGreaterThan(0);
     });
 
@@ -376,6 +398,44 @@ describe('VideoList', () => {
 
       await user.click(screen.getByRole('button', { name: /close/i }));
       expect(screen.queryByTestId('video-upload')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Filtering', () => {
+    it('renders filter component', () => {
+      renderWithProviders(<VideoList />);
+      expect(screen.getByTestId('video-filters')).toBeInTheDocument();
+    });
+
+    it('shows "matching sessions" when filters are active', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<VideoList />);
+
+      await user.click(screen.getByText('Filter Behind'));
+
+      expect(screen.getByText(/matching sessions/)).toBeInTheDocument();
+    });
+
+    it('shows normal count when filters are cleared', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<VideoList />);
+
+      await user.click(screen.getByText('Filter Behind'));
+      await user.click(screen.getByText('Clear filters'));
+
+      expect(screen.getByText('2 sessions')).toBeInTheDocument();
+    });
+
+    it('passes filters to useVideos hook', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<VideoList />);
+
+      await user.click(screen.getByText('Filter Behind'));
+
+      // useVideos should have been called with the filter
+      expect(mockUseVideos).toHaveBeenCalledWith(
+        expect.objectContaining({ camera_angle: 'behind' })
+      );
     });
   });
 

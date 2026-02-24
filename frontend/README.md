@@ -186,22 +186,15 @@ frontend/
 - Processing time and model information
 - Collapsible sections for organization
 
-### Tour
-
-- Custom guided tour component for onboarding
-- React 19 compatible (built due to react-joyride incompatibility)
-- Supports multi-step tours with tooltips and highlights
-- localStorage persistence for completion state
-- **Future Migration**: Monitor react-joyride for React 19 support - consider migrating once available for better features and maintenance
-
 ## Navigation & Routing
 
-The app uses view-based routing managed in `App.tsx`:
+The app uses React Router v6 with URL-based routing (defined in `src/router.tsx` and mounted from `src/index.tsx`):
 
-- **Home** (`demo-landing`): Default entry point with CTAs for Demo and Upload
-- **Library** (`list`): Video library with grid of uploaded videos (requires auth)
-- **Dashboard** (`dashboard`): Analysis dashboard for selected video (requires auth)
-- **Demo** (`demo-dashboard`): Demo mode analysis dashboard (no auth required)
+- **Home** (`/`): Default entry point with CTAs for Demo and Upload
+- **Library** (`/library`): Video library with grid of uploaded videos (requires auth)
+- **Dashboard** (`/analysis/:videoId`): Analysis dashboard for selected video (requires auth)
+- **Demo** (`/demo`): Demo mode analysis dashboard (no auth required)
+- **Admin Demos** (`/admin/demos`): Demo video administration (requires auth + admin access)
 
 **Navigation Features**:
 

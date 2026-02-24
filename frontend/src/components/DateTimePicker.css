@@ -1,0 +1,360 @@
+/* ============================================================
+   DateTimePicker — custom calendar + time picker
+   Overrides react-day-picker defaults to match design tokens.
+   ============================================================ */
+
+/* ---- Trigger button ---- */
+
+.dtp-root {
+  position: relative;
+  width: 100%;
+}
+
+.dtp-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-sans);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  transition: var(--transition-normal);
+  padding-right: 44px;
+}
+
+.dtp-trigger:hover:not(:disabled) {
+  border-color: var(--color-border-dark);
+}
+
+.dtp-trigger--open {
+  border-color: var(--color-court-blue);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--color-court-blue) 14%, transparent);
+}
+
+.dtp-trigger--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dtp-trigger__icon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.dtp-trigger__placeholder {
+  color: var(--color-text-disabled);
+}
+
+.dtp-clear-inline {
+  position: absolute;
+  top: 50%;
+  right: var(--spacing-md);
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border: 1px solid transparent;
+  background: var(--color-surface);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  line-height: 1;
+  border-radius: var(--radius-xs);
+  transition: var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dtp-clear-inline:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+/* ---- Popover ---- */
+
+.dtp-popover {
+  position: fixed;
+  z-index: var(--z-popover);
+  width: min(340px, calc(100vw - 24px));
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-2xl);
+  overflow: hidden;
+  animation: dtp-popover-in 140ms var(--ease-out);
+}
+
+.dtp-popover__inner {
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes dtp-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ---- Calendar (react-day-picker overrides) ---- */
+
+.dtp-calendar {
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-sm);
+}
+
+/* Override react-day-picker CSS custom properties */
+.dtp-calendar .rdp-root {
+  --rdp-accent-color: var(--color-primary);
+  --rdp-accent-background-color: var(--color-primary-soft);
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 34px;
+  --rdp-day_button-width: 34px;
+  --rdp-day_button-border-radius: var(--radius-sm);
+  --rdp-selected-border: none;
+  --rdp-today-color: var(--color-primary);
+  --rdp-font-family: var(--font-family-sans);
+
+  width: 100%;
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+/* Nav buttons */
+.dtp-calendar .rdp-button_previous,
+.dtp-calendar .rdp-button_next {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  transition: var(--transition-fast);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dtp-calendar .rdp-button_previous:hover,
+.dtp-calendar .rdp-button_next:hover {
+  border-color: var(--color-border-dark);
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+/* Month caption */
+.dtp-calendar .rdp-month_caption {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-ink-heavy);
+  padding-bottom: var(--spacing-sm);
+}
+
+/* Weekday headers */
+.dtp-calendar .rdp-weekday {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+/* Day buttons */
+.dtp-calendar .rdp-day_button {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+}
+
+.dtp-calendar .rdp-day_button:hover:not([disabled]) {
+  background: var(--color-surface-hover);
+}
+
+/* Today */
+.dtp-calendar .rdp-today .rdp-day_button {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+
+/* Selected day */
+.dtp-calendar .rdp-selected .rdp-day_button {
+  background: var(--color-court-blue) !important;
+  color: #fff !important;
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Outside month days */
+.dtp-calendar .rdp-outside .rdp-day_button {
+  color: var(--color-text-disabled);
+}
+
+/* ---- Time picker ---- */
+
+.dtp-time {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--color-border-light);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-court-blue) 3%, var(--color-surface)),
+    var(--color-surface)
+  );
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.dtp-time__label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.dtp-time__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Wrapper adds a chevron icon without breaking appearance:none */
+.dtp-time__select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.dtp-time__select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 6px;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: none;
+}
+
+.dtp-time__select {
+  padding: var(--spacing-sm) 28px var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  appearance: none;
+  width: 72px;
+}
+
+.dtp-time__select:focus {
+  outline: none;
+  border-color: var(--color-court-blue);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--color-court-blue) 16%, transparent);
+}
+
+.dtp-time__sep {
+  font-size: var(--font-size-xl);
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  padding-bottom: 2px;
+}
+
+.dtp-ampm {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-left: var(--spacing-xs);
+}
+
+.dtp-ampm__btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  background: var(--color-surface);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-sans);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  letter-spacing: var(--letter-spacing-wide);
+  min-width: 40px;
+}
+
+.dtp-ampm__btn + .dtp-ampm__btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.dtp-ampm__btn--active {
+  background: var(--color-court-blue);
+  color: #fff;
+}
+
+.dtp-ampm__btn:not(.dtp-ampm__btn--active):hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* ---- Footer ---- */
+
+.dtp-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--color-border-light);
+  background: var(--color-surface-secondary);
+}
+
+.dtp-footer__btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-sans);
+  cursor: pointer;
+  border: none;
+  transition: var(--transition-fast);
+}
+
+.dtp-footer__btn--ghost {
+  background: none;
+  color: var(--color-text-muted);
+}
+
+.dtp-footer__btn--ghost:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.dtp-footer__btn--primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.dtp-footer__btn--primary:hover {
+  background: var(--color-primary-dark);
+}

@@ -30,7 +30,7 @@
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-sm) var(--spacing-lg);
-  background: var(--color-primary);
+  background: var(--color-ink-heavy);
   color: var(--color-surface);
   border: none;
   border-radius: var(--radius-md);
@@ -38,11 +38,10 @@
   font-weight: var(--font-weight-medium);
   cursor: pointer;
   transition: var(--transition-normal);
-  box-shadow: var(--shadow-primary-sm);
 }
 
 .upload-btn:hover {
-  background: var(--color-primary-dark);
+  background: var(--color-text-secondary);
 }
 
 .upload-btn:active {
@@ -125,23 +124,19 @@
   color: var(--color-text-disabled);
 }
 
-/* Video Grid - Card Layout */
+/* Video Grid */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(var(--layout-card-grid-min), 1fr)
-  );
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
   margin-top: 0;
 }
 
-/* Video Card */
+/* Video Card — clean content card, no thumbnail */
 .video-card {
   background: var(--color-surface);
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   box-shadow: none;
-  overflow: hidden;
   transition: var(--transition-normal);
   border: 1px solid var(--color-border);
   display: flex;
@@ -150,29 +145,16 @@
 }
 
 .video-card:hover {
-  box-shadow: none;
   border-color: var(--color-border-dark);
 }
 
-/* Thumbnail Area (top 2/3 of card) */
+/* Hidden — no real thumbnails yet */
 .video-card-thumbnail {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 2 / 1;
-  background: var(--color-surface-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  display: none;
 }
 
 .video-card-thumbnail-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  background: var(--color-surface-tertiary);
+  display: none;
 }
 
 .serves-badge {
@@ -187,13 +169,14 @@
   font-weight: var(--font-weight-semibold);
 }
 
-/* Card Content (bottom 1/3) */
+/* Card Content */
 .video-card-content {
-  padding: 18px;
+  padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-md);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
   flex: 1;
+  min-width: 0;
 }
 
 .video-card-filename {
@@ -237,11 +220,36 @@
   border-top: 1px solid var(--color-border-light);
 }
 
-.user-info,
+.player-tag-badge,
 .date-info {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+}
+
+.player-tag-badge {
+  border-radius: var(--radius-pill);
+  padding: 2px var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.player-tag-badge--you {
+  color: var(--color-court-blue);
+  border-color: color-mix(
+    in srgb,
+    var(--color-court-blue) 35%,
+    var(--color-border)
+  );
+  background: color-mix(in srgb, var(--color-court-blue-soft) 70%, white);
+}
+
+.player-tag-badge--someone_else {
+  color: var(--color-text-muted);
+  background: var(--color-surface-secondary);
 }
 
 .user-icon,
@@ -305,35 +313,35 @@
 /* Metrics */
 .video-card-metrics {
   display: flex;
-  gap: 16px;
+  gap: var(--spacing-lg);
   align-items: baseline;
-  padding-top: 4px;
+  padding-top: var(--spacing-xs);
 }
 
 .metric-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-xs);
 }
 
 .metric-label {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
 }
 
 .metric-value {
-  font-size: 0.875rem;
+  font-size: var(--font-size-base);
   color: var(--color-text);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 /* Legacy styles for backward compatibility */
 .video-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
 }
 
 .video-item {
@@ -357,11 +365,7 @@
 
 .video-thumbnail-container {
   position: relative;
-  background: linear-gradient(
-    135deg,
-    var(--color-primary) 0%,
-    var(--color-primary-dark) 100%
-  );
+  background: var(--color-primary);
   width: 104px;
   height: 62px;
   display: flex;
@@ -369,7 +373,7 @@
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
 }
 
 .video-thumbnail {
@@ -405,20 +409,20 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-sm);
 }
 
 .video-header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
   flex: 1;
   min-width: 0;
 }
 
 .video-title {
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
   margin: 0;
   line-height: 1.4;
@@ -428,7 +432,7 @@
 }
 
 .video-meta-list {
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   margin: 0;
 }
@@ -436,7 +440,7 @@
 .video-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-md);
   flex-shrink: 0;
 }
 
@@ -485,11 +489,11 @@
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  gap: var(--spacing-sm);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
@@ -522,7 +526,7 @@
   height: 32px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: var(--transition-fast);
   color: var(--color-text-muted);
@@ -576,7 +580,9 @@
   max-width: 900px;
   width: 90%;
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   animation: modalSlideIn var(--duration-slower) var(--ease-out);
 }
 
@@ -597,7 +603,9 @@
   align-items: center;
   padding: var(--spacing-2xl) var(--spacing-2xl) var(--spacing-lg)
     var(--spacing-2xl);
-  border-bottom: 2px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-border-light);
+  flex-shrink: 0;
+  background: var(--color-surface);
 }
 
 .upload-modal .modal-title {
@@ -628,6 +636,8 @@
 
 .upload-modal .modal-content {
   padding: var(--spacing-2xl);
+  overflow-y: auto;
+  flex: 1;
 }
 
 /* Edit Video Modal */
@@ -706,8 +716,44 @@
 }
 
 .edit-video-field select:focus {
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-primary-sm);
+  border-color: var(--color-court-blue);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--color-court-blue) 16%, transparent);
+  outline: none;
+}
+
+.edit-video-field input[type='text'],
+.edit-video-field input[type='datetime-local'],
+.edit-video-field textarea {
+  width: 100%;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-sans);
+  color: var(--color-text);
+  transition: var(--transition-normal);
+  box-sizing: border-box;
+}
+
+.edit-video-field textarea {
+  resize: vertical;
+  line-height: var(--line-height-relaxed);
+}
+
+.edit-video-field input[type='text']::placeholder,
+.edit-video-field textarea::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.edit-video-field input[type='text']:focus,
+.edit-video-field input[type='datetime-local']:focus,
+.edit-video-field textarea:focus {
+  outline: none;
+  border-color: var(--color-court-blue);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--color-court-blue) 16%, transparent);
 }
 
 .edit-video-radio-group {
@@ -784,6 +830,8 @@
   gap: var(--spacing-md);
   padding: var(--spacing-lg) var(--spacing-2xl) var(--spacing-2xl);
   border-top: 1px solid var(--color-border-light);
+  flex-shrink: 0;
+  background: var(--color-surface);
 }
 
 .edit-video-cancel {
@@ -848,7 +896,7 @@
   }
 
   .video-content {
-    gap: 10px;
+    gap: var(--spacing-md);
   }
 
   .video-actions {

@@ -1,14 +1,15 @@
+import {
+  Activity,
+  ChartNoAxesColumn,
+  Github,
+  Play,
+  ScanLine,
+  StepForward,
+  Upload,
+  Video,
+} from 'lucide-react';
 import React from 'react';
 import './DemoLanding.css';
-import {
-  BodyTrackingIcon,
-  FrameStepIcon,
-  PlayIcon,
-  ServeBreakdownIcon,
-  TrendUpIcon,
-  UploadIcon,
-  VideoIcon,
-} from './Icons';
 
 import { User } from '@supabase/supabase-js';
 
@@ -31,15 +32,26 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
         {/* Hero Section with Integrated Demo Card */}
         <div className="demo-landing__hero-section">
           <div className="demo-landing__hero-content">
-            <h1 className="demo-landing__title">
-              Tennis Feedback You Can See in Every Frame
-            </h1>
+            <h1 className="demo-landing__title">Your serve, frame by frame!</h1>
+            <p className="demo-landing__origin">
+              I filmed my tennis serve, watched it back, and couldn't stop
+              building. Sessions, pose detection, now full biomechanics phases.{' '}
+              <a
+                href="https://github.com/aseda-sam/tennis_coach_app"
+                className="demo-landing__origin-link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                It&apos;s open source.
+                <Github size={13} className="demo-landing__origin-link-icon" />
+              </a>
+            </p>
             <button
               className="demo-landing__watch-tutorial"
               onClick={onWatchTutorial}
               type="button"
             >
-              <VideoIcon size={16} color="var(--color-primary)" />
+              <Video size={16} color="var(--color-primary)" />
               Watch Intro Video
             </button>
           </div>
@@ -51,7 +63,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__card-inner">
                 <div className="demo-landing__card-header">
                   <div className="demo-landing__card-icon demo-landing__card-icon--primary">
-                    <PlayIcon size={20} color="white" />
+                    <Play size={20} color="white" />
                   </div>
                   <div className="demo-landing__card-title-wrap">
                     <div className="demo-landing__card-eyebrow">
@@ -83,7 +95,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__card-inner">
                 <div className="demo-landing__card-header">
                   <div className="demo-landing__card-icon demo-landing__card-icon--outline">
-                    <UploadIcon size={20} color="var(--color-primary)" />
+                    <Upload size={20} color="var(--color-primary)" />
                   </div>
                   <div className="demo-landing__card-title-wrap">
                     <div className="demo-landing__card-eyebrow">Your Turn</div>
@@ -110,13 +122,19 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
         {/* Features Section */}
         <div className="demo-landing__features-section">
           <div className="demo-landing__features-header">
-            <h3 className="demo-landing__features-title">What You'll Get</h3>
+            <h3 className="demo-landing__features-title">
+              What You&apos;ll Get
+            </h3>
           </div>
 
           <div className="demo-landing__feature-grid">
             <div className="demo-landing__feature-card">
-              <div className="demo-landing__feature-icon demo-landing__feature-icon--pose">
-                <BodyTrackingIcon size={20} color="white" />
+              <div className="demo-landing__feature-icon">
+                <Activity
+                  size={20}
+                  color="var(--color-amber)"
+                  strokeWidth={2}
+                />
               </div>
               <h4 className="demo-landing__feature-title">Body Tracking</h4>
               <p className="demo-landing__feature-description">
@@ -126,8 +144,12 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
             </div>
 
             <div className="demo-landing__feature-card">
-              <div className="demo-landing__feature-icon demo-landing__feature-icon--contact">
-                <ServeBreakdownIcon size={20} color="white" />
+              <div className="demo-landing__feature-icon">
+                <ScanLine
+                  size={20}
+                  color="var(--color-amber)"
+                  strokeWidth={2}
+                />
               </div>
               <h4 className="demo-landing__feature-title">Serve Breakdown</h4>
               <p className="demo-landing__feature-description">
@@ -136,8 +158,12 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
             </div>
 
             <div className="demo-landing__feature-card">
-              <div className="demo-landing__feature-icon demo-landing__feature-icon--metrics">
-                <TrendUpIcon size={20} color="white" />
+              <div className="demo-landing__feature-icon">
+                <ChartNoAxesColumn
+                  size={20}
+                  color="var(--color-amber)"
+                  strokeWidth={2}
+                />
               </div>
               <h4 className="demo-landing__feature-title">
                 Progress Over Time
@@ -148,8 +174,12 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
             </div>
 
             <div className="demo-landing__feature-card">
-              <div className="demo-landing__feature-icon demo-landing__feature-icon--video">
-                <FrameStepIcon size={20} color="white" />
+              <div className="demo-landing__feature-icon">
+                <StepForward
+                  size={20}
+                  color="var(--color-amber)"
+                  strokeWidth={2}
+                />
               </div>
               <h4 className="demo-landing__feature-title">
                 Frame-by-Frame Control
@@ -159,6 +189,29 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Footer strip */}
+        <div className="demo-landing__footer-strip">
+          <p className="demo-landing__feedback-note">
+            This is a work in progress.{' '}
+            <a
+              href="https://github.com/aseda-sam/tennis_coach_app/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open an issue
+            </a>{' '}
+            if something&apos;s broken or you have ideas.
+          </p>
+          <a
+            href="https://substack.com/@aseda"
+            className="demo-landing__substack-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Follow the build on Substack →
+          </a>
         </div>
       </div>
     </div>

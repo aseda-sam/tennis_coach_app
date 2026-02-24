@@ -103,90 +103,98 @@ export function AccountMenuEditForm({
           disabled={upsertProfile.isPending}
         />
       </div>
-      <div className="account-menu-field">
-        <label htmlFor="dominantHand" className="profile-label">
-          Dominant Hand
-        </label>
-        <select
-          id="dominantHand"
-          className="account-menu-input"
-          value={dominantHand}
-          onChange={(event) => setDominantHand(event.target.value)}
-          disabled={upsertProfile.isPending}
-        >
-          <option value="right">Right-handed</option>
-          <option value="left">Left-handed</option>
-        </select>
+      <div className="account-menu-edit-section">
+        <div className="account-menu-edit-section-label">Playing Style</div>
+        <div className="account-menu-edit-section-grid">
+          <div className="account-menu-field">
+            <label htmlFor="dominantHand" className="profile-label">
+              Dominant Hand
+            </label>
+            <select
+              id="dominantHand"
+              className="account-menu-input"
+              value={dominantHand}
+              onChange={(event) => setDominantHand(event.target.value)}
+              disabled={upsertProfile.isPending}
+            >
+              <option value="right">Right-handed</option>
+              <option value="left">Left-handed</option>
+            </select>
+          </div>
+          <div className="account-menu-field">
+            <label htmlFor="backhandStyle" className="profile-label">
+              Backhand Style
+            </label>
+            <select
+              id="backhandStyle"
+              className="account-menu-input"
+              value={backhandStyle}
+              onChange={(event) => setBackhandStyle(event.target.value)}
+              disabled={upsertProfile.isPending}
+            >
+              <option value="">Select backhand style</option>
+              <option value="one_handed">One-handed</option>
+              <option value="two_handed">Two-handed</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <div className="account-menu-field">
-        <label htmlFor="backhandStyle" className="profile-label">
-          Backhand Style
-        </label>
-        <select
-          id="backhandStyle"
-          className="account-menu-input"
-          value={backhandStyle}
-          onChange={(event) => setBackhandStyle(event.target.value)}
-          disabled={upsertProfile.isPending}
-        >
-          <option value="">Select backhand style</option>
-          <option value="one_handed">One-handed</option>
-          <option value="two_handed">Two-handed</option>
-        </select>
-      </div>
-      <div className="account-menu-field">
-        <label htmlFor="heightCm" className="profile-label">
-          Height (cm)
-        </label>
-        <input
-          id="heightCm"
-          className="account-menu-input"
-          type="number"
-          min="0"
-          step="0.1"
-          placeholder="Optional"
-          value={heightCm}
-          onChange={(event) => setHeightCm(event.target.value)}
-          disabled={upsertProfile.isPending}
-        />
-      </div>
-      <div className="account-menu-field">
-        <label htmlFor="ageGroup" className="profile-label">
-          Age Group
-        </label>
-        <select
-          id="ageGroup"
-          className="account-menu-input"
-          value={ageGroup}
-          onChange={(event) => setAgeGroup(event.target.value)}
-          disabled={upsertProfile.isPending}
-        >
-          <option value="">Select age group</option>
-          <option value="under_13">Under 13</option>
-          <option value="13_to_17">13-17</option>
-          <option value="18_to_29">18-29</option>
-          <option value="30_to_44">30-44</option>
-          <option value="45_to_59">45-59</option>
-          <option value="60_plus">60+</option>
-        </select>
-      </div>
-      <div className="account-menu-field">
-        <label htmlFor="gender" className="profile-label">
-          Gender
-        </label>
-        <select
-          id="gender"
-          className="account-menu-input"
-          value={gender}
-          onChange={(event) => setGender(event.target.value)}
-          disabled={upsertProfile.isPending}
-        >
-          <option value="">Select gender</option>
-          <option value="female">Female</option>
-          <option value="male">Male</option>
-          <option value="non_binary">Non-Binary</option>
-          <option value="prefer_not_to_say">Prefer Not To Say</option>
-        </select>
+      <div className="account-menu-edit-section">
+        <div className="account-menu-edit-section-label">Physical</div>
+        <div className="account-menu-field">
+          <label htmlFor="heightCm" className="profile-label">
+            Height (cm)
+          </label>
+          <input
+            id="heightCm"
+            className="account-menu-input"
+            type="number"
+            min="0"
+            step="0.1"
+            placeholder="Optional"
+            value={heightCm}
+            onChange={(event) => setHeightCm(event.target.value)}
+            disabled={upsertProfile.isPending}
+          />
+        </div>
+        <div className="account-menu-field">
+          <label htmlFor="ageGroup" className="profile-label">
+            Age Group
+          </label>
+          <select
+            id="ageGroup"
+            className="account-menu-input"
+            value={ageGroup}
+            onChange={(event) => setAgeGroup(event.target.value)}
+            disabled={upsertProfile.isPending}
+          >
+            <option value="">Select age group</option>
+            <option value="under_13">Under 13</option>
+            <option value="13_to_17">13-17</option>
+            <option value="18_to_29">18-29</option>
+            <option value="30_to_44">30-44</option>
+            <option value="45_to_59">45-59</option>
+            <option value="60_plus">60+</option>
+          </select>
+        </div>
+        <div className="account-menu-field">
+          <label htmlFor="gender" className="profile-label">
+            Gender
+          </label>
+          <select
+            id="gender"
+            className="account-menu-input"
+            value={gender}
+            onChange={(event) => setGender(event.target.value)}
+            disabled={upsertProfile.isPending}
+          >
+            <option value="">Select gender</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="non_binary">Non-Binary</option>
+            <option value="prefer_not_to_say">Prefer Not To Say</option>
+          </select>
+        </div>
       </div>
       {formError && <div className="account-menu-error">{formError}</div>}
       <div className="account-menu-edit-actions">

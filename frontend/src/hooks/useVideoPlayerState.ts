@@ -88,16 +88,6 @@ export interface UseVideoPlayerStateReturn {
   // Scroll hint
   showScrollHint: boolean;
 
-  // Range marks
-  rangeInTime: number | null;
-  rangeOutTime: number | null;
-  openRange: { start: number; end: number } | null;
-  openRequestId: number;
-  markedRange: { start: number; end: number } | null;
-  hasRangeMarks: boolean;
-  clearRangeMarks: () => void;
-  createServeWindowFromMarks: () => void;
-
   // Highlight
   highlightTimestamp: number | null;
   setHighlightTimestamp: React.Dispatch<React.SetStateAction<number | null>>;
@@ -153,8 +143,6 @@ export interface UseVideoPlayerStateReturn {
   // Formatted labels
   formattedCurrentTime: string;
   formattedDuration: string;
-  rangeInLabel: string;
-  rangeOutLabel: string;
 
   // Serve windows data (from hook)
   serveWindows: ServeWindow[];
@@ -173,9 +161,6 @@ export interface UseVideoPlayerStateReturn {
 
   // Refs exposed for JSX callbacks
   wasPlayingRef: React.MutableRefObject<boolean>;
-  setOpenRange: React.Dispatch<
-    React.SetStateAction<{ start: number; end: number } | null>
-  >;
 }
 
 export function useVideoPlayerState({
@@ -233,15 +218,6 @@ export function useVideoPlayerState({
   const [highlightTimestamp, setHighlightTimestamp] = useState<number | null>(
     null
   );
-
-  // ── State: range marks ────────────────────────────────────────────────
-  const [openRequestId, setOpenRequestId] = useState(0);
-  const [openRange, setOpenRange] = useState<{
-    start: number;
-    end: number;
-  } | null>(null);
-  const [rangeInTime, setRangeInTime] = useState<number | null>(null);
-  const [rangeOutTime, setRangeOutTime] = useState<number | null>(null);
 
   // ── State: detection ──────────────────────────────────────────────────
   const [detectionMessage, setDetectionMessage] = useState<string | null>(null);
@@ -477,28 +453,6 @@ export function useVideoPlayerState({
     navigateFrame('backward');
   }, [navigateFrame]);
 
-  // ── Range marks ───────────────────────────────────────────────────────
-  const markedRange = useMemo(() => {
-    if (rangeInTime === null || rangeOutTime === null) return null;
-    const start = Math.min(rangeInTime, rangeOutTime);
-    const end = Math.max(rangeInTime, rangeOutTime);
-    return { start, end };
-  }, [rangeInTime, rangeOutTime]);
-
-  const hasRangeMarks = rangeInTime !== null || rangeOutTime !== null;
-
-  const clearRangeMarks = useCallback(() => {
-    setRangeInTime(null);
-    setRangeOutTime(null);
-    setOpenRange(null);
-  }, []);
-
-  const createServeWindowFromMarks = useCallback(() => {
-    if (!markedRange) return;
-    setOpenRange(markedRange);
-    setOpenRequestId((prev) => prev + 1);
-  }, [markedRange]);
-
   // ── Serve window navigation ───────────────────────────────────────────
   const navigateToServeWindowById = useCallback(
     (serveWindowId: number) => {
@@ -652,11 +606,6 @@ export function useVideoPlayerState({
     () => formatTime(duration),
     [duration, formatTime]
   );
-  const rangeInLabel =
-    rangeInTime !== null ? formatTime(rangeInTime) : '\u2014';
-  const rangeOutLabel =
-    rangeOutTime !== null ? formatTime(rangeOutTime) : '\u2014';
-
   // ── Effects ───────────────────────────────────────────────────────────
 
   // Cleanup toast timeout on unmount
@@ -805,14 +754,29 @@ export function useVideoPlayerState({
     }
   }, [onNavigateReady, stableNavigateToServeWindowById]);
 
+  // Focus the container on mount so keyboard shortcuts work immediately
+  // without requiring a click first.
+  useEffect(() => {
+    containerRef.current?.focus();
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Skip when typing in a form field
       if (
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement
       ) {
         return;
+      }
+      // Skip when a button has focus so Space doesn't double-fire
+      if (event.target instanceof HTMLButtonElement) {
+        // Allow Space/arrows to pass through to our handler by blurring the
+        // button and redirecting focus to the container, then re-dispatching.
+        // Simpler: just return for button targets except for Space which we
+        // want to reliably toggle play.
+        if (event.key !== ' ' && event.key !== 'Space') return;
       }
 
       switch (event.key) {
@@ -820,6 +784,8 @@ export function useVideoPlayerState({
         case 'Space':
           event.preventDefault();
           togglePlay();
+          // Return focus to container after button interactions
+          containerRef.current?.focus();
           break;
         case 'ArrowLeft':
           event.preventDefault();
@@ -837,24 +803,30 @@ export function useVideoPlayerState({
           event.preventDefault();
           navigateToNextServeWindow();
           break;
-        case 's':
-        case 'S':
+        case 'c':
+        case 'C': {
           event.preventDefault();
-          if (isDemo) {
-            alert('Range tagging is disabled in Demo Mode!');
-            break;
+          if (isDemo) break;
+          const t = videoRef.current?.currentTime ?? currentTime;
+          const activeWindow = serveWindows.find(
+            (sw) => t >= sw.start_timestamp && t <= sw.end_timestamp
+          );
+          if (activeWindow) {
+            updateServeWindow(activeWindow.id, { contact_timestamp: t })
+              .then(() => {
+                if (videoId) {
+                  queryClient.invalidateQueries({
+                    queryKey: contactTimestampsQueryKey(videoId),
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ['biomechanics-report', activeWindow.id],
+                  });
+                }
+              })
+              .catch(console.error);
           }
-          setRangeInTime(videoRef.current?.currentTime ?? currentTime);
           break;
-        case 'e':
-        case 'E':
-          event.preventDefault();
-          if (isDemo) {
-            alert('Range tagging is disabled in Demo Mode!');
-            break;
-          }
-          setRangeOutTime(videoRef.current?.currentTime ?? currentTime);
-          break;
+        }
         case '+':
         case '=':
           event.preventDefault();
@@ -887,6 +859,10 @@ export function useVideoPlayerState({
     navigateToNextServeWindow,
     isDemo,
     currentTime,
+    serveWindows,
+    updateServeWindow,
+    videoId,
+    queryClient,
     zoomIn,
     zoomOut,
     resetZoom,
@@ -981,16 +957,6 @@ export function useVideoPlayerState({
     // Scroll hint
     showScrollHint,
 
-    // Range marks
-    rangeInTime,
-    rangeOutTime,
-    openRange,
-    openRequestId,
-    markedRange,
-    hasRangeMarks,
-    clearRangeMarks,
-    createServeWindowFromMarks,
-
     // Highlight
     highlightTimestamp,
     setHighlightTimestamp,
@@ -1046,8 +1012,6 @@ export function useVideoPlayerState({
     // Formatted labels
     formattedCurrentTime,
     formattedDuration,
-    rangeInLabel,
-    rangeOutLabel,
 
     // Serve windows data
     serveWindows,
@@ -1066,6 +1030,5 @@ export function useVideoPlayerState({
 
     // Refs exposed for JSX callbacks
     wasPlayingRef,
-    setOpenRange,
   };
 }

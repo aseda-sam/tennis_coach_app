@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import {
@@ -7,10 +7,12 @@ import {
   useVideoAnalysisStatuses,
   useVideos,
 } from '../hooks/useVideos';
+import type { VideoFilters as VideoFiltersType } from '../services/api';
 import { VideoMetadata } from '../types/video';
-import { CloseIcon, DeleteIcon, UploadIcon, VideoIcon } from './Icons';
+import { Trash2, Upload, Video, X } from 'lucide-react';
 import LoadingIndicator from './LoadingIndicator';
 import VideoEditModal from './VideoEditModal';
+import VideoFiltersComponent from './VideoFilters';
 import './VideoList.css';
 import VideoUpload from './VideoUpload';
 
@@ -26,6 +28,11 @@ const VideoList: React.FC<VideoListProps> = ({
   const queryClient = useQueryClient();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<VideoMetadata | null>(null);
+  const [filters, setFilters] = useState<VideoFiltersType>({});
+  const [sortMode, setSortMode] = useState<'recorded_at' | 'uploaded_at'>(
+    'recorded_at'
+  );
+  const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
 
   // Use React Query hooks for data fetching
   const {
@@ -33,7 +40,7 @@ const VideoList: React.FC<VideoListProps> = ({
     isLoading: videosLoading,
     error: videosError,
     refetch: refetchVideos,
-  } = useVideos();
+  } = useVideos(filters);
 
   const videoIds = videos.map((v: VideoMetadata) => v.id);
   const { isLoading: statusesLoading } = useVideoAnalysisStatuses(videoIds);
@@ -45,6 +52,34 @@ const VideoList: React.FC<VideoListProps> = ({
 
   const loading = videosLoading || statusesLoading;
   const error = videosError ? 'Failed to load videos. Please try again.' : null;
+  const hasActiveFilters = Object.values(filters).some(
+    (v) => v !== undefined && v !== null && v !== ''
+  );
+  const sortedVideos = useMemo(() => {
+    const getTimestampMs = (video: VideoMetadata) => {
+      const timestamp =
+        sortMode === 'recorded_at'
+          ? (video.recorded_at ?? video.created_at)
+          : video.created_at;
+      const ms = new Date(timestamp).getTime();
+      return Number.isNaN(ms) ? 0 : ms;
+    };
+
+    return [...videos].sort((a, b) =>
+      sortDirection === 'desc'
+        ? getTimestampMs(b) - getTimestampMs(a)
+        : getTimestampMs(a) - getTimestampMs(b)
+    );
+  }, [videos, sortMode, sortDirection]);
+
+  const handleSortPillClick = (nextMode: 'recorded_at' | 'uploaded_at') => {
+    if (nextMode === sortMode) {
+      setSortDirection((current) => (current === 'desc' ? 'asc' : 'desc'));
+      return;
+    }
+    setSortMode(nextMode);
+    setSortDirection('desc');
+  };
 
   const handleDelete = async (videoId: number) => {
     try {
@@ -64,20 +99,20 @@ const VideoList: React.FC<VideoListProps> = ({
     }
   };
 
-  const getPlayerLabel = useCallback(
-    (video: VideoMetadata) => {
-      if (!playerProfile?.name) {
-        return 'Your Profile';
+  const getPlayerTag = useCallback(
+    (video: VideoMetadata): 'you' | 'someone_else' => {
+      if (!playerProfile?.id) {
+        return 'you';
       }
       if (
         !video.primary_player_id ||
         video.primary_player_id === playerProfile.id
       ) {
-        return playerProfile.name;
+        return 'you';
       }
-      return 'Someone Else';
+      return 'someone_else';
     },
-    [playerProfile?.id, playerProfile?.name]
+    [playerProfile?.id]
   );
 
   const handleUploadSuccess = useCallback(
@@ -119,7 +154,7 @@ const VideoList: React.FC<VideoListProps> = ({
     return (
       <div className="video-list-container">
         <div className="video-list-loading">
-          <LoadingIndicator size="lg" label="Loading videos..." />
+          <LoadingIndicator size="lg" label="Rounding up your videos..." />
         </div>
       </div>
     );
@@ -145,7 +180,9 @@ const VideoList: React.FC<VideoListProps> = ({
         <div className="header-left">
           <h2 className="page-title">Video Library</h2>
           <p className="video-count">
-            {videos.length} of {videos.length} sessions
+            {hasActiveFilters
+              ? `${videos.length} matching sessions`
+              : `${videos.length} sessions`}
           </p>
         </div>
         <div className="header-right">
@@ -154,23 +191,37 @@ const VideoList: React.FC<VideoListProps> = ({
             onClick={() => setIsUploadModalOpen(true)}
             type="button"
           >
-            <UploadIcon size={18} />
+            <Upload size={16} strokeWidth={2.5} />
             Upload
           </button>
         </div>
       </div>
 
-      {videos.length === 0 ? (
+      <VideoFiltersComponent
+        filters={filters}
+        onChange={setFilters}
+        sortMode={sortMode}
+        sortDirection={sortDirection}
+        onSortPillClick={handleSortPillClick}
+      />
+
+      {sortedVideos.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">
-            <VideoIcon size={64} color="var(--color-text-disabled)" />
+            <Video
+              size={48}
+              color="var(--color-text-disabled)"
+              strokeWidth={1.5}
+            />
           </div>
           <h3>No videos uploaded yet</h3>
           <p>Upload your first tennis video to get started with analysis</p>
         </div>
       ) : (
         <div className="video-grid">
-          {videos.map((video: VideoMetadata) => {
+          {sortedVideos.map((video: VideoMetadata) => {
+            const playerTag = getPlayerTag(video);
+            const playerLabel = playerTag === 'you' ? 'Me' : 'Someone Else';
             return (
               <div
                 key={video.id}
@@ -178,19 +229,17 @@ const VideoList: React.FC<VideoListProps> = ({
                 onClick={() => handleViewAnalysis(video.id)}
                 style={{ cursor: 'pointer' }}
               >
-                {/* Thumbnail Area */}
-                <div className="video-card-thumbnail">
-                  <div className="video-card-thumbnail-placeholder">
-                    <VideoIcon size={48} color="var(--color-text-muted)" />
-                  </div>
-                </div>
-
                 {/* Metadata Section */}
                 <div className="video-card-content">
-                  <h3 className="video-card-filename">{video.filename}</h3>
+                  <h3 className="video-card-filename">
+                    {video.title || video.filename}
+                  </h3>
 
                   <div className="video-card-meta-row">
-                    <span className="user-info">
+                    <span
+                      className={`player-tag-badge player-tag-badge--${playerTag}`}
+                      aria-label={`Primary player: ${playerLabel}`}
+                    >
                       <svg
                         width="14"
                         height="14"
@@ -203,7 +252,7 @@ const VideoList: React.FC<VideoListProps> = ({
                           fill="currentColor"
                         />
                       </svg>
-                      {getPlayerLabel(video)}
+                      {playerLabel}
                     </span>
                     <span className="meta-separator">•</span>
                     <span className="date-info">
@@ -251,7 +300,7 @@ const VideoList: React.FC<VideoListProps> = ({
                       title="Delete"
                       type="button"
                     >
-                      <DeleteIcon size={18} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </div>
@@ -275,7 +324,7 @@ const VideoList: React.FC<VideoListProps> = ({
                 onClick={() => setIsUploadModalOpen(false)}
                 aria-label="Close"
               >
-                <CloseIcon size={18} />
+                <X size={18} />
               </button>
             </div>
             <div className="modal-content">

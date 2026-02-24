@@ -45,19 +45,19 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   const getStatusText = () => {
     switch (status) {
       case 'starting':
-        return 'Starting analysis...';
+        return 'Warming up...';
       case 'processing':
-        return 'Processing video...';
+        return 'Watching your serve...';
       case 'finalizing':
-        return 'Finalizing results...';
+        return 'Putting it all together...';
       case 'completed':
-        return 'Analysis complete!';
+        return 'All done!';
       case 'failed':
-        return 'Analysis failed';
+        return 'Something went wrong';
       case 'cancelled':
-        return 'Analysis cancelled';
+        return 'Cancelled';
       default:
-        return 'Processing...';
+        return 'Working on it...';
     }
   };
 

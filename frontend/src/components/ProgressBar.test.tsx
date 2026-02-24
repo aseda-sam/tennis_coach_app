@@ -11,21 +11,23 @@ describe('ProgressBar', () => {
     it('renders with default props', () => {
       render(<ProgressBar {...defaultProps} />);
 
-      expect(screen.getByText('Processing video...')).toBeInTheDocument();
+      expect(screen.getByText('Watching your serve...')).toBeInTheDocument();
       expect(screen.getByText('50%')).toBeInTheDocument();
     });
 
     it('renders without status text when showStatus is false', () => {
       render(<ProgressBar {...defaultProps} showStatus={false} />);
 
-      expect(screen.queryByText('Processing video...')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Watching your serve...')
+      ).not.toBeInTheDocument();
       expect(screen.getByText('50%')).toBeInTheDocument();
     });
 
     it('renders without percentage when showPercentage is false', () => {
       render(<ProgressBar {...defaultProps} showPercentage={false} />);
 
-      expect(screen.getByText('Processing video...')).toBeInTheDocument();
+      expect(screen.getByText('Watching your serve...')).toBeInTheDocument();
       expect(screen.queryByText('50%')).not.toBeInTheDocument();
     });
 
@@ -49,37 +51,39 @@ describe('ProgressBar', () => {
   describe('Status States', () => {
     it('displays correct text for starting status', () => {
       render(<ProgressBar progress={0} status="starting" />);
-      expect(screen.getByText('Starting analysis...')).toBeInTheDocument();
+      expect(screen.getByText('Warming up...')).toBeInTheDocument();
       expect(screen.getByText('0%')).toBeInTheDocument();
     });
 
     it('displays correct text for processing status', () => {
       render(<ProgressBar progress={45} status="processing" />);
-      expect(screen.getByText('Processing video...')).toBeInTheDocument();
+      expect(screen.getByText('Watching your serve...')).toBeInTheDocument();
       expect(screen.getByText('45%')).toBeInTheDocument();
     });
 
     it('displays correct text for finalizing status', () => {
       render(<ProgressBar progress={100} status="finalizing" />);
-      expect(screen.getByText('Finalizing results...')).toBeInTheDocument();
+      expect(
+        screen.getByText('Putting it all together...')
+      ).toBeInTheDocument();
       expect(screen.getByText('100%')).toBeInTheDocument();
     });
 
     it('displays correct text for completed status', () => {
       render(<ProgressBar progress={100} status="completed" />);
-      expect(screen.getByText('Analysis complete!')).toBeInTheDocument();
+      expect(screen.getByText('All done!')).toBeInTheDocument();
       expect(screen.getByText('100%')).toBeInTheDocument();
     });
 
     it('displays correct text for failed status', () => {
       render(<ProgressBar progress={30} status="failed" />);
-      expect(screen.getByText('Analysis failed')).toBeInTheDocument();
+      expect(screen.getByText('Something went wrong')).toBeInTheDocument();
       expect(screen.getByText('30%')).toBeInTheDocument();
     });
 
     it('displays correct text for cancelled status', () => {
       render(<ProgressBar progress={60} status="cancelled" />);
-      expect(screen.getByText('Analysis cancelled')).toBeInTheDocument();
+      expect(screen.getByText('Cancelled')).toBeInTheDocument();
       expect(screen.getByText('60%')).toBeInTheDocument();
     });
   });
@@ -121,19 +125,19 @@ describe('ProgressBar', () => {
       const { rerender } = render(
         <ProgressBar progress={50} status="processing" />
       );
-      expect(screen.getByText('Processing video...')).toHaveClass(
+      expect(screen.getByText('Watching your serve...')).toHaveClass(
         'status-text',
         'processing'
       );
 
       rerender(<ProgressBar progress={100} status="completed" />);
-      expect(screen.getByText('Analysis complete!')).toHaveClass(
+      expect(screen.getByText('All done!')).toHaveClass(
         'status-text',
         'completed'
       );
 
       rerender(<ProgressBar progress={30} status="failed" />);
-      expect(screen.getByText('Analysis failed')).toHaveClass(
+      expect(screen.getByText('Something went wrong')).toHaveClass(
         'status-text',
         'error'
       );
@@ -192,7 +196,7 @@ describe('ProgressBar', () => {
 
     it('provides meaningful text content', () => {
       render(<ProgressBar progress={50} status="processing" />);
-      expect(screen.getByText('Processing video...')).toBeInTheDocument();
+      expect(screen.getByText('Watching your serve...')).toBeInTheDocument();
       expect(screen.getByText('50%')).toBeInTheDocument();
     });
   });

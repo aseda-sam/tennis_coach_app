@@ -79,3 +79,34 @@
   border-top: 1px solid var(--color-border-light);
   margin: 0;
 }
+
+/* Contact footer — single row, separated from charts */
+.detection-details__contact-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.detection-details__legend-diamond {
+  flex-shrink: 0;
+}
+
+.detection-details__legend-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.detection-details__contact-current {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-secondary);
+}
+
+.detection-details__contact-current::before {
+  content: '·';
+  margin-right: 6px;
+  color: var(--color-border);
+}

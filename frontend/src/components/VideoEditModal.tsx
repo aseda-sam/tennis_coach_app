@@ -4,7 +4,12 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { useUpdateVideoMetadata } from '../hooks/useVideos';
 import { VideoMetadata } from '../types/video';
-import { CloseIcon } from './Icons';
+import { X } from 'lucide-react';
+import DateTimePicker from './DateTimePicker';
+
+function toDatetimeLocalValue(iso: string): string {
+  return iso.slice(0, 16);
+}
 
 interface VideoEditModalProps {
   video: VideoMetadata;
@@ -26,6 +31,11 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
     [playerProfile?.id]
   );
 
+  const [editTitle, setEditTitle] = useState(video.title || '');
+  const [editNotes, setEditNotes] = useState(video.notes || '');
+  const [editRecordedAt, setEditRecordedAt] = useState(
+    video.recorded_at ? toDatetimeLocalValue(video.recorded_at) : ''
+  );
   const [editSessionType, setEditSessionType] = useState(
     video.session_type || ''
   );
@@ -35,15 +45,28 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
   const [editPlayerTag, setEditPlayerTag] = useState<'you' | 'someone_else'>(
     resolvePlayerTag(video)
   );
-  const [applyToExistingServes, setApplyToExistingServes] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   // Reset form state when the video prop changes
   useEffect(() => {
+    setEditTitle(video.title || '');
+    setEditNotes(video.notes || '');
+    setEditRecordedAt(
+      video.recorded_at ? toDatetimeLocalValue(video.recorded_at) : ''
+    );
     setEditSessionType(video.session_type || '');
     setEditCameraAngle(video.camera_angle || '');
     setEditPlayerTag(resolvePlayerTag(video));
-    setApplyToExistingServes(false);
     setEditError(null);
   }, [video, resolvePlayerTag]);
 
@@ -54,10 +77,14 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
       await updateMetadataMutation.mutateAsync({
         videoId: video.id,
         metadata: {
+          title: editTitle || undefined,
+          notes: editNotes || undefined,
+          recorded_at: editRecordedAt
+            ? new Date(editRecordedAt).toISOString()
+            : undefined,
           session_type: editSessionType || undefined,
           camera_angle: editCameraAngle || undefined,
           player_tag: editPlayerTag,
-          apply_to_existing_serves: applyToExistingServes,
         },
       });
 
@@ -69,7 +96,9 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
       );
     }
   }, [
-    applyToExistingServes,
+    editTitle,
+    editNotes,
+    editRecordedAt,
     editCameraAngle,
     editPlayerTag,
     editSessionType,
@@ -81,20 +110,63 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
 
   return (
     <div className="upload-modal-overlay" onClick={onClose}>
-      <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="upload-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-video-modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
-          <h2 className="modal-title">Edit Video Details</h2>
+          <h2 className="modal-title" id="edit-video-modal-title">
+            Edit Video Details
+          </h2>
           <button
             className="close-btn"
             onClick={onClose}
             aria-label="Close"
             type="button"
           >
-            <CloseIcon size={18} />
+            <X size={18} />
           </button>
         </div>
         <div className="modal-content">
           <div className="edit-video-form">
+            <div className="edit-video-field">
+              <label>Title</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder={video.filename}
+                maxLength={200}
+                disabled={updateMetadataMutation.isPending}
+              />
+            </div>
+
+            <div className="edit-video-field">
+              <label>Notes</label>
+              <textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                rows={3}
+                placeholder="Any notes about this session..."
+                disabled={updateMetadataMutation.isPending}
+              />
+            </div>
+
+            <div className="edit-video-field">
+              <label>Recording Date &amp; Time</label>
+              <DateTimePicker
+                value={editRecordedAt}
+                onChange={setEditRecordedAt}
+                disabled={updateMetadataMutation.isPending}
+              />
+              <p className="edit-video-note edit-video-note--compact">
+                Used for progress trends. Correct it if the timestamp is wrong.
+              </p>
+            </div>
+
             <div className="edit-video-two-col">
               <div className="edit-video-field">
                 <label>
@@ -162,20 +234,6 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
                   />
                   <span>Someone Else</span>
                 </label>
-              </div>
-              <div className="edit-video-checkbox-wrapper">
-                <label className="edit-video-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={applyToExistingServes}
-                    onChange={(e) => setApplyToExistingServes(e.target.checked)}
-                    disabled={updateMetadataMutation.isPending}
-                  />
-                  <span>Also update serves already detected in this video</span>
-                </label>
-                <p className="edit-video-note edit-video-note--compact">
-                  Only affects serves for this video.
-                </p>
               </div>
             </div>
 

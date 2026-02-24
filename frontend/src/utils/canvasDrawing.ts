@@ -1,5 +1,5 @@
 /**
- * Shared canvas drawing utilities used by VideoOverlay and StickFigureCanvas.
+ * Shared canvas drawing utilities used by StickFigureCanvas.
  *
  * Pure functions and constants only -- no React, no state, no side effects.
  */
@@ -44,10 +44,58 @@ export const JOINT_POINTS = [
 ] as const;
 
 export const OVERLAY_SKELETON_COLOR = '#00FF00';
-export const STICK_FIGURE_SKELETON_COLOR = '#00ff88';
-export const BALL_COLOR = '#FF1493';
+export const SKELETON_COLOR = '#4AD090'; // Desaturated analytical green
+export const GROUND_PLANE_COLOR = '#6B7A8D'; // Neutral cool blue-grey
+export const BALL_COLOR = '#C4D93B'; // Tennis ball yellow-green
 export const BALL_TRAIL_LENGTH = 30; // ~1 second at 30fps
 export const ANNOTATION_COLOR = '#00D4FF';
+
+/** Per-bone thickness — keyed by "startKey:endKey". */
+export const BONE_THICKNESS: Record<string, number> = {
+  // Torso frame
+  'left_shoulder:right_shoulder': 4,
+  'right_shoulder:left_shoulder': 4,
+  'left_hip:right_hip': 4,
+  'right_hip:left_hip': 4,
+  'left_shoulder:left_hip': 4,
+  'right_shoulder:right_hip': 4,
+  // Upper arms
+  'left_shoulder:left_elbow': 2.5,
+  'right_shoulder:right_elbow': 2.5,
+  // Lower arms
+  'left_elbow:left_wrist': 2,
+  'right_elbow:right_wrist': 2,
+  // Upper legs
+  'left_hip:left_knee': 3,
+  'right_hip:right_knee': 3,
+  // Lower legs
+  'left_knee:left_ankle': 2.5,
+  'right_knee:right_ankle': 2.5,
+};
+
+/** Joints that get the ring effect (shoulder + hip pivots). */
+export const MAJOR_JOINTS = new Set([
+  'left_shoulder',
+  'right_shoulder',
+  'left_hip',
+  'right_hip',
+]);
+
+export const JOINT_RADIUS_MAJOR = 3;
+export const JOINT_RADIUS_MINOR = 1.8;
+export const HEAD_OFFSET_RATIO = 0.35;
+export const HEAD_RADIUS = 6;
+export const GROUND_PLANE_GLOW_BLUR = 6;
+export const GROUND_PLANE_Y_OFFSET = 12;
+export const SKELETON_GLOW_BLUR = 3;
+export const STICK_BALL_HEAD_RADIUS = 7;
+export const STICK_BALL_HEAD_GLOW_BLUR = 6;
+export const ANNOTATION_Y_MARGIN = 18;
+
+// Adaptive scale layout constants
+export const SCENE_TOP_MARGIN = 0.05; // 5% padding above highest point
+export const SCENE_BOTTOM_MARGIN = 0.08; // 8% padding below ground
+export const MIN_EXTENT_TORSOS = 4; // Floor on scene extent (prevents absurdly large figure)
 
 // ---------------------------------------------------------------------------
 // Geometry helpers
@@ -177,7 +225,198 @@ export function normalizePose(
 }
 
 // ---------------------------------------------------------------------------
-// VideoOverlay drawing helpers
+// Fixed reference-frame normalization
+// ---------------------------------------------------------------------------
+
+/** Reference values computed once from a stable frame (video pixel space). */
+export interface NormalizationRef {
+  hipCenterX: number; // video pixel coords
+  hipCenterY: number; // video pixel coords
+  torsoLength: number; // video pixel distance
+  groundY: number; // video pixel Y of lowest ankle in ref frame
+  topY: number; // video pixel Y of highest point (ball peak or head estimate)
+}
+
+/**
+ * Compute a fixed normalization reference from the frame at `serveStartTime`.
+ * Skips frames with missing core keypoints (shoulders + hips) and tries the
+ * next frames. Returns `null` when no valid frame is found.
+ *
+ * Also scans all frames for the highest ball position to compute `topY`,
+ * ensuring the full toss arc fits on canvas.
+ */
+export function computeNormalizationRef(
+  frames: { keypoints: Record<string, number[]>; ball_position?: number[] }[],
+  serveStartTime: number | undefined,
+  fps: number
+): NormalizationRef | null {
+  if (!frames || frames.length === 0) return null;
+
+  let startIdx = 0;
+  if (serveStartTime != null && fps > 0) {
+    startIdx = Math.round(serveStartTime * fps);
+  }
+  startIdx = Math.max(0, Math.min(startIdx, frames.length - 1));
+
+  const maxAttempts = Math.min(10, frames.length);
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const idx = Math.min(startIdx + attempt, frames.length - 1);
+    const frame = frames[idx];
+    if (!frame?.keypoints) continue;
+
+    const ls = frame.keypoints['left_shoulder'];
+    const rs = frame.keypoints['right_shoulder'];
+    const lh = frame.keypoints['left_hip'];
+    const rh = frame.keypoints['right_hip'];
+
+    if (!ls || !rs || !lh || !rh) continue;
+
+    const hipCenterX = (lh[0] + rh[0]) / 2;
+    const hipCenterY = (lh[1] + rh[1]) / 2;
+    const shoulderCenterX = (ls[0] + rs[0]) / 2;
+    const shoulderCenterY = (ls[1] + rs[1]) / 2;
+
+    const torsoLength = Math.sqrt(
+      (shoulderCenterX - hipCenterX) ** 2 + (shoulderCenterY - hipCenterY) ** 2
+    );
+
+    if (torsoLength === 0) continue;
+
+    // Ground Y from ankles, falling back to hip + 2*torso
+    const la = frame.keypoints['left_ankle'];
+    const ra = frame.keypoints['right_ankle'];
+    let groundY: number;
+    if (la || ra) {
+      groundY = Math.max(la?.[1] ?? 0, ra?.[1] ?? 0);
+    } else {
+      groundY = hipCenterY + torsoLength * 2;
+    }
+
+    // Scan all frames for the highest ball position (min Y in video coords)
+    let minBallY = Infinity;
+    for (const f of frames) {
+      if (f.ball_position && f.ball_position.length >= 2) {
+        minBallY = Math.min(minBallY, f.ball_position[1]);
+      }
+    }
+
+    // Head estimate: top of head circle above shoulder center
+    const headEstimate =
+      shoulderCenterY -
+      torsoLength * (HEAD_OFFSET_RATIO + HEAD_RADIUS / torsoLength);
+
+    // topY = highest point we need to render
+    let topY = headEstimate;
+    if (minBallY !== Infinity) {
+      topY = Math.min(topY, minBallY);
+    }
+
+    // Sanity cap: don't let topY be more than 8 torso lengths above hips
+    topY = Math.max(topY, hipCenterY - torsoLength * 8);
+
+    return { hipCenterX, hipCenterY, torsoLength, groundY, topY };
+  }
+
+  return null;
+}
+
+/**
+ * Normalize pose using a fixed reference frame's scale and position anchor.
+ * Same output shape as `normalizePose` but stable across frames.
+ * Does not require the frame's own hips/shoulders — any keypoints work.
+ *
+ * Scale is computed from the full vertical extent (groundY - topY) so that
+ * the ball toss arc and ground both fit on canvas.
+ */
+export function normalizePoseFixed(
+  keypoints: Record<string, number[]>,
+  canvasWidth: number,
+  canvasHeight: number,
+  ref: NormalizationRef
+): Record<string, { x: number; y: number }> {
+  const usableHeight =
+    canvasHeight * (1 - SCENE_TOP_MARGIN - SCENE_BOTTOM_MARGIN);
+  const groundCanvasY = canvasHeight * (1 - SCENE_BOTTOM_MARGIN);
+  const extent = Math.max(
+    ref.groundY - ref.topY,
+    ref.torsoLength * MIN_EXTENT_TORSOS
+  );
+  const scale = usableHeight / extent;
+
+  const canvasAnchorX = canvasWidth / 2;
+  const canvasAnchorY = groundCanvasY - (ref.groundY - ref.hipCenterY) * scale;
+
+  const normalized: Record<string, { x: number; y: number }> = {};
+
+  for (const [name, coords] of Object.entries(keypoints)) {
+    if (coords && coords.length >= 2) {
+      const relX = coords[0] - ref.hipCenterX;
+      const relY = coords[1] - ref.hipCenterY;
+      normalized[name] = {
+        x: canvasAnchorX + relX * scale,
+        y: canvasAnchorY + relY * scale,
+      };
+    }
+  }
+
+  return normalized;
+}
+
+/**
+ * Draw a fixed ground plane using the reference frame's ground Y.
+ * Same gradient + glow rendering as `drawGroundPlane`.
+ */
+export function drawGroundPlaneFixed(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  ref: NormalizationRef
+): void {
+  const groundCanvasY = canvasHeight * (1 - SCENE_BOTTOM_MARGIN);
+  const groundY = groundCanvasY + GROUND_PLANE_Y_OFFSET;
+
+  const figureCenterX = canvasWidth / 2;
+  const lineWidth = canvasWidth * 0.6;
+  const startX = figureCenterX - lineWidth / 2;
+  const endX = figureCenterX + lineWidth / 2;
+
+  const color = GROUND_PLANE_COLOR;
+
+  // Gradient: transparent → color → transparent
+  const grad = ctx.createLinearGradient(startX, groundY, endX, groundY);
+  grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  grad.addColorStop(0.3, color);
+  grad.addColorStop(0.7, color);
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+  // Pass 1: glow halo
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = GROUND_PLANE_GLOW_BLUR;
+  ctx.beginPath();
+  ctx.moveTo(startX, groundY);
+  ctx.lineTo(endX, groundY);
+  ctx.stroke();
+  ctx.restore();
+
+  // Pass 2: crisp center line
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1;
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.moveTo(startX, groundY);
+  ctx.lineTo(endX, groundY);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Overlay drawing helpers
 // ---------------------------------------------------------------------------
 
 export interface OverlaySkeletonParams {
@@ -307,7 +546,7 @@ export function drawOverlayBallTrail(params: OverlayBallParams): void {
       const t = (i + 1) / trail.length;
       const alpha = 0.1 + 0.8 * t;
       const lineWidth = 1 + 2 * t;
-      ctx.strokeStyle = `rgba(255, 20, 147, ${alpha})`;
+      ctx.strokeStyle = `rgba(196, 217, 59, ${alpha})`;
       ctx.lineWidth = lineWidth;
       ctx.beginPath();
       ctx.moveTo(trail[i].x, trail[i].y);
@@ -360,25 +599,24 @@ export function drawGrid(
   }
 }
 
-/** Draw skeleton connections with glow effect on the stick-figure canvas. */
+/** Draw skeleton connections with glow effect and variable bone thickness. */
 export function drawStickSkeleton(
   ctx: CanvasRenderingContext2D,
   normalizedPose: Record<string, { x: number; y: number }>,
   color: string
 ): void {
   ctx.shadowColor = color;
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = SKELETON_GLOW_BLUR;
   ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
   ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
 
   for (const [startKey, endKey] of SKELETON_CONNECTIONS) {
     const start = normalizedPose[startKey];
     const end = normalizedPose[endKey];
 
     if (start && end) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = BONE_THICKNESS[`${startKey}:${endKey}`] ?? 3;
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
@@ -387,24 +625,147 @@ export function drawStickSkeleton(
   }
 }
 
-/** Draw white joint circles on key points. */
+/**
+ * Convert a hex color to an rgba string.
+ * Accepts "#RRGGBB" or "#RGB" format.
+ */
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.length === 3 ? h[0] + h[0] : h.substring(0, 2), 16);
+  const g = parseInt(h.length === 3 ? h[1] + h[1] : h.substring(2, 4), 16);
+  const b = parseInt(h.length === 3 ? h[2] + h[2] : h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/** Draw differentiated joints: stroked rings for major pivots, dots for minor. */
 export function drawJoints(
   ctx: CanvasRenderingContext2D,
-  normalizedPose: Record<string, { x: number; y: number }>
+  normalizedPose: Record<string, { x: number; y: number }>,
+  color: string
 ): void {
-  ctx.shadowBlur = 4;
-  ctx.fillStyle = '#ffffff';
+  ctx.shadowBlur = 0;
 
   for (const jointName of JOINT_POINTS) {
     const joint = normalizedPose[jointName];
-    if (joint) {
+    if (!joint) continue;
+
+    if (MAJOR_JOINTS.has(jointName)) {
+      // Major joints: color-matched ring at 50% opacity + faint white fill
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.beginPath();
-      ctx.arc(joint.x, joint.y, 5, 0, Math.PI * 2);
+      ctx.arc(joint.x, joint.y, JOINT_RADIUS_MAJOR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = hexToRgba(color, 0.5);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else {
+      // Minor joints: color-matched dot at 40% opacity
+      ctx.fillStyle = hexToRgba(color, 0.4);
+      ctx.beginPath();
+      ctx.arc(joint.x, joint.y, JOINT_RADIUS_MINOR, 0, Math.PI * 2);
       ctx.fill();
     }
   }
+}
+
+/** Draw a head hint circle above the shoulder midpoint. */
+export function drawHead(
+  ctx: CanvasRenderingContext2D,
+  normalizedPose: Record<string, { x: number; y: number }>,
+  color: string
+): void {
+  const ls = normalizedPose['left_shoulder'];
+  const rs = normalizedPose['right_shoulder'];
+  const lh = normalizedPose['left_hip'];
+  const rh = normalizedPose['right_hip'];
+  if (!ls || !rs || !lh || !rh) return;
+
+  const shoulderMidX = (ls.x + rs.x) / 2;
+  const shoulderMidY = (ls.y + rs.y) / 2;
+  const hipMidX = (lh.x + rh.x) / 2;
+  const hipMidY = (lh.y + rh.y) / 2;
+  const torsoLength = Math.sqrt(
+    (shoulderMidX - hipMidX) ** 2 + (shoulderMidY - hipMidY) ** 2
+  );
+  if (torsoLength === 0) return;
+
+  // Direction from hip to shoulder (up the torso)
+  const dx = (shoulderMidX - hipMidX) / torsoLength;
+  const dy = (shoulderMidY - hipMidY) / torsoLength;
+
+  const headCenterX = shoulderMidX + dx * torsoLength * HEAD_OFFSET_RATIO;
+  const headCenterY = shoulderMidY + dy * torsoLength * HEAD_OFFSET_RATIO;
+
+  // Neck line
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = SKELETON_GLOW_BLUR;
+  ctx.beginPath();
+  ctx.moveTo(shoulderMidX, shoulderMidY);
+  ctx.lineTo(headCenterX, headCenterY);
+  ctx.stroke();
+
+  // Head circle (ring, not filled)
+  ctx.beginPath();
+  ctx.arc(headCenterX, headCenterY, HEAD_RADIUS, 0, Math.PI * 2);
+  ctx.stroke();
 
   ctx.shadowBlur = 0;
+}
+
+/** Draw a glowing ground plane line beneath the figure. */
+export function drawGroundPlane(
+  ctx: CanvasRenderingContext2D,
+  normalizedPose: Record<string, { x: number; y: number }>,
+  canvasWidth: number
+): void {
+  const la = normalizedPose['left_ankle'];
+  const ra = normalizedPose['right_ankle'];
+  if (!la && !ra) return;
+
+  const lowestY = Math.max(la?.y ?? 0, ra?.y ?? 0);
+  const groundY = lowestY + GROUND_PLANE_Y_OFFSET;
+
+  // Center on the figure, ~60% canvas width
+  const figureCenterX = ((la?.x ?? 0) + (ra?.x ?? 0)) / (la && ra ? 2 : 1);
+  const lineWidth = canvasWidth * 0.6;
+  const startX = figureCenterX - lineWidth / 2;
+  const endX = figureCenterX + lineWidth / 2;
+
+  const color = GROUND_PLANE_COLOR;
+
+  // Gradient: transparent → color → transparent
+  const grad = ctx.createLinearGradient(startX, groundY, endX, groundY);
+  grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  grad.addColorStop(0.3, color);
+  grad.addColorStop(0.7, color);
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+  // Pass 1: glow halo
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = GROUND_PLANE_GLOW_BLUR;
+  ctx.beginPath();
+  ctx.moveTo(startX, groundY);
+  ctx.lineTo(endX, groundY);
+  ctx.stroke();
+  ctx.restore();
+
+  // Pass 2: crisp center line
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1;
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.moveTo(startX, groundY);
+  ctx.lineTo(endX, groundY);
+  ctx.stroke();
+  ctx.restore();
 }
 
 /** Draw the ball trail line and head dot on the stick-figure canvas. */
@@ -417,7 +778,7 @@ export function drawStickBallTrail(
       const t = (i + 1) / trail.length;
       const alpha = 0.1 + 0.8 * t;
       const lineWidth = 1 + 2 * t;
-      ctx.strokeStyle = `rgba(255, 20, 147, ${alpha})`;
+      ctx.strokeStyle = `rgba(196, 217, 59, ${alpha})`;
       ctx.lineWidth = lineWidth;
       ctx.beginPath();
       ctx.moveTo(trail[i].x, trail[i].y);
@@ -428,13 +789,16 @@ export function drawStickBallTrail(
 
   if (trail.length >= 1) {
     const head = trail[trail.length - 1];
+    ctx.shadowColor = BALL_COLOR;
+    ctx.shadowBlur = STICK_BALL_HEAD_GLOW_BLUR;
     ctx.fillStyle = BALL_COLOR;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(head.x, head.y, 5, 0, Math.PI * 2);
+    ctx.arc(head.x, head.y, STICK_BALL_HEAD_RADIUS, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    ctx.shadowBlur = 0;
   }
 }
 
@@ -472,7 +836,7 @@ export function drawStickHud(params: StickHudParams): void {
 
   // Phase label pill — top left
   if (phaseLabel) {
-    const baseColor = phaseColor || STICK_FIGURE_SKELETON_COLOR;
+    const baseColor = phaseColor || SKELETON_COLOR;
     ctx.font = 'bold 13px sans-serif';
     const textWidth = ctx.measureText(phaseLabel).width;
     const pillPadX = 10;
@@ -535,6 +899,7 @@ export interface TossHeightAnnotationParams {
   ballY: number;
   shoulderY: number;
   canvasWidth: number;
+  canvasHeight: number;
   value: number;
   opacity: number;
 }
@@ -542,40 +907,47 @@ export interface TossHeightAnnotationParams {
 /**
  * Draw toss height annotation: horizontal dashed line at ball peak Y with glow,
  * vertical measurement bracket from shoulder to ball, rounded-rect label backdrop,
- * and "Peak Height" sub-label.
+ * and "Peak Height" sub-label. Ball Y is clamped to canvas bounds.
  */
 export function drawTossHeightAnnotation(
   params: TossHeightAnnotationParams
 ): void {
-  const { ctx, ballY, shoulderY, canvasWidth, value, opacity } = params;
+  const { ctx, shoulderY, canvasWidth, canvasHeight, value, opacity } = params;
+
+  // Clamp ballY to canvas bounds
+  const ballY = Math.max(
+    ANNOTATION_Y_MARGIN,
+    Math.min(params.ballY, canvasHeight - ANNOTATION_Y_MARGIN)
+  );
 
   ctx.save();
   ctx.globalAlpha = opacity;
 
-  // Horizontal dashed line at peak height with glow
+  // Shortened horizontal dashed line (~120px) centered on bracket
+  const bracketX = canvasWidth - 40;
+  const dashHalfWidth = 60;
   ctx.shadowColor = ANNOTATION_COLOR;
   ctx.shadowBlur = 6;
   ctx.strokeStyle = ANNOTATION_COLOR;
   ctx.lineWidth = 1;
   ctx.setLineDash([6, 4]);
   ctx.beginPath();
-  ctx.moveTo(0, ballY);
-  ctx.lineTo(canvasWidth, ballY);
+  ctx.moveTo(Math.max(0, bracketX - dashHalfWidth), ballY);
+  ctx.lineTo(Math.min(canvasWidth, bracketX + dashHalfWidth), ballY);
   ctx.stroke();
   ctx.shadowBlur = 0;
 
   // Vertical bracket from shoulder to ball
-  const bracketX = canvasWidth - 40;
   ctx.setLineDash([]);
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(bracketX, shoulderY);
   ctx.lineTo(bracketX, ballY);
   ctx.stroke();
 
-  // Bracket caps
-  const capWidth = 8;
-  ctx.lineWidth = 2;
+  // Bracket caps (bolder)
+  const capWidth = 10;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(bracketX - capWidth, shoulderY);
   ctx.lineTo(bracketX + capWidth, shoulderY);
@@ -586,7 +958,7 @@ export function drawTossHeightAnnotation(
   ctx.stroke();
 
   // Value label with rounded-rect backdrop
-  const labelY = (shoulderY + ballY) / 2;
+  const midY = (shoulderY + ballY) / 2;
   const valueText = `${value.toFixed(2)}x`;
   const subLabel = 'Peak Height';
   ctx.font = 'bold 13px monospace';
@@ -596,11 +968,16 @@ export function drawTossHeightAnnotation(
   const labelWidth = Math.max(valueWidth, subWidth) + 16;
   const labelHeight = 36;
   const labelLeft = bracketX - labelWidth - 10;
-  const labelTop = labelY - labelHeight / 2;
+  // Clamp label Y within canvas
+  const rawLabelTop = midY - labelHeight / 2;
+  const labelTop = Math.max(
+    ANNOTATION_Y_MARGIN,
+    Math.min(rawLabelTop, canvasHeight - ANNOTATION_Y_MARGIN - labelHeight)
+  );
 
   // Backdrop
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
   const r = 6;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
   ctx.beginPath();
   ctx.moveTo(labelLeft + r, labelTop);
   ctx.lineTo(labelLeft + labelWidth - r, labelTop);
@@ -629,6 +1006,11 @@ export function drawTossHeightAnnotation(
   ctx.arcTo(labelLeft, labelTop, labelLeft + r, labelTop, r);
   ctx.closePath();
   ctx.fill();
+
+  // Subtle cyan border on backdrop
+  ctx.strokeStyle = `rgba(0, 212, 255, 0.25)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   // Value text
   ctx.fillStyle = ANNOTATION_COLOR;
@@ -668,13 +1050,14 @@ export function drawTossLateralityAnnotation(
   ctx.save();
   ctx.globalAlpha = opacity;
 
-  // Vertical reference line at body center
+  // Shortened vertical reference line at body center (~100px around ball Y)
+  const refHalf = 50;
   ctx.strokeStyle = ANNOTATION_COLOR;
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
   ctx.beginPath();
-  ctx.moveTo(bodyCenterX, 0);
-  ctx.lineTo(bodyCenterX, canvasHeight);
+  ctx.moveTo(bodyCenterX, Math.max(0, ballY - refHalf));
+  ctx.lineTo(bodyCenterX, Math.min(canvasHeight, ballY + refHalf));
   ctx.stroke();
 
   // Horizontal line from body center to ball
@@ -741,6 +1124,11 @@ export function drawTossLateralityAnnotation(
   ctx.arcTo(labelX, labelTop, labelX + r, labelTop, r);
   ctx.closePath();
   ctx.fill();
+
+  // Subtle cyan border on backdrop
+  ctx.strokeStyle = `rgba(0, 212, 255, 0.25)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   // Value text
   ctx.fillStyle = ANNOTATION_COLOR;
@@ -839,6 +1227,11 @@ export function drawContactPointAnnotation(
   ctx.arcTo(labelX, labelY, labelX + br, labelY, br);
   ctx.closePath();
   ctx.fill();
+
+  // Subtle cyan border on backdrop
+  ctx.strokeStyle = `rgba(0, 212, 255, 0.25)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   ctx.fillStyle = ANNOTATION_COLOR;
   ctx.textAlign = 'left';

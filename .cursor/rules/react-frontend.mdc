@@ -63,6 +63,7 @@ alwaysApply: false
 - Design tokens: `frontend/src/design-tokens.css`
 - CSS component patterns: `frontend/DESIGN.md`
 - Design conventions & UI patterns: `.cursor/rules/frontend-design.mdc`
+- Routing conventions: `.cursor/rules/react-routing.mdc`
 - API layer conventions: `.cursor/rules/frontend-api-patterns.mdc`
 - Frontend testing patterns: `.cursor/rules/frontend-testing-patterns.mdc`
 

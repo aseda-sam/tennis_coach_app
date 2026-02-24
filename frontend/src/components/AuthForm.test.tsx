@@ -54,7 +54,7 @@ describe('AuthForm', () => {
 
       expect(screen.getByText('Welcome back')).toBeInTheDocument();
       expect(
-        screen.getByText('Sign in to continue to Serve Tennis Coach')
+        screen.getByText('Sign in to continue to Second Serve')
       ).toBeInTheDocument();
     });
 
@@ -134,7 +134,7 @@ describe('AuthForm', () => {
 
       expect(screen.getByText('Create your account')).toBeInTheDocument();
       expect(
-        screen.getByText('Join Serve Tennis Coach to analyze your serve')
+        screen.getByText('Join Second Serve to analyze your serve')
       ).toBeInTheDocument();
     });
 
@@ -405,11 +405,13 @@ describe('AuthForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: 'Loading...' })
+          screen.getByRole('button', { name: 'Signing in...' })
         ).toBeInTheDocument();
       });
 
-      expect(screen.getByRole('button', { name: 'Loading...' })).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'Signing in...' })
+      ).toBeDisabled();
       expect(screen.getByPlaceholderText('Email')).toBeDisabled();
       expect(screen.getByPlaceholderText('Password')).toBeDisabled();
 

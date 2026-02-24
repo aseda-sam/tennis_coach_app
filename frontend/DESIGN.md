@@ -41,7 +41,7 @@ Used for main actions (e.g., "Upload Video", "Start Analysis").
 
 ```css
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  background: var(--color-primary);
   color: white;
   border: none;
   padding: var(--button-padding-lg);
@@ -50,13 +50,10 @@ Used for main actions (e.g., "Upload Video", "Start Analysis").
   font-weight: var(--button-font-weight);
   cursor: pointer;
   transition: var(--transition-normal);
-  box-shadow: var(--shadow-primary-lg);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary-darker) 100%);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-primary-xl);
+  background: var(--color-primary-dark);
 }
 ```
 
@@ -119,15 +116,9 @@ Used for displaying content blocks (e.g., video cards, analysis results).
 .card {
   background: var(--color-surface);
   border-radius: var(--card-border-radius);
-  box-shadow: var(--card-shadow);
-  border: 1px solid var(--color-border-light);
+  border: 1px solid var(--color-border);
   padding: var(--card-padding);
   transition: var(--transition-normal);
-}
-
-.card:hover {
-  box-shadow: var(--card-shadow-hover);
-  transform: translateY(-1px);
 }
 ```
 
@@ -138,17 +129,14 @@ For clickable cards (e.g., video list items).
 .card-interactive {
   background: var(--color-surface);
   border-radius: var(--card-border-radius);
-  box-shadow: var(--card-shadow);
-  border: 1px solid var(--color-overlay-light);
+  border: 1px solid var(--color-border);
   padding: var(--card-padding);
   cursor: pointer;
   transition: var(--transition-normal);
 }
 
 .card-interactive:hover {
-  box-shadow: var(--card-shadow-hover);
-  transform: translateY(-1px);
-  border-color: var(--color-border);
+  border-color: var(--color-border-dark);
 }
 ```
 
@@ -290,14 +278,24 @@ Use `--color-primary` for primary actions, links, and highlights.
 - **Surface Secondary**: `--color-surface-secondary` (alternating backgrounds)
 - **Background**: `--color-background` (page background)
 
-## Shadows
+## Depth System
 
-Use shadows to create depth hierarchy:
+Use **borders** and **shadows** for different purposes:
 
-- **xs/sm**: Subtle elevation (inputs, small cards)
-- **md**: Standard elevation (buttons, cards)
-- **lg/xl**: Prominent elevation (modals, hover states)
-- **Primary shadows**: For primary action buttons
+### Borders (cards, panels, inputs)
+- **Cards, panels, inputs, form fields:** `border: 1px solid var(--color-border)`
+- **Dividers between sections:** `border-top/bottom: 1px solid var(--color-border-light)`
+- Cards are defined by their border, not their shadow. This gives an editorial, clean look.
+
+### Shadows (floating elements only)
+Shadows signal that an element is **above** the page surface — not just distinct from it.
+
+- **xs/sm**: Header bar, sticky elements
+- **md/lg**: Dropdowns, popovers
+- **xl/2xl/3xl**: Modals, floating action buttons
+- **Primary shadows**: For primary action buttons only
+
+**Do not** use shadows on cards or panels. Use `border: 1px solid var(--color-border)` instead.
 
 ## Transitions
 

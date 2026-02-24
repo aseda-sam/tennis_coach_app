@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import { ViewMode } from './AnalysisViewToggle';
-import { PauseIcon, PlayIcon } from './Icons';
+import { Keyboard, Pause, Play } from 'lucide-react';
 import StickFigureCanvas from './StickFigureCanvas';
 import './HeroView.css';
 
@@ -27,6 +27,12 @@ interface HeroViewProps {
   phases?: PhaseWindow[];
   activePhase?: string | null;
   contactTimestamp?: number | null;
+  onSetContact?: (timestamp: number) => Promise<void>;
+  pendingContactTime?: number | null;
+  onArmContact?: (time: number) => void;
+  onConfirmContact?: () => void;
+  onCancelContact?: () => void;
+  onOpenShortcuts?: () => void;
 }
 
 const HeroView: React.FC<HeroViewProps> = ({
@@ -51,9 +57,22 @@ const HeroView: React.FC<HeroViewProps> = ({
   phases = [],
   activePhase = null,
   contactTimestamp = null,
+  onSetContact,
+  pendingContactTime = null,
+  onArmContact,
+  onConfirmContact,
+  onCancelContact,
+  onOpenShortcuts,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pipVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Auto-dismiss pending contact after 4 seconds of no action
+  useEffect(() => {
+    if (pendingContactTime == null || !onCancelContact) return;
+    const timer = setTimeout(onCancelContact, 4000);
+    return () => clearTimeout(timer);
+  }, [pendingContactTime, onCancelContact]);
 
   const isVideoMode = viewMode === 'video-focus';
   const activeVideoRef = isVideoMode ? videoRef : pipVideoRef;
@@ -151,9 +170,9 @@ const HeroView: React.FC<HeroViewProps> = ({
               videoId={videoId}
               currentTime={currentTime}
               isPlaying={isPlaying}
-              phaseColor="#00ff88"
               phaseLabel={phaseLabel}
               annotations={annotations}
+              serveStartTime={serveStart}
             />
             <video
               ref={pipVideoRef}
@@ -173,7 +192,7 @@ const HeroView: React.FC<HeroViewProps> = ({
           type="button"
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
+          {isPlaying ? <Pause size={18} /> : <Play size={18} />}
         </button>
 
         <span className="hero-view__timestamp">{formatTime(currentTime)}</span>
@@ -252,6 +271,59 @@ const HeroView: React.FC<HeroViewProps> = ({
             title={loopActive ? 'Stop looping phase' : 'Loop current phase'}
           >
             &#x21bb;
+          </button>
+        )}
+
+        {(onArmContact || onSetContact) &&
+          (pendingContactTime !== null ? (
+            <div className="hero-view__contact-confirm" role="group">
+              <span className="hero-view__contact-confirm-label">
+                <span className="hero-view__contact-diamond">◆</span>
+                {pendingContactTime.toFixed(2)}s?
+              </span>
+              <button
+                type="button"
+                className="hero-view__contact-confirm-btn hero-view__contact-confirm-btn--yes"
+                onClick={onConfirmContact}
+                title="Confirm contact timestamp"
+              >
+                ✓
+              </button>
+              <button
+                type="button"
+                className="hero-view__contact-confirm-btn hero-view__contact-confirm-btn--no"
+                onClick={onCancelContact}
+                title="Cancel"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="hero-view__contact-btn"
+              onClick={() =>
+                onArmContact
+                  ? onArmContact(currentTime)
+                  : onSetContact!(currentTime)
+              }
+              title="Set ball contact at current time (C)"
+            >
+              <span className="hero-view__contact-diamond">◆</span>
+              {contactTimestamp !== null
+                ? contactTimestamp.toFixed(2) + 's'
+                : 'Contact'}
+            </button>
+          ))}
+        {onOpenShortcuts && (
+          <button
+            type="button"
+            className="hero-view__shortcuts-hint"
+            onClick={onOpenShortcuts}
+            title="Keyboard shortcuts (?)"
+            aria-label="Show keyboard shortcuts"
+          >
+            <Keyboard size={13} />
           </button>
         )}
       </div>

@@ -2,7 +2,6 @@ import React, { useCallback, useMemo } from 'react';
 import {
   Line,
   LineChart,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -10,6 +9,38 @@ import {
 } from 'recharts';
 import { DetectionMeta } from '../types/biomechanics';
 import './DetectionDetailsPanel.css';
+
+/** Custom dot renderer: draws a playback circle and/or a contact diamond at their respective frames. */
+const ChartDot: React.FC<{
+  cx?: number;
+  cy?: number;
+  payload?: { frame: number };
+  currentFrame: number | null;
+  contactFrame: number | null;
+  lineColor: string;
+}> = ({ cx, cy, payload, currentFrame, contactFrame, lineColor }) => {
+  if (cx == null || cy == null || payload == null) return null;
+  const frame = payload.frame;
+  const isPlayback = frame === currentFrame;
+  const isContact = frame === contactFrame;
+  if (!isPlayback && !isContact) return null;
+  const s = 7;
+  return (
+    <g>
+      {isContact && (
+        <polygon
+          points={`${cx},${cy - s} ${cx + s},${cy} ${cx},${cy + s} ${cx - s},${cy}`}
+          fill="#f5a623"
+          stroke="white"
+          strokeWidth={1.5}
+        />
+      )}
+      {isPlayback && (
+        <circle cx={cx} cy={cy} r={4} fill={lineColor} stroke="none" />
+      )}
+    </g>
+  );
+};
 
 const KTP_DISPLAY_NAMES: Record<string, string> = {
   ball_release: 'Ball Release',
@@ -56,29 +87,11 @@ function formatMethod(method: string): string {
   return method.replace(/_/g, ' ');
 }
 
-/** Custom dot rendered at the current playback frame on the line. */
-const PlaybackDot: React.FC<{
-  cx?: number;
-  cy?: number;
-  payload?: { frame: number };
-  targetFrame: number | null;
-  color: string;
-}> = ({ cx, cy, payload, targetFrame, color }) => {
-  if (
-    targetFrame === null ||
-    payload?.frame !== targetFrame ||
-    cx == null ||
-    cy == null
-  )
-    return null;
-  return <circle cx={cx} cy={cy} r={4} fill={color} stroke="none" />;
-};
-
 interface FeatureChartProps {
   data: number[];
   label: string;
   fps: number;
-  ktpFrames: { frame: number; label: string }[];
+  contactFrame: number | null;
   currentFrame: number | null;
   color: string;
   onFrameClick: (frame: number) => void;
@@ -87,8 +100,7 @@ interface FeatureChartProps {
 const FeatureChart: React.FC<FeatureChartProps> = ({
   data,
   label,
-  fps,
-  ktpFrames,
+  contactFrame,
   currentFrame,
   color,
   onFrameClick,
@@ -129,19 +141,16 @@ const FeatureChart: React.FC<FeatureChartProps> = ({
             dataKey="value"
             stroke={color}
             strokeWidth={1.5}
-            dot={<PlaybackDot targetFrame={currentFrame} color={color} />}
+            dot={
+              <ChartDot
+                currentFrame={currentFrame}
+                contactFrame={contactFrame}
+                lineColor={color}
+              />
+            }
             activeDot={{ r: 4, fill: color, stroke: 'none' }}
             isAnimationActive={false}
           />
-          {ktpFrames.map(({ frame, label: ktpLabel }) => (
-            <ReferenceLine
-              key={ktpLabel}
-              x={frame}
-              stroke="var(--color-court-blue)"
-              strokeWidth={1}
-              strokeDasharray="3 3"
-            />
-          ))}
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -252,6 +261,7 @@ interface FeatureChartsSectionProps {
   detectionMeta: DetectionMeta;
   currentTime: number;
   serveStart: number;
+  contactTimestamp: number | null;
   onSeek: (t: number) => void;
 }
 
@@ -259,12 +269,10 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
   detectionMeta,
   currentTime,
   serveStart,
+  contactTimestamp,
   onSeek,
 }) => {
-  const { fps, total_frames, ktpFrameMarkers } = useDetectionHelpers(
-    detectionMeta,
-    serveStart
-  );
+  const { fps, total_frames } = useDetectionHelpers(detectionMeta, serveStart);
   const { feature_curves } = detectionMeta;
 
   const currentFrame = useMemo(() => {
@@ -273,6 +281,13 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
     if (frame < 0 || frame >= total_frames) return null;
     return frame;
   }, [currentTime, serveStart, fps, total_frames]);
+
+  const contactFrame = useMemo(() => {
+    if (contactTimestamp === null || fps <= 0) return null;
+    const frame = Math.round((contactTimestamp - serveStart) * fps);
+    if (frame < 0 || frame >= total_frames) return null;
+    return frame;
+  }, [contactTimestamp, serveStart, fps, total_frames]);
 
   const handleFrameClick = useCallback(
     (frame: number) => {
@@ -288,7 +303,7 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
         data={feature_curves.max_wrist_height}
         label="Wrist Height"
         fps={fps}
-        ktpFrames={ktpFrameMarkers}
+        contactFrame={contactFrame}
         currentFrame={currentFrame}
         color="var(--color-court-blue-light)"
         onFrameClick={handleFrameClick}
@@ -298,7 +313,7 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
         data={feature_curves.knee_hip_ratio}
         label="Knee Bend"
         fps={fps}
-        ktpFrames={ktpFrameMarkers.filter((m) => m.label === 'Trophy Position')}
+        contactFrame={contactFrame}
         currentFrame={currentFrame}
         color="var(--color-court-clay)"
         onFrameClick={handleFrameClick}
@@ -308,11 +323,32 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
         data={feature_curves.max_wrist_velocity}
         label="Wrist Velocity"
         fps={fps}
-        ktpFrames={ktpFrameMarkers.filter((m) => m.label === 'Ball Impact')}
+        contactFrame={contactFrame}
         currentFrame={currentFrame}
         color="var(--color-primary-dark)"
         onFrameClick={handleFrameClick}
       />
+      <div className="detection-details__contact-footer">
+        <svg
+          className="detection-details__legend-diamond"
+          width="10"
+          height="10"
+          viewBox="-6 -6 12 12"
+        >
+          <polygon
+            points="0,-5 5,0 0,5 -5,0"
+            fill="#f5a623"
+            stroke="white"
+            strokeWidth="1.5"
+          />
+        </svg>
+        <span className="detection-details__legend-label">Ball contact</span>
+        {contactTimestamp !== null && (
+          <span className="detection-details__contact-current">
+            {contactTimestamp.toFixed(2)}s
+          </span>
+        )}
+      </div>
     </div>
   );
 };

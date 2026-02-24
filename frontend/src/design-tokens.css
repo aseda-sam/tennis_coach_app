@@ -48,17 +48,30 @@
   --color-border-dark: #d1d5db;
 
   --color-surface: #ffffff;
-  --color-surface-secondary: #f8fafc;
-  --color-surface-tertiary: #f1f5f9;
-  --color-surface-hover: #f9fafb;
+  --color-surface-secondary: #f4f0eb;
+  --color-surface-tertiary: #edeae5;
+  --color-surface-hover: #f5f2ee;
 
-  --color-background: #fafbfc;
-  --color-background-alt: #f8fafc;
+  --color-background: #f8f5f1;
+  --color-background-alt: #f4f0eb;
 
   /* Display & Accent Colors */
   --color-ink-heavy: #0a0f1a; /* Near-black for metric values and display headings */
   --color-sand: #f5f0e8; /* Warm neutral for milestone/highlight sections */
   --color-sand-dark: #ede8de; /* Border color on sand backgrounds */
+
+  /* Amber Gold — second accent for highlights, active states, non-action moments */
+  --color-amber: #c8941a;
+  --color-amber-dark: #a97a14;
+  --color-amber-soft: rgba(200, 148, 26, 0.1);
+  --color-amber-softest: rgba(200, 148, 26, 0.07);
+
+  /* Icon Badge — standard pattern for feature/category icon containers */
+  --icon-badge-bg: var(--color-amber-softest);
+  --icon-badge-border: var(--color-amber-soft);
+  --icon-badge-color: var(--color-amber);
+  --icon-badge-size: 36px;
+  --icon-badge-radius: var(--radius-md);
 
   /* Court-Inspired Palette */
   --color-court-blue: #1b4b7a;
@@ -72,10 +85,11 @@
   /* Annotation System */
   --color-annotation-primary: #00d4ff;
   --color-annotation-accent: #ff1493;
-  --color-annotation-skeleton: #00ff88;
+  --color-annotation-skeleton: #4ad090;
+  --color-ground-reference: #6b7a8d;
 
   /* Court-Line Pattern */
-  --court-line-color: rgba(27, 75, 122, 0.06);
+  --court-line-color: rgba(160, 120, 80, 0.07);
   --court-line-width: 1px;
   --court-line-spacing: 48px;
 
@@ -84,6 +98,12 @@
   --color-overlay-dark: rgba(15, 23, 42, 0.12);
   --color-overlay-light: rgba(0, 0, 0, 0.05);
   --color-overlay-glass: rgba(255, 255, 255, 0.8);
+  --color-modal-overlay: rgba(15, 23, 42, 0.5);
+
+  /* Video Player */
+  --color-video-bg: #000;
+  --color-video-overlay: rgba(0, 0, 0, 0.5);
+  --color-video-controls-bg: rgba(15, 23, 42, 0.7);
 
   /* ============================================
      SPACING SCALE
@@ -247,6 +267,9 @@
   --container-max-width: 1200px;
   --container-padding: var(--spacing-xl);
 
+  --app-header-height: 56px;
+  --layout-auth-max-width: 420px;
+
   /* Analysis Layout */
   --layout-analysis-max-width: 1440px;
   --layout-video-ratio: 70%;
@@ -266,8 +289,6 @@
   /* Cards */
   --card-padding: var(--spacing-2xl);
   --card-border-radius: var(--radius-2xl);
-  --card-shadow: var(--shadow-xl);
-  --card-shadow-hover: var(--shadow-2xl);
 
   /* Inputs */
   --input-padding: var(--spacing-md) var(--spacing-lg);
@@ -278,6 +299,7 @@
   --focus-outline-width: 2px;
   --focus-outline-offset: 2px;
   --focus-outline-color: var(--color-primary);
+  --focus-ring-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 
   /* ============================================
      LAYOUT GRAMMAR

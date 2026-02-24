@@ -1,9 +1,12 @@
-import { screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
-import App from './App';
-import { renderWithProviders } from './test-utils';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 
-// Mock localStorage BEFORE importing App to prevent demo landing
+// Import AppLayout and ProtectedRoute after mocks
+import { AppLayout } from './components/layouts/AppLayout';
+
+// Mock localStorage BEFORE importing to prevent demo landing issues
 const localStorageMock = {
   getItem: jest.fn(() => 'true'), // hasVisitedApp = true
   setItem: jest.fn(),
@@ -26,6 +29,15 @@ jest.mock('./hooks/useAuth', () => ({
   }),
 }));
 
+// Mock useAdmin
+jest.mock('./hooks/useAdmin', () => ({
+  useAdmin: () => ({
+    isAdmin: false,
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 // Mock the API service to avoid axios import issues
 jest.mock('./services/api', () => ({
   videoApi: {
@@ -34,9 +46,8 @@ jest.mock('./services/api', () => ({
     getVideo: jest.fn(),
     getDemoVideo: jest.fn(),
     deleteVideo: jest.fn(),
-    streamVideo: jest.fn(),
-    streamAnnotatedVideo: jest.fn(),
     getVideoUrl: jest.fn(),
+    checkAdminStatus: jest.fn().mockResolvedValue({ is_admin: false }),
   },
   analysisApi: {
     startAnalysis: jest.fn(),
@@ -68,34 +79,99 @@ jest.mock('./components/DemoLanding', () => {
   };
 });
 
-jest.mock('./components/DemoDashboard', () => {
-  return function MockDemoDashboard() {
-    return <div data-testid="demo-dashboard">Demo Dashboard</div>;
+jest.mock('./components/LoomVideoModal', () => {
+  return function MockLoomVideoModal() {
+    return null;
   };
 });
 
-test('renders serve tennis coach app title', () => {
-  renderWithProviders(<App />);
-  const titleElement = screen.getByText(/Serve Tennis Coach/i);
+jest.mock('./components/AccountMenu', () => ({
+  AccountMenu: function MockAccountMenu() {
+    return <div data-testid="account-menu">Account</div>;
+  },
+}));
+
+function renderWithRouter(initialRoute = '/') {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  const routes = [
+    {
+      element: <AppLayout />,
+      children: [
+        {
+          index: true,
+          element: (
+            <React.Suspense fallback={null}>
+              <MockHomePage />
+            </React.Suspense>
+          ),
+        },
+        {
+          path: 'demo',
+          element: (
+            <React.Suspense fallback={null}>
+              <MockDemoPage />
+            </React.Suspense>
+          ),
+        },
+        {
+          path: 'library',
+          element: (
+            <React.Suspense fallback={null}>
+              <MockLibraryPage />
+            </React.Suspense>
+          ),
+        },
+      ],
+    },
+  ];
+
+  const router = createMemoryRouter(routes, {
+    initialEntries: [initialRoute],
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  );
+}
+
+// Inline mock pages that render the mocked components
+function MockHomePage() {
+  return <div data-testid="demo-landing">Demo Landing</div>;
+}
+
+function MockDemoPage() {
+  return <div data-testid="demo-dashboard">Demo Dashboard</div>;
+}
+
+function MockLibraryPage() {
+  return <div data-testid="video-list">Uploaded Videos</div>;
+}
+
+test('renders app title', () => {
+  renderWithRouter('/');
+  const titleElement = screen.getByText(/Second Serve/i);
   expect(titleElement).toBeInTheDocument();
 });
 
-test('renders demo landing by default', () => {
-  renderWithProviders(<App />);
-  // App shows demo landing by default
+test('renders demo landing by default on / route', () => {
+  renderWithRouter('/');
   const demoLanding = screen.getByTestId('demo-landing');
   expect(demoLanding).toBeInTheDocument();
 });
 
-test('renders library button', () => {
-  renderWithProviders(<App />);
-  const libraryButton = screen.getByText(/Library/i);
-  expect(libraryButton).toBeInTheDocument();
+test('renders library nav link', () => {
+  renderWithRouter('/');
+  const libraryLink = screen.getByText(/Library/i);
+  expect(libraryLink).toBeInTheDocument();
 });
 
-test('renders app content', () => {
-  renderWithProviders(<App />);
-  // App shows demo landing by default
+test('renders app content on / route', () => {
+  renderWithRouter('/');
   const demoLanding = screen.getByTestId('demo-landing');
   expect(demoLanding).toBeInTheDocument();
 });
