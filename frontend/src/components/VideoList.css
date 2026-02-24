@@ -696,8 +696,10 @@
 }
 
 .edit-video-field select:focus {
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-primary-sm);
+  border-color: var(--color-court-blue);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--color-court-blue) 16%, transparent);
+  outline: none;
 }
 
 .edit-video-field input[type='text'],
@@ -729,8 +731,9 @@
 .edit-video-field input[type='datetime-local']:focus,
 .edit-video-field textarea:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-primary-sm);
+  border-color: var(--color-court-blue);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--color-court-blue) 16%, transparent);
 }
 
 .edit-video-radio-group {

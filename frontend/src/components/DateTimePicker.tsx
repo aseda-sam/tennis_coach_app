@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import './DateTimePicker.css';
@@ -11,6 +12,8 @@ interface DateTimePickerProps {
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1); // 1–12
 const MINUTES = Array.from({ length: 60 }, (_, i) => i); // 0–59
+const VIEWPORT_MARGIN = 12;
+const POPOVER_GAP = 6;
 
 function parseValue(value: string): {
   date: Date | undefined;
@@ -90,6 +93,33 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
   const [selectedAmPm, setSelectedAmPm] = useState<'AM' | 'PM'>(ampm);
   const [month, setMonth] = useState<Date>(date ?? new Date());
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
+
+  const updatePopoverPosition = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const popoverWidth = popoverRef.current?.offsetWidth ?? 340;
+    const popoverHeight = popoverRef.current?.offsetHeight ?? 430;
+
+    let left = rect.left + rect.width / 2 - popoverWidth / 2;
+    left = Math.max(
+      VIEWPORT_MARGIN,
+      Math.min(left, viewportWidth - popoverWidth - VIEWPORT_MARGIN)
+    );
+
+    let top = rect.bottom + POPOVER_GAP;
+    if (top + popoverHeight > viewportHeight - VIEWPORT_MARGIN) {
+      top = Math.max(VIEWPORT_MARGIN, rect.top - POPOVER_GAP - popoverHeight);
+    }
+
+    setPopoverPosition({ top, left });
+  }, []);
 
   // Sync when value prop changes externally
   useEffect(() => {
@@ -105,15 +135,83 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
       if (
         containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
+        !containerRef.current.contains(target) &&
+        popoverRef.current &&
+        !popoverRef.current.contains(target)
       ) {
         setOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    updatePopoverPosition();
+
+    const handleScrollOrResize = () => updatePopoverPosition();
+    window.addEventListener('resize', handleScrollOrResize);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+
+    return () => {
+      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+    };
+  }, [open, updatePopoverPosition]);
+
+  // Keyboard UX: Esc to close + trap tab focus inside the popover.
+  useEffect(() => {
+    if (!open) return;
+
+    const focusableSelector =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    const focusFirstElement = () => {
+      if (!popoverRef.current) return;
+      const focusableElements = Array.from(
+        popoverRef.current.querySelectorAll<HTMLElement>(focusableSelector)
+      );
+      focusableElements[0]?.focus();
+    };
+
+    // Wait until portal content paints.
+    requestAnimationFrame(focusFirstElement);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+
+      if (e.key !== 'Tab' || !popoverRef.current) return;
+
+      const focusableElements = Array.from(
+        popoverRef.current.querySelectorAll<HTMLElement>(focusableSelector)
+      );
+      if (focusableElements.length === 0) return;
+
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open]);
 
   const emit = useCallback(
@@ -160,6 +258,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
     <div className="dtp-root" ref={containerRef}>
       <button
         type="button"
+        ref={triggerRef}
         className={`dtp-trigger${open ? ' dtp-trigger--open' : ''}${disabled ? ' dtp-trigger--disabled' : ''}`}
         onClick={() => !disabled && setOpen((o) => !o)}
         disabled={disabled}
@@ -194,112 +293,121 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
         <span className={displayText ? '' : 'dtp-trigger__placeholder'}>
           {displayText || 'Set recording date & time'}
         </span>
-        {displayText && (
-          <button
-            type="button"
-            className="dtp-clear-inline"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClear();
-            }}
-            aria-label="Clear date"
-          >
-            ✕
-          </button>
-        )}
       </button>
-
-      {open && (
-        <div
-          className="dtp-popover"
-          role="dialog"
-          aria-label="Pick date and time"
+      {displayText && (
+        <button
+          type="button"
+          className="dtp-clear-inline"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClear();
+          }}
+          aria-label="Clear date"
         >
-          <div className="dtp-popover__inner">
-            {/* Calendar */}
-            <div className="dtp-calendar">
-              <DayPicker
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDaySelect}
-                month={month}
-                onMonthChange={setMonth}
-                weekStartsOn={1}
-              />
-            </div>
+          ✕
+        </button>
+      )}
 
-            {/* Time picker */}
-            <div className="dtp-time">
-              <div className="dtp-time__label">Time</div>
-              <div className="dtp-time__controls">
-                <div className="dtp-time__select-wrap">
-                  <select
-                    className="dtp-time__select"
-                    value={selectedHour}
-                    onChange={(e) => handleHourChange(Number(e.target.value))}
-                    aria-label="Hour"
-                  >
-                    {HOURS.map((h) => (
-                      <option key={h} value={h}>
-                        {String(h).padStart(2, '0')}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <span className="dtp-time__sep">:</span>
-                <div className="dtp-time__select-wrap">
-                  <select
-                    className="dtp-time__select"
-                    value={selectedMinute}
-                    onChange={(e) => handleMinuteChange(Number(e.target.value))}
-                    aria-label="Minute"
-                  >
-                    {MINUTES.map((m) => (
-                      <option key={m} value={m}>
-                        {String(m).padStart(2, '0')}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="dtp-ampm">
-                  <button
-                    type="button"
-                    className={`dtp-ampm__btn${selectedAmPm === 'AM' ? ' dtp-ampm__btn--active' : ''}`}
-                    onClick={() => handleAmPmToggle('AM')}
-                  >
-                    AM
-                  </button>
-                  <button
-                    type="button"
-                    className={`dtp-ampm__btn${selectedAmPm === 'PM' ? ' dtp-ampm__btn--active' : ''}`}
-                    onClick={() => handleAmPmToggle('PM')}
-                  >
-                    PM
-                  </button>
+      {open &&
+        createPortal(
+          <div
+            className="dtp-popover"
+            ref={popoverRef}
+            role="dialog"
+            aria-label="Pick date and time"
+            style={{
+              top: `${popoverPosition.top}px`,
+              left: `${popoverPosition.left}px`,
+            }}
+          >
+            <div className="dtp-popover__inner">
+              {/* Calendar */}
+              <div className="dtp-calendar">
+                <DayPicker
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDaySelect}
+                  month={month}
+                  onMonthChange={setMonth}
+                  weekStartsOn={1}
+                />
+              </div>
+
+              {/* Time picker */}
+              <div className="dtp-time">
+                <div className="dtp-time__label">Time</div>
+                <div className="dtp-time__controls">
+                  <div className="dtp-time__select-wrap">
+                    <select
+                      className="dtp-time__select"
+                      value={selectedHour}
+                      onChange={(e) => handleHourChange(Number(e.target.value))}
+                      aria-label="Hour"
+                    >
+                      {HOURS.map((h) => (
+                        <option key={h} value={h}>
+                          {String(h).padStart(2, '0')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="dtp-time__sep">:</span>
+                  <div className="dtp-time__select-wrap">
+                    <select
+                      className="dtp-time__select"
+                      value={selectedMinute}
+                      onChange={(e) =>
+                        handleMinuteChange(Number(e.target.value))
+                      }
+                      aria-label="Minute"
+                    >
+                      {MINUTES.map((m) => (
+                        <option key={m} value={m}>
+                          {String(m).padStart(2, '0')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="dtp-ampm">
+                    <button
+                      type="button"
+                      className={`dtp-ampm__btn${selectedAmPm === 'AM' ? ' dtp-ampm__btn--active' : ''}`}
+                      onClick={() => handleAmPmToggle('AM')}
+                    >
+                      AM
+                    </button>
+                    <button
+                      type="button"
+                      className={`dtp-ampm__btn${selectedAmPm === 'PM' ? ' dtp-ampm__btn--active' : ''}`}
+                      onClick={() => handleAmPmToggle('PM')}
+                    >
+                      PM
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Footer */}
-            <div className="dtp-footer">
-              <button
-                type="button"
-                className="dtp-footer__btn dtp-footer__btn--ghost"
-                onClick={handleClear}
-              >
-                Clear
-              </button>
-              <button
-                type="button"
-                className="dtp-footer__btn dtp-footer__btn--primary"
-                onClick={() => setOpen(false)}
-              >
-                Done
-              </button>
+              {/* Footer */}
+              <div className="dtp-footer">
+                <button
+                  type="button"
+                  className="dtp-footer__btn dtp-footer__btn--ghost"
+                  onClick={handleClear}
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  className="dtp-footer__btn dtp-footer__btn--primary"
+                  onClick={() => setOpen(false)}
+                >
+                  Done
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

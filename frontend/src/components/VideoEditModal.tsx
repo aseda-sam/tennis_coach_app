@@ -47,6 +47,16 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
   );
   const [editError, setEditError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   // Reset form state when the video prop changes
   useEffect(() => {
     setEditTitle(video.title || '');
@@ -100,9 +110,17 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
 
   return (
     <div className="upload-modal-overlay" onClick={onClose}>
-      <div className="upload-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="upload-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-video-modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header">
-          <h2 className="modal-title">Edit Video Details</h2>
+          <h2 className="modal-title" id="edit-video-modal-title">
+            Edit Video Details
+          </h2>
           <button
             className="close-btn"
             onClick={onClose}
