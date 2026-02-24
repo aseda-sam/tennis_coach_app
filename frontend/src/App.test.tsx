@@ -46,8 +46,6 @@ jest.mock('./services/api', () => ({
     getVideo: jest.fn(),
     getDemoVideo: jest.fn(),
     deleteVideo: jest.fn(),
-    streamVideo: jest.fn(),
-    streamAnnotatedVideo: jest.fn(),
     getVideoUrl: jest.fn(),
     checkAdminStatus: jest.fn().mockResolvedValue({ is_admin: false }),
   },
@@ -78,12 +76,6 @@ jest.mock('./components/AnalysisDashboard', () => {
 jest.mock('./components/DemoLanding', () => {
   return function MockDemoLanding() {
     return <div data-testid="demo-landing">Demo Landing</div>;
-  };
-});
-
-jest.mock('./components/DemoDashboard', () => {
-  return function MockDemoDashboard() {
-    return <div data-testid="demo-dashboard">Demo Dashboard</div>;
   };
 });
 

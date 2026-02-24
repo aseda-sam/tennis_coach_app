@@ -1,5 +1,5 @@
 /**
- * Shared canvas drawing utilities used by VideoOverlay and StickFigureCanvas.
+ * Shared canvas drawing utilities used by StickFigureCanvas.
  *
  * Pure functions and constants only -- no React, no state, no side effects.
  */
@@ -219,7 +219,7 @@ export function normalizePose(
 }
 
 // ---------------------------------------------------------------------------
-// VideoOverlay drawing helpers
+// Overlay drawing helpers
 // ---------------------------------------------------------------------------
 
 export interface OverlaySkeletonParams {
