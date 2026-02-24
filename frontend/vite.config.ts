@@ -5,6 +5,9 @@ export default defineConfig({
   base: '/tennis_coach_app/',
   plugins: [react()],
   server: {
+    host: '0.0.0.0',
+    port: 3000,
+    strictPort: true,
     proxy: {
       '/v0': 'http://backend:8000',
     },
