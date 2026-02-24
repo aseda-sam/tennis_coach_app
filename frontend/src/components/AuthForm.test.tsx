@@ -405,11 +405,13 @@ describe('AuthForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: 'Loading...' })
+          screen.getByRole('button', { name: 'Signing in...' })
         ).toBeInTheDocument();
       });
 
-      expect(screen.getByRole('button', { name: 'Loading...' })).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'Signing in...' })
+      ).toBeDisabled();
       expect(screen.getByPlaceholderText('Email')).toBeDisabled();
       expect(screen.getByPlaceholderText('Password')).toBeDisabled();
 

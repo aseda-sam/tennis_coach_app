@@ -113,7 +113,7 @@ export function AuthLoginForm({
         {success && <div className="success">{success}</div>}
         <button type="submit" className="btn-primary" disabled={loading}>
           {loading
-            ? 'Loading...'
+            ? 'Signing in...'
             : useMagicLink
               ? 'Send magic link'
               : 'Sign in'}

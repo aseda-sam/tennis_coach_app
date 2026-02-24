@@ -30,7 +30,7 @@ function VideoAnalysisPage() {
     return (
       <div className="app-container">
         <div className="app-loading">
-          <LoadingIndicator size="lg" label="Loading video..." />
+          <LoadingIndicator size="lg" label="Grabbing your video..." />
         </div>
       </div>
     );
@@ -52,7 +52,7 @@ function VideoAnalysisPage() {
       fallback={
         <div className="app-container">
           <div className="app-loading">
-            <LoadingIndicator size="lg" label="Loading analysis..." />
+            <LoadingIndicator size="lg" label="Pulling up your analysis..." />
           </div>
         </div>
       }

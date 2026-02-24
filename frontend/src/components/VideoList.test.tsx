@@ -168,7 +168,9 @@ describe('VideoList', () => {
       renderWithProviders(<VideoList />);
 
       expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
-      expect(screen.getByText('Loading videos...')).toBeInTheDocument();
+      expect(
+        screen.getByText('Rounding up your videos...')
+      ).toBeInTheDocument();
     });
 
     it('shows loading indicator when analysis statuses are loading', () => {

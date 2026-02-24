@@ -125,7 +125,7 @@ const VideoList: React.FC<VideoListProps> = ({
     return (
       <div className="video-list-container">
         <div className="video-list-loading">
-          <LoadingIndicator size="lg" label="Loading videos..." />
+          <LoadingIndicator size="lg" label="Rounding up your videos..." />
         </div>
       </div>
     );

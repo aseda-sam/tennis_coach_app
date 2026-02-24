@@ -214,6 +214,12 @@ Minimal. Centered card, max 440px. App name at top. Form below.
 
 ---
 
+## Loading & Wait States
+
+Brief, warm, human. Talk like a coach setting up for a session — not a system reporting status. Use present-continuous ("Watching your serve...") not passive ("Video is being processed..."). A little personality is good; puns and emojis are not. When in doubt, shorter is better.
+
+---
+
 ## What to Avoid
 
 These are the patterns that produce generic-looking UI. Don't reach for them.

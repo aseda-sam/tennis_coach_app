@@ -39,7 +39,7 @@ function DemoPage() {
     return (
       <div className="app-container">
         <div className="app-loading">
-          <LoadingIndicator size="lg" label="Loading demo..." />
+          <LoadingIndicator size="lg" label="Setting up the demo..." />
         </div>
       </div>
     );
@@ -63,7 +63,7 @@ function DemoPage() {
       fallback={
         <div className="app-container">
           <div className="app-loading">
-            <LoadingIndicator size="lg" label="Loading analysis..." />
+            <LoadingIndicator size="lg" label="Pulling up the analysis..." />
           </div>
         </div>
       }

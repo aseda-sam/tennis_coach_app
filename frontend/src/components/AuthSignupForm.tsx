@@ -247,7 +247,7 @@ export function AuthSignupForm({
         {error && <div className="error">{error}</div>}
         {success && <div className="success">{success}</div>}
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Loading...' : 'Create account'}
+          {loading ? 'Creating your account...' : 'Create account'}
         </button>
       </form>
       {showResendLink && (
