@@ -46,7 +46,7 @@ export const JOINT_POINTS = [
 export const OVERLAY_SKELETON_COLOR = '#00FF00';
 export const SKELETON_COLOR = '#4AD090'; // Desaturated analytical green
 export const GROUND_PLANE_COLOR = '#6B7A8D'; // Neutral cool blue-grey
-export const BALL_COLOR = '#FF1493';
+export const BALL_COLOR = '#C4D93B'; // Tennis ball yellow-green
 export const BALL_TRAIL_LENGTH = 30; // ~1 second at 30fps
 export const ANNOTATION_COLOR = '#00D4FF';
 
@@ -91,6 +91,11 @@ export const SKELETON_GLOW_BLUR = 3;
 export const STICK_BALL_HEAD_RADIUS = 7;
 export const STICK_BALL_HEAD_GLOW_BLUR = 6;
 export const ANNOTATION_Y_MARGIN = 18;
+
+// Adaptive scale layout constants
+export const SCENE_TOP_MARGIN = 0.05; // 5% padding above highest point
+export const SCENE_BOTTOM_MARGIN = 0.08; // 8% padding below ground
+export const MIN_EXTENT_TORSOS = 4; // Floor on scene extent (prevents absurdly large figure)
 
 // ---------------------------------------------------------------------------
 // Geometry helpers
@@ -229,15 +234,19 @@ export interface NormalizationRef {
   hipCenterY: number; // video pixel coords
   torsoLength: number; // video pixel distance
   groundY: number; // video pixel Y of lowest ankle in ref frame
+  topY: number; // video pixel Y of highest point (ball peak or head estimate)
 }
 
 /**
  * Compute a fixed normalization reference from the frame at `serveStartTime`.
  * Skips frames with missing core keypoints (shoulders + hips) and tries the
  * next frames. Returns `null` when no valid frame is found.
+ *
+ * Also scans all frames for the highest ball position to compute `topY`,
+ * ensuring the full toss arc fits on canvas.
  */
 export function computeNormalizationRef(
-  frames: { keypoints: Record<string, number[]> }[],
+  frames: { keypoints: Record<string, number[]>; ball_position?: number[] }[],
   serveStartTime: number | undefined,
   fps: number
 ): NormalizationRef | null {
@@ -283,7 +292,29 @@ export function computeNormalizationRef(
       groundY = hipCenterY + torsoLength * 2;
     }
 
-    return { hipCenterX, hipCenterY, torsoLength, groundY };
+    // Scan all frames for the highest ball position (min Y in video coords)
+    let minBallY = Infinity;
+    for (const f of frames) {
+      if (f.ball_position && f.ball_position.length >= 2) {
+        minBallY = Math.min(minBallY, f.ball_position[1]);
+      }
+    }
+
+    // Head estimate: top of head circle above shoulder center
+    const headEstimate =
+      shoulderCenterY -
+      torsoLength * (HEAD_OFFSET_RATIO + HEAD_RADIUS / torsoLength);
+
+    // topY = highest point we need to render
+    let topY = headEstimate;
+    if (minBallY !== Infinity) {
+      topY = Math.min(topY, minBallY);
+    }
+
+    // Sanity cap: don't let topY be more than 8 torso lengths above hips
+    topY = Math.max(topY, hipCenterY - torsoLength * 8);
+
+    return { hipCenterX, hipCenterY, torsoLength, groundY, topY };
   }
 
   return null;
@@ -293,6 +324,9 @@ export function computeNormalizationRef(
  * Normalize pose using a fixed reference frame's scale and position anchor.
  * Same output shape as `normalizePose` but stable across frames.
  * Does not require the frame's own hips/shoulders — any keypoints work.
+ *
+ * Scale is computed from the full vertical extent (groundY - topY) so that
+ * the ball toss arc and ground both fit on canvas.
  */
 export function normalizePoseFixed(
   keypoints: Record<string, number[]>,
@@ -300,11 +334,17 @@ export function normalizePoseFixed(
   canvasHeight: number,
   ref: NormalizationRef
 ): Record<string, { x: number; y: number }> {
-  const targetHeight = canvasHeight * 0.6;
-  const scale = targetHeight / (ref.torsoLength * 4);
+  const usableHeight =
+    canvasHeight * (1 - SCENE_TOP_MARGIN - SCENE_BOTTOM_MARGIN);
+  const groundCanvasY = canvasHeight * (1 - SCENE_BOTTOM_MARGIN);
+  const extent = Math.max(
+    ref.groundY - ref.topY,
+    ref.torsoLength * MIN_EXTENT_TORSOS
+  );
+  const scale = usableHeight / extent;
 
-  const centerX = canvasWidth / 2;
-  const centerY = canvasHeight * 0.4;
+  const canvasAnchorX = canvasWidth / 2;
+  const canvasAnchorY = groundCanvasY - (ref.groundY - ref.hipCenterY) * scale;
 
   const normalized: Record<string, { x: number; y: number }> = {};
 
@@ -313,8 +353,8 @@ export function normalizePoseFixed(
       const relX = coords[0] - ref.hipCenterX;
       const relY = coords[1] - ref.hipCenterY;
       normalized[name] = {
-        x: centerX + relX * scale,
-        y: centerY + relY * scale,
+        x: canvasAnchorX + relX * scale,
+        y: canvasAnchorY + relY * scale,
       };
     }
   }
@@ -332,14 +372,8 @@ export function drawGroundPlaneFixed(
   canvasHeight: number,
   ref: NormalizationRef
 ): void {
-  const targetHeight = canvasHeight * 0.6;
-  const scale = targetHeight / (ref.torsoLength * 4);
-  const canvasAnchorY = canvasHeight * 0.4;
-
-  const groundY =
-    canvasAnchorY +
-    (ref.groundY - ref.hipCenterY) * scale +
-    GROUND_PLANE_Y_OFFSET;
+  const groundCanvasY = canvasHeight * (1 - SCENE_BOTTOM_MARGIN);
+  const groundY = groundCanvasY + GROUND_PLANE_Y_OFFSET;
 
   const figureCenterX = canvasWidth / 2;
   const lineWidth = canvasWidth * 0.6;
@@ -512,7 +546,7 @@ export function drawOverlayBallTrail(params: OverlayBallParams): void {
       const t = (i + 1) / trail.length;
       const alpha = 0.1 + 0.8 * t;
       const lineWidth = 1 + 2 * t;
-      ctx.strokeStyle = `rgba(255, 20, 147, ${alpha})`;
+      ctx.strokeStyle = `rgba(196, 217, 59, ${alpha})`;
       ctx.lineWidth = lineWidth;
       ctx.beginPath();
       ctx.moveTo(trail[i].x, trail[i].y);
@@ -744,7 +778,7 @@ export function drawStickBallTrail(
       const t = (i + 1) / trail.length;
       const alpha = 0.1 + 0.8 * t;
       const lineWidth = 1 + 2 * t;
-      ctx.strokeStyle = `rgba(255, 20, 147, ${alpha})`;
+      ctx.strokeStyle = `rgba(196, 217, 59, ${alpha})`;
       ctx.lineWidth = lineWidth;
       ctx.beginPath();
       ctx.moveTo(trail[i].x, trail[i].y);

@@ -5,7 +5,6 @@ import {
   BALL_TRAIL_LENGTH,
   NormalizationRef,
   SKELETON_COLOR,
-  computeAnnotationOpacity,
   computeNormalizationRef,
   drawGrid,
   drawGroundPlane,
@@ -167,9 +166,6 @@ export function useSkeletonAnimation({
       for (const metric of annotations) {
         if (metric.timestamp == null || metric.value == null) continue;
 
-        const opacity = computeAnnotationOpacity(currentTime, metric.timestamp);
-        if (opacity <= 0) continue;
-
         // Look up the frame at the annotation's timestamp
         const peakFrameIndex = Math.round(metric.timestamp * overlayData.fps);
         const peakFrame =
@@ -204,7 +200,7 @@ export function useSkeletonAnimation({
             canvasWidth: containerWidth,
             canvasHeight: containerHeight,
             value: metric.value,
-            opacity,
+            opacity: 1,
           });
         }
 
@@ -217,7 +213,7 @@ export function useSkeletonAnimation({
             ballY: peakNorm._ball.y,
             canvasHeight: containerHeight,
             value: metric.value,
-            opacity,
+            opacity: 1,
           });
         }
       }
