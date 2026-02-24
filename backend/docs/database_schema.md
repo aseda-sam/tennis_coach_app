@@ -57,7 +57,7 @@ Stores serve windows (manual or auto-detected) and review metadata.
 - `user_id` (owner)
 - `player_id` (FK -> `players.id`, nullable while pending)
 - `start_timestamp`, `end_timestamp`, `contact_timestamp`, `contact_source`
-  - `contact_source`: `"manual"` (user-tagged via API) or `"auto"` (set by ball detection pipeline or lazy fallback). `NULL` for rows that predate this column.
+  - `contact_source`: `"manual"` (user-tagged via API) or `"auto"` (set by ball detection pipeline or lazy fallback). Legacy rows with `contact_timestamp` were backfilled to `"auto"` in migration `2cf2e7b95cd1`.
 - `court_side`, `serve_number`, `serve_subtype`, `in_out`
 - `source` (`manual` or `auto`)
 - `status` (`pending`, `accepted`, `rejected`, `edited`)
