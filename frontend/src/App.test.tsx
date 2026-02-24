@@ -38,7 +38,7 @@ vi.mock('./hooks/useAdmin', () => ({
   }),
 }));
 
-// Mock the API service to avoid axios import issues
+// Mock the API service to isolate routing/layout behavior
 vi.mock('./services/api', () => ({
   videoApi: {
     uploadVideo: vi.fn(),
