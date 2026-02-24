@@ -8,6 +8,7 @@ import { useServePlayback } from '../hooks/useServePlayback';
 import { useServeProposals } from '../hooks/useServeProposals';
 import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
+import { useVideoUrl } from '../hooks/useVideoUrl';
 import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
@@ -72,6 +73,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const { isAdmin } = useAdmin();
+
+  const { resolvedUrl: resolvedVideoUrl } = useVideoUrl({ videoId, videoUrl });
 
   const { data: analysisStatus, refetch: refetchAnalysisStatus } =
     useVideoAnalysisStatus(videoId);
@@ -485,7 +488,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           <ServeThumbnailStrip
             serveWindows={sortedServeWindows}
             currentIndex={currentServeIndex}
-            videoUrl={videoUrl}
+            videoUrl={resolvedVideoUrl}
             onNavigate={handleServeNavigate}
           />
           <AnalysisViewToggle
@@ -504,7 +507,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 {/* Hero View (left column at desktop) */}
                 <ErrorBoundary fallbackMessage="Video player encountered an error.">
                   <HeroView
-                    videoUrl={videoUrl}
+                    videoUrl={resolvedVideoUrl}
                     videoId={videoId}
                     serveStart={currentServe!.start_timestamp}
                     serveEnd={currentServe!.end_timestamp}
