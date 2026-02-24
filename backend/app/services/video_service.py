@@ -438,8 +438,11 @@ def update_video_metadata(
     session_type: Optional[str] = None,
     camera_angle: Optional[str] = None,
     primary_player_id: Optional[int] = None,
+    title: Optional[str] = None,
+    notes: Optional[str] = None,
+    recorded_at: Optional[datetime] = None,
 ) -> Optional[Video]:
-    """Update video metadata (session_type, camera_angle, primary_player_id).
+    """Update video metadata (session_type, camera_angle, primary_player_id, title, notes, recorded_at).
 
     Args:
         db: Database session
@@ -461,6 +464,13 @@ def update_video_metadata(
         video.camera_angle = camera_angle
     if primary_player_id is not None:
         video.primary_player_id = primary_player_id
+    if title is not None:
+        video.title = title
+    if notes is not None:
+        video.notes = notes
+    if recorded_at is not None:
+        video.recorded_at = recorded_at
+        video.recorded_at_source = "user"
 
     db.commit()
     db.refresh(video)

@@ -62,6 +62,8 @@ class Video(Base):
         String(20), nullable=True
     )  # 'serve_practice', 'match', 'other'
     camera_angle = Column(String(20), nullable=True)  # 'behind', 'profile', 'unknown'
+    title = Column(String(200), nullable=True)  # user-defined label
+    notes = Column(Text, nullable=True)  # free-form session memo
     recorded_at = Column(
         DateTime(timezone=True), nullable=True
     )  # When video was recorded (for trends)

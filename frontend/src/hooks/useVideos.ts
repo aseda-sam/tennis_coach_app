@@ -112,6 +112,9 @@ export const useUpdateVideoMetadata = () => {
         session_type?: string;
         camera_angle?: string;
         player_tag?: 'you' | 'someone_else';
+        title?: string;
+        notes?: string;
+        recorded_at?: string;
       };
     }) => videoApi.updateVideoMetadata(videoId, metadata),
     onSuccess: (updatedVideo, { videoId }) => {

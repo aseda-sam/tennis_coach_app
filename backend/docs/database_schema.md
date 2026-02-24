@@ -15,6 +15,8 @@ Stores uploaded videos and metadata.
 - `status`, `error_message`
 - `is_demo`, `is_active_demo`, `original_user_id`
 - `session_type`, `camera_angle`, `recorded_at`
+- `title VARCHAR(200)` (nullable) — user-defined label; fallback to filename in UI
+- `notes TEXT` (nullable) — free-form session memo
 - `primary_player_id` (FK -> `players.id`, nullable)
   - Default player attribution for serves created from this video.
   - Used when a serve window or proposal acceptance does not specify `player_id`.

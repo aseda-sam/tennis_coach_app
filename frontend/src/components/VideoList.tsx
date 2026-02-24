@@ -197,7 +197,9 @@ const VideoList: React.FC<VideoListProps> = ({
               >
                 {/* Metadata Section */}
                 <div className="video-card-content">
-                  <h3 className="video-card-filename">{video.filename}</h3>
+                  <h3 className="video-card-filename">
+                    {video.title || video.filename}
+                  </h3>
 
                   <div className="video-card-meta-row">
                     <span

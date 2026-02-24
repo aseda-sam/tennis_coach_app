@@ -707,6 +707,61 @@ class TestVideoAPI:
             # Should return 403 (forbidden - user doesn't own video)
             assert response.status_code == 403
 
+    def test_update_video_title_notes_recorded_at(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test updating video title, notes, and recorded_at."""
+        from app.models.video import Video
+
+        video = Video(
+            filename="session_video.mp4",
+            file_path="raw/session_video.mp4",
+            file_size=500000,
+            status="uploaded",
+            user_id=test_user_id,
+        )
+        db_session.add(video)
+        db_session.commit()
+        video_id = video.id
+
+        update_data = {
+            "title": "Club session",
+            "notes": "Tried kick serve",
+            "recorded_at": "2026-01-10T10:00:00Z",
+        }
+        response = client.patch(f"/v0/videos/{video_id}/metadata", json=update_data)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["title"] == "Club session"
+        assert data["notes"] == "Tried kick serve"
+        assert data["recorded_at"] is not None
+
+    def test_video_list_includes_title_notes(
+        self, client: TestClient, db_session: "Session", test_user_id: str
+    ) -> None:
+        """Test that video list items include title and notes keys."""
+        from app.models.video import Video
+
+        video = Video(
+            filename="list_test_video.mp4",
+            file_path="raw/list_test_video.mp4",
+            file_size=100000,
+            status="uploaded",
+            user_id=test_user_id,
+        )
+        db_session.add(video)
+        db_session.commit()
+
+        response = client.get("/v0/videos/")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) > 0
+        for item in data:
+            assert "title" in item
+            assert "notes" in item
+
 
 class TestBallContactTimestamps:
     """Tests for GET /v0/videos/{video_id}/ball-contact-timestamps endpoint."""

@@ -220,6 +220,168 @@ export function normalizePose(
 }
 
 // ---------------------------------------------------------------------------
+// Fixed reference-frame normalization
+// ---------------------------------------------------------------------------
+
+/** Reference values computed once from a stable frame (video pixel space). */
+export interface NormalizationRef {
+  hipCenterX: number; // video pixel coords
+  hipCenterY: number; // video pixel coords
+  torsoLength: number; // video pixel distance
+  groundY: number; // video pixel Y of lowest ankle in ref frame
+}
+
+/**
+ * Compute a fixed normalization reference from the frame at `serveStartTime`.
+ * Skips frames with missing core keypoints (shoulders + hips) and tries the
+ * next frames. Returns `null` when no valid frame is found.
+ */
+export function computeNormalizationRef(
+  frames: { keypoints: Record<string, number[]> }[],
+  serveStartTime: number | undefined,
+  fps: number
+): NormalizationRef | null {
+  if (!frames || frames.length === 0) return null;
+
+  let startIdx = 0;
+  if (serveStartTime != null && fps > 0) {
+    startIdx = Math.round(serveStartTime * fps);
+  }
+  startIdx = Math.max(0, Math.min(startIdx, frames.length - 1));
+
+  const maxAttempts = Math.min(10, frames.length);
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const idx = Math.min(startIdx + attempt, frames.length - 1);
+    const frame = frames[idx];
+    if (!frame?.keypoints) continue;
+
+    const ls = frame.keypoints['left_shoulder'];
+    const rs = frame.keypoints['right_shoulder'];
+    const lh = frame.keypoints['left_hip'];
+    const rh = frame.keypoints['right_hip'];
+
+    if (!ls || !rs || !lh || !rh) continue;
+
+    const hipCenterX = (lh[0] + rh[0]) / 2;
+    const hipCenterY = (lh[1] + rh[1]) / 2;
+    const shoulderCenterX = (ls[0] + rs[0]) / 2;
+    const shoulderCenterY = (ls[1] + rs[1]) / 2;
+
+    const torsoLength = Math.sqrt(
+      (shoulderCenterX - hipCenterX) ** 2 + (shoulderCenterY - hipCenterY) ** 2
+    );
+
+    if (torsoLength === 0) continue;
+
+    // Ground Y from ankles, falling back to hip + 2*torso
+    const la = frame.keypoints['left_ankle'];
+    const ra = frame.keypoints['right_ankle'];
+    let groundY: number;
+    if (la || ra) {
+      groundY = Math.max(la?.[1] ?? 0, ra?.[1] ?? 0);
+    } else {
+      groundY = hipCenterY + torsoLength * 2;
+    }
+
+    return { hipCenterX, hipCenterY, torsoLength, groundY };
+  }
+
+  return null;
+}
+
+/**
+ * Normalize pose using a fixed reference frame's scale and position anchor.
+ * Same output shape as `normalizePose` but stable across frames.
+ * Does not require the frame's own hips/shoulders — any keypoints work.
+ */
+export function normalizePoseFixed(
+  keypoints: Record<string, number[]>,
+  canvasWidth: number,
+  canvasHeight: number,
+  ref: NormalizationRef
+): Record<string, { x: number; y: number }> {
+  const targetHeight = canvasHeight * 0.6;
+  const scale = targetHeight / (ref.torsoLength * 4);
+
+  const centerX = canvasWidth / 2;
+  const centerY = canvasHeight * 0.4;
+
+  const normalized: Record<string, { x: number; y: number }> = {};
+
+  for (const [name, coords] of Object.entries(keypoints)) {
+    if (coords && coords.length >= 2) {
+      const relX = coords[0] - ref.hipCenterX;
+      const relY = coords[1] - ref.hipCenterY;
+      normalized[name] = {
+        x: centerX + relX * scale,
+        y: centerY + relY * scale,
+      };
+    }
+  }
+
+  return normalized;
+}
+
+/**
+ * Draw a fixed ground plane using the reference frame's ground Y.
+ * Same gradient + glow rendering as `drawGroundPlane`.
+ */
+export function drawGroundPlaneFixed(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  ref: NormalizationRef
+): void {
+  const targetHeight = canvasHeight * 0.6;
+  const scale = targetHeight / (ref.torsoLength * 4);
+  const canvasAnchorY = canvasHeight * 0.4;
+
+  const groundY =
+    canvasAnchorY +
+    (ref.groundY - ref.hipCenterY) * scale +
+    GROUND_PLANE_Y_OFFSET;
+
+  const figureCenterX = canvasWidth / 2;
+  const lineWidth = canvasWidth * 0.6;
+  const startX = figureCenterX - lineWidth / 2;
+  const endX = figureCenterX + lineWidth / 2;
+
+  const color = GROUND_PLANE_COLOR;
+
+  // Gradient: transparent → color → transparent
+  const grad = ctx.createLinearGradient(startX, groundY, endX, groundY);
+  grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  grad.addColorStop(0.3, color);
+  grad.addColorStop(0.7, color);
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+  // Pass 1: glow halo
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = GROUND_PLANE_GLOW_BLUR;
+  ctx.beginPath();
+  ctx.moveTo(startX, groundY);
+  ctx.lineTo(endX, groundY);
+  ctx.stroke();
+  ctx.restore();
+
+  // Pass 2: crisp center line
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1;
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.moveTo(startX, groundY);
+  ctx.lineTo(endX, groundY);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
 // Overlay drawing helpers
 // ---------------------------------------------------------------------------
 

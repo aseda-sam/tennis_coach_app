@@ -66,6 +66,8 @@ class VideoInfo(BaseModel):
         default=None,
         description="Camera angle: 'behind', 'profile', 'unknown'",
     )
+    title: Optional[str] = Field(default=None, description="User-defined video title")
+    notes: Optional[str] = Field(default=None, description="Free-form session notes")
     recorded_at: Optional[datetime] = Field(
         default=None, description="When video was recorded (for trends)"
     )
@@ -104,6 +106,8 @@ class VideoListItem(BaseModel):
         default=None,
         description="Camera angle: 'behind', 'profile', 'unknown'",
     )
+    title: Optional[str] = Field(default=None, description="User-defined video title")
+    notes: Optional[str] = Field(default=None, description="Free-form session notes")
     primary_player_id: Optional[int] = Field(
         default=None,
         description="Default player ID for serves created from this video",
@@ -154,6 +158,13 @@ class VideoMetadataUpdateRequest(BaseModel):
     player_tag: Optional[Literal["you", "someone_else"]] = Field(
         default=None,
         description="Default player for serves: 'you' or 'someone_else'",
+    )
+    title: Optional[str] = Field(
+        default=None, max_length=200, description="User-defined video title"
+    )
+    notes: Optional[str] = Field(default=None, description="Free-form session notes")
+    recorded_at: Optional[datetime] = Field(
+        default=None, description="User-corrected recording timestamp"
     )
 
 

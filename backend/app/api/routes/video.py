@@ -582,6 +582,9 @@ async def update_video_metadata(
             session_type=metadata_update.session_type,
             camera_angle=metadata_update.camera_angle,
             primary_player_id=primary_player_id,
+            title=metadata_update.title,
+            notes=metadata_update.notes,
+            recorded_at=metadata_update.recorded_at,
         )
 
         if not updated_video:

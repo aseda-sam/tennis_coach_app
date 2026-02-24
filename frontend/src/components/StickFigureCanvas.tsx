@@ -18,6 +18,8 @@ interface StickFigureCanvasProps {
   phaseLabel?: string;
   /** Metrics with timestamps for canvas annotations. */
   annotations?: MetricValue[];
+  /** Serve window start time — used for fixed reference frame normalization. */
+  serveStartTime?: number;
 }
 
 const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
@@ -27,6 +29,7 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
   phaseColor,
   phaseLabel,
   annotations,
+  serveStartTime,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,6 +51,7 @@ const StickFigureCanvas: React.FC<StickFigureCanvasProps> = ({
     phaseColor,
     phaseLabel,
     annotations,
+    serveStartTime,
   });
 
   if (isLoading) {

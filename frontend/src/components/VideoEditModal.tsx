@@ -6,6 +6,10 @@ import { useUpdateVideoMetadata } from '../hooks/useVideos';
 import { VideoMetadata } from '../types/video';
 import { X } from 'lucide-react';
 
+function toDatetimeLocalValue(iso: string): string {
+  return iso.slice(0, 16);
+}
+
 interface VideoEditModalProps {
   video: VideoMetadata;
   onClose: () => void;
@@ -26,6 +30,11 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
     [playerProfile?.id]
   );
 
+  const [editTitle, setEditTitle] = useState(video.title || '');
+  const [editNotes, setEditNotes] = useState(video.notes || '');
+  const [editRecordedAt, setEditRecordedAt] = useState(
+    video.recorded_at ? toDatetimeLocalValue(video.recorded_at) : ''
+  );
   const [editSessionType, setEditSessionType] = useState(
     video.session_type || ''
   );
@@ -39,6 +48,11 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
 
   // Reset form state when the video prop changes
   useEffect(() => {
+    setEditTitle(video.title || '');
+    setEditNotes(video.notes || '');
+    setEditRecordedAt(
+      video.recorded_at ? toDatetimeLocalValue(video.recorded_at) : ''
+    );
     setEditSessionType(video.session_type || '');
     setEditCameraAngle(video.camera_angle || '');
     setEditPlayerTag(resolvePlayerTag(video));
@@ -52,6 +66,11 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
       await updateMetadataMutation.mutateAsync({
         videoId: video.id,
         metadata: {
+          title: editTitle || undefined,
+          notes: editNotes || undefined,
+          recorded_at: editRecordedAt
+            ? new Date(editRecordedAt).toISOString()
+            : undefined,
           session_type: editSessionType || undefined,
           camera_angle: editCameraAngle || undefined,
           player_tag: editPlayerTag,
@@ -66,6 +85,9 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
       );
     }
   }, [
+    editTitle,
+    editNotes,
+    editRecordedAt,
     editCameraAngle,
     editPlayerTag,
     editSessionType,
@@ -91,6 +113,42 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
         </div>
         <div className="modal-content">
           <div className="edit-video-form">
+            <div className="edit-video-field">
+              <label>Title</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder={video.filename}
+                maxLength={200}
+                disabled={updateMetadataMutation.isPending}
+              />
+            </div>
+
+            <div className="edit-video-field">
+              <label>Notes</label>
+              <textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                rows={3}
+                placeholder="Any notes about this session..."
+                disabled={updateMetadataMutation.isPending}
+              />
+            </div>
+
+            <div className="edit-video-field">
+              <label>Recording Date &amp; Time</label>
+              <input
+                type="datetime-local"
+                value={editRecordedAt}
+                onChange={(e) => setEditRecordedAt(e.target.value)}
+                disabled={updateMetadataMutation.isPending}
+              />
+              <p className="edit-video-note edit-video-note--compact">
+                Used for progress trends. Correct it if the timestamp is wrong.
+              </p>
+            </div>
+
             <div className="edit-video-two-col">
               <div className="edit-video-field">
                 <label>

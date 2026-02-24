@@ -172,6 +172,7 @@ const HeroView: React.FC<HeroViewProps> = ({
               isPlaying={isPlaying}
               phaseLabel={phaseLabel}
               annotations={annotations}
+              serveStartTime={serveStart}
             />
             <video
               ref={pipVideoRef}

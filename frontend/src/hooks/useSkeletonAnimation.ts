@@ -3,10 +3,13 @@ import { MetricValue } from '../types/biomechanics';
 import { OverlayData } from '../types/video';
 import {
   BALL_TRAIL_LENGTH,
+  NormalizationRef,
   SKELETON_COLOR,
   computeAnnotationOpacity,
+  computeNormalizationRef,
   drawGrid,
   drawGroundPlane,
+  drawGroundPlaneFixed,
   drawHead,
   drawJoints,
   drawStickBallTrail,
@@ -15,6 +18,7 @@ import {
   drawTossHeightAnnotation,
   drawTossLateralityAnnotation,
   normalizePose,
+  normalizePoseFixed,
 } from '../utils/canvasDrawing';
 
 interface UseSkeletonAnimationParams {
@@ -26,6 +30,7 @@ interface UseSkeletonAnimationParams {
   phaseColor?: string;
   phaseLabel?: string;
   annotations?: MetricValue[];
+  serveStartTime?: number;
 }
 
 /**
@@ -41,10 +46,13 @@ export function useSkeletonAnimation({
   phaseColor,
   phaseLabel,
   annotations,
+  serveStartTime,
 }: UseSkeletonAnimationParams): void {
   const animationFrameRef = useRef<number | null>(null);
   const lastRenderedTimeRef = useRef<number>(-1);
   const ballTrailRef = useRef<{ x: number; y: number }[]>([]);
+  const normRefRef = useRef<NormalizationRef | null>(null);
+  const normRefServeStartRef = useRef<number | undefined>(undefined);
 
   const drawFrame = useCallback(() => {
     const canvas = canvasRef.current;
@@ -84,17 +92,38 @@ export function useSkeletonAnimation({
       return;
     }
 
-    // Normalize pose
-    const normalizedPose = normalizePose(
-      frame.keypoints,
-      containerWidth,
-      containerHeight
-    );
+    // Compute or reuse fixed normalization reference
+    if (
+      normRefServeStartRef.current !== serveStartTime ||
+      normRefRef.current === null
+    ) {
+      normRefRef.current = computeNormalizationRef(
+        overlayData.frames,
+        serveStartTime,
+        overlayData.fps
+      );
+      normRefServeStartRef.current = serveStartTime;
+    }
+    const ref = normRefRef.current;
+
+    // Normalize pose — fixed when ref available, per-frame fallback otherwise
+    const normalizedPose = ref
+      ? normalizePoseFixed(
+          frame.keypoints,
+          containerWidth,
+          containerHeight,
+          ref
+        )
+      : normalizePose(frame.keypoints, containerWidth, containerHeight);
     if (!normalizedPose) return;
 
     // Ground plane → skeleton → joints → head
     const boneColor = phaseColor || SKELETON_COLOR;
-    drawGroundPlane(ctx, normalizedPose, containerWidth);
+    if (ref) {
+      drawGroundPlaneFixed(ctx, containerWidth, containerHeight, ref);
+    } else {
+      drawGroundPlane(ctx, normalizedPose, containerWidth);
+    }
     drawStickSkeleton(ctx, normalizedPose, boneColor);
     drawJoints(ctx, normalizedPose, boneColor);
     drawHead(ctx, normalizedPose, boneColor);
@@ -108,11 +137,10 @@ export function useSkeletonAnimation({
     // Ball trail
     const trail = ballTrailRef.current;
     if (frame.ball_position && frame.ball_position.length >= 2) {
-      const ballNorm = normalizePose(
-        { ...frame.keypoints, _ball: frame.ball_position },
-        containerWidth,
-        containerHeight
-      );
+      const ballKps = { ...frame.keypoints, _ball: frame.ball_position };
+      const ballNorm = ref
+        ? normalizePoseFixed(ballKps, containerWidth, containerHeight, ref)
+        : normalizePose(ballKps, containerWidth, containerHeight);
       if (ballNorm && ballNorm._ball) {
         trail.push({ x: ballNorm._ball.x, y: ballNorm._ball.y });
         if (trail.length > BALL_TRAIL_LENGTH) {
@@ -158,15 +186,14 @@ export function useSkeletonAnimation({
         const shoulderMid = [(ls[0] + rs[0]) / 2, (ls[1] + rs[1]) / 2];
 
         // Normalize the peak frame's ball + keypoints
-        const peakNorm = normalizePose(
-          {
-            ...peakFrame.keypoints,
-            _ball: peakFrame.ball_position,
-            _shoulder_mid: shoulderMid,
-          },
-          containerWidth,
-          containerHeight
-        );
+        const peakKps = {
+          ...peakFrame.keypoints,
+          _ball: peakFrame.ball_position,
+          _shoulder_mid: shoulderMid,
+        };
+        const peakNorm = ref
+          ? normalizePoseFixed(peakKps, containerWidth, containerHeight, ref)
+          : normalizePose(peakKps, containerWidth, containerHeight);
         if (!peakNorm?._ball || !peakNorm?._shoulder_mid) continue;
 
         if (metric.metric_name === 'toss_peak_height') {
@@ -205,6 +232,7 @@ export function useSkeletonAnimation({
     annotations,
     canvasRef,
     containerRef,
+    serveStartTime,
   ]);
 
   // Handle resize
