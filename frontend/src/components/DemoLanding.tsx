@@ -34,8 +34,8 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
           <div className="demo-landing__hero-content">
             <h1 className="demo-landing__title">Your serve, frame by frame!</h1>
             <p className="demo-landing__origin">
-              I filmed my serve, watched it back, and kept going. Cataloguing
-              sessions, then tracking pose, then full biomechanics phases.{' '}
+              I filmed my tennis serve, watched it back, and couldn't stop
+              building. Sessions, pose detection, now full biomechanics phases.{' '}
               <a
                 href="https://github.com/aseda-sam/tennis_coach_app"
                 className="demo-landing__origin-link"
@@ -122,7 +122,9 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
         {/* Features Section */}
         <div className="demo-landing__features-section">
           <div className="demo-landing__features-header">
-            <h3 className="demo-landing__features-title">What You'll Get</h3>
+            <h3 className="demo-landing__features-title">
+              What You&apos;ll Get
+            </h3>
           </div>
 
           <div className="demo-landing__feature-grid">
