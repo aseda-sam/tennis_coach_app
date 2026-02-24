@@ -13,7 +13,7 @@ export function ProtectedRoute({
   children,
   requireAdmin,
 }: ProtectedRouteProps) {
-  const profile = process.env.REACT_APP_PROFILE || 'local';
+  const profile = import.meta.env.VITE_PROFILE || 'local';
   const { user, loading } = useAuth();
   const { isAdmin } = useAdmin();
 

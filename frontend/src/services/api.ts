@@ -11,8 +11,7 @@ import {
 import { createAuthInterceptor } from '../utils/authInterceptor';
 
 // API configuration
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/v0';
 
 // Create main API instance
 const api = axios.create({

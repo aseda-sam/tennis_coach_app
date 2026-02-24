@@ -8,7 +8,7 @@ import { useAuth } from './useAuth';
  */
 export function useAdmin() {
   const { user } = useAuth();
-  const profile = process.env.REACT_APP_PROFILE || 'local';
+  const profile = import.meta.env.VITE_PROFILE || 'local';
 
   const { data, isLoading, error } = useQuery<boolean>({
     queryKey: ['admin-status', user?.id],

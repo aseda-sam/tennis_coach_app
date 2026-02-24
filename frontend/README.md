@@ -32,18 +32,18 @@ Create a `.env` file in the `frontend/` directory:
 
 ```bash
 # API Configuration
-REACT_APP_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8000
 
 # Authentication (Supabase)
 # Required for user authentication
-REACT_APP_SUPABASE_URL=https://your-project.supabase.co/
-REACT_APP_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+VITE_SUPABASE_URL=https://your-project.supabase.co/
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 
 # File Upload
-REACT_APP_MAX_FILE_SIZE=104857600  # 100MB
+VITE_MAX_FILE_SIZE=104857600  # 100MB
 
 # Development
-REACT_APP_DEBUG=true
+VITE_DEBUG=true
 ```
 
 ## Available Scripts
@@ -212,7 +212,7 @@ The frontend communicates with the backend API through the `api.ts` service laye
 ```typescript
 // Default API configuration
 const API_BASE_URL =
-  process.env.REACT_APP_API_URL || 'http://localhost:8000/v0';
+  import.meta.env.VITE_API_URL || 'http://localhost:8000/v0';
 ```
 
 ### Key Endpoints
@@ -339,10 +339,10 @@ The build output will be in the `build/` directory.
 
 ```bash
 # Development
-REACT_APP_API_URL=http://localhost:8000 npm run build
+VITE_API_URL=http://localhost:8000 npm run build
 
 # Production
-REACT_APP_API_URL=https://api.tennis-coach.com npm run build
+VITE_API_URL=https://api.tennis-coach.com npm run build
 ```
 
 ### Deployment Options
@@ -376,7 +376,7 @@ docker run -p 80:80 tennis-frontend
 #### API Connection Errors
 
 - Verify backend server is running
-- Check `REACT_APP_API_URL` environment variable
+- Check `VITE_API_URL` environment variable
 - Ensure CORS is configured on backend
 - Check network connectivity
 
@@ -412,7 +412,7 @@ npm test -- --verbose
 
 ```bash
 # Enable debug logging
-REACT_APP_DEBUG=true npm start
+VITE_DEBUG=true npm start
 
 # Open browser dev tools
 # Check Console and Network tabs for errors

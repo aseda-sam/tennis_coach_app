@@ -5,12 +5,12 @@ import { renderWithProviders } from '../test-utils';
 import { AuthForm } from './AuthForm';
 
 // Mock useAuth hook
-const mockSignIn = jest.fn();
-const mockSignUp = jest.fn();
-const mockSignInWithMagicLink = jest.fn();
-const mockResendConfirmationEmail = jest.fn();
+const mockSignIn = vi.fn();
+const mockSignUp = vi.fn();
+const mockSignInWithMagicLink = vi.fn();
+const mockResendConfirmationEmail = vi.fn();
 
-jest.mock('../hooks/useAuth', () => ({
+vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({
     user: null,
     session: null,
@@ -18,21 +18,21 @@ jest.mock('../hooks/useAuth', () => ({
     signIn: mockSignIn,
     signUp: mockSignUp,
     signInWithMagicLink: mockSignInWithMagicLink,
-    signOut: jest.fn(),
+    signOut: vi.fn(),
     resendConfirmationEmail: mockResendConfirmationEmail,
-    updateUserMetadata: jest.fn(),
+    updateUserMetadata: vi.fn(),
   }),
 }));
 
-jest.mock('../services/playerApi', () => ({
+vi.mock('../services/playerApi', () => ({
   playerApi: {
-    upsertMe: jest.fn().mockResolvedValue({}),
+    upsertMe: vi.fn().mockResolvedValue({}),
   },
 }));
 
 describe('AuthForm', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockSignIn.mockResolvedValue({
       data: { user: null, session: null },
       error: null,

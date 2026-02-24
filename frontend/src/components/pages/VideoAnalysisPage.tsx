@@ -60,7 +60,7 @@ function VideoAnalysisPage() {
       <AnalysisDashboard
         videoId={video.id}
         videoFilename={video.filename}
-        videoUrl={`${process.env.REACT_APP_API_URL || 'http://localhost:8000/v0'}/videos/${video.id}/stream`}
+        videoUrl={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/v0'}/videos/${video.id}/stream`}
         onClose={() => navigate('/library')}
       />
     </Suspense>

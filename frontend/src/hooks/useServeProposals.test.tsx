@@ -1,17 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
+import type { Mocked } from 'vitest';
 import { serveProposalApi } from '../services/serveProposalApi';
 import { useServeProposals } from './useServeProposals';
 
-jest.mock('../services/serveProposalApi', () => ({
+vi.mock('../services/serveProposalApi', () => ({
   serveProposalApi: {
-    getStatus: jest.fn(),
-    propose: jest.fn(),
+    getStatus: vi.fn(),
+    propose: vi.fn(),
   },
 }));
 
-const mockApi = serveProposalApi as jest.Mocked<typeof serveProposalApi>;
+const mockApi = serveProposalApi as Mocked<typeof serveProposalApi>;
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -26,7 +27,7 @@ function createWrapper() {
 
 describe('useServeProposals', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('runDetection calls propose API', async () => {

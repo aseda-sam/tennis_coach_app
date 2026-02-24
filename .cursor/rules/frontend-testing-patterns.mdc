@@ -1,5 +1,5 @@
 ---
-description: Frontend testing conventions (Jest + React Testing Library)
+description: Frontend testing conventions (Vitest + React Testing Library)
 globs:
   - frontend/src/**/*.test.{ts,tsx}
   - frontend/src/**/*.tsx
@@ -36,11 +36,15 @@ Components using React Query need `QueryClientProvider`. Create a shared `render
 
 ### Mock Custom Hooks, Not Axios
 
-When testing components, mock the hook (`jest.mock('../hooks/useVideos')`) not the HTTP layer. Keeps tests focused on component behavior.
+When testing components, mock the hook (`vi.mock('../hooks/useVideos')`) not the HTTP layer. Keeps tests focused on component behavior.
 
 ### Mock Child Components
 
-When testing a parent with complex children: `jest.mock('../VideoOverlay', () => () => <div data-testid="mock-overlay" />)`.
+When testing a parent with complex children: `vi.mock('../VideoOverlay', () => ({ default: () => <div data-testid="mock-overlay" /> }))`.
+
+### Vitest Globals
+
+`vi`, `describe`, `it`, and `expect` are available globally via Vitest config (`globals: true`), so explicit imports are optional.
 
 ### Test File Location
 

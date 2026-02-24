@@ -16,7 +16,7 @@ COPY . .
 EXPOSE 3000
 
 # Start development server
-CMD ["npm", "start"]
+CMD ["npm", "run", "dev"]
 
 # Build stage
 FROM node:20-alpine AS builder
@@ -39,7 +39,7 @@ RUN npm run build
 FROM nginx:alpine AS production
 
 # Copy built app to nginx
-COPY --from=builder /app/build /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf

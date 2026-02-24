@@ -10,7 +10,7 @@ function HomePage() {
   const { openUploadModal, openVideoModal } = useUploadModal();
 
   const handleUploadVideo = () => {
-    const profile = process.env.REACT_APP_PROFILE || 'local';
+    const profile = import.meta.env.VITE_PROFILE || 'local';
     if (profile === 'local' || user) {
       openUploadModal();
     } else {

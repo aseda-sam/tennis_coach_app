@@ -26,7 +26,7 @@ class ApiService {
   private defaultHeaders: Record<string, string>;
 
   constructor() {
-    this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     this.defaultHeaders = {
       'Content-Type': 'application/json',
     };

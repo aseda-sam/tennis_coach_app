@@ -26,6 +26,8 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   animated = true,
   indeterminate = false,
 }) => {
+  const normalizedProgress = Math.max(0, Math.min(100, progress));
+
   const getStatusColor = () => {
     switch (status) {
       case 'starting':
@@ -65,8 +67,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
     if (status === 'starting') return '0%';
     if (status === 'finalizing') return '100%';
     if (status === 'completed') return '100%';
-    if (status === 'failed' || status === 'cancelled') return `${progress}%`;
-    return `${progress}%`;
+    if (status === 'failed' || status === 'cancelled')
+      return `${normalizedProgress}%`;
+    return `${normalizedProgress}%`;
   };
 
   return (
@@ -91,7 +94,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           <>
             <div
               className="progress-fill"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${normalizedProgress}%` }}
               data-testid="progress-fill"
             />
             {status === 'processing' && animated && (

@@ -13,7 +13,7 @@ export function createAuthInterceptor(
   instanceName: string = 'API'
 ): void {
   axiosInstance.interceptors.request.use(async (config) => {
-    const profile = process.env.REACT_APP_PROFILE || 'local';
+    const profile = import.meta.env.VITE_PROFILE || 'local';
 
     // Only add auth headers if profile is not 'local' and supabase is available
     if (profile !== 'local' && supabase) {

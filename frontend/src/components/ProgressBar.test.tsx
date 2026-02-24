@@ -179,11 +179,11 @@ describe('ProgressBar', () => {
 
       rerender(<ProgressBar progress={-10} status="processing" />);
       progressFill = screen.getByTestId('progress-fill');
-      expect(progressFill).toHaveStyle({ width: '-10%' });
+      expect(progressFill).toHaveStyle({ width: '0%' });
 
       rerender(<ProgressBar progress={150} status="processing" />);
       progressFill = screen.getByTestId('progress-fill');
-      expect(progressFill).toHaveStyle({ width: '150%' });
+      expect(progressFill).toHaveStyle({ width: '100%' });
     });
   });
 

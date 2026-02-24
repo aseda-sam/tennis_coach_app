@@ -8,29 +8,29 @@ import { AppLayout } from './components/layouts/AppLayout';
 
 // Mock localStorage BEFORE importing to prevent demo landing issues
 const localStorageMock = {
-  getItem: jest.fn(() => 'true'), // hasVisitedApp = true
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
+  getItem: vi.fn(() => 'true'), // hasVisitedApp = true
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
 // Mock the useAuth hook to avoid async loading state
-jest.mock('./hooks/useAuth', () => ({
+vi.mock('./hooks/useAuth', () => ({
   useAuth: () => ({
     user: {
       id: 'test-user-id',
       email: 'test@example.com',
     },
     loading: false,
-    signOut: jest.fn(),
+    signOut: vi.fn(),
   }),
 }));
 
 // Mock useAdmin
-jest.mock('./hooks/useAdmin', () => ({
+vi.mock('./hooks/useAdmin', () => ({
   useAdmin: () => ({
     isAdmin: false,
     isLoading: false,
@@ -39,53 +39,63 @@ jest.mock('./hooks/useAdmin', () => ({
 }));
 
 // Mock the API service to avoid axios import issues
-jest.mock('./services/api', () => ({
+vi.mock('./services/api', () => ({
   videoApi: {
-    uploadVideo: jest.fn(),
-    getVideos: jest.fn(),
-    getVideo: jest.fn(),
-    getDemoVideo: jest.fn(),
-    deleteVideo: jest.fn(),
-    getVideoUrl: jest.fn(),
-    checkAdminStatus: jest.fn().mockResolvedValue({ is_admin: false }),
+    uploadVideo: vi.fn(),
+    getVideos: vi.fn(),
+    getVideo: vi.fn(),
+    getDemoVideo: vi.fn(),
+    deleteVideo: vi.fn(),
+    getVideoUrl: vi.fn(),
+    checkAdminStatus: vi.fn().mockResolvedValue({ is_admin: false }),
   },
   analysisApi: {
-    startAnalysis: jest.fn(),
+    startAnalysis: vi.fn(),
   },
 }));
 
 // Mock the components that use the API
-jest.mock('./components/VideoUpload', () => {
-  return function MockVideoUpload() {
-    return <div data-testid="video-upload">Upload Tennis Video</div>;
+vi.mock('./components/VideoUpload', () => {
+  return {
+    default: function MockVideoUpload() {
+      return <div data-testid="video-upload">Upload Tennis Video</div>;
+    },
   };
 });
 
-jest.mock('./components/VideoList', () => {
-  return function MockVideoList() {
-    return <div data-testid="video-list">Uploaded Videos</div>;
+vi.mock('./components/VideoList', () => {
+  return {
+    default: function MockVideoList() {
+      return <div data-testid="video-list">Uploaded Videos</div>;
+    },
   };
 });
 
-jest.mock('./components/AnalysisDashboard', () => {
-  return function MockAnalysisDashboard() {
-    return <div data-testid="analysis-dashboard">Analysis Dashboard</div>;
+vi.mock('./components/AnalysisDashboard', () => {
+  return {
+    default: function MockAnalysisDashboard() {
+      return <div data-testid="analysis-dashboard">Analysis Dashboard</div>;
+    },
   };
 });
 
-jest.mock('./components/DemoLanding', () => {
-  return function MockDemoLanding() {
-    return <div data-testid="demo-landing">Demo Landing</div>;
+vi.mock('./components/DemoLanding', () => {
+  return {
+    default: function MockDemoLanding() {
+      return <div data-testid="demo-landing">Demo Landing</div>;
+    },
   };
 });
 
-jest.mock('./components/LoomVideoModal', () => {
-  return function MockLoomVideoModal() {
-    return null;
+vi.mock('./components/LoomVideoModal', () => {
+  return {
+    default: function MockLoomVideoModal() {
+      return null;
+    },
   };
 });
 
-jest.mock('./components/AccountMenu', () => ({
+vi.mock('./components/AccountMenu', () => ({
   AccountMenu: function MockAccountMenu() {
     return <div data-testid="account-menu">Account</div>;
   },
