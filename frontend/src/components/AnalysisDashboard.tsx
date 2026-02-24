@@ -83,8 +83,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   const { resolvedUrl: resolvedVideoUrl } = useVideoUrl({ videoId, videoUrl });
 
-  const { data: analysisStatus, refetch: refetchAnalysisStatus } =
-    useVideoAnalysisStatus(videoId);
+  const {
+    data: analysisStatus,
+    isLoading: analysisStatusLoading,
+    refetch: refetchAnalysisStatus,
+  } = useVideoAnalysisStatus(videoId);
 
   const handleAnalysisComplete = useCallback(async () => {
     await refetchAnalysisStatus();
@@ -116,7 +119,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   }, [startAnalysis]);
 
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
-  const [naturalScroll, setNaturalScroll] = useState(false);
+  const [naturalScroll, setNaturalScroll] = usePersistedState(
+    'pref:natural-scroll',
+    true
+  );
   const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
   const focusViewRef = useRef<HTMLDivElement>(null);
 
@@ -383,16 +389,23 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     isDemo && isAdmin && (!hasPoseAnalysis || serveWindows.length === 0);
 
   // Analysis in progress -- show progress view
+  // Guard: don't derive these states until analysisStatus has loaded,
+  // otherwise we flash "Ready to Analyze" while the status fetch is in flight.
   const analysisInProgress =
+    !analysisStatusLoading &&
     !analysisStatus?.has_analysis &&
     (analysisState.status === 'starting' ||
       analysisState.status === 'processing');
 
   const analysisIdle =
-    !analysisStatus?.has_analysis && analysisState.status === 'idle';
+    !analysisStatusLoading &&
+    !analysisStatus?.has_analysis &&
+    analysisState.status === 'idle';
 
   const analysisFailed =
-    !analysisStatus?.has_analysis && analysisState.status === 'failed';
+    !analysisStatusLoading &&
+    !analysisStatus?.has_analysis &&
+    analysisState.status === 'failed';
 
   const hasServes = sortedServeWindows.length > 0;
   const analysisJobActive =
@@ -434,6 +447,25 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         onClose={onClose}
         isDemo={isDemo}
       />
+
+      {/* Initial loading — analysis status not yet fetched */}
+      {analysisStatusLoading && (
+        <div className="analysis-dashboard__focus-view">
+          <div className="analysis-dashboard__main-col">
+            <Skeleton variant="rect" height="56vh" />
+            <div className="analysis-dashboard__phase-tabs">
+              {Array.from({ length: 4 }, (_, i) => (
+                <Skeleton key={i} variant="text" width="80px" height="2em" />
+              ))}
+            </div>
+          </div>
+          <div className="analysis-dashboard__side-col">
+            <Skeleton variant="rect" height="120px" />
+            <Skeleton variant="rect" height="80px" />
+            <Skeleton variant="rect" height="80px" />
+          </div>
+        </div>
+      )}
 
       {/* Analysis Required State */}
       {analysisIdle && !isDemo && (
@@ -491,7 +523,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             indeterminate={true}
           />
           <p className="analysis-dashboard__progress-text">
-            Analyzing your serve video...
+            Watching your serve...
           </p>
         </div>
       )}
@@ -725,7 +757,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 indeterminate={true}
               />
               <p className="analysis-dashboard__progress-text">
-                Processing serve windows...
+                Finding your serves...
               </p>
             </div>
           ) : serveWindowsLoading ? (

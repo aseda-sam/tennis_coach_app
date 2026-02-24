@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PhaseWindow } from '../types/biomechanics';
+import usePersistedState from './usePersistedState';
 import { ServeWindow } from '../types/serveWindow';
 
 interface UseServePlaybackOptions {
@@ -34,7 +35,10 @@ export function useServePlayback({
   const [loopPhaseWindow, setLoopPhaseWindow] = useState<PhaseWindow | null>(
     null
   );
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [playbackSpeed, setPlaybackSpeed] = usePersistedState(
+    'pref:playback-speed',
+    1
+  );
 
   const currentServe = sortedServeWindows[currentServeIndex] ?? null;
 

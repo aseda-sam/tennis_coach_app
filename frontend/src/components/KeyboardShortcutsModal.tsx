@@ -13,7 +13,7 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
   isOpen,
   onClose,
   isDemo = false,
-  naturalScroll = false,
+  naturalScroll = true,
   onNaturalScrollChange,
 }) => {
   const handleKeyDown = useCallback(
