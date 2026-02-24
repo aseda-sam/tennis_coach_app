@@ -587,7 +587,7 @@ async def update_video_metadata(
         if not updated_video:
             raise handle_not_found_error("video", str(video_id))
 
-        if metadata_update.apply_to_existing_serves:
+        if primary_player_id is not None:
             target_player_id = updated_video.primary_player_id
             if not target_player_id:
                 raise HTTPException(

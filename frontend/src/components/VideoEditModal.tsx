@@ -35,7 +35,6 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
   const [editPlayerTag, setEditPlayerTag] = useState<'you' | 'someone_else'>(
     resolvePlayerTag(video)
   );
-  const [applyToExistingServes, setApplyToExistingServes] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
   // Reset form state when the video prop changes
@@ -43,7 +42,6 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
     setEditSessionType(video.session_type || '');
     setEditCameraAngle(video.camera_angle || '');
     setEditPlayerTag(resolvePlayerTag(video));
-    setApplyToExistingServes(false);
     setEditError(null);
   }, [video, resolvePlayerTag]);
 
@@ -57,7 +55,6 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
           session_type: editSessionType || undefined,
           camera_angle: editCameraAngle || undefined,
           player_tag: editPlayerTag,
-          apply_to_existing_serves: applyToExistingServes,
         },
       });
 
@@ -69,7 +66,6 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
       );
     }
   }, [
-    applyToExistingServes,
     editCameraAngle,
     editPlayerTag,
     editSessionType,
@@ -162,20 +158,6 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
                   />
                   <span>Someone Else</span>
                 </label>
-              </div>
-              <div className="edit-video-checkbox-wrapper">
-                <label className="edit-video-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={applyToExistingServes}
-                    onChange={(e) => setApplyToExistingServes(e.target.checked)}
-                    disabled={updateMetadataMutation.isPending}
-                  />
-                  <span>Also update serves already detected in this video</span>
-                </label>
-                <p className="edit-video-note edit-video-note--compact">
-                  Only affects serves for this video.
-                </p>
               </div>
             </div>
 
