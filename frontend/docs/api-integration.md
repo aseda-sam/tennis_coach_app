@@ -578,10 +578,10 @@ export const getCachedVideos = async (): Promise<Video[]> => {
 ```typescript
 // __mocks__/api.ts
 export const mockApi = {
-  getVideos: jest.fn(),
-  uploadVideo: jest.fn(),
-  startAnalysis: jest.fn(),
-  getAnalysis: jest.fn(),
+  getVideos: vi.fn(),
+  uploadVideo: vi.fn(),
+  startAnalysis: vi.fn(),
+  getAnalysis: vi.fn(),
 };
 
 // Mock implementations
@@ -604,7 +604,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { VideoList } from '../VideoList';
 import { mockApi } from '../../__mocks__/api';
 
-jest.mock('../../services/api', () => mockApi);
+vi.mock('../../services/api', () => mockApi);
 
 describe('VideoList', () => {
   it('should display videos', async () => {

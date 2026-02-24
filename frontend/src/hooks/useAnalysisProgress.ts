@@ -146,7 +146,7 @@ export function useAnalysisProgress(
           return;
         }
       } catch (err: unknown) {
-        // Error detail is already normalized to string by axios interceptor
+        // Error detail is already normalized to string by API client
         const errorMessage = getApiErrorMessage(
           err,
           'Failed to get job status'

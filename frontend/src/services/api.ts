@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { AnalysisStartResponse } from '../types/analysis';
 import { AppConfig } from '../types/config';
 import {
@@ -8,46 +7,172 @@ import {
   VideoMetadata,
   VideoUploadResponse,
 } from '../types/video';
-import { createAuthInterceptor } from '../utils/authInterceptor';
+import { getAuthHeaders } from '../utils/authInterceptor';
 
-// API configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/v0';
+const DEFAULT_TIMEOUT_MS = 30000;
 
-// Create main API instance
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-});
+type ApiRequestConfig = {
+  params?: Record<string, string | number | boolean | undefined | null>;
+  headers?: Record<string, string>;
+  timeoutMs?: number;
+};
 
-// Add request/response interceptors
-createAuthInterceptor(api);
+type ApiResponse<T = any> = {
+  data: T;
+  status: number;
+};
 
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Normalize FastAPI error responses to always have string detail
-    // FastAPI validation errors return detail as array: [{type, loc, msg, input}]
-    if (
-      error.response?.data?.detail &&
-      Array.isArray(error.response.data.detail)
-    ) {
-      const messages = error.response.data.detail
-        .map((err: { type?: string; loc?: unknown[]; msg?: string }) => {
-          if (typeof err === 'object' && err !== null && 'msg' in err) {
-            const loc = Array.isArray(err.loc)
-              ? err.loc.slice(1).join('.')
-              : '';
-            return loc ? `${loc}: ${err.msg}` : err.msg;
-          }
-          return String(err);
-        })
-        .filter(Boolean);
-      error.response.data.detail =
-        messages.length > 0 ? messages.join('; ') : 'Validation error';
-    }
-    return Promise.reject(error);
+type ApiErrorResponseData = {
+  detail?: string;
+  [key: string]: unknown;
+};
+
+type ApiErrorLike = Error & {
+  response?: {
+    status?: number;
+    data?: ApiErrorResponseData;
+  };
+  code?: string;
+};
+
+class ApiHttpError extends Error {
+  response: {
+    status: number;
+    data: ApiErrorResponseData;
+  };
+
+  constructor(status: number, data: ApiErrorResponseData, message?: string) {
+    super(message || data?.detail || `Request failed with status ${status}`);
+    this.name = 'ApiHttpError';
+    this.response = { status, data };
   }
-);
+}
+
+function normalizeFastApiDetail(data: unknown): ApiErrorResponseData {
+  if (!data || typeof data !== 'object') {
+    return { detail: 'Request failed' };
+  }
+
+  const payload = data as ApiErrorResponseData;
+  const detail = payload.detail;
+
+  if (!Array.isArray(detail)) {
+    return payload;
+  }
+
+  const messages = detail
+    .map((err: { loc?: unknown[]; msg?: string }) => {
+      if (typeof err !== 'object' || err === null || !('msg' in err)) {
+        return String(err);
+      }
+      const loc = Array.isArray(err.loc) ? err.loc.slice(1).join('.') : '';
+      return loc ? `${loc}: ${err.msg}` : err.msg;
+    })
+    .filter(Boolean);
+
+  return {
+    ...payload,
+    detail: messages.length > 0 ? messages.join('; ') : 'Validation error',
+  };
+}
+
+function buildUrl(path: string, params?: ApiRequestConfig['params']): string {
+  const url = new URL(`${API_BASE_URL}${path}`);
+
+  if (!params) {
+    return url.toString();
+  }
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      url.searchParams.set(key, String(value));
+    }
+  });
+
+  return url.toString();
+}
+
+async function request<T>(
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+  path: string,
+  body?: unknown,
+  config?: ApiRequestConfig
+): Promise<ApiResponse<T>> {
+  const controller = new AbortController();
+  const timeoutMs = config?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const authHeaders = await getAuthHeaders();
+    const headers: Record<string, string> = {
+      ...authHeaders,
+      ...(config?.headers || {}),
+    };
+
+    const isFormData =
+      typeof FormData !== 'undefined' && body instanceof FormData;
+    if (!isFormData && body !== undefined && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    const response = await fetch(buildUrl(path, config?.params), {
+      method,
+      headers,
+      body:
+        body === undefined
+          ? undefined
+          : isFormData
+            ? (body as FormData)
+            : JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+    const rawData = isJson ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      throw new ApiHttpError(
+        response.status,
+        normalizeFastApiDetail(rawData),
+        `Request failed with status ${response.status}`
+      );
+    }
+
+    return {
+      data: rawData as T,
+      status: response.status,
+    };
+  } catch (error) {
+    if (error instanceof ApiHttpError) {
+      throw error;
+    }
+
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      const timeoutError = new Error('Request timeout') as ApiErrorLike;
+      timeoutError.code = 'ECONNABORTED';
+      throw timeoutError;
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+const api = {
+  get: <T = any>(path: string, config?: ApiRequestConfig) =>
+    request<T>('GET', path, undefined, config),
+  post: <T = any>(path: string, body?: unknown, config?: ApiRequestConfig) =>
+    request<T>('POST', path, body, config),
+  patch: <T = any>(path: string, body?: unknown, config?: ApiRequestConfig) =>
+    request<T>('PATCH', path, body, config),
+  put: <T = any>(path: string, body?: unknown, config?: ApiRequestConfig) =>
+    request<T>('PUT', path, body, config),
+  delete: <T = any>(path: string, config?: ApiRequestConfig) =>
+    request<T>('DELETE', path, undefined, config),
+};
 
 export interface VideoFilters {
   camera_angle?: string;
@@ -56,7 +181,6 @@ export interface VideoFilters {
 }
 
 export const videoApi = {
-  // Upload a video file
   uploadVideo: async (
     file: File,
     isDemo: boolean = false,
@@ -70,39 +194,26 @@ export const videoApi = {
     formData.append('file', file);
 
     const params = new URLSearchParams();
-    if (isDemo) {
-      params.append('is_demo', 'true');
-    }
-    if (clientRecordedAt) {
-      params.append('client_recorded_at', clientRecordedAt);
-    }
-    if (metadata?.session_type) {
+    if (isDemo) params.append('is_demo', 'true');
+    if (clientRecordedAt) params.append('client_recorded_at', clientRecordedAt);
+    if (metadata?.session_type)
       params.append('session_type', metadata.session_type);
-    }
-    if (metadata?.camera_angle) {
+    if (metadata?.camera_angle)
       params.append('camera_angle', metadata.camera_angle);
-    }
 
     const queryString = params.toString();
     const response = await api.post<VideoUploadResponse>(
       `/videos/upload${queryString ? `?${queryString}` : ''}`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+      formData
     );
     return response.data;
   },
 
-  // Get public app configuration (upload limits, etc.)
   getAppConfig: async (): Promise<AppConfig> => {
     const response = await api.get<AppConfig>('/config');
     return response.data;
   },
 
-  // Get list of uploaded videos
   getVideos: async (filters?: VideoFilters): Promise<VideoListResponse> => {
     const params = new URLSearchParams();
     if (filters) {
@@ -121,24 +232,20 @@ export const videoApi = {
     };
   },
 
-  // Get video details by ID
   getVideo: async (videoId: number): Promise<VideoMetadata> => {
     const response = await api.get<VideoMetadata>(`/videos/${videoId}`);
     return response.data;
   },
 
-  // Get demo video
   getDemoVideo: async (): Promise<VideoMetadata> => {
     const response = await api.get<VideoMetadata>('/videos/demo');
     return response.data;
   },
 
-  // Delete a video
   deleteVideo: async (videoId: number): Promise<void> => {
     await api.delete(`/videos/${videoId}`);
   },
 
-  // Get signed URL for video (avoids redirect race conditions)
   getVideoUrl: async (
     videoId: number,
     expiresIn: number = 3600
@@ -149,7 +256,6 @@ export const videoApi = {
     return response.data.url;
   },
 
-  // Check video analysis status
   getVideoAnalysisStatus: async (
     videoId: number
   ): Promise<{
@@ -164,7 +270,6 @@ export const videoApi = {
     return response.data;
   },
 
-  // Get ball contact timestamps for a video (backend: ball-contact-timestamps; UI keeps "contact")
   getContactTimestamps: async (
     videoId: number
   ): Promise<{ contact_timestamps: number[] }> => {
@@ -174,7 +279,6 @@ export const videoApi = {
     return { contact_timestamps: response.data.ball_contact_timestamps };
   },
 
-  // Bulk check video analysis statuses (optimized)
   getBulkVideoAnalysisStatus: async (
     videoIds: number[]
   ): Promise<
@@ -200,7 +304,6 @@ export const videoApi = {
     return response.data.statuses;
   },
 
-  // Get overlay data for client-side rendering
   getOverlayData: async (videoId: number): Promise<OverlayData> => {
     try {
       const response = await api.get<OverlayData>(
@@ -208,21 +311,19 @@ export const videoApi = {
       );
       return response.data;
     } catch (error: unknown) {
-      const axiosError = error as {
-        response?: { status?: number; data?: { detail?: string } };
-      };
-      if (axiosError.response?.status === 404) {
+      const apiError = error as ApiErrorLike;
+      if (apiError.response?.status === 404) {
         throw new Error(
           'Pose data not found for this video. Please run pose detection analysis first.'
         );
       }
-      if (axiosError.response?.status === 400) {
+      if (apiError.response?.status === 400) {
         throw new Error(
-          axiosError.response?.data?.detail ||
+          apiError.response?.data?.detail ||
             'Invalid request. Please check the video and try again.'
         );
       }
-      if (axiosError.response?.status === 500) {
+      if (apiError.response?.status === 500) {
         throw new Error(
           'Server error while fetching overlay data. Please try again later.'
         );
@@ -231,19 +332,16 @@ export const videoApi = {
     }
   },
 
-  // Check if user is admin
   checkAdminStatus: async (): Promise<{ is_admin: boolean }> => {
     const response = await api.get<{ is_admin: boolean }>('/admin/status');
     return response.data;
   },
 
-  // List all demo videos (admin only)
   listDemoVideos: async (): Promise<DemoVideoListItem[]> => {
     const response = await api.get('/admin/demos');
     return response.data;
   },
 
-  // Set active demo (admin only)
   setActiveDemo: async (videoId: number): Promise<VideoMetadata> => {
     const response = await api.post<VideoMetadata>(
       `/admin/demos/${videoId}/set-active`
@@ -251,7 +349,6 @@ export const videoApi = {
     return response.data;
   },
 
-  // Trigger pose analysis for demo video (admin only)
   analyzeDemoPose: async (
     videoId: number,
     confidenceThreshold: number = 0.7
@@ -262,7 +359,6 @@ export const videoApi = {
     return response.data;
   },
 
-  // Update video metadata (session_type and camera_angle)
   updateVideoMetadata: async (
     videoId: number,
     metadata: {
@@ -281,18 +377,14 @@ export const videoApi = {
       );
       return response.data;
     } catch (error: unknown) {
-      const axiosError = error as {
-        response?: { status?: number; data?: { detail?: string } };
-      };
-      if (axiosError.response?.status === 404) {
+      const apiError = error as ApiErrorLike;
+      if (apiError.response?.status === 404) {
         throw new Error('Video not found. Please check and try again.');
       }
-      if (axiosError.response?.status === 400) {
-        throw new Error(
-          axiosError.response?.data?.detail || 'Invalid request.'
-        );
+      if (apiError.response?.status === 400) {
+        throw new Error(apiError.response?.data?.detail || 'Invalid request.');
       }
-      if (axiosError.response?.status === 500) {
+      if (apiError.response?.status === 500) {
         throw new Error('Server error. Please try again later.');
       }
       throw error;

@@ -487,7 +487,7 @@ Test component interactions:
 ```typescript
 describe('VideoUpload Integration', () => {
   it('should upload video and update video list', async () => {
-    const onUploadSuccess = jest.fn();
+    const onUploadSuccess = vi.fn();
     render(<VideoUpload onUploadSuccess={onUploadSuccess} />);
 
     const file = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
