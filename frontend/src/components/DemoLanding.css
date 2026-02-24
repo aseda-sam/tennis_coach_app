@@ -186,7 +186,6 @@
 .demo-landing__features-section {
   margin-top: var(--spacing-6xl);
   padding-top: var(--spacing-4xl);
-  border-top: 1px solid var(--color-border-light);
   position: relative;
 }
 
@@ -196,7 +195,7 @@
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 40px;
+  width: 80px;
   height: 3px;
   border-radius: var(--radius-full);
   background: var(--color-border-dark);
