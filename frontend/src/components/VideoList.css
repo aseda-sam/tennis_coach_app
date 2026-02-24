@@ -220,16 +220,36 @@
   border-top: 1px solid var(--color-border-light);
 }
 
-.user-info--own {
-  color: var(--color-warning-dark);
-  font-weight: var(--font-weight-semibold);
-}
-
-.user-info,
+.player-tag-badge,
 .date-info {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+}
+
+.player-tag-badge {
+  border-radius: var(--radius-pill);
+  padding: 2px var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.player-tag-badge--you {
+  color: var(--color-court-blue);
+  border-color: color-mix(
+    in srgb,
+    var(--color-court-blue) 35%,
+    var(--color-border)
+  );
+  background: color-mix(in srgb, var(--color-court-blue-soft) 70%, white);
+}
+
+.player-tag-badge--someone_else {
+  color: var(--color-text-muted);
+  background: var(--color-surface-secondary);
 }
 
 .user-icon,
