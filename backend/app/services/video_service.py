@@ -289,6 +289,9 @@ def list_user_videos(
     is_admin: bool = False,
     skip: int = 0,
     limit: int = 20,
+    camera_angle: Optional[str] = None,
+    player_id: Optional[int] = None,
+    exclude_player_id: Optional[int] = None,
 ) -> List[Video]:
     """List videos for a user with pagination.
 
@@ -301,6 +304,9 @@ def list_user_videos(
         is_admin: Whether the user is an admin
         skip: Number of videos to skip (for pagination)
         limit: Maximum number of videos to return
+        camera_angle: Optional filter by camera angle
+        player_id: Optional filter by primary player ID
+        exclude_player_id: Optional exclude videos with this player ID
 
     Returns:
         List of Video instances ordered by recorded_at (fallback created_at), newest first
@@ -309,6 +315,16 @@ def list_user_videos(
 
     if not is_admin:
         query = query.filter(Video.user_id == user_id)
+
+    if camera_angle is not None:
+        query = query.filter(Video.camera_angle == camera_angle)
+    if player_id is not None:
+        query = query.filter(Video.primary_player_id == player_id)
+    if exclude_player_id is not None:
+        query = query.filter(
+            Video.primary_player_id.isnot(None),
+            Video.primary_player_id != exclude_player_id,
+        )
 
     return (
         query.order_by(func.coalesce(Video.recorded_at, Video.created_at).desc())

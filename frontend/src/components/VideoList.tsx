@@ -7,10 +7,12 @@ import {
   useVideoAnalysisStatuses,
   useVideos,
 } from '../hooks/useVideos';
+import type { VideoFilters as VideoFiltersType } from '../services/api';
 import { VideoMetadata } from '../types/video';
 import { Trash2, Upload, Video, X } from 'lucide-react';
 import LoadingIndicator from './LoadingIndicator';
 import VideoEditModal from './VideoEditModal';
+import VideoFiltersComponent from './VideoFilters';
 import './VideoList.css';
 import VideoUpload from './VideoUpload';
 
@@ -26,6 +28,7 @@ const VideoList: React.FC<VideoListProps> = ({
   const queryClient = useQueryClient();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<VideoMetadata | null>(null);
+  const [filters, setFilters] = useState<VideoFiltersType>({});
 
   // Use React Query hooks for data fetching
   const {
@@ -33,7 +36,7 @@ const VideoList: React.FC<VideoListProps> = ({
     isLoading: videosLoading,
     error: videosError,
     refetch: refetchVideos,
-  } = useVideos();
+  } = useVideos(filters);
 
   const videoIds = videos.map((v: VideoMetadata) => v.id);
   const { isLoading: statusesLoading } = useVideoAnalysisStatuses(videoIds);
@@ -45,6 +48,9 @@ const VideoList: React.FC<VideoListProps> = ({
 
   const loading = videosLoading || statusesLoading;
   const error = videosError ? 'Failed to load videos. Please try again.' : null;
+  const hasActiveFilters = Object.values(filters).some(
+    (v) => v !== undefined && v !== null && v !== ''
+  );
 
   const handleDelete = async (videoId: number) => {
     try {
@@ -145,7 +151,9 @@ const VideoList: React.FC<VideoListProps> = ({
         <div className="header-left">
           <h2 className="page-title">Video Library</h2>
           <p className="video-count">
-            {videos.length} of {videos.length} sessions
+            {hasActiveFilters
+              ? `${videos.length} matching sessions`
+              : `${videos.length} sessions`}
           </p>
         </div>
         <div className="header-right">
@@ -159,6 +167,8 @@ const VideoList: React.FC<VideoListProps> = ({
           </button>
         </div>
       </div>
+
+      <VideoFiltersComponent filters={filters} onChange={setFilters} />
 
       {videos.length === 0 ? (
         <div className="empty-state">

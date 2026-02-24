@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { videoApi } from '../services/api';
+import { videoApi, VideoFilters } from '../services/api';
 import type { VideoMetadata } from '../types/video';
 
 export type VideoAnalysisStatus = {
@@ -13,11 +13,11 @@ export type VideoAnalysisStatus = {
 
 export type VideoAnalysisStatusById = Record<number, VideoAnalysisStatus>;
 
-export const useVideos = () => {
+export const useVideos = (filters?: VideoFilters) => {
   return useQuery<VideoMetadata[], Error>({
-    queryKey: ['videos'],
+    queryKey: ['videos', filters ?? {}],
     queryFn: async () => {
-      const response = await videoApi.getVideos();
+      const response = await videoApi.getVideos(filters);
       return response.videos;
     },
   });

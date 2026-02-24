@@ -50,6 +50,12 @@ api.interceptors.response.use(
   }
 );
 
+export interface VideoFilters {
+  camera_angle?: string;
+  player_id?: number;
+  exclude_player_id?: number;
+}
+
 export const videoApi = {
   // Upload a video file
   uploadVideo: async (
@@ -98,8 +104,18 @@ export const videoApi = {
   },
 
   // Get list of uploaded videos
-  getVideos: async (): Promise<VideoListResponse> => {
-    const response = await api.get<VideoMetadata[]>('/videos/');
+  getVideos: async (filters?: VideoFilters): Promise<VideoListResponse> => {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const query = params.toString();
+    const url = query ? `/videos/?${query}` : '/videos/';
+    const response = await api.get<VideoMetadata[]>(url);
     return {
       videos: response.data,
       total: response.data.length,
