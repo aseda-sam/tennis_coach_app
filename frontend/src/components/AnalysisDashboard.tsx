@@ -1,5 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useAdmin } from '../hooks/useAdmin';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import usePersistedState from '../hooks/usePersistedState';
@@ -21,6 +27,7 @@ import { ArrowLeft, Upload } from 'lucide-react';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
 import ServeThumbnailStrip from './ServeThumbnailStrip';
+import Skeleton from './Skeleton';
 
 const METRIC_DISPLAY_NAMES: Record<string, string> = {
   knee_flexion_min_deg: 'Knee Flexion',
@@ -111,6 +118,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [naturalScroll, setNaturalScroll] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
+  const focusViewRef = useRef<HTMLDivElement>(null);
 
   // Collapsible sidebar section state (persisted across sessions)
   const [metricsExpanded, setMetricsExpanded] = usePersistedState(
@@ -126,7 +134,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
 
-  const { serveWindows, updateServeWindow } = useServeWindows({
+  const {
+    serveWindows,
+    updateServeWindow,
+    loading: serveWindowsLoading,
+  } = useServeWindows({
     videoId,
     filters: { video_id: videoId },
     autoRefresh: true,
@@ -325,9 +337,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     isDemo,
   ]);
 
-  // Scroll wheel — frame navigation within current serve window
+  // Scroll wheel — frame navigation within current serve window (only when hovering over the player/chart area)
   useEffect(() => {
     if (!currentServe) return;
+    const container = focusViewRef.current;
+    if (!container) return;
     const handleWheel = (e: WheelEvent) => {
       if (
         e.target instanceof HTMLInputElement ||
@@ -345,8 +359,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         )
       );
     };
-    document.addEventListener('wheel', handleWheel, { passive: false });
-    return () => document.removeEventListener('wheel', handleWheel);
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
   }, [currentServe, currentTime, naturalScroll, handleSeek]);
 
   // Find serves handler for the no-serves fallback state
@@ -500,7 +514,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
       {/* Main Content: Focus-mode serve viewer */}
       {analysisStatus?.has_analysis && (
-        <div className="analysis-dashboard__focus-view">
+        <div className="analysis-dashboard__focus-view" ref={focusViewRef}>
           {hasServes ? (
             <>
               <div className="analysis-dashboard__main-col">
@@ -714,6 +728,27 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 Processing serve windows...
               </p>
             </div>
+          ) : serveWindowsLoading ? (
+            <>
+              <div className="analysis-dashboard__main-col">
+                <Skeleton variant="rect" height="56vh" />
+                <div className="analysis-dashboard__phase-tabs">
+                  {Array.from({ length: 4 }, (_, i) => (
+                    <Skeleton
+                      key={i}
+                      variant="text"
+                      width="80px"
+                      height="2em"
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="analysis-dashboard__side-col">
+                <Skeleton variant="rect" height="120px" />
+                <Skeleton variant="rect" height="80px" />
+                <Skeleton variant="rect" height="80px" />
+              </div>
+            </>
           ) : (
             <div className="analysis-dashboard__no-serves">
               <p>No serves detected yet.</p>
