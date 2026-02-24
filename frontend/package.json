@@ -33,9 +33,6 @@
     "postcss": "^8.4.31",
     "jsonpath": "npm:jsonpath-plus@^10.3.0",
     "minimatch": "^10.2.1",
-    "fork-ts-checker-webpack-plugin": {
-      "minimatch": "^5.1.6"
-    },
     "test-exclude": "^7.0.2"
   },
   "scripts": {
