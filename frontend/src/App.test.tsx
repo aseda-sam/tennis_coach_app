@@ -152,9 +152,9 @@ function MockLibraryPage() {
   return <div data-testid="video-list">Uploaded Videos</div>;
 }
 
-test('renders serve tennis coach app title', () => {
+test('renders app title', () => {
   renderWithRouter('/');
-  const titleElement = screen.getByText(/Serve Tennis Coach/i);
+  const titleElement = screen.getByText(/Second Serve/i);
   expect(titleElement).toBeInTheDocument();
 });
 
