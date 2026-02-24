@@ -27,7 +27,7 @@ function DemoPage() {
   });
 
   const handleExitToUpload = () => {
-    const profile = process.env.REACT_APP_PROFILE || 'local';
+    const profile = import.meta.env.VITE_PROFILE || 'local';
     if (profile === 'local' || user) {
       openUploadModal();
     } else {
@@ -56,7 +56,7 @@ function DemoPage() {
     );
   }
 
-  const videoUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8000/v0'}/videos/${demoVideo.id}/stream`;
+  const videoUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/v0'}/videos/${demoVideo.id}/stream`;
 
   return (
     <Suspense

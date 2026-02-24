@@ -1,29 +1,30 @@
 import { act, renderHook } from '@testing-library/react';
+import type { Mocked } from 'vitest';
 import unifiedAnalysisApi from '../services/unifiedAnalysisApi';
 import type { VideoJob } from '../types/analysis';
 
 // Mock dependencies
-jest.mock('../services/unifiedAnalysisApi', () => ({
+vi.mock('../services/unifiedAnalysisApi', () => ({
   __esModule: true,
   default: {
-    startAnalysis: jest.fn(),
-    getVideoJobs: jest.fn(),
-    getVideoJob: jest.fn(),
-    cancelTask: jest.fn(),
+    startAnalysis: vi.fn(),
+    getVideoJobs: vi.fn(),
+    getVideoJob: vi.fn(),
+    cancelTask: vi.fn(),
   },
   unifiedAnalysisApi: {
-    startAnalysis: jest.fn(),
-    getVideoJobs: jest.fn(),
-    getVideoJob: jest.fn(),
-    cancelTask: jest.fn(),
+    startAnalysis: vi.fn(),
+    getVideoJobs: vi.fn(),
+    getVideoJob: vi.fn(),
+    cancelTask: vi.fn(),
   },
 }));
 
-// Must declare mock fns before jest.mock due to hoisting
-const mockStartPolling = jest.fn();
-const mockStopPolling = jest.fn();
+// Must declare mock fns before vi.mock due to hoisting
+const mockStartPolling = vi.fn();
+const mockStopPolling = vi.fn();
 
-jest.mock('./useAnalysisProgress', () => {
+vi.mock('./useAnalysisProgress', () => {
   return {
     __esModule: true,
     useAnalysisProgress: () => ({
@@ -49,11 +50,11 @@ jest.mock('./useAnalysisProgress', () => {
 // eslint-disable-next-line import/first
 import { useAnalysisManager } from './useAnalysisManager';
 
-const mockApi = unifiedAnalysisApi as jest.Mocked<typeof unifiedAnalysisApi>;
+const mockApi = unifiedAnalysisApi as Mocked<typeof unifiedAnalysisApi>;
 
 describe('useAnalysisManager', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockApi.getVideoJobs.mockResolvedValue([]);
   });
 
@@ -169,7 +170,7 @@ describe('useAnalysisManager', () => {
     it('handles startAnalysis failure', async () => {
       mockApi.startAnalysis.mockRejectedValue(new Error('Start failed'));
 
-      const onAnalysisError = jest.fn();
+      const onAnalysisError = vi.fn();
       const { result } = renderHook(() =>
         useAnalysisManager({ videoId: 5, onAnalysisError })
       );

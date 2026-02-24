@@ -1,16 +1,17 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+import type { MockedFunction } from 'vitest';
 import { videoApi } from '../services/api';
 import { useVideoUrl } from './useVideoUrl';
 
-jest.mock('../services/api', () => ({
+vi.mock('../services/api', () => ({
   videoApi: {
-    getVideoUrl: jest.fn(),
+    getVideoUrl: vi.fn(),
   },
 }));
 
-const mockedGetVideoUrl = videoApi.getVideoUrl as jest.MockedFunction<
+const mockedGetVideoUrl = videoApi.getVideoUrl as MockedFunction<
   typeof videoApi.getVideoUrl
 >;
 
@@ -34,7 +35,7 @@ function createWrapper() {
 
 describe('useVideoUrl', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('when videoUrl contains /stream and videoId is provided', () => {

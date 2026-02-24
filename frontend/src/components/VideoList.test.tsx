@@ -8,7 +8,7 @@ import VideoList from './VideoList';
 // --- Mocks ---
 
 // Mock Icons
-jest.mock('./Icons', () => ({
+vi.mock('./Icons', () => ({
   CloseIcon: () => <span data-testid="close-icon">Close</span>,
   DeleteIcon: () => <span data-testid="delete-icon">Delete</span>,
   UploadIcon: () => <span data-testid="upload-icon">Upload</span>,
@@ -16,66 +16,74 @@ jest.mock('./Icons', () => ({
 }));
 
 // Mock child components
-jest.mock('./VideoUpload', () => {
-  return function MockVideoUpload() {
-    return <div data-testid="video-upload">Video Upload Form</div>;
+vi.mock('./VideoUpload', () => {
+  return {
+    default: function MockVideoUpload() {
+      return <div data-testid="video-upload">Video Upload Form</div>;
+    },
   };
 });
 
-jest.mock('./VideoEditModal', () => {
-  return function MockVideoEditModal({
-    onClose,
-  }: {
-    video: VideoMetadata;
-    onClose: () => void;
-  }) {
-    return (
-      <div data-testid="video-edit-modal">
-        <button onClick={onClose}>Close Edit</button>
-      </div>
-    );
+vi.mock('./VideoEditModal', () => {
+  return {
+    default: function MockVideoEditModal({
+      onClose,
+    }: {
+      video: VideoMetadata;
+      onClose: () => void;
+    }) {
+      return (
+        <div data-testid="video-edit-modal">
+          <button onClick={onClose}>Close Edit</button>
+        </div>
+      );
+    },
   };
 });
 
-jest.mock('./VideoFilters', () => {
-  return function MockVideoFilters({
-    onChange,
-  }: {
-    filters: Record<string, unknown>;
-    onChange: (f: Record<string, unknown>) => void;
-  }) {
-    return (
-      <div data-testid="video-filters">
-        <button onClick={() => onChange({ camera_angle: 'behind' })}>
-          Filter Behind
-        </button>
-        <button onClick={() => onChange({})}>Clear filters</button>
-      </div>
-    );
+vi.mock('./VideoFilters', () => {
+  return {
+    default: function MockVideoFilters({
+      onChange,
+    }: {
+      filters: Record<string, unknown>;
+      onChange: (f: Record<string, unknown>) => void;
+    }) {
+      return (
+        <div data-testid="video-filters">
+          <button onClick={() => onChange({ camera_angle: 'behind' })}>
+            Filter Behind
+          </button>
+          <button onClick={() => onChange({})}>Clear filters</button>
+        </div>
+      );
+    },
   };
 });
 
-jest.mock('./VideoFilters.css', () => ({}));
+vi.mock('./VideoFilters.css', () => ({}));
 
-jest.mock('./LoadingIndicator', () => {
-  return function MockLoadingIndicator({ label }: { label?: string }) {
-    return <div data-testid="loading-indicator">{label ?? 'Loading...'}</div>;
+vi.mock('./LoadingIndicator', () => {
+  return {
+    default: function MockLoadingIndicator({ label }: { label?: string }) {
+      return <div data-testid="loading-indicator">{label ?? 'Loading...'}</div>;
+    },
   };
 });
 
 // Mock CSS import
-jest.mock('./VideoList.css', () => ({}));
+vi.mock('./VideoList.css', () => ({}));
 
 // Hook mocks — default return values, overridden per test as needed
-const mockMutateAsync = jest.fn();
-const mockRefetch = jest.fn();
+const mockMutateAsync = vi.fn();
+const mockRefetch = vi.fn();
 
-const mockUseVideos = jest.fn();
-const mockUseVideoAnalysisStatuses = jest.fn();
-const mockUseDeleteVideo = jest.fn();
-const mockUseUpdateVideoMetadata = jest.fn();
+const mockUseVideos = vi.fn();
+const mockUseVideoAnalysisStatuses = vi.fn();
+const mockUseDeleteVideo = vi.fn();
+const mockUseUpdateVideoMetadata = vi.fn();
 
-jest.mock('../hooks/useVideos', () => ({
+vi.mock('../hooks/useVideos', () => ({
   useVideos: (...args: unknown[]) => mockUseVideos(...args),
   useVideoAnalysisStatuses: (...args: unknown[]) =>
     mockUseVideoAnalysisStatuses(...args),
@@ -84,9 +92,9 @@ jest.mock('../hooks/useVideos', () => ({
     mockUseUpdateVideoMetadata(...args),
 }));
 
-const mockUsePlayerProfile = jest.fn();
+const mockUsePlayerProfile = vi.fn();
 
-jest.mock('../hooks/usePlayerProfile', () => ({
+vi.mock('../hooks/usePlayerProfile', () => ({
   usePlayerProfile: (...args: unknown[]) => mockUsePlayerProfile(...args),
 }));
 
@@ -157,7 +165,7 @@ function setDefaultMocks({
 
 describe('VideoList', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     setDefaultMocks();
   });
 
@@ -303,7 +311,7 @@ describe('VideoList', () => {
 
     it('calls onVideoDeleted callback after successful deletion', async () => {
       const user = userEvent.setup();
-      const onVideoDeleted = jest.fn();
+      const onVideoDeleted = vi.fn();
       mockMutateAsync.mockResolvedValue(undefined);
 
       renderWithProviders(<VideoList onVideoDeleted={onVideoDeleted} />);
@@ -327,7 +335,7 @@ describe('VideoList', () => {
 
     it('does not propagate click to card when delete is clicked', async () => {
       const user = userEvent.setup();
-      const onViewAnalysis = jest.fn();
+      const onViewAnalysis = vi.fn();
       mockMutateAsync.mockResolvedValue(undefined);
 
       renderWithProviders(<VideoList onViewAnalysis={onViewAnalysis} />);
@@ -343,15 +351,12 @@ describe('VideoList', () => {
   describe('Video selection (view analysis)', () => {
     it('calls onViewAnalysis with the video when card is clicked', async () => {
       const user = userEvent.setup();
-      const onViewAnalysis = jest.fn();
+      const onViewAnalysis = vi.fn();
 
       renderWithProviders(<VideoList onViewAnalysis={onViewAnalysis} />);
-
-      /* eslint-disable testing-library/no-node-access */
       const firstCard = screen
         .getByText('serve_practice_1.mp4')
         .closest('.video-card') as HTMLElement;
-      /* eslint-enable testing-library/no-node-access */
       await user.click(firstCard);
 
       expect(onViewAnalysis).toHaveBeenCalledTimes(1);
@@ -362,12 +367,9 @@ describe('VideoList', () => {
       const user = userEvent.setup();
 
       renderWithProviders(<VideoList />);
-
-      /* eslint-disable testing-library/no-node-access */
       const firstCard = screen
         .getByText('serve_practice_1.mp4')
         .closest('.video-card') as HTMLElement;
-      /* eslint-enable testing-library/no-node-access */
 
       // Should not throw
       await user.click(firstCard);
@@ -453,7 +455,7 @@ describe('VideoList', () => {
 
     it('does not propagate click to card when edit is clicked', async () => {
       const user = userEvent.setup();
-      const onViewAnalysis = jest.fn();
+      const onViewAnalysis = vi.fn();
 
       renderWithProviders(<VideoList onViewAnalysis={onViewAnalysis} />);
 

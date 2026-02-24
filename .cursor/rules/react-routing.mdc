@@ -124,7 +124,7 @@ interface ProtectedRouteProps {
 - If `requireAdmin` and user is not admin → render access denied with link home
 - If authenticated → render children
 
-**Local profile bypass:** When `REACT_APP_PROFILE=local`, skip auth checks entirely (same as current behavior).
+**Local profile bypass:** When `VITE_PROFILE=local`, skip auth checks entirely (same as current behavior).
 
 ## Navigation Patterns
 

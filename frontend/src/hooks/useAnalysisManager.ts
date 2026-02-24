@@ -178,16 +178,16 @@ export const useAnalysisManager = ({
         // Start polling for progress
         startPolling(response.job_id);
       } catch (err: unknown) {
-        const axiosError = err as {
+        const apiError = err as {
           code?: string;
         };
         let errorMessage: string;
 
-        if (axiosError?.code === 'ECONNABORTED') {
+        if (apiError?.code === 'ECONNABORTED') {
           errorMessage =
             'Request timed out. The server may be busy or Redis may be unavailable.';
         } else {
-          // Error detail is already normalized to string by axios interceptor
+          // Error detail is already normalized to string by API client
           errorMessage = getApiErrorMessage(err, 'Failed to start analysis');
         }
 

@@ -4,7 +4,6 @@ import LoadingIndicator from './LoadingIndicator';
 
 // The spinner ring uses aria-hidden="true", so it cannot be found via accessible
 // queries. querySelector is the only way to reach it in tests.
-/* eslint-disable testing-library/no-node-access */
 
 describe('LoadingIndicator', () => {
   describe('Rendering', () => {

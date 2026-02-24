@@ -40,8 +40,8 @@ export const unifiedAnalysisApi = {
       const response = await api.get<VideoJob>(`/videos/jobs/${jobId}`);
       return response.data;
     } catch (error: unknown) {
-      const axiosError = error as { response?: { status?: number } };
-      if (axiosError?.response?.status === 404) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError?.response?.status === 404) {
         return null;
       }
       throw error;

@@ -30,7 +30,7 @@ export function useUploadModal() {
 }
 
 export function AppLayout() {
-  const profile = process.env.REACT_APP_PROFILE || 'local';
+  const profile = import.meta.env.VITE_PROFILE || 'local';
   const { user, loading, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const queryClient = useQueryClient();

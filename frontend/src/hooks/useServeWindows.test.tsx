@@ -12,9 +12,9 @@ import { useServeWindows } from './useServeWindows';
 // ---------------------------------------------------------------------------
 // Mock the entire API module
 // ---------------------------------------------------------------------------
-jest.mock('../services/serveWindowApi');
+vi.mock('../services/serveWindowApi');
 
-const mockedApi = jest.mocked(serveWindowApi);
+const mockedApi = vi.mocked(serveWindowApi);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,7 +65,7 @@ function makeServeWindow(overrides: Partial<ServeWindow> = {}): ServeWindow {
 
 describe('useServeWindows', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   // -----------------------------------------------------------------------
@@ -197,7 +197,7 @@ describe('useServeWindows', () => {
   it('calls onServeWindowsLoaded when data arrives', async () => {
     const windows = [makeServeWindow()];
     mockedApi.list.mockResolvedValue(windows);
-    const onLoaded = jest.fn();
+    const onLoaded = vi.fn();
 
     const queryClient = createQueryClient();
     renderHook(() => useServeWindows({ onServeWindowsLoaded: onLoaded }), {
@@ -209,7 +209,7 @@ describe('useServeWindows', () => {
 
   it('calls onError when the query fails', async () => {
     mockedApi.list.mockRejectedValue(new Error('boom'));
-    const onError = jest.fn();
+    const onError = vi.fn();
 
     const queryClient = createQueryClient();
     renderHook(() => useServeWindows({ onError }), {
@@ -230,7 +230,7 @@ describe('useServeWindows', () => {
     mockedApi.create.mockResolvedValue(created);
 
     const queryClient = createQueryClient();
-    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     const { result } = renderHook(() => useServeWindows(), {
       wrapper: createWrapper(queryClient),
@@ -289,7 +289,7 @@ describe('useServeWindows', () => {
     mockedApi.update.mockResolvedValue(updated);
 
     const queryClient = createQueryClient();
-    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     const { result } = renderHook(() => useServeWindows(), {
       wrapper: createWrapper(queryClient),
@@ -339,7 +339,7 @@ describe('useServeWindows', () => {
     mockedApi.delete.mockResolvedValue(undefined);
 
     const queryClient = createQueryClient();
-    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     const { result } = renderHook(() => useServeWindows(), {
       wrapper: createWrapper(queryClient),
@@ -381,7 +381,7 @@ describe('useServeWindows', () => {
     mockedApi.list.mockResolvedValue([]);
 
     const queryClient = createQueryClient();
-    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     const { result } = renderHook(() => useServeWindows(), {
       wrapper: createWrapper(queryClient),
