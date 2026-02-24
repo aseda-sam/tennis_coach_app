@@ -1,7 +1,7 @@
 /* Analysis Dashboard — Focus-mode serve viewer */
 
 .analysis-dashboard {
-  max-width: var(--layout-analysis-max-width);
+  max-width: var(--layout-content-max-width);
   margin: 0 auto;
   padding: var(--spacing-sm) var(--layout-page-gutter);
   min-height: 100vh;

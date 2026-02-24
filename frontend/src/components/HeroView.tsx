@@ -170,7 +170,6 @@ const HeroView: React.FC<HeroViewProps> = ({
               videoId={videoId}
               currentTime={currentTime}
               isPlaying={isPlaying}
-              phaseColor="#00ff88"
               phaseLabel={phaseLabel}
               annotations={annotations}
             />

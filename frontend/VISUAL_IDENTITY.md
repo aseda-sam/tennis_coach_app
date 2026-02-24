@@ -88,10 +88,13 @@ The hex values are in `design-tokens.css`. This section explains the *intent* �
 **Reserved.** A high-visibility accent for ball-tracking highlights. Not used in standard UI chrome.
 
 ### Annotation Palette
-Three colors for canvas-rendered measurement overlays:
+Colors for canvas-rendered measurement overlays and the stick-figure skeleton:
 - `--color-annotation-primary` (#00D4FF) — cyan. Lines, brackets, labels, contact crosshair.
 - `--color-annotation-accent` (#FF1493) — magenta. Ball trail, head dot.
-- `--color-annotation-skeleton` (#00FF88) — green. Skeleton bones, phase pill.
+- `--color-annotation-skeleton` (#4AD090) — desaturated analytical green. Skeleton bones, joints, phase pill fallback.
+- `--color-ground-reference` (#6B7A8D) — neutral cool blue-grey. Ground plane line — environmental reference, not skeleton.
+
+The skeleton green is desaturated from the original 100% neon (#00ff88) to ~60% — shifting from "neon terminal" to "analytical tool." Joints are small and color-matched (not bright white). When a phase color is active, all bones use the phase color uniformly.
 
 ### Ink Heavy (`--color-ink-heavy: #0a0f1a`)
 **One job: display text with authority.** Large metric numbers. Hero headings where the text needs visual mass. Use instead of `--color-text` when a value needs to dominate the view. Not for body text — too heavy.

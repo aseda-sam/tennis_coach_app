@@ -44,7 +44,8 @@ export const JOINT_POINTS = [
 ] as const;
 
 export const OVERLAY_SKELETON_COLOR = '#00FF00';
-export const STICK_FIGURE_SKELETON_COLOR = '#00ff88';
+export const SKELETON_COLOR = '#4AD090'; // Desaturated analytical green
+export const GROUND_PLANE_COLOR = '#6B7A8D'; // Neutral cool blue-grey
 export const BALL_COLOR = '#FF1493';
 export const BALL_TRAIL_LENGTH = 30; // ~1 second at 30fps
 export const ANNOTATION_COLOR = '#00D4FF';
@@ -80,13 +81,13 @@ export const MAJOR_JOINTS = new Set([
   'right_hip',
 ]);
 
-export const JOINT_RADIUS_MAJOR = 4;
-export const JOINT_RADIUS_MINOR = 2.5;
+export const JOINT_RADIUS_MAJOR = 3;
+export const JOINT_RADIUS_MINOR = 1.8;
 export const HEAD_OFFSET_RATIO = 0.35;
 export const HEAD_RADIUS = 6;
-export const GROUND_PLANE_GLOW_BLUR = 10;
+export const GROUND_PLANE_GLOW_BLUR = 6;
 export const GROUND_PLANE_Y_OFFSET = 12;
-export const SKELETON_GLOW_BLUR = 4;
+export const SKELETON_GLOW_BLUR = 3;
 export const STICK_BALL_HEAD_RADIUS = 7;
 export const STICK_BALL_HEAD_GLOW_BLUR = 6;
 export const ANNOTATION_Y_MARGIN = 18;
@@ -419,7 +420,6 @@ export function drawStickSkeleton(
     const end = normalizedPose[endKey];
 
     if (start && end) {
-      ctx.strokeStyle = color;
       ctx.lineWidth = BONE_THICKNESS[`${startKey}:${endKey}`] ?? 3;
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
@@ -427,6 +427,18 @@ export function drawStickSkeleton(
       ctx.stroke();
     }
   }
+}
+
+/**
+ * Convert a hex color to an rgba string.
+ * Accepts "#RRGGBB" or "#RGB" format.
+ */
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.length === 3 ? h[0] + h[0] : h.substring(0, 2), 16);
+  const g = parseInt(h.length === 3 ? h[1] + h[1] : h.substring(2, 4), 16);
+  const b = parseInt(h.length === 3 ? h[2] + h[2] : h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 /** Draw differentiated joints: stroked rings for major pivots, dots for minor. */
@@ -442,17 +454,17 @@ export function drawJoints(
     if (!joint) continue;
 
     if (MAJOR_JOINTS.has(jointName)) {
-      // Major joints: stroked ring + faint fill
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+      // Major joints: color-matched ring at 50% opacity + faint white fill
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.beginPath();
       ctx.arc(joint.x, joint.y, JOINT_RADIUS_MAJOR, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = color;
+      ctx.strokeStyle = hexToRgba(color, 0.5);
       ctx.lineWidth = 1.5;
       ctx.stroke();
     } else {
-      // Minor joints: solid white dot
-      ctx.fillStyle = '#ffffff';
+      // Minor joints: color-matched dot at 40% opacity
+      ctx.fillStyle = hexToRgba(color, 0.4);
       ctx.beginPath();
       ctx.arc(joint.x, joint.y, JOINT_RADIUS_MINOR, 0, Math.PI * 2);
       ctx.fill();
@@ -510,8 +522,7 @@ export function drawHead(
 export function drawGroundPlane(
   ctx: CanvasRenderingContext2D,
   normalizedPose: Record<string, { x: number; y: number }>,
-  canvasWidth: number,
-  color: string
+  canvasWidth: number
 ): void {
   const la = normalizedPose['left_ankle'];
   const ra = normalizedPose['right_ankle'];
@@ -525,6 +536,8 @@ export function drawGroundPlane(
   const lineWidth = canvasWidth * 0.6;
   const startX = figureCenterX - lineWidth / 2;
   const endX = figureCenterX + lineWidth / 2;
+
+  const color = GROUND_PLANE_COLOR;
 
   // Gradient: transparent → color → transparent
   const grad = ctx.createLinearGradient(startX, groundY, endX, groundY);
@@ -627,7 +640,7 @@ export function drawStickHud(params: StickHudParams): void {
 
   // Phase label pill — top left
   if (phaseLabel) {
-    const baseColor = phaseColor || STICK_FIGURE_SKELETON_COLOR;
+    const baseColor = phaseColor || SKELETON_COLOR;
     ctx.font = 'bold 13px sans-serif';
     const textWidth = ctx.measureText(phaseLabel).width;
     const pillPadX = 10;

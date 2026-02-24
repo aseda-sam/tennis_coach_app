@@ -85,7 +85,8 @@
   /* Annotation System */
   --color-annotation-primary: #00d4ff;
   --color-annotation-accent: #ff1493;
-  --color-annotation-skeleton: #00ff88;
+  --color-annotation-skeleton: #4ad090;
+  --color-ground-reference: #6b7a8d;
 
   /* Court-Line Pattern */
   --court-line-color: rgba(160, 120, 80, 0.07);

@@ -3,7 +3,7 @@ import { MetricValue } from '../types/biomechanics';
 import { OverlayData } from '../types/video';
 import {
   BALL_TRAIL_LENGTH,
-  STICK_FIGURE_SKELETON_COLOR,
+  SKELETON_COLOR,
   computeAnnotationOpacity,
   drawGrid,
   drawGroundPlane,
@@ -93,11 +93,11 @@ export function useSkeletonAnimation({
     if (!normalizedPose) return;
 
     // Ground plane → skeleton → joints → head
-    const baseColor = phaseColor || STICK_FIGURE_SKELETON_COLOR;
-    drawGroundPlane(ctx, normalizedPose, containerWidth, baseColor);
-    drawStickSkeleton(ctx, normalizedPose, baseColor);
-    drawJoints(ctx, normalizedPose, baseColor);
-    drawHead(ctx, normalizedPose, baseColor);
+    const boneColor = phaseColor || SKELETON_COLOR;
+    drawGroundPlane(ctx, normalizedPose, containerWidth);
+    drawStickSkeleton(ctx, normalizedPose, boneColor);
+    drawJoints(ctx, normalizedPose, boneColor);
+    drawHead(ctx, normalizedPose, boneColor);
 
     // Clear ball trail on seek (time jump > 0.1s)
     const timeDelta = Math.abs(currentTime - lastRenderedTimeRef.current);
