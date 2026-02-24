@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import {
@@ -29,6 +29,10 @@ const VideoList: React.FC<VideoListProps> = ({
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<VideoMetadata | null>(null);
   const [filters, setFilters] = useState<VideoFiltersType>({});
+  const [sortMode, setSortMode] = useState<'recorded_at' | 'uploaded_at'>(
+    'recorded_at'
+  );
+  const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
 
   // Use React Query hooks for data fetching
   const {
@@ -51,6 +55,31 @@ const VideoList: React.FC<VideoListProps> = ({
   const hasActiveFilters = Object.values(filters).some(
     (v) => v !== undefined && v !== null && v !== ''
   );
+  const sortedVideos = useMemo(() => {
+    const getTimestampMs = (video: VideoMetadata) => {
+      const timestamp =
+        sortMode === 'recorded_at'
+          ? (video.recorded_at ?? video.created_at)
+          : video.created_at;
+      const ms = new Date(timestamp).getTime();
+      return Number.isNaN(ms) ? 0 : ms;
+    };
+
+    return [...videos].sort((a, b) =>
+      sortDirection === 'desc'
+        ? getTimestampMs(b) - getTimestampMs(a)
+        : getTimestampMs(a) - getTimestampMs(b)
+    );
+  }, [videos, sortMode, sortDirection]);
+
+  const handleSortPillClick = (nextMode: 'recorded_at' | 'uploaded_at') => {
+    if (nextMode === sortMode) {
+      setSortDirection((current) => (current === 'desc' ? 'asc' : 'desc'));
+      return;
+    }
+    setSortMode(nextMode);
+    setSortDirection('desc');
+  };
 
   const handleDelete = async (videoId: number) => {
     try {
@@ -70,20 +99,20 @@ const VideoList: React.FC<VideoListProps> = ({
     }
   };
 
-  const getPlayerLabel = useCallback(
-    (video: VideoMetadata) => {
-      if (!playerProfile?.name) {
-        return 'Your Profile';
+  const getPlayerTag = useCallback(
+    (video: VideoMetadata): 'you' | 'someone_else' => {
+      if (!playerProfile?.id) {
+        return 'you';
       }
       if (
         !video.primary_player_id ||
         video.primary_player_id === playerProfile.id
       ) {
-        return playerProfile.name;
+        return 'you';
       }
-      return 'Someone Else';
+      return 'someone_else';
     },
-    [playerProfile?.id, playerProfile?.name]
+    [playerProfile?.id]
   );
 
   const handleUploadSuccess = useCallback(
@@ -168,9 +197,15 @@ const VideoList: React.FC<VideoListProps> = ({
         </div>
       </div>
 
-      <VideoFiltersComponent filters={filters} onChange={setFilters} />
+      <VideoFiltersComponent
+        filters={filters}
+        onChange={setFilters}
+        sortMode={sortMode}
+        sortDirection={sortDirection}
+        onSortPillClick={handleSortPillClick}
+      />
 
-      {videos.length === 0 ? (
+      {sortedVideos.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">
             <Video
@@ -184,10 +219,9 @@ const VideoList: React.FC<VideoListProps> = ({
         </div>
       ) : (
         <div className="video-grid">
-          {videos.map((video: VideoMetadata) => {
-            const isOwnVideo =
-              !video.primary_player_id ||
-              video.primary_player_id === playerProfile?.id;
+          {sortedVideos.map((video: VideoMetadata) => {
+            const playerTag = getPlayerTag(video);
+            const playerLabel = playerTag === 'you' ? 'Me' : 'Someone Else';
             return (
               <div
                 key={video.id}
@@ -203,7 +237,8 @@ const VideoList: React.FC<VideoListProps> = ({
 
                   <div className="video-card-meta-row">
                     <span
-                      className={`user-info${isOwnVideo ? ' user-info--own' : ''}`}
+                      className={`player-tag-badge player-tag-badge--${playerTag}`}
+                      aria-label={`Primary player: ${playerLabel}`}
                     >
                       <svg
                         width="14"
@@ -217,7 +252,7 @@ const VideoList: React.FC<VideoListProps> = ({
                           fill="currentColor"
                         />
                       </svg>
-                      {getPlayerLabel(video)}
+                      {playerLabel}
                     </span>
                     <span className="meta-separator">•</span>
                     <span className="date-info">

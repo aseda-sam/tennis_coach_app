@@ -6,6 +6,9 @@ import './VideoFilters.css';
 interface VideoFiltersProps {
   filters: VideoFiltersType;
   onChange: (filters: VideoFiltersType) => void;
+  sortMode: 'recorded_at' | 'uploaded_at';
+  sortDirection: 'desc' | 'asc';
+  onSortPillClick: (sortMode: 'recorded_at' | 'uploaded_at') => void;
 }
 
 interface FilterOption {
@@ -18,7 +21,13 @@ const CAMERA_ANGLES: FilterOption[] = [
   { value: 'profile', label: 'Profile' },
 ];
 
-const VideoFilters: React.FC<VideoFiltersProps> = ({ filters, onChange }) => {
+const VideoFilters: React.FC<VideoFiltersProps> = ({
+  filters,
+  onChange,
+  sortMode,
+  sortDirection,
+  onSortPillClick,
+}) => {
   const { data: playerProfile } = usePlayerProfile();
 
   const hasActiveFilters = Object.values(filters).some(
@@ -116,15 +125,38 @@ const VideoFilters: React.FC<VideoFiltersProps> = ({ filters, onChange }) => {
           </div>
         )}
       </div>
-      {hasActiveFilters && (
-        <button
-          type="button"
-          className="clear-filters-btn"
-          onClick={clearFilters}
-        >
-          Clear filters
-        </button>
-      )}
+      <div className="filter-actions">
+        <div className="sort-group">
+          <span className="filter-group-label">
+            Sort ({sortDirection === 'desc' ? 'Newest' : 'Oldest'})
+          </span>
+          <div className="filter-pills">
+            <button
+              type="button"
+              className={`filter-pill${sortMode === 'recorded_at' ? ' filter-pill--active' : ''}`}
+              onClick={() => onSortPillClick('recorded_at')}
+            >
+              Recorded Time
+            </button>
+            <button
+              type="button"
+              className={`filter-pill${sortMode === 'uploaded_at' ? ' filter-pill--active' : ''}`}
+              onClick={() => onSortPillClick('uploaded_at')}
+            >
+              Uploaded Time
+            </button>
+          </div>
+        </div>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            className="clear-filters-btn"
+            onClick={clearFilters}
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
     </div>
   );
 };
