@@ -111,4 +111,4 @@ jobs:
         run: npm run build
 
       - name: Test
-        run: npm test -- --watchAll=false --coverage --passWithNoTests
+        run: npm run test:ci
