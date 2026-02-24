@@ -5,6 +5,7 @@ import { usePlayerProfile } from '../hooks/usePlayerProfile';
 import { useUpdateVideoMetadata } from '../hooks/useVideos';
 import { VideoMetadata } from '../types/video';
 import { X } from 'lucide-react';
+import DateTimePicker from './DateTimePicker';
 
 function toDatetimeLocalValue(iso: string): string {
   return iso.slice(0, 16);
@@ -138,10 +139,9 @@ const VideoEditModal: React.FC<VideoEditModalProps> = ({ video, onClose }) => {
 
             <div className="edit-video-field">
               <label>Recording Date &amp; Time</label>
-              <input
-                type="datetime-local"
+              <DateTimePicker
                 value={editRecordedAt}
-                onChange={(e) => setEditRecordedAt(e.target.value)}
+                onChange={setEditRecordedAt}
                 disabled={updateMetadataMutation.isPending}
               />
               <p className="edit-video-note edit-video-note--compact">
