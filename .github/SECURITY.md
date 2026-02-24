@@ -4,8 +4,10 @@
 Currently, security fixes are applied to the `main` branch.
 
 ## Reporting a Vulnerability
-- Email: security@tennis-coach-app.local (or open a private GitHub security advisory)
-- Alternatively, create an issue with the `[SECURITY]` prefix (avoid sensitive details)
+- Preferred: open a private GitHub security advisory:
+  https://github.com/aseda-sam/tennis_coach_app/security/advisories/new
+- If private advisories are unavailable, open an issue with the `[SECURITY]` prefix
+  and avoid posting sensitive details.
 
 Please include:
 - Affected component (backend/frontend)

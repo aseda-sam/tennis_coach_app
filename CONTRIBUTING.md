@@ -25,7 +25,7 @@ Thank you for considering contributing to Tennis Coach App!
 
 ### Running Tests
 - Backend: `pytest`
-- Frontend: `npm test -- --watchAll=false`
+- Frontend: `npm run test:ci`
 
 ### Testing Checklist
 
