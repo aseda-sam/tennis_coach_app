@@ -6,10 +6,10 @@ description: Triage raw product/app notes into a prioritized backlog (Now / Next
 
 ## Workflow
 
-1. Capture the raw text verbatim in `ideas/inbox.md` with today's date.
+1. Capture the raw text verbatim in `backlog/inbox.md` with today's date.
 2. Split ideas into atomic items (one problem/outcome per item).
 3. Score each item using the rubric below.
-4. Produce `ideas/triaged.md` with these sections only:
+4. Produce `backlog/triaged.md` with these sections only:
    - Now (highest leverage)
    - Next
    - Later

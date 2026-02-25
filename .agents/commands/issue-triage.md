@@ -11,7 +11,7 @@ Trigger phrases:
 
 ## Workflow
 
-1. Capture the raw text verbatim in `ideas/issues.md` under a dated `### Captured` heading.
+1. Capture the raw text verbatim in `backlog/issues.md` under a dated `### Captured` heading.
 2. Split into atomic issues (one bug/behavior per item).
 3. For each issue, fill in the template below as far as possible from context + codebase search.
 4. If the likely cause or fix scope is unclear after a quick codebase search, suggest entering plan mode to confirm the diagnosis with the user before writing a fix direction. Keep plan mode lightweight — just enough to confirm the right file/component and approach, not a full implementation plan.
@@ -48,12 +48,12 @@ Trigger phrases:
 
 - Merge duplicates (the "me" filter issue and the "me" API endpoint issue may be the same root cause — check before splitting).
 - Always search the codebase for the likely cause before writing the fix direction. Cite file paths.
-- If an issue overlaps with a backlog item in `ideas/triaged.md`, reference it rather than duplicating.
+- If an issue overlaps with a backlog item in `backlog/triaged.md`, reference it rather than duplicating.
 - Keep each issue under 8 lines.
 
 ## Output File
 
-Write to `ideas/issues.md`. Append new captures under dated headings; update existing issues in-place when new information surfaces.
+Write to `backlog/issues.md`. Append new captures under dated headings; update existing issues in-place when new information surfaces.
 
 ---
 

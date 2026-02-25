@@ -133,8 +133,8 @@ etc/
 # Writing (root-anchored so it doesn't catch skill folders)
 /writing/
 
-# Local idea/project-management scratchpad
-/ideas/
+# Local backlog scratchpad (ideas, issues, triage)
+/backlog/
 
 # Backend temporary/debug outputs
 backend/tmp/
