@@ -159,7 +159,7 @@ class TestSplitServeWindow:
 
     @patch("app.api.routes.serve_windows.video_service")
     @patch("app.api.routes.serve_windows.serve_window_service")
-    def test_split_invalid_split_at_returns_422(
+    def test_split_invalid_split_at_returns_400(
         self, mock_svc, mock_vid_svc, serve_window_client
     ):
         original = _make_mock_window(id=1, start=0.0, end=5.0)
@@ -173,7 +173,7 @@ class TestSplitServeWindow:
             "/v0/serve-windows/1/split", json={"split_at": 10.0}
         )
 
-        assert response.status_code == 422
+        assert response.status_code == 400
 
     @patch("app.api.routes.serve_windows.video_service")
     @patch("app.api.routes.serve_windows.serve_window_service")
@@ -204,7 +204,7 @@ class TestSplitServeWindow:
 
     @patch("app.api.routes.serve_windows.video_service")
     @patch("app.api.routes.serve_windows.serve_window_service")
-    def test_split_min_duration_first_half_returns_422(
+    def test_split_min_duration_first_half_returns_400(
         self, mock_svc, mock_vid_svc, serve_window_client
     ):
         original = _make_mock_window(id=1, start=0.0, end=5.0)
@@ -218,7 +218,7 @@ class TestSplitServeWindow:
             "/v0/serve-windows/1/split", json={"split_at": 0.1}
         )
 
-        assert response.status_code == 422
+        assert response.status_code == 400
 
 
 # ---------------------------------------------------------------------------
@@ -268,7 +268,7 @@ class TestUpdateServeWindowValidation:
 
     @patch("app.api.routes.serve_windows.video_service")
     @patch("app.api.routes.serve_windows.serve_window_service")
-    def test_update_overlap_returns_422(
+    def test_update_overlap_returns_400(
         self, mock_svc, mock_vid_svc, serve_window_client
     ):
         original = _make_mock_window(id=1)
@@ -283,11 +283,11 @@ class TestUpdateServeWindowValidation:
             json={"start_timestamp": 0.0, "end_timestamp": 10.0},
         )
 
-        assert response.status_code == 422
+        assert response.status_code == 400
 
     @patch("app.api.routes.serve_windows.video_service")
     @patch("app.api.routes.serve_windows.serve_window_service")
-    def test_update_too_short_returns_422(
+    def test_update_too_short_returns_400(
         self, mock_svc, mock_vid_svc, serve_window_client
     ):
         original = _make_mock_window(id=1)
@@ -302,4 +302,4 @@ class TestUpdateServeWindowValidation:
             json={"start_timestamp": 0.0, "end_timestamp": 0.1},
         )
 
-        assert response.status_code == 422
+        assert response.status_code == 400
