@@ -16,6 +16,15 @@ export type {
   ServeWindowUpdate,
 } from '../types/serveWindow';
 
+export interface ServeWindowSplitRequest {
+  split_at: number;
+}
+
+export interface ServeWindowSplitResponse {
+  window_a: ServeWindow;
+  window_b: ServeWindow;
+}
+
 export const serveWindowApi = {
   // Create a new serve window
   create: async (serveWindow: ServeWindowCreate): Promise<ServeWindow> => {
@@ -66,5 +75,17 @@ export const serveWindowApi = {
   // Delete a serve window
   delete: async (serveWindowId: number): Promise<void> => {
     await api.delete(`/serve-windows/${serveWindowId}`);
+  },
+
+  // Split a serve window at a given timestamp
+  split: async (
+    serveWindowId: number,
+    request: ServeWindowSplitRequest
+  ): Promise<ServeWindowSplitResponse> => {
+    const response = await api.post<ServeWindowSplitResponse>(
+      `/serve-windows/${serveWindowId}/split`,
+      request
+    );
+    return response.data;
   },
 };

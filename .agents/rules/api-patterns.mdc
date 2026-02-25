@@ -66,10 +66,9 @@ alwaysApply: false
 
 ## AuthN/AuthZ
 
-- **AuthN**: Use `Depends(get_current_user)` for protected endpoints (or `get_optional_user` only when explicitly supporting anonymous access).
-- **AuthZ**: Enforce access with helpers in `app.utils.authorization` (e.g. `require_video_access`, `require_video_not_demo`, `is_admin`).
-  - 401: unauthenticated
-  - 403: authenticated but not allowed
+See `backend-patterns.mdc` for the auth dependency pattern. At the endpoint level:
+- 401: unauthenticated (missing/invalid token)
+- 403: authenticated but not allowed (wrong user, demo resource, etc.)
 
 ## File Uploads
 

@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -238,12 +238,47 @@ def update_serve_window(
 
     validate_serve_window_timestamps(start_ts, end_ts, contact_ts)
 
+    # Minimum duration guard
+    if end_ts - start_ts < 0.5:
+        raise ValueError("Window must be at least 0.5 seconds long")
+
     # Validate serve subtype if being updated
     if updates.serve_subtype is not None:
         validate_serve_subtype(updates.serve_subtype)
 
+    # Check for overlap with sibling windows (if timestamps are changing)
+    timestamps_changing = (
+        updates.start_timestamp is not None or updates.end_timestamp is not None
+    )
+    if timestamps_changing:
+        overlapping = (
+            db.query(ServeWindow)
+            .filter(
+                ServeWindow.video_id == serve_window.video_id,
+                ServeWindow.is_active.is_(True),
+                ServeWindow.id != serve_window_id,
+                ServeWindow.start_timestamp < end_ts,
+                ServeWindow.end_timestamp > start_ts,
+            )
+            .first()
+        )
+        if overlapping:
+            raise ValueError(
+                "Updated window would overlap with an existing serve window"
+            )
+
     # Update fields
     update_dict = updates.model_dump(exclude_unset=True)
+
+    # Preserve original timestamps on first timing edit and set status
+    if timestamps_changing:
+        if serve_window.original_start_timestamp is None:
+            serve_window.original_start_timestamp = serve_window.start_timestamp
+        if serve_window.original_end_timestamp is None:
+            serve_window.original_end_timestamp = serve_window.end_timestamp
+        serve_window.status = "edited"
+        serve_window.reviewed_at = datetime.utcnow()
+
     for key, value in update_dict.items():
         setattr(serve_window, key, value)
 
@@ -313,7 +348,7 @@ def list_user_serve_windows(
     """
     query = db.query(ServeWindow).filter(
         ServeWindow.user_id == user_id,
-        ServeWindow.status.in_(VISIBLE_STATUSES),
+        ServeWindow.is_active.is_(True),
     )
 
     # Apply filters
@@ -375,10 +410,108 @@ def get_serve_windows_for_video(
         db.query(ServeWindow)
         .filter(
             ServeWindow.video_id == video_id,
-            ServeWindow.status.in_(VISIBLE_STATUSES),
+            ServeWindow.is_active.is_(True),
         )
         .all()
     )
+
+
+def split_serve_window(
+    db: Session,
+    serve_window_id: int,
+    split_at: float,
+    user_id: str,
+) -> Tuple[ServeWindow, ServeWindow]:
+    """Split a serve window into two at split_at timestamp.
+
+    Args:
+        db: Database session
+        serve_window_id: Serve window ID to split
+        split_at: Timestamp to split at (must be strictly inside window bounds)
+        user_id: User ID for authorization
+
+    Returns:
+        Tuple of (child_a, child_b) where child_a covers [start, split_at]
+        and child_b covers [split_at, end]
+
+    Raises:
+        ValueError: If split_at is not strictly inside window or either half < 0.5s
+    """
+    original = get_serve_window_by_id(db, serve_window_id, user_id)
+
+    if not (original.start_timestamp < split_at < original.end_timestamp):
+        raise ValueError(
+            "split_at must be strictly inside the window (start_timestamp, end_timestamp)"
+        )
+
+    if split_at - original.start_timestamp < 0.5:
+        raise ValueError("First half must be at least 0.5 seconds long")
+    if original.end_timestamp - split_at < 0.5:
+        raise ValueError("Second half must be at least 0.5 seconds long")
+
+    # Assign contact_timestamp to whichever child contains it
+    contact_a: Optional[float] = None
+    contact_b: Optional[float] = None
+    contact_source_a: Optional[str] = None
+    contact_source_b: Optional[str] = None
+    if original.contact_timestamp is not None:
+        if original.contact_timestamp <= split_at:
+            contact_a = original.contact_timestamp
+            contact_source_a = original.contact_source
+        else:
+            contact_b = original.contact_timestamp
+            contact_source_b = original.contact_source
+
+    # Deactivate original in-place
+    original.is_active = False
+    original.status = "edited"
+    original.reviewed_at = datetime.utcnow()
+
+    shared_meta = {
+        "video_id": original.video_id,
+        "user_id": original.user_id,
+        "player_id": original.player_id,
+        "parent_window_id": original.id,
+        "status": "accepted",
+        "source": "manual",
+        "is_active": True,
+        "court_side": original.court_side,
+        "serve_number": original.serve_number,
+        "serve_subtype": original.serve_subtype,
+        "in_out": original.in_out,
+        "reviewed_at": datetime.utcnow(),
+    }
+
+    child_a = ServeWindow(
+        start_timestamp=original.start_timestamp,
+        end_timestamp=split_at,
+        contact_timestamp=contact_a,
+        contact_source=contact_source_a,
+        **shared_meta,
+    )
+    child_b = ServeWindow(
+        start_timestamp=split_at,
+        end_timestamp=original.end_timestamp,
+        contact_timestamp=contact_b,
+        contact_source=contact_source_b,
+        **shared_meta,
+    )
+
+    db.add(child_a)
+    db.add(child_b)
+    db.commit()
+    db.refresh(child_a)
+    db.refresh(child_b)
+
+    logger.info(
+        "Split serve window %s into %s and %s at %.2f",
+        serve_window_id,
+        child_a.id,
+        child_b.id,
+        split_at,
+    )
+
+    return child_a, child_b
 
 
 def get_ball_contact_timestamps(

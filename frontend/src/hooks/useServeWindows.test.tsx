@@ -55,6 +55,8 @@ function makeServeWindow(overrides: Partial<ServeWindow> = {}): ServeWindow {
     serve_subtype: 'flat',
     in_out: 'in',
     created_at: '2025-01-01T00:00:00Z',
+    is_active: true,
+    parent_window_id: null,
     ...overrides,
   };
 }

@@ -1,8 +1,8 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-export default defineConfig({
-  base: '/tennis_coach_app/',
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/tennis_coach_app/' : '/',
   plugins: [react()],
   server: {
     host: '0.0.0.0',
@@ -33,4 +33,4 @@ export default defineConfig({
       ],
     },
   },
-});
+}));
