@@ -836,6 +836,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           serveWindow={currentServe}
           allWindows={sortedServeWindows}
           videoDuration={videoDuration}
+          videoUrl={resolvedVideoUrl}
           onSaved={() => {
             queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
             setIsEditModalOpen(false);
