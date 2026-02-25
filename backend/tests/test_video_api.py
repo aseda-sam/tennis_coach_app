@@ -356,7 +356,11 @@ class TestVideoAPI:
         data = response.json()
         assert data["id"] == demo_video.id
         assert data["is_demo"] is True
-        assert data["is_active_demo"] is True
+
+        # Public endpoint should NOT expose sensitive fields
+        assert "is_active_demo" not in data
+        assert "file_path" not in data
+        assert "status" not in data
 
     def test_get_demo_video_url_public_access(
         self,
