@@ -516,6 +516,28 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             viewMode={viewMode}
             onViewModeChange={setViewMode}
           />
+          {/* Demo: Upload invite — sits right of thumbnail strip */}
+          {isDemo && onExitToUpload && (
+            <div className="analysis-dashboard__upload-invite">
+              <p className="analysis-dashboard__upload-invite-label">
+                Your Turn
+              </p>
+              <h3 className="analysis-dashboard__upload-invite-title">
+                Analyze Your Own Serve
+              </h3>
+              <p className="analysis-dashboard__upload-invite-body">
+                Film your serve. Get this breakdown.
+              </p>
+              <button
+                className="analysis-dashboard__upload-invite-button"
+                onClick={onExitToUpload}
+                type="button"
+              >
+                <Upload size={14} />
+                Upload Your Video
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -604,32 +626,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               </div>
 
               <div className="analysis-dashboard__side-col">
-                {/* Demo: Upload invite card */}
-                {isDemo && onExitToUpload && (
-                  <div className="analysis-dashboard__upload-invite">
-                    <div className="analysis-dashboard__upload-invite-icon">
-                      <Upload size={16} />
-                    </div>
-                    <p className="analysis-dashboard__upload-invite-label">
-                      Your Turn
-                    </p>
-                    <h3 className="analysis-dashboard__upload-invite-title">
-                      Analyze Your Own Serve
-                    </h3>
-                    <p className="analysis-dashboard__upload-invite-body">
-                      Film your serve and get this same breakdown in minutes.
-                    </p>
-                    <button
-                      className="analysis-dashboard__upload-invite-button"
-                      onClick={onExitToUpload}
-                      type="button"
-                    >
-                      <Upload size={15} />
-                      Upload Your Video
-                    </button>
-                  </div>
-                )}
-
                 {/* Feature Curves */}
                 {biomechanicsReport?.detection_meta && (
                   <CollapsibleSection

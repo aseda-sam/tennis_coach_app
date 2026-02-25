@@ -45,6 +45,12 @@
 .analysis-dashboard__serve-nav > .thumbnail-strip {
   flex: 1;
   min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.analysis-dashboard__serve-nav > .thumbnail-strip::-webkit-scrollbar {
+  display: none;
 }
 
 .analysis-dashboard__serve-nav > .view-toggle {
@@ -404,79 +410,56 @@
   }
 }
 
-/* Demo: Upload Invite Card */
+/* Demo: Upload Invite Card (in serve-nav row) */
 .analysis-dashboard__upload-invite {
-  padding: var(--spacing-xl) var(--spacing-lg);
-  background-color: var(--color-sand);
-  background-image:
-    repeating-linear-gradient(
-      0deg,
-      var(--court-line-color) 0,
-      var(--court-line-color) var(--court-line-width),
-      transparent var(--court-line-width),
-      transparent var(--court-line-spacing)
-    ),
-    repeating-linear-gradient(
-      90deg,
-      var(--court-line-color) 0,
-      var(--court-line-color) var(--court-line-width),
-      transparent var(--court-line-width),
-      transparent var(--court-line-spacing)
-    );
-  border: 1px solid var(--color-sand-dark);
+  flex-shrink: 0;
+  width: 220px;
+  padding: var(--spacing-md);
+  background: #ebe8ff;
+  border: 1px solid #d0c9f8;
   border-radius: var(--radius-xl);
-}
-
-.analysis-dashboard__upload-invite-icon {
-  width: var(--icon-badge-size);
-  height: var(--icon-badge-size);
-  background: var(--icon-badge-bg);
-  border: 1px solid var(--icon-badge-border);
-  border-radius: var(--icon-badge-radius);
-  color: var(--icon-badge-color);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: var(--spacing-md);
+  flex-direction: column;
+  gap: var(--spacing-xs);
 }
 
 .analysis-dashboard__upload-invite-label {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text-muted);
+  color: #7c6fcd;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin: 0 0 var(--spacing-xs) 0;
+  margin: 0;
 }
 
 .analysis-dashboard__upload-invite-title {
-  font-size: var(--font-size-4xl);
+  font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-semibold);
   color: var(--color-ink-heavy);
-  margin: 0 0 var(--spacing-sm) 0;
+  margin: 0;
   line-height: var(--line-height-tight);
   letter-spacing: var(--letter-spacing-tight);
 }
 
 .analysis-dashboard__upload-invite-body {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  margin: 0 0 var(--spacing-xl) 0;
-  line-height: var(--line-height-relaxed);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--spacing-xs) 0;
+  line-height: var(--line-height-normal);
 }
 
 .analysis-dashboard__upload-invite-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
   width: 100%;
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: var(--spacing-xs) var(--spacing-md);
   background: var(--color-primary);
   color: white;
   border: none;
   border-radius: var(--radius-pill);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition:
