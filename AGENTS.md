@@ -154,6 +154,12 @@ A pre-commit hook runs automatically on every `git commit`. If it fails, the com
 - `AGENTS.local.md` is reserved for machine-local or sensitive instructions and is gitignored.
 - If `AGENTS.local.md` exists, read it after this file and treat it as local overrides/additions.
 
+## Command intents
+
+- Canonical command workflows live in `.agents/commands/`.
+- Map natural-language command phrases (for example, "ship it") to the matching file in `.agents/commands/`.
+- The `ship-pr` intent means: commit, push, PR, checks, merge.
+
 ## Detailed rules
 
 **Frontend design:** Before any frontend work, read `frontend/VISUAL_IDENTITY.md` — it defines the aesthetic direction, typography system (DM Sans + DM Mono), color philosophy, layout grammar, and key view descriptions.
