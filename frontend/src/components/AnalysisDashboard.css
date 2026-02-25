@@ -415,10 +415,12 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-lg);
+  width: fit-content;
   padding: var(--spacing-md) var(--spacing-lg);
   margin: var(--spacing-sm) 0;
   background: var(--color-sand);
   border: 1px solid var(--color-sand-dark);
+  border-left: 3px solid var(--color-amber);
   border-radius: var(--radius-lg);
 }
 
