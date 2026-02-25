@@ -262,11 +262,11 @@ describe('VideoList', () => {
       expect(screen.getByText('2 sessions')).toBeInTheDocument();
     });
 
-    it('shows "Me" badge when primary_player_id matches', () => {
+    it('shows "You" badge when primary_player_id matches', () => {
       renderWithProviders(<VideoList />);
 
-      // Both videos resolve to "Me": video 1 matches by id, video 2 has null primary_player_id
-      const labels = screen.getAllByText('Me');
+      // Both videos resolve to "You": video 1 matches by id, video 2 has null primary_player_id
+      const labels = screen.getAllByText('You');
       expect(labels.length).toBeGreaterThan(0);
     });
 
@@ -275,7 +275,7 @@ describe('VideoList', () => {
 
       renderWithProviders(<VideoList />);
 
-      expect(screen.queryByText('Me')).not.toBeInTheDocument();
+      expect(screen.queryByText('You')).not.toBeInTheDocument();
       expect(screen.queryByText('Someone Else')).not.toBeInTheDocument();
     });
 

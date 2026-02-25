@@ -237,7 +237,7 @@ const VideoList: React.FC<VideoListProps> = ({
                     {playerTag && (
                       <span
                         className={`player-tag-badge player-tag-badge--${playerTag}`}
-                        aria-label={`Primary player: ${playerTag === 'you' ? 'Me' : 'Someone Else'}`}
+                        aria-label={`Primary player: ${playerTag === 'you' ? 'You' : 'Someone Else'}`}
                       >
                         <svg
                           width="14"
@@ -251,7 +251,7 @@ const VideoList: React.FC<VideoListProps> = ({
                             fill="currentColor"
                           />
                         </svg>
-                        {playerTag === 'you' ? 'Me' : 'Someone Else'}
+                        {playerTag === 'you' ? 'You' : 'Someone Else'}
                       </span>
                     )}
                     <span className="meta-separator">•</span>
