@@ -1,1 +1,0 @@
-../../commands/shorten-article.md
