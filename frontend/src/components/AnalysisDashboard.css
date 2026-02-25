@@ -414,19 +414,18 @@
 .analysis-dashboard__upload-invite {
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
   width: fit-content;
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm)
+    var(--spacing-md);
   margin: var(--spacing-sm) 0;
   background: var(--color-sand);
-  border: 1px solid var(--color-sand-dark);
-  border-left: 3px solid var(--color-amber);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-pill);
 }
 
 .analysis-dashboard__upload-invite-text {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--spacing-md);
   flex: 1;
   min-width: 0;
@@ -435,10 +434,13 @@
 .analysis-dashboard__upload-invite-label {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-amber);
+  color: var(--color-amber-dark);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   flex-shrink: 0;
+  background: var(--color-amber-soft);
+  padding: 3px var(--spacing-sm);
+  border-radius: var(--radius-pill);
 }
 
 .analysis-dashboard__upload-invite-title {
