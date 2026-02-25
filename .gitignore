@@ -50,30 +50,19 @@ venv.bak/
 *.swo
 *~
 
-# Cursor (track rules/skills/plans; ignore local state)
-.cursor/*
-!.cursor/plans/
-!.cursor/plans/**
-!.cursor/rules/
-!.cursor/rules/**
-!.cursor/skills/
-!.cursor/skills/**
-.cursor/skills/interview-prep/
+# Cursor (local-only)
+.cursor/
+.agents/skills/local-private/
 
 # Antigravity agent (deleted — entry kept as safety net)
 .agent/
 
 # .agents/ — shared cross-tool skills (tracked)
 
-# Claude AI (track skills/commands; ignore local state)
-.claude/*
-!.claude/skills/
-!.claude/skills/**
-!.claude/commands/
-!.claude/commands/**
-.claude/commands/shorten-article.md
-!.claude/settings.json
+# Claude AI (local-only)
+.claude/
 CLAUDE.md
+/AGENTS.local.md
 
 # Ruff
 .ruff_cache/
@@ -141,8 +130,11 @@ test_yolo_fix.py
 # Miscellaneous
 etc/
 
-# Writing (root-anchored so it doesn't catch .agents/skills/writing)
+# Writing (root-anchored so it doesn't catch skill folders)
 /writing/
+
+# Local idea/project-management scratchpad
+/ideas/
 
 # Backend temporary/debug outputs
 backend/tmp/

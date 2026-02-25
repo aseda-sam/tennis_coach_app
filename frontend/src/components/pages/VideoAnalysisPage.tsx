@@ -61,6 +61,7 @@ function VideoAnalysisPage() {
         videoId={video.id}
         videoFilename={video.filename}
         videoUrl={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/v0'}/videos/${video.id}/stream`}
+        videoDuration={video.duration ?? 0}
         onClose={() => navigate('/library')}
       />
     </Suspense>

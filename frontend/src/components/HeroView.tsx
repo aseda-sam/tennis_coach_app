@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import { ViewMode } from './AnalysisViewToggle';
-import { Keyboard, Pause, Play } from 'lucide-react';
+import { Keyboard, Pause, Pencil, Play } from 'lucide-react';
 import StickFigureCanvas from './StickFigureCanvas';
 import './HeroView.css';
 
@@ -33,6 +33,7 @@ interface HeroViewProps {
   onConfirmContact?: () => void;
   onCancelContact?: () => void;
   onOpenShortcuts?: () => void;
+  onEditWindow?: () => void;
 }
 
 const HeroView: React.FC<HeroViewProps> = ({
@@ -63,6 +64,7 @@ const HeroView: React.FC<HeroViewProps> = ({
   onConfirmContact,
   onCancelContact,
   onOpenShortcuts,
+  onEditWindow,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pipVideoRef = useRef<HTMLVideoElement>(null);
@@ -324,6 +326,17 @@ const HeroView: React.FC<HeroViewProps> = ({
             aria-label="Show keyboard shortcuts"
           >
             <Keyboard size={13} />
+          </button>
+        )}
+        {onEditWindow && (
+          <button
+            type="button"
+            className="hero-view__shortcuts-hint"
+            onClick={onEditWindow}
+            title="Edit serve window"
+            aria-label="Edit serve window"
+          >
+            <Pencil size={13} />
           </button>
         )}
       </div>
