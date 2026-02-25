@@ -79,7 +79,6 @@ docs/
   diagrams/           # Mermaid architecture diagrams (system overview, auth, upload,
                       # analysis pipeline, serve feedback pipeline, data flow, DB relationships)
   assets/             # Screenshots and images for README/docs
-writing/              # Substack context, LTA coaching notes, story seeds (gitignored — local only)
 ```
 
 ## Architecture rules
@@ -148,6 +147,12 @@ A pre-commit hook runs automatically on every `git commit`. If it fails, the com
 ## Commits
 
 - Do not add `Co-Authored-By` lines to commit messages.
+- Do not implement tracked file edits on `main`. Create/switch to a feature branch before editing tracked files. Exploratory read-only work on `main` is allowed.
+
+## Local-only instructions
+
+- `AGENTS.local.md` is reserved for machine-local or sensitive instructions and is gitignored.
+- If `AGENTS.local.md` exists, read it after this file and treat it as local overrides/additions.
 
 ## Detailed rules
 

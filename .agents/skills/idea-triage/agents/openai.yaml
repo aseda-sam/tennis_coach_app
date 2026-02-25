@@ -1,0 +1,5 @@
+version: 1
+interface:
+  display_name: Idea Triage
+  description: Sort raw product notes into a focused backlog with practical next actions.
+  prompt_hint: Triage these raw ideas into Now, Next, Later, and Parking Lot.
