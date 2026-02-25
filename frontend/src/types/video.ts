@@ -21,6 +21,19 @@ export interface VideoMetadata {
   primary_player_id?: number | null; // Default player for serves from this video
 }
 
+export interface PublicDemoVideo {
+  id: number;
+  filename: string;
+  title?: string;
+  duration?: number;
+  fps?: number;
+  width?: number;
+  height?: number;
+  camera_angle?: string;
+  session_type?: string;
+  is_demo: boolean;
+}
+
 export interface DemoVideoListItem {
   id: number;
   filename: string;

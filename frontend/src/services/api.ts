@@ -3,6 +3,7 @@ import { AppConfig } from '../types/config';
 import {
   DemoVideoListItem,
   OverlayData,
+  PublicDemoVideo,
   VideoListResponse,
   VideoMetadata,
   VideoUploadResponse,
@@ -237,8 +238,8 @@ export const videoApi = {
     return response.data;
   },
 
-  getDemoVideo: async (): Promise<VideoMetadata> => {
-    const response = await api.get<VideoMetadata>('/videos/demo');
+  getDemoVideo: async (): Promise<PublicDemoVideo> => {
+    const response = await api.get<PublicDemoVideo>('/videos/demo');
     return response.data;
   },
 

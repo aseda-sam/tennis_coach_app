@@ -6,7 +6,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useAdmin } from '../hooks/useAdmin';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import usePersistedState from '../hooks/usePersistedState';
 import { useServeBiomechanicsReport } from '../hooks/useServeBiomechanicsReport';
@@ -82,8 +81,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   onExitToUpload,
 }) => {
   const queryClient = useQueryClient();
-  const { isAdmin } = useAdmin();
-
   const { resolvedUrl: resolvedVideoUrl } = useVideoUrl({ videoId, videoUrl });
 
   const {
@@ -388,11 +385,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     }
   }, [analysisStatus, runDetection]);
 
-  // Demo: admin status warning
-  const hasPoseAnalysis = analysisStatus?.has_analysis || false;
-  const showDemoStatusWarning =
-    isDemo && isAdmin && (!hasPoseAnalysis || serveWindows.length === 0);
-
   // Analysis in progress -- show progress view
   // Guard: don't derive these states until analysisStatus has loaded,
   // otherwise we flash "Ready to Analyze" while the status fetch is in flight.
@@ -421,28 +413,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   return (
     <div className="analysis-dashboard">
-      {/* Demo: Admin status warning */}
-      {showDemoStatusWarning && (
-        <div className="analysis-dashboard__status-warning">
-          <div className="analysis-dashboard__status-warning-content">
-            <strong>Demo Status:</strong>
-            {!hasPoseAnalysis && (
-              <span className="analysis-dashboard__status-item warning">
-                ⚠ Missing pose analysis
-              </span>
-            )}
-            {serveWindows.length === 0 && (
-              <span className="analysis-dashboard__status-item warning">
-                ⚠ No key moments tagged
-              </span>
-            )}
-            <span className="analysis-dashboard__status-hint">
-              Use the Admin tab to manage demo videos.
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <AnalysisDashboardHeader
         videoFilename={videoFilename}

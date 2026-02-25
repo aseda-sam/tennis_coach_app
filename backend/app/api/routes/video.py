@@ -26,6 +26,7 @@ from app.api.schemas.video import (
     BallContactTimestampsResponse,
     BulkAnalysisStatusRequest,
     BulkAnalysisStatusResponse,
+    PublicDemoVideoInfo,
     VideoAnalysisStatus,
     VideoDeleteResponse,
     VideoInfo,
@@ -173,12 +174,12 @@ async def list_videos(
         log_and_raise_error(e, "list_videos")
 
 
-@router.get("/demo", response_model=VideoInfo)
+@router.get("/demo", response_model=PublicDemoVideoInfo)
 @limiter.limit("10/minute")
 async def get_demo_video(
     request: Request,
     db: Session = Depends(get_db),
-) -> VideoInfo:
+) -> PublicDemoVideoInfo:
     """
     Get the active demo video for showcase purposes.
 
@@ -202,7 +203,7 @@ async def get_demo_video(
                 detail="No active demo video available. Please contact support.",
             )
 
-        return VideoInfo.model_validate(demo)
+        return PublicDemoVideoInfo.model_validate(demo)
     except HTTPException:
         raise
     except (OSError, ValueError) as e:

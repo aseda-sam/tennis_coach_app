@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { videoApi } from '../../services/api';
-import { VideoMetadata } from '../../types/video';
+import { PublicDemoVideo } from '../../types/video';
 import { useAuth } from '../../hooks/useAuth';
 import { useUploadModal } from '../layouts/AppLayout';
 import LoadingIndicator from '../LoadingIndicator';
@@ -18,7 +18,7 @@ function DemoPage() {
     data: demoVideo,
     isLoading,
     error,
-  } = useQuery<VideoMetadata, Error>({
+  } = useQuery<PublicDemoVideo, Error>({
     queryKey: ['demo-video'],
     queryFn: async () => {
       return await videoApi.getDemoVideo();
