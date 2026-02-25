@@ -251,7 +251,7 @@ const ServeWindowEditModal: React.FC<ServeWindowEditModalProps> = ({
           background: 'var(--color-surface)',
           borderRadius: 'var(--radius-2xl)',
           width: '100%',
-          maxWidth: '1000px',
+          maxWidth: '640px',
           maxHeight: '90vh',
           boxShadow: 'var(--shadow-2xl)',
           display: 'flex',
@@ -265,7 +265,7 @@ const ServeWindowEditModal: React.FC<ServeWindowEditModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: 'var(--spacing-md) var(--spacing-xl)',
+            padding: 'var(--spacing-lg) var(--spacing-2xl)',
             borderBottom: '1px solid var(--color-border)',
             flexShrink: 0,
           }}
@@ -300,24 +300,25 @@ const ServeWindowEditModal: React.FC<ServeWindowEditModalProps> = ({
           </button>
         </div>
 
-        {/* Body — two columns */}
+        {/* Scrollable body */}
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 340px',
-            overflow: 'hidden',
+            overflowY: 'auto',
             flex: 1,
-            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--spacing-2xl)',
+            padding: 'var(--spacing-2xl)',
           }}
         >
-          {/* Left: video preview */}
+          {/* Video preview */}
           <div
             style={{
               background: '#000',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              borderRadius: 'var(--radius-lg)',
               overflow: 'hidden',
+              aspectRatio: '16 / 9',
+              flexShrink: 0,
             }}
           >
             <video
@@ -335,492 +336,483 @@ const ServeWindowEditModal: React.FC<ServeWindowEditModalProps> = ({
             />
           </div>
 
-          {/* Right: controls */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--spacing-xl)',
-              padding: 'var(--spacing-xl)',
-              borderLeft: '1px solid var(--color-border)',
-              overflowY: 'auto',
-            }}
-          >
-            {/* Timeline */}
-            <div>
-              <div
-                style={{
-                  fontFamily: 'var(--font-family-sans)',
-                  fontSize: 'var(--font-size-xs)',
-                  fontWeight: 'var(--font-weight-medium)',
-                  color: 'var(--color-text-muted)',
-                  textTransform: 'uppercase' as const,
-                  letterSpacing: 'var(--letter-spacing-wide)',
-                  marginBottom: 'var(--spacing-sm)',
-                }}
-              >
-                Timeline
-              </div>
-              <div
-                ref={timelineRef}
-                style={{
-                  position: 'relative',
-                  height: '40px',
-                  background: 'var(--color-surface-secondary)',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
-                  overflow: 'visible',
-                  userSelect: 'none',
-                  marginBottom: '24px',
-                }}
-              >
-                {/* Sibling windows */}
-                {sortedWindows.map((w) =>
-                  w.id !== serveWindow.id ? (
-                    <div
-                      key={w.id}
-                      style={{
-                        position: 'absolute',
-                        left: `${timeToPercent(w.start_timestamp)}%`,
-                        width: `${timeToPercent(w.end_timestamp - w.start_timestamp)}%`,
-                        top: 0,
-                        bottom: 0,
-                        background: 'var(--color-border)',
-                        opacity: 0.5,
-                      }}
-                    />
-                  ) : null
-                )}
-
-                {/* Current window highlight */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: `${timeToPercent(startTime)}%`,
-                    width: `${timeToPercent(endTime - startTime)}%`,
-                    top: 0,
-                    bottom: 0,
-                    background: 'var(--color-court-blue-soft)',
-                    border: '2px solid var(--color-court-blue)',
-                    borderRadius: 'var(--radius-xs)',
-                  }}
-                />
-
-                {/* Left drag handle */}
-                <div
-                  onMouseDown={startDrag('left')}
-                  style={{
-                    position: 'absolute',
-                    left: `${timeToPercent(startTime)}%`,
-                    top: 0,
-                    bottom: 0,
-                    width: '12px',
-                    transform: 'translateX(-50%)',
-                    cursor: 'ew-resize',
-                    zIndex: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '4px',
-                      height: '20px',
-                      background: 'var(--color-court-blue)',
-                      borderRadius: 'var(--radius-full)',
-                    }}
-                  />
-                </div>
-
-                {/* Right drag handle */}
-                <div
-                  onMouseDown={startDrag('right')}
-                  style={{
-                    position: 'absolute',
-                    left: `${timeToPercent(endTime)}%`,
-                    top: 0,
-                    bottom: 0,
-                    width: '12px',
-                    transform: 'translateX(-50%)',
-                    cursor: 'ew-resize',
-                    zIndex: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '4px',
-                      height: '20px',
-                      background: 'var(--color-court-blue)',
-                      borderRadius: 'var(--radius-full)',
-                    }}
-                  />
-                </div>
-
-                {/* Split marker */}
-                {splitMode && (
-                  <div
-                    onMouseDown={startDrag('split')}
-                    style={{
-                      position: 'absolute',
-                      left: `${timeToPercent(splitPoint)}%`,
-                      top: 0,
-                      bottom: 0,
-                      width: '14px',
-                      transform: 'translateX(-50%)',
-                      cursor: 'ew-resize',
-                      zIndex: 3,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '2px',
-                        height: '100%',
-                        background: 'var(--color-error)',
-                        position: 'relative',
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '-6px',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: 'var(--radius-full)',
-                          background: 'var(--color-error)',
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Timestamp labels */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: `${timeToPercent(startTime)}%`,
-                    bottom: '-20px',
-                    transform: 'translateX(-50%)',
-                    fontFamily: 'var(--font-family-mono)',
-                    fontSize: 'var(--font-size-xs)',
-                    color: 'var(--color-text-muted)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {formatTimestamp(startTime)}
-                </div>
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: `${timeToPercent(endTime)}%`,
-                    bottom: '-20px',
-                    transform: 'translateX(-50%)',
-                    fontFamily: 'var(--font-family-mono)',
-                    fontSize: 'var(--font-size-xs)',
-                    color: 'var(--color-text-muted)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {formatTimestamp(endTime)}
-                </div>
-              </div>
-            </div>
-
-            {/* Numeric inputs */}
-            <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
-              <div style={{ flex: 1 }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontFamily: 'var(--font-family-sans)',
-                    fontSize: 'var(--font-size-xs)',
-                    fontWeight: 'var(--font-weight-medium)',
-                    color: 'var(--color-text-muted)',
-                    marginBottom: 'var(--spacing-xs)',
-                  }}
-                >
-                  Start (s)
-                </label>
-                <input
-                  type="number"
-                  step={0.01}
-                  min={prevEnd}
-                  max={endTime - MIN_WINDOW_DURATION}
-                  value={Number(startTime.toFixed(2))}
-                  onChange={(e) => {
-                    const clamped = clampStart(Number(e.target.value));
-                    setStartTime(clamped);
-                    setPreviewTime(clamped);
-                  }}
-                  disabled={isPending || splitMode}
-                  style={{
-                    width: '100%',
-                    padding: 'var(--input-padding)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 'var(--input-border-radius)',
-                    fontFamily: 'var(--font-family-mono)',
-                    fontSize: 'var(--font-size-sm)',
-                    color: 'var(--color-text)',
-                    background: splitMode
-                      ? 'var(--color-surface-secondary)'
-                      : 'var(--color-surface)',
-                    boxSizing: 'border-box' as const,
-                  }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontFamily: 'var(--font-family-sans)',
-                    fontSize: 'var(--font-size-xs)',
-                    fontWeight: 'var(--font-weight-medium)',
-                    color: 'var(--color-text-muted)',
-                    marginBottom: 'var(--spacing-xs)',
-                  }}
-                >
-                  End (s)
-                </label>
-                <input
-                  type="number"
-                  step={0.01}
-                  min={startTime + MIN_WINDOW_DURATION}
-                  max={nextStart}
-                  value={Number(endTime.toFixed(2))}
-                  onChange={(e) => {
-                    const clamped = clampEnd(Number(e.target.value));
-                    setEndTime(clamped);
-                    setPreviewTime(clamped);
-                  }}
-                  disabled={isPending || splitMode}
-                  style={{
-                    width: '100%',
-                    padding: 'var(--input-padding)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 'var(--input-border-radius)',
-                    fontFamily: 'var(--font-family-mono)',
-                    fontSize: 'var(--font-size-sm)',
-                    color: 'var(--color-text)',
-                    background: splitMode
-                      ? 'var(--color-surface-secondary)'
-                      : 'var(--color-surface)',
-                    boxSizing: 'border-box' as const,
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Split mode toggle */}
-            <button
-              type="button"
-              onClick={() => {
-                setSplitMode(!splitMode);
-                if (!splitMode) {
-                  const mid = clampSplit((startTime + endTime) / 2);
-                  setSplitPoint(mid);
-                  setPreviewTime(mid);
-                }
-              }}
-              disabled={isPending}
+          {/* Timeline */}
+          <div>
+            <div
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 'var(--spacing-sm)',
-                padding: 'var(--button-padding-sm)',
-                border: splitMode
-                  ? '1px solid var(--color-error)'
-                  : '1px solid var(--color-border)',
-                borderRadius: 'var(--button-border-radius)',
-                background: splitMode
-                  ? 'var(--color-error-soft)'
-                  : 'var(--color-surface)',
-                color: splitMode
-                  ? 'var(--color-error-dark)'
-                  : 'var(--color-text)',
                 fontFamily: 'var(--font-family-sans)',
                 fontSize: 'var(--font-size-sm)',
                 fontWeight: 'var(--font-weight-medium)',
-                cursor: 'pointer',
-                alignSelf: 'flex-start',
-                transition: 'var(--transition-fast)',
+                color: 'var(--color-text-muted)',
+                textTransform: 'uppercase' as const,
+                letterSpacing: 'var(--letter-spacing-wide)',
+                marginBottom: 'var(--spacing-sm)',
               }}
             >
-              <Scissors size={13} />
-              {splitMode ? 'Cancel split' : 'Split window'}
-            </button>
-
-            {/* Split preview */}
-            {splitMode && (
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 'var(--spacing-lg)',
-                  padding: 'var(--spacing-md)',
-                  background: 'var(--color-surface-secondary)',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-family-sans)',
-                      fontSize: 'var(--font-size-xs)',
-                      fontWeight: 'var(--font-weight-medium)',
-                      color: 'var(--color-text-muted)',
-                      textTransform: 'uppercase' as const,
-                      letterSpacing: 'var(--letter-spacing-wide)',
-                      marginBottom: 'var(--spacing-xs)',
-                    }}
-                  >
-                    Segment A
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-family-mono)',
-                      fontSize: 'var(--font-size-lg)',
-                      fontWeight: 'var(--font-weight-medium)',
-                      color: 'var(--color-ink-heavy)',
-                    }}
-                  >
-                    {splitDurationA.toFixed(2)}s
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-family-mono)',
-                      fontSize: 'var(--font-size-xs)',
-                      color: 'var(--color-text-muted)',
-                      marginTop: 'var(--spacing-xs)',
-                    }}
-                  >
-                    {formatTimestamp(startTime)} → {formatTimestamp(splitPoint)}
-                  </div>
-                </div>
-                <div
-                  style={{ width: '1px', background: 'var(--color-border)' }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-family-sans)',
-                      fontSize: 'var(--font-size-xs)',
-                      fontWeight: 'var(--font-weight-medium)',
-                      color: 'var(--color-text-muted)',
-                      textTransform: 'uppercase' as const,
-                      letterSpacing: 'var(--letter-spacing-wide)',
-                      marginBottom: 'var(--spacing-xs)',
-                    }}
-                  >
-                    Segment B
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-family-mono)',
-                      fontSize: 'var(--font-size-lg)',
-                      fontWeight: 'var(--font-weight-medium)',
-                      color: 'var(--color-ink-heavy)',
-                    }}
-                  >
-                    {splitDurationB.toFixed(2)}s
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-family-mono)',
-                      fontSize: 'var(--font-size-xs)',
-                      color: 'var(--color-text-muted)',
-                      marginTop: 'var(--spacing-xs)',
-                    }}
-                  >
-                    {formatTimestamp(splitPoint)} → {formatTimestamp(endTime)}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <div
-                style={{
-                  padding: 'var(--spacing-sm) var(--spacing-md)',
-                  background: 'var(--color-error-soft)',
-                  border: '1px solid var(--color-error-light)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--color-error-dark)',
-                  fontFamily: 'var(--font-family-sans)',
-                  fontSize: 'var(--font-size-sm)',
-                }}
-              >
-                {error}
-              </div>
-            )}
-
-            {/* Spacer to push footer to bottom */}
-            <div style={{ flex: 1 }} />
-
-            {/* Footer buttons */}
+              Timeline
+            </div>
             <div
+              ref={timelineRef}
               style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: 'var(--spacing-sm)',
-                paddingTop: 'var(--spacing-md)',
-                borderTop: '1px solid var(--color-border)',
-                flexShrink: 0,
+                position: 'relative',
+                height: '48px',
+                background: 'var(--color-surface-secondary)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)',
+                overflow: 'visible',
+                userSelect: 'none',
+                marginBottom: '24px',
               }}
             >
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isPending}
+              {/* Sibling windows */}
+              {sortedWindows.map((w) =>
+                w.id !== serveWindow.id ? (
+                  <div
+                    key={w.id}
+                    style={{
+                      position: 'absolute',
+                      left: `${timeToPercent(w.start_timestamp)}%`,
+                      width: `${timeToPercent(w.end_timestamp - w.start_timestamp)}%`,
+                      top: 0,
+                      bottom: 0,
+                      background: 'var(--color-border)',
+                      opacity: 0.5,
+                    }}
+                  />
+                ) : null
+              )}
+
+              {/* Current window highlight */}
+              <div
                 style={{
-                  padding: 'var(--button-padding-md)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--button-border-radius)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)',
+                  position: 'absolute',
+                  left: `${timeToPercent(startTime)}%`,
+                  width: `${timeToPercent(endTime - startTime)}%`,
+                  top: 0,
+                  bottom: 0,
+                  background: 'var(--color-court-blue-soft)',
+                  border: '2px solid var(--color-court-blue)',
+                  borderRadius: 'var(--radius-xs)',
+                }}
+              />
+
+              {/* Left drag handle */}
+              <div
+                onMouseDown={startDrag('left')}
+                style={{
+                  position: 'absolute',
+                  left: `${timeToPercent(startTime)}%`,
+                  top: 0,
+                  bottom: 0,
+                  width: '10px',
+                  transform: 'translateX(-50%)',
+                  cursor: 'ew-resize',
+                  zIndex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    width: '4px',
+                    height: '20px',
+                    background: 'var(--color-court-blue)',
+                    borderRadius: 'var(--radius-full)',
+                  }}
+                />
+              </div>
+
+              {/* Right drag handle */}
+              <div
+                onMouseDown={startDrag('right')}
+                style={{
+                  position: 'absolute',
+                  left: `${timeToPercent(endTime)}%`,
+                  top: 0,
+                  bottom: 0,
+                  width: '10px',
+                  transform: 'translateX(-50%)',
+                  cursor: 'ew-resize',
+                  zIndex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    width: '4px',
+                    height: '20px',
+                    background: 'var(--color-court-blue)',
+                    borderRadius: 'var(--radius-full)',
+                  }}
+                />
+              </div>
+
+              {/* Split marker */}
+              {splitMode && (
+                <div
+                  onMouseDown={startDrag('split')}
+                  style={{
+                    position: 'absolute',
+                    left: `${timeToPercent(splitPoint)}%`,
+                    top: 0,
+                    bottom: 0,
+                    width: '14px',
+                    transform: 'translateX(-50%)',
+                    cursor: 'ew-resize',
+                    zIndex: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '2px',
+                      height: '100%',
+                      background: 'var(--color-error)',
+                      position: 'relative',
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '-6px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'var(--color-error)',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Timestamp labels */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${timeToPercent(startTime)}%`,
+                  bottom: '-20px',
+                  transform: 'translateX(-50%)',
+                  fontFamily: 'var(--font-family-mono)',
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--color-text-muted)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {formatTimestamp(startTime)}
+              </div>
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${timeToPercent(endTime)}%`,
+                  bottom: '-20px',
+                  transform: 'translateX(-50%)',
+                  fontFamily: 'var(--font-family-mono)',
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--color-text-muted)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {formatTimestamp(endTime)}
+              </div>
+            </div>
+          </div>
+
+          {/* Numeric inputs */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 'var(--spacing-lg)',
+              marginTop: 'var(--spacing-sm)',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  display: 'block',
                   fontFamily: 'var(--font-family-sans)',
                   fontSize: 'var(--font-size-sm)',
                   fontWeight: 'var(--font-weight-medium)',
-                  cursor: 'pointer',
+                  color: 'var(--color-text-muted)',
+                  marginBottom: 'var(--spacing-xs)',
                 }}
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isPending}
+                Start (s)
+              </label>
+              <input
+                type="number"
+                step={0.01}
+                min={prevEnd}
+                max={endTime - MIN_WINDOW_DURATION}
+                value={Number(startTime.toFixed(2))}
+                onChange={(e) => {
+                  const clamped = clampStart(Number(e.target.value));
+                  setStartTime(clamped);
+                  setPreviewTime(clamped);
+                }}
+                disabled={isPending || splitMode}
                 style={{
-                  padding: 'var(--button-padding-md)',
-                  border: 'none',
-                  borderRadius: 'var(--button-border-radius)',
+                  width: '100%',
+                  padding: 'var(--input-padding)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--input-border-radius)',
+                  fontFamily: 'var(--font-family-mono)',
+                  fontSize: 'var(--font-size-base)',
+                  color: 'var(--color-text)',
                   background: splitMode
-                    ? 'var(--color-error)'
-                    : 'var(--color-primary)',
-                  color: '#fff',
+                    ? 'var(--color-surface-secondary)'
+                    : 'var(--color-surface)',
+                  boxSizing: 'border-box' as const,
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  display: 'block',
                   fontFamily: 'var(--font-family-sans)',
                   fontSize: 'var(--font-size-sm)',
-                  fontWeight: 'var(--font-weight-semibold)',
-                  cursor: isPending ? 'not-allowed' : 'pointer',
-                  opacity: isPending ? 0.7 : 1,
+                  fontWeight: 'var(--font-weight-medium)',
+                  color: 'var(--color-text-muted)',
+                  marginBottom: 'var(--spacing-xs)',
                 }}
               >
-                {isPending
-                  ? 'Saving...'
-                  : splitMode
-                    ? 'Confirm split'
-                    : 'Save changes'}
-              </button>
+                End (s)
+              </label>
+              <input
+                type="number"
+                step={0.01}
+                min={startTime + MIN_WINDOW_DURATION}
+                max={nextStart}
+                value={Number(endTime.toFixed(2))}
+                onChange={(e) => {
+                  const clamped = clampEnd(Number(e.target.value));
+                  setEndTime(clamped);
+                  setPreviewTime(clamped);
+                }}
+                disabled={isPending || splitMode}
+                style={{
+                  width: '100%',
+                  padding: 'var(--input-padding)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--input-border-radius)',
+                  fontFamily: 'var(--font-family-mono)',
+                  fontSize: 'var(--font-size-base)',
+                  color: 'var(--color-text)',
+                  background: splitMode
+                    ? 'var(--color-surface-secondary)'
+                    : 'var(--color-surface)',
+                  boxSizing: 'border-box' as const,
+                }}
+              />
             </div>
           </div>
+
+          {/* Split mode toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              setSplitMode(!splitMode);
+              if (!splitMode) {
+                const mid = clampSplit((startTime + endTime) / 2);
+                setSplitPoint(mid);
+                setPreviewTime(mid);
+              }
+            }}
+            disabled={isPending}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 'var(--spacing-sm)',
+              padding: 'var(--button-padding-sm)',
+              border: splitMode
+                ? '1px solid var(--color-error)'
+                : '1px solid var(--color-border)',
+              borderRadius: 'var(--button-border-radius)',
+              background: splitMode
+                ? 'var(--color-error-soft)'
+                : 'var(--color-surface)',
+              color: splitMode
+                ? 'var(--color-error-dark)'
+                : 'var(--color-text)',
+              fontFamily: 'var(--font-family-sans)',
+              fontSize: 'var(--font-size-base)',
+              fontWeight: 'var(--font-weight-medium)',
+              cursor: 'pointer',
+              alignSelf: 'flex-start',
+              transition: 'var(--transition-fast)',
+            }}
+          >
+            <Scissors size={14} />
+            {splitMode ? 'Cancel split' : 'Split window'}
+          </button>
+
+          {/* Split preview */}
+          {splitMode && (
+            <div
+              style={{
+                display: 'flex',
+                gap: 'var(--spacing-lg)',
+                padding: 'var(--spacing-lg)',
+                background: 'var(--color-surface-secondary)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-family-sans)',
+                    fontSize: 'var(--font-size-sm)',
+                    fontWeight: 'var(--font-weight-medium)',
+                    color: 'var(--color-text-muted)',
+                    textTransform: 'uppercase' as const,
+                    letterSpacing: 'var(--letter-spacing-wide)',
+                    marginBottom: 'var(--spacing-xs)',
+                  }}
+                >
+                  Segment A
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-family-mono)',
+                    fontSize: 'var(--font-size-display-sm)',
+                    fontWeight: 'var(--font-weight-medium)',
+                    color: 'var(--color-ink-heavy)',
+                  }}
+                >
+                  {splitDurationA.toFixed(2)}s
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-family-mono)',
+                    fontSize: 'var(--font-size-xs)',
+                    color: 'var(--color-text-muted)',
+                    marginTop: 'var(--spacing-xs)',
+                  }}
+                >
+                  {formatTimestamp(startTime)} → {formatTimestamp(splitPoint)}
+                </div>
+              </div>
+              <div
+                style={{ width: '1px', background: 'var(--color-border)' }}
+              />
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-family-sans)',
+                    fontSize: 'var(--font-size-sm)',
+                    fontWeight: 'var(--font-weight-medium)',
+                    color: 'var(--color-text-muted)',
+                    textTransform: 'uppercase' as const,
+                    letterSpacing: 'var(--letter-spacing-wide)',
+                    marginBottom: 'var(--spacing-xs)',
+                  }}
+                >
+                  Segment B
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-family-mono)',
+                    fontSize: 'var(--font-size-display-sm)',
+                    fontWeight: 'var(--font-weight-medium)',
+                    color: 'var(--color-ink-heavy)',
+                  }}
+                >
+                  {splitDurationB.toFixed(2)}s
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-family-mono)',
+                    fontSize: 'var(--font-size-xs)',
+                    color: 'var(--color-text-muted)',
+                    marginTop: 'var(--spacing-xs)',
+                  }}
+                >
+                  {formatTimestamp(splitPoint)} → {formatTimestamp(endTime)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div
+              style={{
+                padding: 'var(--spacing-md) var(--spacing-lg)',
+                background: 'var(--color-error-soft)',
+                border: '1px solid var(--color-error-light)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--color-error-dark)',
+                fontFamily: 'var(--font-family-sans)',
+                fontSize: 'var(--font-size-sm)',
+              }}
+            >
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 'var(--spacing-md)',
+            padding: 'var(--spacing-lg) var(--spacing-2xl)',
+            borderTop: '1px solid var(--color-border)',
+            flexShrink: 0,
+          }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            style={{
+              padding: 'var(--button-padding-md)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--button-border-radius)',
+              background: 'var(--color-surface)',
+              color: 'var(--color-text)',
+              fontFamily: 'var(--font-family-sans)',
+              fontSize: 'var(--font-size-base)',
+              fontWeight: 'var(--font-weight-medium)',
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isPending}
+            style={{
+              padding: 'var(--button-padding-md)',
+              border: 'none',
+              borderRadius: 'var(--button-border-radius)',
+              background: splitMode
+                ? 'var(--color-error)'
+                : 'var(--color-primary)',
+              color: '#fff',
+              fontFamily: 'var(--font-family-sans)',
+              fontSize: 'var(--font-size-base)',
+              fontWeight: 'var(--font-weight-semibold)',
+              cursor: isPending ? 'not-allowed' : 'pointer',
+              opacity: isPending ? 0.7 : 1,
+            }}
+          >
+            {isPending
+              ? 'Saving...'
+              : splitMode
+                ? 'Confirm split'
+                : 'Save changes'}
+          </button>
         </div>
       </div>
     </div>
