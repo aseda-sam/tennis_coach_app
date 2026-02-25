@@ -270,13 +270,13 @@ describe('VideoList', () => {
       expect(labels.length).toBeGreaterThan(0);
     });
 
-    it('shows "Me" badge when no player profile is available', () => {
+    it('shows no player badge when player profile is not available', () => {
       setDefaultMocks({ playerProfile: null });
 
       renderWithProviders(<VideoList />);
 
-      const labels = screen.getAllByText('Me');
-      expect(labels.length).toBeGreaterThan(0);
+      expect(screen.queryByText('Me')).not.toBeInTheDocument();
+      expect(screen.queryByText('Someone Else')).not.toBeInTheDocument();
     });
 
     it('shows "Someone Else" when primary_player_id does not match profile', () => {

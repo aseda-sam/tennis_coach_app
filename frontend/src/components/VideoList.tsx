@@ -45,7 +45,7 @@ const VideoList: React.FC<VideoListProps> = ({
   const videoIds = videos.map((v: VideoMetadata) => v.id);
   const { isLoading: statusesLoading } = useVideoAnalysisStatuses(videoIds);
 
-  const { data: playerProfile } = usePlayerProfile();
+  const { data: playerProfile, isLoading: profileLoading } = usePlayerProfile();
 
   const deleteVideoMutation = useDeleteVideo();
   const updateMetadataMutation = useUpdateVideoMetadata();
@@ -100,10 +100,9 @@ const VideoList: React.FC<VideoListProps> = ({
   };
 
   const getPlayerTag = useCallback(
-    (video: VideoMetadata): 'you' | 'someone_else' => {
-      if (!playerProfile?.id) {
-        return 'you';
-      }
+    (video: VideoMetadata): 'you' | 'someone_else' | null => {
+      if (profileLoading) return null;
+      if (!playerProfile?.id) return null;
       if (
         !video.primary_player_id ||
         video.primary_player_id === playerProfile.id
@@ -112,7 +111,7 @@ const VideoList: React.FC<VideoListProps> = ({
       }
       return 'someone_else';
     },
-    [playerProfile?.id]
+    [playerProfile?.id, profileLoading]
   );
 
   const handleUploadSuccess = useCallback(
@@ -221,7 +220,6 @@ const VideoList: React.FC<VideoListProps> = ({
         <div className="video-grid">
           {sortedVideos.map((video: VideoMetadata) => {
             const playerTag = getPlayerTag(video);
-            const playerLabel = playerTag === 'you' ? 'Me' : 'Someone Else';
             return (
               <div
                 key={video.id}
@@ -236,24 +234,26 @@ const VideoList: React.FC<VideoListProps> = ({
                   </h3>
 
                   <div className="video-card-meta-row">
-                    <span
-                      className={`player-tag-badge player-tag-badge--${playerTag}`}
-                      aria-label={`Primary player: ${playerLabel}`}
-                    >
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        className="user-icon"
+                    {playerTag && (
+                      <span
+                        className={`player-tag-badge player-tag-badge--${playerTag}`}
+                        aria-label={`Primary player: ${playerTag === 'you' ? 'Me' : 'Someone Else'}`}
                       >
-                        <path
-                          d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                      {playerLabel}
-                    </span>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          className="user-icon"
+                        >
+                          <path
+                            d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                        {playerTag === 'you' ? 'Me' : 'Someone Else'}
+                      </span>
+                    )}
                     <span className="meta-separator">•</span>
                     <span className="date-info">
                       <svg
