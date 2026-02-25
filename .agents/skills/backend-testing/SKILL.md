@@ -1,3 +1,8 @@
+---
+name: backend-testing
+description: Project-specific backend testing workflow, fixtures, and test commands for the Tennis Coach App
+---
+
 # Backend Testing
 
 Project-specific testing skill for the Tennis Coach App backend.
