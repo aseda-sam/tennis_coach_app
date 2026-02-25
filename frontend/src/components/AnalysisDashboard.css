@@ -417,8 +417,8 @@
   gap: var(--spacing-lg);
   padding: var(--spacing-md) var(--spacing-lg);
   margin: var(--spacing-sm) 0;
-  background: #f0edff;
-  border: 1px solid #ddd8f7;
+  background: var(--color-sand);
+  border: 1px solid var(--color-sand-dark);
   border-radius: var(--radius-lg);
 }
 
@@ -433,7 +433,7 @@
 .analysis-dashboard__upload-invite-label {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: #7c6fcd;
+  color: var(--color-amber);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   flex-shrink: 0;
