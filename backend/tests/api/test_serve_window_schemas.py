@@ -7,7 +7,11 @@ Pure Pydantic tests — no DB or HTTP client needed.
 import pytest
 from pydantic import ValidationError
 
-from app.api.schemas.serve_window import ServeWindowCreate, ServeWindowUpdate
+from app.api.schemas.serve_window import (
+    ServeWindowCreate,
+    ServeWindowSplitRequest,
+    ServeWindowUpdate,
+)
 
 # ---------------------------------------------------------------------------
 # ServeWindowCreate — timestamp validator
@@ -163,3 +167,31 @@ class TestServeWindowUpdateTimestamps:
         # Only contact provided — can't cross-check, should not raise
         sw = ServeWindowUpdate(contact_timestamp=1.0)
         assert sw.contact_timestamp == 1.0
+
+
+# ---------------------------------------------------------------------------
+# ServeWindowSplitRequest
+# ---------------------------------------------------------------------------
+
+
+class TestServeWindowSplitRequest:
+    def test_valid_split_at_accepted(self) -> None:
+        req = ServeWindowSplitRequest(split_at=1.5)
+        assert req.split_at == 1.5
+
+    def test_split_at_zero_rejected(self) -> None:
+        # gt=0 constraint
+        with pytest.raises(ValidationError):
+            ServeWindowSplitRequest(split_at=0.0)
+
+    def test_split_at_negative_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            ServeWindowSplitRequest(split_at=-1.0)
+
+    def test_split_at_small_positive_accepted(self) -> None:
+        req = ServeWindowSplitRequest(split_at=0.001)
+        assert req.split_at == 0.001
+
+    def test_missing_split_at_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            ServeWindowSplitRequest()  # type: ignore[call-arg]

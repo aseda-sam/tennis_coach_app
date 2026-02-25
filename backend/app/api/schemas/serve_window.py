@@ -126,6 +126,33 @@ class ServeWindowInfo(BaseModel):
         default=None,
         description="How contact_timestamp was set: 'manual' (user-tagged) or 'auto' (ball detection)",
     )
+    is_active: bool = Field(
+        description="Whether this window is active (not superseded by a split operation)"
+    )
+    parent_window_id: Optional[int] = Field(
+        default=None,
+        description="Parent window ID if this window was created by splitting another window",
+    )
     created_at: datetime = Field(description="Creation timestamp")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ServeWindowSplitRequest(BaseModel):
+    """Schema for splitting a serve window at a timestamp."""
+
+    split_at: float = Field(
+        gt=0,
+        description="Timestamp (seconds) to split at — must be strictly inside the window",
+    )
+
+
+class ServeWindowSplitResponse(BaseModel):
+    """Schema returned after a successful split operation."""
+
+    window_a: ServeWindowInfo = Field(
+        description="First child window [original_start, split_at]"
+    )
+    window_b: ServeWindowInfo = Field(
+        description="Second child window [split_at, original_end]"
+    )
