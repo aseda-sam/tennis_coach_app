@@ -71,7 +71,7 @@ python scripts/start_rq_worker.py
 - `ML_MODELS_DIR = "ml_models"` resolves to `backend/ml_models/`
 - `UPLOAD_DIR = "../data/videos/raw"` resolves to `data/videos/raw/`
 
-YOLO auto-detects MPS on macOS (no explicit `device=` param needed). Check the logs for `YOLO inference device: mps`.
+YOLO defaults to auto device selection on macOS. For backfill jobs, you can now force a device with `--device` (for example, `mps`). Check worker logs for `YOLO inference device: ...`.
 
 ## Key env vars
 
@@ -102,6 +102,9 @@ cd backend && python scripts/backfill_ball_detection.py --dry-run
 
 # Enqueue ball detection jobs
 cd backend && python scripts/backfill_ball_detection.py
+
+# Enqueue and force Apple Metal (MPS) on host worker
+cd backend && python scripts/backfill_ball_detection.py --device mps
 ```
 
 ## Operational notes

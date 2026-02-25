@@ -1,1 +1,0 @@
-../../commands/idea-triage.md
