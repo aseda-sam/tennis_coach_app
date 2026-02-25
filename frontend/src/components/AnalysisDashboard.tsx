@@ -26,6 +26,7 @@ import HeroView from './HeroView';
 import { ArrowLeft, Upload } from 'lucide-react';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
+import ServeWindowEditModal from './ServeWindowEditModal';
 import ServeThumbnailStrip from './ServeThumbnailStrip';
 import Skeleton from './Skeleton';
 
@@ -50,6 +51,7 @@ interface AnalysisDashboardProps {
   videoId: number;
   videoFilename: string;
   videoUrl: string;
+  videoDuration?: number;
   onClose: () => void;
   isDemo?: boolean;
   onExitToUpload?: () => void;
@@ -74,6 +76,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   videoId,
   videoFilename,
   videoUrl,
+  videoDuration = 0,
   onClose,
   isDemo = false,
   onExitToUpload,
@@ -136,6 +139,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     'sidebar:charts',
     true
   );
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
@@ -579,50 +584,52 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     onConfirmContact={isDemo ? undefined : handleConfirmContact}
                     onCancelContact={isDemo ? undefined : handleCancelContact}
                     onOpenShortcuts={() => setShowKeyboardShortcuts(true)}
+                    onEditWindow={
+                      !isDemo && currentServe
+                        ? () => setIsEditModalOpen(true)
+                        : undefined
+                    }
                   />
                 </ErrorBoundary>
 
                 {/* Phase navigation — only when phases exist */}
                 {phases.length > 0 && (
-                  <>
-                    {/* Phase tab strip */}
-                    <div
-                      className="analysis-dashboard__phase-tabs"
-                      role="tablist"
-                    >
-                      {phases.map((phase) => (
-                        <button
-                          key={phase.phase}
-                          type="button"
-                          className={`analysis-dashboard__phase-tab${
-                            currentPhase?.phase === phase.phase
-                              ? ' analysis-dashboard__phase-tab--active'
-                              : ''
-                          }`}
-                          role="tab"
-                          aria-selected={currentPhase?.phase === phase.phase}
-                          onClick={() => wrappedPhaseJump(phase)}
-                        >
-                          {phase.phase_label}
-                        </button>
-                      ))}
-                      {currentServe!.contact_timestamp != null && (
-                        <button
-                          type="button"
-                          className="analysis-dashboard__phase-tab analysis-dashboard__phase-tab--contact"
-                          role="tab"
-                          aria-selected={false}
-                          onClick={() =>
-                            handleContactJumpWithPhases(
-                              currentServe!.contact_timestamp!
-                            )
-                          }
-                        >
-                          &#x2299; Contact
-                        </button>
-                      )}
-                    </div>
-                  </>
+                  <div
+                    className="analysis-dashboard__phase-tabs"
+                    role="tablist"
+                  >
+                    {phases.map((phase) => (
+                      <button
+                        key={phase.phase}
+                        type="button"
+                        className={`analysis-dashboard__phase-tab${
+                          currentPhase?.phase === phase.phase
+                            ? ' analysis-dashboard__phase-tab--active'
+                            : ''
+                        }`}
+                        role="tab"
+                        aria-selected={currentPhase?.phase === phase.phase}
+                        onClick={() => wrappedPhaseJump(phase)}
+                      >
+                        {phase.phase_label}
+                      </button>
+                    ))}
+                    {currentServe!.contact_timestamp != null && (
+                      <button
+                        type="button"
+                        className="analysis-dashboard__phase-tab analysis-dashboard__phase-tab--contact"
+                        role="tab"
+                        aria-selected={false}
+                        onClick={() =>
+                          handleContactJumpWithPhases(
+                            currentServe!.contact_timestamp!
+                          )
+                        }
+                      >
+                        &#x2299; Contact
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -810,6 +817,25 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         naturalScroll={naturalScroll}
         onNaturalScrollChange={setNaturalScroll}
       />
+
+      {currentServe && (
+        <ServeWindowEditModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          serveWindow={currentServe}
+          allWindows={sortedServeWindows}
+          videoDuration={videoDuration}
+          videoUrl={resolvedVideoUrl}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
+            setIsEditModalOpen(false);
+          }}
+          onSplit={() => {
+            queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
+            setIsEditModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

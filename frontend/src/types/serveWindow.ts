@@ -19,6 +19,8 @@ export interface ServeWindow {
   serve_number: number | null;
   serve_subtype: ServeSubtype | null;
   in_out: InOut | null;
+  is_active: boolean;
+  parent_window_id: number | null;
   created_at: string;
 }
 
