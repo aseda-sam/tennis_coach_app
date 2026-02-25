@@ -26,6 +26,7 @@ import HeroView from './HeroView';
 import { ArrowLeft, Upload } from 'lucide-react';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
+import ServeWindowEditModal from './ServeWindowEditModal';
 import ServeThumbnailStrip from './ServeThumbnailStrip';
 import Skeleton from './Skeleton';
 
@@ -50,6 +51,7 @@ interface AnalysisDashboardProps {
   videoId: number;
   videoFilename: string;
   videoUrl: string;
+  videoDuration?: number;
   onClose: () => void;
   isDemo?: boolean;
   onExitToUpload?: () => void;
@@ -74,6 +76,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   videoId,
   videoFilename,
   videoUrl,
+  videoDuration = 0,
   onClose,
   isDemo = false,
   onExitToUpload,
@@ -136,6 +139,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     'sidebar:charts',
     true
   );
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
@@ -582,6 +587,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   />
                 </ErrorBoundary>
 
+                {/* Edit window button — non-demo only */}
+                {!isDemo && currentServe && (
+                  <div className="analysis-dashboard__edit-window-row">
+                    <button
+                      type="button"
+                      className="analysis-dashboard__edit-window-btn"
+                      onClick={() => setIsEditModalOpen(true)}
+                    >
+                      Edit window
+                    </button>
+                  </div>
+                )}
+
                 {/* Phase navigation — only when phases exist */}
                 {phases.length > 0 && (
                   <>
@@ -810,6 +828,24 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         naturalScroll={naturalScroll}
         onNaturalScrollChange={setNaturalScroll}
       />
+
+      {currentServe && (
+        <ServeWindowEditModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          serveWindow={currentServe}
+          allWindows={sortedServeWindows}
+          videoDuration={videoDuration}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
+            setIsEditModalOpen(false);
+          }}
+          onSplit={() => {
+            queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
+            setIsEditModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };
