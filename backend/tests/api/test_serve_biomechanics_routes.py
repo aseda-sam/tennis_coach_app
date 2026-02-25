@@ -198,8 +198,13 @@ class TestComputeServeBiomechanics:
 
 
 class TestGetPlayerBiomechanicsHistory:
+    @patch("app.api.routes.serve_biomechanics.require_player_access")
+    @patch("app.api.routes.serve_biomechanics.get_player_by_id")
     @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
-    def test_returns_200_list(self, mock_service, biomechanics_client):
+    def test_returns_200_list(
+        self, mock_service, mock_get_player, mock_require_access, biomechanics_client
+    ):
+        mock_get_player.return_value = MagicMock(id=1)
         mock_service.get_player_history.return_value = [_make_mock_report()]
         response = biomechanics_client.get("/v0/players/1/biomechanics/history")
         assert response.status_code == 200
@@ -207,8 +212,13 @@ class TestGetPlayerBiomechanicsHistory:
         assert isinstance(data, list)
         assert len(data) == 1
 
+    @patch("app.api.routes.serve_biomechanics.require_player_access")
+    @patch("app.api.routes.serve_biomechanics.get_player_by_id")
     @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
-    def test_empty_history(self, mock_service, biomechanics_client):
+    def test_empty_history(
+        self, mock_service, mock_get_player, mock_require_access, biomechanics_client
+    ):
+        mock_get_player.return_value = MagicMock(id=1)
         mock_service.get_player_history.return_value = []
         response = biomechanics_client.get("/v0/players/1/biomechanics/history")
         assert response.status_code == 200
