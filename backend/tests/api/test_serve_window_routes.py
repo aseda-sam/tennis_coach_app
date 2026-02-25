@@ -189,9 +189,11 @@ class TestSplitServeWindow:
 
     @patch("app.api.routes.serve_windows.video_service")
     @patch("app.api.routes.serve_windows.serve_window_service")
+    @patch("app.utils.authorization.settings")
     def test_split_demo_video_forbidden(
-        self, mock_svc, mock_vid_svc, serve_window_client
+        self, mock_settings, mock_svc, mock_vid_svc, serve_window_client
     ):
+        mock_settings.admin_user_ids = []  # test user is not admin
         original = _make_mock_window(id=1)
         mock_svc.get_serve_window_by_id.return_value = original
         mock_vid_svc.get_video_by_id.return_value = _make_mock_video(is_demo=True)
