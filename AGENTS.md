@@ -86,7 +86,7 @@ docs/
 - **Layers:** Routes handle HTTP + auth, Services handle logic, Models define schema. Don't leak HTTP concerns into services.
 - **Auth:** `Depends(get_current_user)` on protected endpoints. AuthZ via `app.utils.authorization` helpers. Always scope queries by `user_id`.
 - **Errors:** Use `APIError` / `log_and_raise_error` from `app.utils.error_handling`. Never leak internals in 500s.
-- **Schemas:** Define all request/response schemas in `app/api/schemas/`. Never inline in route files. Read `.cursor/rules/api-patterns.mdc` for full schema conventions.
+- **Schemas:** Define all request/response schemas in `app/api/schemas/`. Never inline in route files. Follow `.agents/rules/api-patterns.mdc`.
 - **Storage:** Always go through `app.services.storage_service.storage_service`. No raw `open()` in routes/services.
 - **Background jobs:** Use RQ + `VideoJob` for anything > 5s. Jobs create their own DB sessions.
 - **API versioning:** All endpoints under `/v0/` (alpha, breaking changes allowed).
@@ -96,8 +96,8 @@ docs/
 
 - **No standalone docs for one-time work.** Migration runbooks, one-off SQL guides, and per-feature setup notes do not get their own `.md` files. Document inline: in the migration file's docstring, the commit message, or a code comment. Standalone docs only for things that need ongoing reference.
 - **Update docs at the point of change.** If you change a model → update `database_schema.md`. Change a config var → update `config.md`. Change a script's flags → update `demo-videos.md`. Don't defer it.
-- **Docs live close to the code they describe.** Backend operational docs in `backend/docs/`. Product/system-level docs in root `docs/`. Frontend CSS patterns in `frontend/DESIGN.md`. Behavioral rules for AI in `.cursor/rules/`.
-- **Design tokens and CSS patterns are a reference, not a rule.** `frontend/DESIGN.md` is the CSS pattern reference. Read `.cursor/rules/react-frontend.mdc` for behavioral constraints (use tokens, button hierarchy, accessibility).
+- **Docs live close to the code they describe.** Backend operational docs in `backend/docs/`. Product/system-level docs in root `docs/`. Frontend CSS patterns in `frontend/DESIGN.md`. Shared AI rules live in `.agents/rules/`.
+- **Design tokens and CSS patterns are a reference, not a rule.** `frontend/DESIGN.md` is the CSS pattern reference. Behavioral constraints are in `.agents/rules/react-frontend.mdc`.
 
 ## Testing
 
@@ -154,18 +154,31 @@ A pre-commit hook runs automatically on every `git commit`. If it fails, the com
 - `AGENTS.local.md` is reserved for machine-local or sensitive instructions and is gitignored.
 - If `AGENTS.local.md` exists, read it after this file and treat it as local overrides/additions.
 
+## Command intents
+
+- Canonical command workflows live in `.agents/commands/`.
+- Map natural-language command phrases (for example, "ship it") to the matching file in `.agents/commands/`.
+- The `ship-pr` intent means: commit, push, PR, checks, merge.
+- Create new shared command intents under `.agents/commands/` first, then add tool-specific local adapters only if needed.
+
 ## Detailed rules
 
 **Frontend design:** Before any frontend work, read `frontend/VISUAL_IDENTITY.md` — it defines the aesthetic direction, typography system (DM Sans + DM Mono), color philosophy, layout grammar, and key view descriptions.
 
-Comprehensive coding conventions live in `.cursor/rules/`. These files are **not auto-loaded** — read the relevant one when working in that domain:
+Shared coding conventions live in `.agents/rules/` (read the relevant file for your domain):
 
-- `.cursor/rules/api-patterns.mdc` — REST conventions, error contracts, file uploads
-- `.cursor/rules/backend-patterns.mdc` — Layers, auth, storage, RQ jobs
-- `.cursor/rules/python-code-standards.mdc` — Python style, Pydantic v2, imports
-- `.cursor/rules/react-frontend.mdc` — Components, styling, form patterns, accessibility
-- `.cursor/rules/frontend-design.mdc` — Visual design patterns, component aesthetics
-- `.cursor/rules/react-routing.mdc` — React Router conventions, route structure, page patterns
-- `.cursor/rules/frontend-api-patterns.mdc` — Frontend API client conventions
-- `.cursor/rules/testing-patterns.mdc` — When to test first vs after, what to test, contract testing
-- `.cursor/rules/frontend-testing-patterns.mdc` — Frontend test patterns
+- `.agents/rules/api-patterns.mdc` — REST conventions, error contracts, file uploads
+- `.agents/rules/backend-patterns.mdc` — Layers, auth, storage, RQ jobs
+- `.agents/rules/python-code-standards.mdc` — Python style, Pydantic v2, imports
+- `.agents/rules/react-frontend.mdc` — Components, styling, form patterns, accessibility
+- `.agents/rules/frontend-design.mdc` — Visual design patterns, component aesthetics
+- `.agents/rules/react-routing.mdc` — React Router conventions, route structure, page patterns
+- `.agents/rules/frontend-api-patterns.mdc` — Frontend API client conventions
+- `.agents/rules/testing-patterns.mdc` — When to test first vs after, what to test, contract testing
+- `.agents/rules/frontend-testing-patterns.mdc` — Frontend test patterns
+
+Tool-specific local rules may exist under ignored folders. Shared, repo-level guidance should live in `AGENTS.md`, `.agents/rules/`, and `.agents/skills/`.
+
+Before implementing code changes (not during planning/chat-only turns), load only the relevant files from `.agents/rules/` for the current domain.
+
+Create new shared skills under `.agents/skills/` first, then add tool-specific local adapters only if needed.
