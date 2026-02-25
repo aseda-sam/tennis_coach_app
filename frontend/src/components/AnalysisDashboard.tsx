@@ -22,7 +22,7 @@ import CollapsibleSection from './CollapsibleSection';
 import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
-import { ArrowLeft, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
 import ServeWindowEditModal from './ServeWindowEditModal';
@@ -604,34 +604,20 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               </div>
 
               <div className="analysis-dashboard__side-col">
-                {/* Demo: Upload CTA */}
+                {/* Demo: Upload nudge */}
                 {isDemo && onExitToUpload && (
-                  <div className="analysis-dashboard__upload-cta">
-                    <div className="analysis-dashboard__upload-cta-content">
-                      <button
-                        className="analysis-dashboard__back-button"
-                        onClick={onClose}
-                        type="button"
-                      >
-                        <ArrowLeft size={16} />
-                        Back to Home
-                      </button>
-                      <h3 className="analysis-dashboard__upload-cta-title">
-                        Ready to analyze your own video?
-                      </h3>
-                      <p className="analysis-dashboard__upload-cta-description">
-                        Now that you've seen how it works, upload your tennis
-                        video and get personalized feedback on your technique.
-                      </p>
-                      <button
-                        className="analysis-dashboard__upload-cta-button"
-                        onClick={onExitToUpload}
-                        type="button"
-                      >
-                        <Upload size={20} />
-                        Upload Your Video
-                      </button>
-                    </div>
+                  <div className="analysis-dashboard__upload-nudge">
+                    <span className="analysis-dashboard__upload-nudge-text">
+                      Your turn — analyze your own serve
+                    </span>
+                    <button
+                      className="analysis-dashboard__upload-nudge-button"
+                      onClick={onExitToUpload}
+                      type="button"
+                    >
+                      <Upload size={14} />
+                      Upload video
+                    </button>
                   </div>
                 )}
 
