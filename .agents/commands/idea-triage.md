@@ -50,6 +50,12 @@ Score each item 1–5 on each dimension:
 - If scope is too broad, split into separate backlog items.
 - If the note is unclear, preserve it in Parking Lot with one clarifying question.
 
+## Validation Checks (run after placing items)
+
+- **No upward dependencies:** A Now item must not depend on a Next/Later item. If it does, either pull the dependency forward or call out the conflict.
+- **Tier balance:** Each tier (especially Now) should not be 100% new surface area with nothing for existing users. Mix quick wins for current workflows alongside new capabilities.
+- **Small trust-critical bugs go to Now:** Bugs that erode user trust in existing data (broken filters, wrong numbers) are cheap to fix and expensive to defer — default to Now regardless of score.
+
 ## Tennis App Defaults
 
 - Prioritize features that increase practice consistency and coaching usefulness.
