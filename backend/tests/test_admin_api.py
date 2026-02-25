@@ -105,9 +105,9 @@ class TestAdminAuthorization:
 class TestAdminStatusEndpoint:
     """Tests for GET /admin/status endpoint."""
 
-    def test_admin_status_as_admin(self, client: TestClient) -> None:
+    @patch("app.api.routes.admin.is_admin", return_value=True)
+    def test_admin_status_as_admin(self, mock_is_admin, client: TestClient) -> None:
         """Test admin status endpoint returns True for admin user."""
-        # Default mock user in conftest is admin (00000000-0000-0000-0000-000000000000)
         response = client.get("/v0/admin/status")
 
         assert response.status_code == 200
