@@ -159,6 +159,7 @@ A pre-commit hook runs automatically on every `git commit`. If it fails, the com
 - Canonical command workflows live in `.agents/commands/`.
 - Map natural-language command phrases (for example, "ship it") to the matching file in `.agents/commands/`.
 - The `ship-pr` intent means: commit, push, PR, checks, merge.
+- Create new shared command intents under `.agents/commands/` first, then add tool-specific local adapters only if needed.
 
 ## Detailed rules
 
@@ -179,3 +180,5 @@ Shared coding conventions live in `.agents/rules/` (read the relevant file for y
 Tool-specific local rules may exist under ignored folders. Shared, repo-level guidance should live in `AGENTS.md`, `.agents/rules/`, and `.agents/skills/`.
 
 Before implementing code changes (not during planning/chat-only turns), load only the relevant files from `.agents/rules/` for the current domain.
+
+Create new shared skills under `.agents/skills/` first, then add tool-specific local adapters only if needed.
