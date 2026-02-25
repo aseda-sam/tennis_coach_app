@@ -23,7 +23,7 @@ import CollapsibleSection from './CollapsibleSection';
 import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
-import { ArrowLeft, Pencil, Upload } from 'lucide-react';
+import { ArrowLeft, Upload } from 'lucide-react';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
 import ServeWindowEditModal from './ServeWindowEditModal';
@@ -584,59 +584,49 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     onConfirmContact={isDemo ? undefined : handleConfirmContact}
                     onCancelContact={isDemo ? undefined : handleCancelContact}
                     onOpenShortcuts={() => setShowKeyboardShortcuts(true)}
+                    onEditWindow={
+                      !isDemo && currentServe
+                        ? () => setIsEditModalOpen(true)
+                        : undefined
+                    }
                   />
                 </ErrorBoundary>
 
                 {/* Phase navigation — only when phases exist */}
                 {phases.length > 0 && (
-                  <div className="analysis-dashboard__phase-nav">
-                    {/* Scrollable tab strip */}
-                    <div
-                      className="analysis-dashboard__phase-tabs"
-                      role="tablist"
-                    >
-                      {phases.map((phase) => (
-                        <button
-                          key={phase.phase}
-                          type="button"
-                          className={`analysis-dashboard__phase-tab${
-                            currentPhase?.phase === phase.phase
-                              ? ' analysis-dashboard__phase-tab--active'
-                              : ''
-                          }`}
-                          role="tab"
-                          aria-selected={currentPhase?.phase === phase.phase}
-                          onClick={() => wrappedPhaseJump(phase)}
-                        >
-                          {phase.phase_label}
-                        </button>
-                      ))}
-                      {currentServe!.contact_timestamp != null && (
-                        <button
-                          type="button"
-                          className="analysis-dashboard__phase-tab analysis-dashboard__phase-tab--contact"
-                          role="tab"
-                          aria-selected={false}
-                          onClick={() =>
-                            handleContactJumpWithPhases(
-                              currentServe!.contact_timestamp!
-                            )
-                          }
-                        >
-                          &#x2299; Contact
-                        </button>
-                      )}
-                    </div>
-                    {/* Edit window — icon button outside the scrollable strip */}
-                    {!isDemo && currentServe && (
+                  <div
+                    className="analysis-dashboard__phase-tabs"
+                    role="tablist"
+                  >
+                    {phases.map((phase) => (
+                      <button
+                        key={phase.phase}
+                        type="button"
+                        className={`analysis-dashboard__phase-tab${
+                          currentPhase?.phase === phase.phase
+                            ? ' analysis-dashboard__phase-tab--active'
+                            : ''
+                        }`}
+                        role="tab"
+                        aria-selected={currentPhase?.phase === phase.phase}
+                        onClick={() => wrappedPhaseJump(phase)}
+                      >
+                        {phase.phase_label}
+                      </button>
+                    ))}
+                    {currentServe!.contact_timestamp != null && (
                       <button
                         type="button"
-                        className="analysis-dashboard__edit-window-btn"
-                        onClick={() => setIsEditModalOpen(true)}
-                        aria-label="Edit serve window"
-                        title="Edit window"
+                        className="analysis-dashboard__phase-tab analysis-dashboard__phase-tab--contact"
+                        role="tab"
+                        aria-selected={false}
+                        onClick={() =>
+                          handleContactJumpWithPhases(
+                            currentServe!.contact_timestamp!
+                          )
+                        }
                       >
-                        <Pencil size={13} />
+                        &#x2299; Contact
                       </button>
                     )}
                   </div>
