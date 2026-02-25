@@ -516,28 +516,28 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             viewMode={viewMode}
             onViewModeChange={setViewMode}
           />
-          {/* Demo: Upload invite — sits right of thumbnail strip */}
-          {isDemo && onExitToUpload && (
-            <div className="analysis-dashboard__upload-invite">
-              <p className="analysis-dashboard__upload-invite-label">
-                Your Turn
-              </p>
-              <h3 className="analysis-dashboard__upload-invite-title">
-                Analyze Your Own Serve
-              </h3>
-              <p className="analysis-dashboard__upload-invite-body">
-                Film your serve. Get this breakdown.
-              </p>
-              <button
-                className="analysis-dashboard__upload-invite-button"
-                onClick={onExitToUpload}
-                type="button"
-              >
-                <Upload size={14} />
-                Upload Your Video
-              </button>
-            </div>
-          )}
+        </div>
+      )}
+
+      {/* Demo: Upload invite banner */}
+      {isDemo && onExitToUpload && analysisStatus?.has_analysis && (
+        <div className="analysis-dashboard__upload-invite">
+          <div className="analysis-dashboard__upload-invite-text">
+            <span className="analysis-dashboard__upload-invite-label">
+              Your Turn
+            </span>
+            <span className="analysis-dashboard__upload-invite-title">
+              Analyze Your Own Serve
+            </span>
+          </div>
+          <button
+            className="analysis-dashboard__upload-invite-button"
+            onClick={onExitToUpload}
+            type="button"
+          >
+            <Upload size={14} />
+            Upload Your Video
+          </button>
         </div>
       )}
 
