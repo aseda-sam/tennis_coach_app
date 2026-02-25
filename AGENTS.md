@@ -171,3 +171,5 @@ Shared coding conventions live in `.agents/rules/` (read the relevant file for y
 - `.agents/rules/frontend-testing-patterns.mdc` — Frontend test patterns
 
 Tool-specific local rules may exist under ignored folders. Shared, repo-level guidance should live in `AGENTS.md`, `.agents/rules/`, and `.agents/skills/`.
+
+Before implementing code changes (not during planning/chat-only turns), load only the relevant files from `.agents/rules/` for the current domain.
