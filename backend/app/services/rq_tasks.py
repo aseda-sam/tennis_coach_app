@@ -75,6 +75,7 @@ def run_ball_detection_rq(
     video_id: int,
     user_id: str,
     video_job_id: Optional[str] = None,
+    ball_device: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     RQ task for standalone ball detection on existing serve windows.
@@ -86,6 +87,8 @@ def run_ball_detection_rq(
         video_id: Video ID from database
         user_id: User ID who triggered the job
         video_job_id: Optional VideoJob ID for status tracking
+        ball_device: Optional YOLO inference device override
+            (e.g., "mps", "cpu", "cuda")
 
     Returns:
         Dictionary with ball detection results
@@ -103,8 +106,9 @@ def run_ball_detection_rq(
         )
 
         logger.info(
-            "RQ task: Starting ball detection for video %s",
+            "RQ task: Starting ball detection for video %s (device=%s)",
             video_id,
+            ball_device or "auto",
             extra=get_log_extra(video_id=video_id, job_id=video_job_id),
         )
 
@@ -164,7 +168,7 @@ def run_ball_detection_rq(
         local_path, temp_video_path = _get_temp_video_path(video_path)
 
         # Run ball detection
-        ball_service = YoloBallDetectionService()
+        ball_service = YoloBallDetectionService(device=ball_device)
         ball_results = ball_service.analyze_serve_windows(
             video_path=Path(local_path),
             windows=windows,

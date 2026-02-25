@@ -15,6 +15,9 @@ Usage:
     # Re-run ball detection on ALL videos (even ones that already have it)
     cd backend && python scripts/backfill_ball_detection.py --force
 
+    # Force Apple Metal (MPS) when running workers locally on macOS
+    cd backend && python scripts/backfill_ball_detection.py --device mps
+
     # Exclude specific video IDs (e.g. one that's already running)
     cd backend && python scripts/backfill_ball_detection.py --force --exclude 12
     cd backend && python scripts/backfill_ball_detection.py --force --exclude 12 5 9
@@ -117,6 +120,12 @@ def main() -> None:
         metavar="ID",
         help="Video IDs to skip (e.g. --exclude 12 or --exclude 12 5 9)",
     )
+    parser.add_argument(
+        "--device",
+        choices=["auto", "cpu", "mps", "cuda"],
+        default="auto",
+        help="YOLO inference device for queued jobs (default: auto)",
+    )
     args = parser.parse_args()
 
     mode = "all videos (--force)" if args.force else "videos missing ball detection"
@@ -140,7 +149,10 @@ def main() -> None:
         print("\n[DRY RUN] No jobs enqueued.")
         return
 
-    print(f"\nEnqueuing {len(videos)} ball detection job(s)...")
+    device_label = args.device
+    print(
+        f"\nEnqueuing {len(videos)} ball detection job(s) with device={device_label}..."
+    )
     enqueued = 0
     for v in videos:
         try:
@@ -148,10 +160,15 @@ def main() -> None:
                 run_ball_detection_rq,
                 video_id=v["video_id"],
                 user_id=v["user_id"],
+                ball_device=None if args.device == "auto" else args.device,
                 retry=Retry(max=2, interval=0),
                 job_timeout=settings.POSE_DETECTION_JOB_TIMEOUT_SECONDS,
                 result_ttl=3600,
-                meta={"enqueued_at": time.time(), "backfill": True},
+                meta={
+                    "enqueued_at": time.time(),
+                    "backfill": True,
+                    "ball_device": args.device,
+                },
             )
             enqueued += 1
             print(f"  Enqueued job {job.id} for video {v['video_id']}")
