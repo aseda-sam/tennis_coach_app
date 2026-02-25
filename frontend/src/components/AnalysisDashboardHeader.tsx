@@ -19,14 +19,27 @@ const AnalysisDashboardHeader: React.FC<AnalysisDashboardHeaderProps> = ({
   onClose,
   isDemo = false,
 }) => {
-  const segments = [
-    { label: isDemo ? 'Demo' : 'Library', onClick: onClose },
-    { label: videoFilename },
-  ];
+  const rootLabel = isDemo ? 'Demo' : 'Library';
 
-  if (hasServes && serveIndex != null && serveCount != null) {
-    segments[1] = { label: videoFilename, onClick: onClose };
-    segments.push({ label: `Serve ${serveIndex + 1} of ${serveCount}` });
+  let segments;
+  if (isDemo) {
+    // Demo: skip the filename — show "Demo / Serve N of N" or just "Demo"
+    segments =
+      hasServes && serveIndex != null && serveCount != null
+        ? [
+            { label: rootLabel, onClick: onClose },
+            { label: `Serve ${serveIndex + 1} of ${serveCount}` },
+          ]
+        : [{ label: rootLabel, onClick: onClose }];
+  } else {
+    segments = [
+      { label: rootLabel, onClick: onClose },
+      { label: videoFilename },
+    ];
+    if (hasServes && serveIndex != null && serveCount != null) {
+      segments[1] = { label: videoFilename, onClick: onClose };
+      segments.push({ label: `Serve ${serveIndex + 1} of ${serveCount}` });
+    }
   }
 
   return (

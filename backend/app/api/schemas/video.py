@@ -83,6 +83,23 @@ class VideoInfo(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PublicDemoVideoInfo(BaseModel):
+    """Minimal video info for the public demo endpoint (no auth required)."""
+
+    id: int
+    title: Optional[str] = None
+    filename: str
+    duration: Optional[float] = None
+    fps: Optional[float] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    camera_angle: Optional[str] = None
+    session_type: Optional[str] = None
+    is_demo: bool = True
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class VideoListItem(BaseModel):
     """Simplified video information for list endpoints."""
 

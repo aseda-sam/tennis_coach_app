@@ -6,7 +6,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useAdmin } from '../hooks/useAdmin';
 import { useAnalysisManager } from '../hooks/useAnalysisManager';
 import usePersistedState from '../hooks/usePersistedState';
 import { useServeBiomechanicsReport } from '../hooks/useServeBiomechanicsReport';
@@ -23,7 +22,7 @@ import CollapsibleSection from './CollapsibleSection';
 import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
-import { ArrowLeft, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
 import ServeWindowEditModal from './ServeWindowEditModal';
@@ -82,8 +81,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   onExitToUpload,
 }) => {
   const queryClient = useQueryClient();
-  const { isAdmin } = useAdmin();
-
   const { resolvedUrl: resolvedVideoUrl } = useVideoUrl({ videoId, videoUrl });
 
   const {
@@ -388,11 +385,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     }
   }, [analysisStatus, runDetection]);
 
-  // Demo: admin status warning
-  const hasPoseAnalysis = analysisStatus?.has_analysis || false;
-  const showDemoStatusWarning =
-    isDemo && isAdmin && (!hasPoseAnalysis || serveWindows.length === 0);
-
   // Analysis in progress -- show progress view
   // Guard: don't derive these states until analysisStatus has loaded,
   // otherwise we flash "Ready to Analyze" while the status fetch is in flight.
@@ -421,28 +413,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   return (
     <div className="analysis-dashboard">
-      {/* Demo: Admin status warning */}
-      {showDemoStatusWarning && (
-        <div className="analysis-dashboard__status-warning">
-          <div className="analysis-dashboard__status-warning-content">
-            <strong>Demo Status:</strong>
-            {!hasPoseAnalysis && (
-              <span className="analysis-dashboard__status-item warning">
-                ⚠ Missing pose analysis
-              </span>
-            )}
-            {serveWindows.length === 0 && (
-              <span className="analysis-dashboard__status-item warning">
-                ⚠ No key moments tagged
-              </span>
-            )}
-            <span className="analysis-dashboard__status-hint">
-              Use the Admin tab to manage demo videos.
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <AnalysisDashboardHeader
         videoFilename={videoFilename}
@@ -549,6 +519,28 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         </div>
       )}
 
+      {/* Demo: Upload invite banner */}
+      {isDemo && onExitToUpload && analysisStatus?.has_analysis && (
+        <div className="analysis-dashboard__upload-invite">
+          <div className="analysis-dashboard__upload-invite-text">
+            <span className="analysis-dashboard__upload-invite-label">
+              Your Turn
+            </span>
+            <span className="analysis-dashboard__upload-invite-title">
+              Analyze Your Own Serve
+            </span>
+          </div>
+          <button
+            className="analysis-dashboard__upload-invite-button"
+            onClick={onExitToUpload}
+            type="button"
+          >
+            <Upload size={14} />
+            Upload Your Video
+          </button>
+        </div>
+      )}
+
       {/* Main Content: Focus-mode serve viewer */}
       {analysisStatus?.has_analysis && (
         <div className="analysis-dashboard__focus-view" ref={focusViewRef}>
@@ -634,37 +626,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               </div>
 
               <div className="analysis-dashboard__side-col">
-                {/* Demo: Upload CTA */}
-                {isDemo && onExitToUpload && (
-                  <div className="analysis-dashboard__upload-cta">
-                    <div className="analysis-dashboard__upload-cta-content">
-                      <button
-                        className="analysis-dashboard__back-button"
-                        onClick={onClose}
-                        type="button"
-                      >
-                        <ArrowLeft size={16} />
-                        Back to Home
-                      </button>
-                      <h3 className="analysis-dashboard__upload-cta-title">
-                        Ready to analyze your own video?
-                      </h3>
-                      <p className="analysis-dashboard__upload-cta-description">
-                        Now that you've seen how it works, upload your tennis
-                        video and get personalized feedback on your technique.
-                      </p>
-                      <button
-                        className="analysis-dashboard__upload-cta-button"
-                        onClick={onExitToUpload}
-                        type="button"
-                      >
-                        <Upload size={20} />
-                        Upload Your Video
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 {/* Feature Curves */}
                 {biomechanicsReport?.detection_meta && (
                   <CollapsibleSection

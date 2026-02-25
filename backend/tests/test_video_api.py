@@ -293,8 +293,15 @@ class TestVideoAPI:
         data = response.json()
         assert data["id"] == demo_video.id
         assert data["is_demo"] is True
-        assert data["is_active_demo"] is True
         assert data["filename"] == "demo_video.mp4"
+
+        # Verify sensitive fields are NOT exposed in the public response
+        assert "file_path" not in data
+        assert "error_message" not in data
+        assert "notes" not in data
+        assert "primary_player_id" not in data
+        assert "status" not in data
+        assert "is_active_demo" not in data
 
     @pytest.fixture
     def unauthenticated_client(
@@ -349,7 +356,11 @@ class TestVideoAPI:
         data = response.json()
         assert data["id"] == demo_video.id
         assert data["is_demo"] is True
-        assert data["is_active_demo"] is True
+
+        # Public endpoint should NOT expose sensitive fields
+        assert "is_active_demo" not in data
+        assert "file_path" not in data
+        assert "status" not in data
 
     def test_get_demo_video_url_public_access(
         self,

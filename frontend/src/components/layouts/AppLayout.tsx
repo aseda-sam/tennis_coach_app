@@ -11,7 +11,7 @@ import VideoUpload from '../VideoUpload';
 import { useAuth } from '../../hooks/useAuth';
 import { useAdmin } from '../../hooks/useAdmin';
 import { videoApi } from '../../services/api';
-import { VideoMetadata } from '../../types/video';
+import { PublicDemoVideo, VideoMetadata } from '../../types/video';
 import '../../App.css';
 
 // Context for upload modal so page components can trigger it
@@ -86,7 +86,7 @@ export function AppLayout() {
   useEffect(() => {
     if (location.pathname === '/') {
       queryClient
-        .fetchQuery<VideoMetadata, Error>({
+        .fetchQuery<PublicDemoVideo, Error>({
           queryKey: ['demo-video'],
           queryFn: async () => {
             return await videoApi.getDemoVideo();
