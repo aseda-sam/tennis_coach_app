@@ -23,7 +23,7 @@ import CollapsibleSection from './CollapsibleSection';
 import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
-import { ArrowLeft, Upload } from 'lucide-react';
+import { ArrowLeft, Pencil, Upload } from 'lucide-react';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
 import ServeWindowEditModal from './ServeWindowEditModal';
@@ -587,23 +587,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   />
                 </ErrorBoundary>
 
-                {/* Edit window button — non-demo only */}
-                {!isDemo && currentServe && (
-                  <div className="analysis-dashboard__edit-window-row">
-                    <button
-                      type="button"
-                      className="analysis-dashboard__edit-window-btn"
-                      onClick={() => setIsEditModalOpen(true)}
-                    >
-                      Edit window
-                    </button>
-                  </div>
-                )}
-
                 {/* Phase navigation — only when phases exist */}
                 {phases.length > 0 && (
-                  <>
-                    {/* Phase tab strip */}
+                  <div className="analysis-dashboard__phase-nav">
+                    {/* Scrollable tab strip */}
                     <div
                       className="analysis-dashboard__phase-tabs"
                       role="tablist"
@@ -640,7 +627,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                         </button>
                       )}
                     </div>
-                  </>
+                    {/* Edit window — icon button outside the scrollable strip */}
+                    {!isDemo && currentServe && (
+                      <button
+                        type="button"
+                        className="analysis-dashboard__edit-window-btn"
+                        onClick={() => setIsEditModalOpen(true)}
+                        aria-label="Edit serve window"
+                        title="Edit window"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 

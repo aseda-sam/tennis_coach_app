@@ -182,10 +182,18 @@
   gap: var(--spacing-lg);
 }
 
-/* Phase tab strip */
+/* Phase nav row — scrollable tabs + edit icon */
+.analysis-dashboard__phase-nav {
+  display: flex;
+  align-items: center;
+}
+
+/* Phase tab strip — scrollable, fills available width */
 .analysis-dashboard__phase-tabs {
   display: flex;
   overflow-x: auto;
+  flex: 1;
+  min-width: 0;
 }
 
 .analysis-dashboard__phase-tab {
@@ -221,31 +229,28 @@
   font-size: var(--font-size-xs);
 }
 
-/* Edit window button */
-.analysis-dashboard__edit-window-row {
-  display: flex;
-  justify-content: flex-end;
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-}
-
+/* Edit window icon button — lives inside the phase tab strip, far right */
 .analysis-dashboard__edit-window-btn {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  flex-shrink: 0;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   color: var(--color-text-muted);
   background: none;
-  border: 1px solid var(--color-border);
+  border: none;
   border-radius: var(--radius-sm);
-  padding: var(--spacing-xs) var(--spacing-md);
   cursor: pointer;
   transition:
     color var(--duration-fast) var(--ease-in-out),
-    border-color var(--duration-fast) var(--ease-in-out);
+    background var(--duration-fast) var(--ease-in-out);
 }
 
 .analysis-dashboard__edit-window-btn:hover {
   color: var(--color-text);
-  border-color: var(--color-text-muted);
+  background: var(--color-surface-secondary);
 }
 
 /* Metrics Strip */
