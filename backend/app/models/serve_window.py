@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Float,
@@ -70,9 +71,25 @@ class ServeWindow(Base):
     original_start_timestamp = Column(Float, nullable=True)
     original_end_timestamp = Column(Float, nullable=True)
 
+    # Active/split tracking
+    is_active = Column(Boolean, nullable=False, default=True)
+    # False when this window has been superseded by a split operation
+    parent_window_id = Column(
+        Integer,
+        ForeignKey("serve_windows.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # Set when this window was created as a child of a split
+
     # Relationships
     video = relationship("Video", back_populates="serve_windows")
     player = relationship("Player", back_populates="serve_windows")
+    parent_window = relationship(
+        "ServeWindow",
+        remote_side="ServeWindow.id",
+        foreign_keys=[parent_window_id],
+        backref="child_windows",
+    )
     biomechanics_reports = relationship(
         "ServeBiomechanicsReport",
         back_populates="serve_window",
@@ -100,6 +117,7 @@ class ServeWindow(Base):
         ),
         Index("ix_serve_windows_video_start", "video_id", "start_timestamp"),
         Index("ix_serve_windows_video_status", "video_id", "status"),
+        Index("ix_serve_windows_video_active", "video_id", "is_active"),
     )
 
     def __repr__(self) -> str:

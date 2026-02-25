@@ -63,6 +63,10 @@ Stores serve windows (manual or auto-detected) and review metadata.
 - `status` (`pending`, `accepted`, `rejected`, `edited`)
 - `model_version`, `confidence`, `detection_features` (nullable; for auto detection)
 - `reviewed_at`, `original_start_timestamp`, `original_end_timestamp`
+- `is_active` (Boolean, NOT NULL, DEFAULT TRUE) — `False` when this window has been superseded by a split operation. All listing queries filter by `is_active = True`.
+- `parent_window_id` (FK -> `serve_windows.id`, nullable, ON DELETE SET NULL) — set on child windows created by a split; `None` for original/manually-created windows.
+- Indexes:
+  - `ix_serve_windows_video_active` on (`video_id`, `is_active`) — for active-window queries
 
 ## serve_biomechanics_reports
 

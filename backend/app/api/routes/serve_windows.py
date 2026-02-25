@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from app.api.schemas.serve_window import (
     ServeWindowCreate,
     ServeWindowInfo,
+    ServeWindowSplitRequest,
+    ServeWindowSplitResponse,
     ServeWindowUpdate,
 )
 from app.core.database import get_db
@@ -110,6 +112,24 @@ async def update_serve_window(
                     e,
                 )
 
+        if updates.start_timestamp is not None or updates.end_timestamp is not None:
+            try:
+                serve_biomechanics_service.compute_analysis(
+                    db=db,
+                    serve_window_id=serve_window_id,
+                    user_id=current_user["id"],
+                )
+                logger.info(
+                    "Recomputed biomechanics for serve window %s after window resize",
+                    serve_window_id,
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "Could not recompute biomechanics after resize for %s: %s",
+                    serve_window_id,
+                    e,
+                )
+
         return ServeWindowInfo.model_validate(updated_serve_window)
 
     except Exception as e:  # noqa: BLE001
@@ -170,6 +190,60 @@ async def get_serve_window(
     except Exception as e:  # noqa: BLE001
         handle_service_error(
             e, "get_serve_window", {"serve_window_id": serve_window_id}
+        )
+
+
+@router.post("/{serve_window_id}/split", response_model=ServeWindowSplitResponse)
+async def split_serve_window(
+    serve_window_id: int,
+    split_request: ServeWindowSplitRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ServeWindowSplitResponse:
+    """Split a serve window into two at the specified timestamp."""
+    try:
+        # Get serve window to check demo status
+        serve_window = serve_window_service.get_serve_window_by_id(
+            db=db,
+            serve_window_id=serve_window_id,
+            user_id=current_user["id"],
+        )
+
+        # Get video to check demo status
+        video = video_service.get_video_by_id(db, serve_window.video_id)
+        if video:
+            require_video_not_demo(video, current_user)
+
+        child_a, child_b = serve_window_service.split_serve_window(
+            db=db,
+            serve_window_id=serve_window_id,
+            split_at=split_request.split_at,
+            user_id=current_user["id"],
+        )
+
+        # Trigger biomechanics re-analysis for each child (graceful)
+        for child_id in (child_a.id, child_b.id):
+            try:
+                serve_biomechanics_service.compute_analysis(
+                    db=db,
+                    serve_window_id=child_id,
+                    user_id=current_user["id"],
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "Could not compute biomechanics for child window %s: %s",
+                    child_id,
+                    e,
+                )
+
+        return ServeWindowSplitResponse(
+            window_a=ServeWindowInfo.model_validate(child_a),
+            window_b=ServeWindowInfo.model_validate(child_b),
+        )
+
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(
+            e, "split_serve_window", {"serve_window_id": serve_window_id}
         )
 
 
