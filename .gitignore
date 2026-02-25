@@ -58,7 +58,11 @@ venv.bak/
 !.cursor/rules/**
 !.cursor/skills/
 !.cursor/skills/**
-.cursor/skills/interview-prep/
+.agents/skills/local-private/
+.cursor/skills/project-drills
+.cursor/skills/project-drills/
+.cursor/skills/narrative-lab
+.cursor/skills/narrative-lab/
 
 # Antigravity agent (deleted — entry kept as safety net)
 .agent/
@@ -74,6 +78,7 @@ venv.bak/
 .claude/commands/shorten-article.md
 !.claude/settings.json
 CLAUDE.md
+/AGENTS.local.md
 
 # Ruff
 .ruff_cache/
@@ -141,8 +146,11 @@ test_yolo_fix.py
 # Miscellaneous
 etc/
 
-# Writing (root-anchored so it doesn't catch .agents/skills/writing)
+# Writing (root-anchored so it doesn't catch skill folders)
 /writing/
+
+# Local idea/project-management scratchpad
+/ideas/
 
 # Backend temporary/debug outputs
 backend/tmp/
