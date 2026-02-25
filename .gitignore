@@ -50,33 +50,17 @@ venv.bak/
 *.swo
 *~
 
-# Cursor (track rules/skills/plans; ignore local state)
-.cursor/*
-!.cursor/plans/
-!.cursor/plans/**
-!.cursor/rules/
-!.cursor/rules/**
-!.cursor/skills/
-!.cursor/skills/**
+# Cursor (local-only)
+.cursor/
 .agents/skills/local-private/
-.cursor/skills/project-drills
-.cursor/skills/project-drills/
-.cursor/skills/narrative-lab
-.cursor/skills/narrative-lab/
 
 # Antigravity agent (deleted — entry kept as safety net)
 .agent/
 
 # .agents/ — shared cross-tool skills (tracked)
 
-# Claude AI (track skills/commands; ignore local state)
-.claude/*
-!.claude/skills/
-!.claude/skills/**
-!.claude/commands/
-!.claude/commands/**
-.claude/commands/shorten-article.md
-!.claude/settings.json
+# Claude AI (local-only)
+.claude/
 CLAUDE.md
 /AGENTS.local.md
 
