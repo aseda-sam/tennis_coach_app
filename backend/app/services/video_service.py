@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.models.ball_detection import BallDetection
 from app.models.pose_detection import PoseDetection
 from app.models.video import Video
+from app.services import player_service
 from app.services.storage_service import storage_service
 from app.utils.error_handling import handle_file_error
 from app.utils.file_validation import (
@@ -43,6 +44,7 @@ def create_video_record(
     camera_angle: Optional[str] = None,
     recorded_at: Optional[datetime] = None,
     recorded_at_source: Optional[str] = None,
+    primary_player_id: Optional[int] = None,
 ) -> Video:
     """Create a new video record in the database.
 
@@ -81,6 +83,7 @@ def create_video_record(
         camera_angle=camera_angle,
         recorded_at=recorded_at,
         recorded_at_source=recorded_at_source,
+        primary_player_id=primary_player_id,
     )
     db.add(db_video)
     db.commit()
@@ -246,6 +249,8 @@ def handle_video_upload(
         final_recorded_at = datetime.now(timezone.utc)
         recorded_at_source = "upload_time"
 
+    default_player = player_service.get_or_create_default_player(db, user_id)
+
     db_video = create_video_record(
         db=db,
         filename=unique_filename,
@@ -263,6 +268,7 @@ def handle_video_upload(
         camera_angle=camera_angle,
         recorded_at=final_recorded_at,
         recorded_at_source=recorded_at_source,
+        primary_player_id=default_player.id,
     )
 
     return db_video, metadata
