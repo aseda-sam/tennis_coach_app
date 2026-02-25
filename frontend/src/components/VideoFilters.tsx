@@ -112,7 +112,7 @@ const VideoFilters: React.FC<VideoFiltersProps> = ({
                 className={`filter-pill${filters.player_id === playerProfile.id ? ' filter-pill--active' : ''}`}
                 onClick={() => handlePlayerFilter('you')}
               >
-                {playerProfile.name || 'You'}
+                You
               </button>
               <button
                 type="button"
