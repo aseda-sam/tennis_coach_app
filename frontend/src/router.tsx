@@ -13,7 +13,8 @@ const AdminDemosPage = React.lazy(
   () => import('./components/pages/AdminDemosPage')
 );
 
-export const router = createBrowserRouter([
+export const router = createBrowserRouter(
+  [
   {
     element: <AppLayout />,
     children: [
@@ -99,4 +100,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
-]);
+  ],
+  { basename: import.meta.env.BASE_URL.replace(/\/$/, '') }
+);
