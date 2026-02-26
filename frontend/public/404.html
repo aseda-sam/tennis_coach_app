@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Second Serve</title>
+    <script>
+      // Single Page App redirect for GitHub Pages
+      // https://github.com/rafgraph/spa-github-pages
+      //
+      // GitHub Pages doesn't natively support SPA routing.
+      // This 404.html captures the current path and redirects to index.html
+      // with the route encoded as a query parameter, which index.html then
+      // restores via history.replaceState before the app mounts.
+      var pathSegmentsToKeep = 1; // keep '/tennis_coach_app' prefix
+      var l = window.location;
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash
+      );
+    </script>
+  </head>
+  <body></body>
+</html>
