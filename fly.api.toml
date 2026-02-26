@@ -16,7 +16,7 @@ primary_region = "lhr"
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
 
 # VM configuration - set BEFORE deploying to ensure machines are created with correct resources
 # API requires at least 512MB RAM for stable operation
