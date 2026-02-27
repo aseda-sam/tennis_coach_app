@@ -157,7 +157,7 @@ const HeroView: React.FC<HeroViewProps> = ({
   }, [contactTimestamp, serveStart, serveEnd, toPercent]);
 
   return (
-    <div className="hero-view">
+    <div className="hero-view" data-tour-step="hero-view">
       <div className="hero-view__display">
         {isVideoMode ? (
           <video

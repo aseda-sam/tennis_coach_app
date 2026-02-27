@@ -132,7 +132,12 @@ const ServeThumbnailStrip: React.FC<ServeThumbnailStripProps> = ({
   if (serveWindows.length === 0) return null;
 
   return (
-    <div className="thumbnail-strip" ref={stripRef} role="tablist">
+    <div
+      className="thumbnail-strip"
+      ref={stripRef}
+      role="tablist"
+      data-tour-step="thumbnail-strip"
+    >
       {serveWindows.map((sw, i) => {
         const isActive = i === currentIndex;
         const courtSide = sw.court_side

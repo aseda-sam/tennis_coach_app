@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import React, {
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -22,7 +23,7 @@ import CollapsibleSection from './CollapsibleSection';
 import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
-import { Upload } from 'lucide-react';
+import { TourPlaybackControls } from './DemoTour/tourSteps';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
 import ServeWindowEditModal from './ServeWindowEditModal';
@@ -54,6 +55,8 @@ interface AnalysisDashboardProps {
   onClose: () => void;
   isDemo?: boolean;
   onExitToUpload?: () => void;
+  tourControlsRef?: React.Ref<TourPlaybackControls>;
+  onRestartTour?: () => void;
 }
 
 function findCurrentPhase(
@@ -79,6 +82,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   onClose,
   isDemo = false,
   onExitToUpload,
+  tourControlsRef,
+  onRestartTour,
 }) => {
   const queryClient = useQueryClient();
   const { resolvedUrl: resolvedVideoUrl } = useVideoUrl({ videoId, videoUrl });
@@ -198,6 +203,25 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   // Track which phase tab was explicitly clicked — gives instant highlight
   // without waiting for the video seek to complete.
   const [activePhaseKey, setActivePhaseKey] = useState<string | null>(null);
+
+  // Expose playback controls for demo tour
+  useImperativeHandle(
+    tourControlsRef,
+    () => ({
+      seekToPhase: (phaseKey: string) => {
+        const phase = phases.find((p) => p.phase === phaseKey);
+        if (phase) {
+          setActivePhaseKey(phase.phase);
+          handlePhaseJump(phase);
+        }
+      },
+      setPlaybackSpeed,
+      pause: () => {
+        if (isPlaying) handlePlayPause();
+      },
+    }),
+    [phases, handlePhaseJump, setPlaybackSpeed, isPlaying, handlePlayPause]
+  );
 
   // Clear override when playback starts (natural phase transitions take over)
   useEffect(() => {
@@ -424,6 +448,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         serveCount={hasServes ? sortedServeWindows.length : undefined}
         onClose={onClose}
         isDemo={isDemo}
+        onRestartTour={onRestartTour}
       />
 
       {/* Initial loading — analysis status not yet fetched */}
@@ -522,28 +547,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         </div>
       )}
 
-      {/* Demo: Upload invite banner */}
-      {isDemo && onExitToUpload && analysisStatus?.has_analysis && (
-        <div className="analysis-dashboard__upload-invite">
-          <div className="analysis-dashboard__upload-invite-text">
-            <span className="analysis-dashboard__upload-invite-label">
-              Your Turn
-            </span>
-            <span className="analysis-dashboard__upload-invite-title">
-              Analyze Your Own Serve
-            </span>
-          </div>
-          <button
-            className="analysis-dashboard__upload-invite-button"
-            onClick={onExitToUpload}
-            type="button"
-          >
-            <Upload size={14} />
-            Upload Your Video
-          </button>
-        </div>
-      )}
-
       {/* Main Content: Focus-mode serve viewer */}
       {analysisStatus?.has_analysis && (
         <div className="analysis-dashboard__focus-view" ref={focusViewRef}>
@@ -592,6 +595,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   <div
                     className="analysis-dashboard__phase-tabs"
                     role="tablist"
+                    data-tour-step="phase-tabs"
                   >
                     {phases.map((phase) => (
                       <button
@@ -653,7 +657,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     expanded={metricsExpanded}
                     onToggle={() => setMetricsExpanded(!metricsExpanded)}
                   >
-                    <div className="analysis-dashboard__metrics-strip">
+                    <div
+                      className="analysis-dashboard__metrics-strip"
+                      data-tour-step="metrics-section"
+                    >
                       {metrics.map((m) => {
                         const isClickable =
                           m.timestamp != null && m.value != null;

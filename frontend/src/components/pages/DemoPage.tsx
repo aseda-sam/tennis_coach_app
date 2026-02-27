@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { videoApi } from '../../services/api';
@@ -6,6 +6,10 @@ import { PublicDemoVideo } from '../../types/video';
 import { useAuth } from '../../hooks/useAuth';
 import { useUploadModal } from '../layouts/AppLayout';
 import LoadingIndicator from '../LoadingIndicator';
+import { useDemoTour } from '../DemoTour/useDemoTour';
+import { TourPlaybackControls } from '../DemoTour/tourSteps';
+import DemoTourOverlay from '../DemoTour/DemoTourOverlay';
+import DemoUploadPill from '../DemoTour/DemoUploadPill';
 
 const AnalysisDashboard = React.lazy(() => import('../AnalysisDashboard'));
 
@@ -34,6 +38,13 @@ function DemoPage() {
       navigate('/library');
     }
   };
+
+  const tourControlsRef = useRef<TourPlaybackControls>(null);
+
+  const tour = useDemoTour({
+    enabled: !!demoVideo && !isLoading,
+    controlsRef: tourControlsRef,
+  });
 
   if (isLoading) {
     return (
@@ -75,7 +86,25 @@ function DemoPage() {
         onClose={() => navigate('/')}
         isDemo={true}
         onExitToUpload={handleExitToUpload}
+        tourControlsRef={tourControlsRef}
+        onRestartTour={tour.restart}
       />
+
+      {tour.isActive && tour.currentStep && (
+        <DemoTourOverlay
+          step={tour.currentStep}
+          stepIndex={tour.currentStepIndex}
+          totalSteps={tour.totalSteps}
+          onNext={tour.next}
+          onPrev={tour.prev}
+          onEnd={tour.end}
+          onUpload={handleExitToUpload}
+        />
+      )}
+
+      {!tour.isActive && tour.tourCompleted && (
+        <DemoUploadPill onUpload={handleExitToUpload} />
+      )}
     </Suspense>
   );
 }
