@@ -24,19 +24,19 @@ yarn-debug.log*
 yarn-error.log*
 
 # Dependencies and builds (will be installed in container)
-node_modules/
-build/
-dist/
+**/node_modules/
+**/build/
+**/dist/
 
 # Python
-__pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
-venv/
-.venv/
+**/env/
+**/venv/
+**/.venv/
 pip-log.txt
 pip-delete-this-directory.txt
 .pytest_cache/
