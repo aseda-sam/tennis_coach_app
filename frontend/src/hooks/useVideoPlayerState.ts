@@ -239,6 +239,7 @@ export function useVideoPlayerState({
     videoId,
     filters: videoId ? { video_id: videoId } : undefined,
     autoRefresh: !!videoId,
+    isDemo,
   });
 
   const { contactTimestamps } = useContactTimestamps(videoId);
@@ -246,6 +247,7 @@ export function useVideoPlayerState({
   const { detectionStatus, runDetection } = useServeProposals({
     videoId,
     autoRefresh: !!videoId,
+    isDemo,
   });
 
   const { resolvedUrl: resolvedVideoUrl, isLoading: isLoadingUrl } =

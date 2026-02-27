@@ -30,6 +30,21 @@ describe('useServeProposals', () => {
     vi.clearAllMocks();
   });
 
+  it('does not fetch status when isDemo is true', async () => {
+    const { result } = renderHook(
+      () => useServeProposals({ videoId: 10, isDemo: true }),
+      { wrapper: createWrapper() }
+    );
+
+    // Give time for any potential queries to fire
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    expect(mockApi.getStatus).not.toHaveBeenCalled();
+    expect(result.current.detectionStatus).toBeNull();
+  });
+
   it('runDetection calls propose API', async () => {
     mockApi.getStatus.mockResolvedValue({
       video_id: 10,

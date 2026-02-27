@@ -43,6 +43,14 @@ export const serveWindowApi = {
     return response.data;
   },
 
+  // List serve windows for a video (demo-safe, no auth required for demo videos)
+  listByVideo: async (videoId: number): Promise<ServeWindow[]> => {
+    const response = await api.get<ServeWindow[]>(
+      `/serve-windows/video/${videoId}`
+    );
+    return response.data;
+  },
+
   // List serve windows with optional filters
   list: async (filters?: ServeWindowFilters): Promise<ServeWindow[]> => {
     const params = new URLSearchParams();

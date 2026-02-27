@@ -13,6 +13,7 @@ interface UseServeWindowsOptions {
   videoId?: number;
   filters?: ServeWindowFilters;
   autoRefresh?: boolean;
+  isDemo?: boolean;
   onServeWindowsLoaded?: (serveWindows: ServeWindow[]) => void;
   onError?: (error: string) => void;
 }
@@ -34,18 +35,24 @@ export const useServeWindows = ({
   videoId,
   filters,
   autoRefresh = true,
+  isDemo = false,
   onServeWindowsLoaded,
   onError,
 }: UseServeWindowsOptions = {}): UseServeWindowsResult => {
   const queryClient = useQueryClient();
 
   // Build query key with filters
-  const queryKey = ['serve-windows', filters || {}];
+  const queryKey = isDemo
+    ? ['serve-windows', 'video', videoId]
+    : ['serve-windows', filters || {}];
 
   // Fetch serve windows using React Query
   const serveWindowsQuery = useQuery<ServeWindow[]>({
     queryKey,
     queryFn: async () => {
+      if (isDemo && videoId) {
+        return await serveWindowApi.listByVideo(videoId);
+      }
       return await serveWindowApi.list(filters);
     },
     enabled: autoRefresh,

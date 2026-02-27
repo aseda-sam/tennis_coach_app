@@ -376,6 +376,42 @@ describe('useServeWindows', () => {
   });
 
   // -----------------------------------------------------------------------
+  // Demo mode
+  // -----------------------------------------------------------------------
+
+  it('calls listByVideo instead of list when isDemo is true', async () => {
+    const windows = [makeServeWindow({ id: 1 })];
+    mockedApi.listByVideo.mockResolvedValue(windows);
+
+    const queryClient = createQueryClient();
+    const { result } = renderHook(
+      () => useServeWindows({ videoId: 10, isDemo: true }),
+      { wrapper: createWrapper(queryClient) }
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(mockedApi.listByVideo).toHaveBeenCalledWith(10);
+    expect(mockedApi.list).not.toHaveBeenCalled();
+    expect(result.current.serveWindows).toEqual(windows);
+  });
+
+  it('calls list (not listByVideo) when isDemo is false', async () => {
+    mockedApi.list.mockResolvedValue([]);
+
+    const queryClient = createQueryClient();
+    const { result } = renderHook(
+      () => useServeWindows({ videoId: 10, isDemo: false }),
+      { wrapper: createWrapper(queryClient) }
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(mockedApi.list).toHaveBeenCalled();
+    expect(mockedApi.listByVideo).not.toHaveBeenCalled();
+  });
+
+  // -----------------------------------------------------------------------
   // refreshServeWindows
   // -----------------------------------------------------------------------
 

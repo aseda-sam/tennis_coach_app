@@ -15,41 +15,12 @@ const AdminDemosPage = React.lazy(
 
 export const router = createBrowserRouter(
   [
-  {
-    element: <AppLayout />,
-    children: [
-      {
-        index: true,
-        element: (
-          <React.Suspense
-            fallback={
-              <div className="app-container">
-                <div className="app-loading" />
-              </div>
-            }
-          >
-            <HomePage />
-          </React.Suspense>
-        ),
-      },
-      {
-        path: 'demo',
-        element: (
-          <React.Suspense
-            fallback={
-              <div className="app-container">
-                <div className="app-loading" />
-              </div>
-            }
-          >
-            <DemoPage />
-          </React.Suspense>
-        ),
-      },
-      {
-        path: 'library',
-        element: (
-          <ProtectedRoute>
+    {
+      element: <AppLayout />,
+      children: [
+        {
+          index: true,
+          element: (
             <React.Suspense
               fallback={
                 <div className="app-container">
@@ -57,15 +28,13 @@ export const router = createBrowserRouter(
                 </div>
               }
             >
-              <LibraryPage />
+              <HomePage />
             </React.Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'videos/:videoId',
-        element: (
-          <ProtectedRoute>
+          ),
+        },
+        {
+          path: 'demo',
+          element: (
             <React.Suspense
               fallback={
                 <div className="app-container">
@@ -73,33 +42,64 @@ export const router = createBrowserRouter(
                 </div>
               }
             >
-              <VideoAnalysisPage />
+              <DemoPage />
             </React.Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'admin/demos',
-        element: (
-          <ProtectedRoute requireAdmin>
-            <React.Suspense
-              fallback={
-                <div className="app-container">
-                  <div className="app-loading" />
-                </div>
-              }
-            >
-              <AdminDemosPage />
-            </React.Suspense>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '*',
-        element: <Navigate to="/" replace />,
-      },
-    ],
-  },
+          ),
+        },
+        {
+          path: 'library',
+          element: (
+            <ProtectedRoute>
+              <React.Suspense
+                fallback={
+                  <div className="app-container">
+                    <div className="app-loading" />
+                  </div>
+                }
+              >
+                <LibraryPage />
+              </React.Suspense>
+            </ProtectedRoute>
+          ),
+        },
+        {
+          path: 'videos/:videoId',
+          element: (
+            <ProtectedRoute>
+              <React.Suspense
+                fallback={
+                  <div className="app-container">
+                    <div className="app-loading" />
+                  </div>
+                }
+              >
+                <VideoAnalysisPage />
+              </React.Suspense>
+            </ProtectedRoute>
+          ),
+        },
+        {
+          path: 'admin/demos',
+          element: (
+            <ProtectedRoute requireAdmin>
+              <React.Suspense
+                fallback={
+                  <div className="app-container">
+                    <div className="app-loading" />
+                  </div>
+                }
+              >
+                <AdminDemosPage />
+              </React.Suspense>
+            </ProtectedRoute>
+          ),
+        },
+        {
+          path: '*',
+          element: <Navigate to="/" replace />,
+        },
+      ],
+    },
   ],
   { basename: import.meta.env.BASE_URL.replace(/\/$/, '') }
 );

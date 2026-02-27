@@ -20,6 +20,7 @@ interface AnalysisState {
 interface UseAnalysisManagerOptions {
   videoId: number;
   autoRefresh?: boolean;
+  isDemo?: boolean;
   onAnalysisComplete?: (result: AnalysisData | null) => void;
   onAnalysisError?: (error: string) => void;
 }
@@ -35,6 +36,7 @@ interface UseAnalysisManagerResult {
 export const useAnalysisManager = ({
   videoId,
   autoRefresh = true,
+  isDemo = false,
   onAnalysisComplete,
   onAnalysisError,
 }: UseAnalysisManagerOptions): UseAnalysisManagerResult => {
@@ -90,7 +92,10 @@ export const useAnalysisManager = ({
   });
 
   // Check for active jobs on mount and resume polling if found
+  // Skip in demo mode — demo videos don't have active jobs
   useEffect(() => {
+    if (isDemo) return;
+
     let isMounted = true;
 
     const checkForActiveJobs = async () => {
@@ -152,7 +157,7 @@ export const useAnalysisManager = ({
       shouldStartPollingRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoId]); // Only run when videoId changes (on mount or when switching videos)
+  }, [videoId, isDemo]); // Only run when videoId changes (on mount or when switching videos)
 
   // Function to start analysis using the new unified API
   const startAnalysis = useCallback(

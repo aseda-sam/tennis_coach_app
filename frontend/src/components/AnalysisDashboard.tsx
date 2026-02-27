@@ -104,6 +104,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   } = useAnalysisManager({
     videoId,
     autoRefresh: true,
+    isDemo,
     onAnalysisComplete: handleAnalysisComplete,
   });
 
@@ -150,11 +151,13 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     videoId,
     filters: { video_id: videoId },
     autoRefresh: true,
+    isDemo,
   });
 
   const { runDetection } = useServeProposals({
     videoId,
     autoRefresh: true,
+    isDemo,
   });
 
   const sortedServeWindows = useMemo(

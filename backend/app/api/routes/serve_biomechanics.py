@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -13,14 +13,18 @@ from app.api.schemas.serve_biomechanics import (
     PhaseWindowResponse,
 )
 from app.core.database import get_db
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_user, get_optional_user
 from app.models.serve_biomechanics_report import ServeBiomechanicsReport
+from app.services import serve_window_service, video_service
 from app.services.biomechanics.metrics import metrics_to_flat_list
 from app.services.biomechanics.serve_biomechanics_service import (
     serve_biomechanics_service,
 )
 from app.services.player_service import get_player_by_id
-from app.utils.authorization import require_player_access
+from app.utils.authorization import (
+    require_player_access,
+    require_video_access_or_public_demo,
+)
 from app.utils.error_handling import handle_not_found_error, log_and_raise_error
 
 logger = logging.getLogger(__name__)
@@ -84,18 +88,29 @@ def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportRe
 )
 async def get_serve_biomechanics(
     serve_window_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> BiomechanicsReportResponse:
     """Get biomechanics report for a serve window. Computes lazily on first request."""
-    user_id = current_user["id"]
     try:
+        # Look up serve window to get video for auth check
+        sw = serve_window_service.get_serve_window_by_id_no_auth(db, serve_window_id)
+        video = video_service.get_video_by_id(db, sw.video_id)
+        if not video:
+            raise handle_not_found_error("video", str(sw.video_id))
+        require_video_access_or_public_demo(video, current_user)
+
+        # For unauthenticated demo access, use the serve window owner's user_id
+        user_id = current_user["id"] if current_user else sw.user_id
+
         report = serve_biomechanics_service.get_or_compute_analysis(
             db, serve_window_id, user_id
         )
         return _report_to_response(report)
     except ValueError as e:
         raise handle_not_found_error("serve_window", str(serve_window_id)) from e
+    except HTTPException:
+        raise
     except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(
             e, "get_serve_biomechanics", {"serve_window_id": serve_window_id}
