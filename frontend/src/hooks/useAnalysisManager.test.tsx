@@ -294,6 +294,21 @@ describe('useAnalysisManager', () => {
     });
   });
 
+  describe('demo mode', () => {
+    it('skips active job check when isDemo is true', async () => {
+      const { result } = renderHook(() =>
+        useAnalysisManager({ videoId: 5, isDemo: true })
+      );
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+
+      expect(mockApi.getVideoJobs).not.toHaveBeenCalled();
+      expect(result.current.analysisState.status).toBe('idle');
+    });
+  });
+
   describe('refreshAnalysis', () => {
     it('resets state to idle', async () => {
       mockApi.startAnalysis.mockResolvedValue({

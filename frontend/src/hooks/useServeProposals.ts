@@ -10,6 +10,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 interface UseServeProposalsOptions {
   videoId?: number;
   autoRefresh?: boolean;
+  isDemo?: boolean;
 }
 
 interface UseServeProposalsResult {
@@ -21,6 +22,7 @@ interface UseServeProposalsResult {
 export const useServeProposals = ({
   videoId,
   autoRefresh = true,
+  isDemo = false,
 }: UseServeProposalsOptions = {}): UseServeProposalsResult => {
   const queryClient = useQueryClient();
 
@@ -33,7 +35,7 @@ export const useServeProposals = ({
       if (!videoId) throw new Error('Video ID required');
       return await serveProposalApi.getStatus(videoId);
     },
-    enabled: autoRefresh && !!videoId,
+    enabled: autoRefresh && !!videoId && !isDemo,
     staleTime: 30 * 1000, // 30 seconds
   });
 

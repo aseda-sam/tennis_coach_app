@@ -1,15 +1,16 @@
 """Overlay data API routes for client-side rendering."""
 
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas.overlay_data import PoseOverlayData
 from app.core.database import get_db
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_optional_user
 from app.services import overlay_data_service, video_service
-from app.utils.authorization import require_video_access
+from app.utils.authorization import require_video_access_or_public_demo
 from app.utils.error_handling import handle_not_found_error, log_and_raise_error
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/v0/videos", tags=["overlay-data"])
 @router.get("/{video_id}/overlay-data", response_model=PoseOverlayData)
 async def get_overlay_data(
     video_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> PoseOverlayData:
     """
@@ -41,7 +42,7 @@ async def get_overlay_data(
         if not video:
             raise handle_not_found_error("video", str(video_id))
 
-        require_video_access(video, current_user)
+        require_video_access_or_public_demo(video, current_user)
 
         overlay_data = overlay_data_service.format_overlay_data(db, video_id)
         return overlay_data

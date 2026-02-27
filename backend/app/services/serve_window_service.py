@@ -162,6 +162,35 @@ def create_serve_window(
     return db_serve_window
 
 
+def get_serve_window_by_id_no_auth(
+    db: Session,
+    serve_window_id: int,
+) -> ServeWindow:
+    """Get a serve window by ID without authorization check.
+
+    Used when authorization is handled at the route level (e.g., demo-aware endpoints
+    that check video-level access instead of user_id ownership).
+
+    Args:
+        db: Database session
+        serve_window_id: Serve window ID
+
+    Returns:
+        ServeWindow instance
+
+    Raises:
+        ValueError: If serve window not found
+    """
+    serve_window = (
+        db.query(ServeWindow).filter(ServeWindow.id == serve_window_id).first()
+    )
+
+    if not serve_window:
+        raise ValueError(f"Serve window with ID {serve_window_id} not found")
+
+    return serve_window
+
+
 def get_serve_window_by_id(
     db: Session,
     serve_window_id: int,
@@ -412,6 +441,34 @@ def get_serve_windows_for_video(
             ServeWindow.video_id == video_id,
             ServeWindow.is_active.is_(True),
         )
+        .all()
+    )
+
+
+def list_serve_windows_by_video(
+    db: Session,
+    video_id: int,
+) -> List[ServeWindow]:
+    """List visible serve windows for a video (no user_id filter).
+
+    Used by the public demo endpoint where there is no authenticated user.
+    Filters by video_id, is_active, and visible statuses only.
+
+    Args:
+        db: Database session
+        video_id: Video ID
+
+    Returns:
+        List of ServeWindow instances ordered by creation date (newest first)
+    """
+    return (
+        db.query(ServeWindow)
+        .filter(
+            ServeWindow.video_id == video_id,
+            ServeWindow.is_active.is_(True),
+            ServeWindow.status.in_(VISIBLE_STATUSES),
+        )
+        .order_by(ServeWindow.created_at.desc())
         .all()
     )
 

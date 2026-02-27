@@ -15,12 +15,16 @@ from app.api.schemas.serve_window import (
     ServeWindowUpdate,
 )
 from app.core.database import get_db
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_user, get_optional_user
 from app.services import serve_window_service, video_service
 from app.services.biomechanics.serve_biomechanics_service import (
     serve_biomechanics_service,
 )
-from app.utils.authorization import require_video_access, require_video_not_demo
+from app.utils.authorization import (
+    require_video_access,
+    require_video_access_or_public_demo,
+    require_video_not_demo,
+)
 from app.utils.error_handling import handle_not_found_error, handle_service_error
 
 logger = logging.getLogger(__name__)
@@ -136,6 +140,36 @@ async def update_serve_window(
         handle_service_error(
             e, "update_serve_window", {"serve_window_id": serve_window_id}
         )
+
+
+@router.get("/video/{video_id}", response_model=List[ServeWindowInfo])
+async def get_serve_windows_by_video(
+    video_id: int,
+    current_user: Optional[dict] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> List[ServeWindowInfo]:
+    """
+    Get serve windows for a video (demo-aware).
+
+    Returns visible, active serve windows for a video. Allows unauthenticated
+    access for demo videos.
+    """
+    try:
+        video = video_service.get_video_by_id(db, video_id)
+        if not video:
+            raise handle_not_found_error("video", str(video_id))
+
+        require_video_access_or_public_demo(video, current_user)
+
+        serve_windows = serve_window_service.list_serve_windows_by_video(
+            db=db,
+            video_id=video_id,
+        )
+
+        return [ServeWindowInfo.model_validate(sw) for sw in serve_windows]
+
+    except Exception as e:  # noqa: BLE001
+        handle_service_error(e, "get_serve_windows_by_video", {"video_id": video_id})
 
 
 @router.get("/me", response_model=List[ServeWindowInfo])

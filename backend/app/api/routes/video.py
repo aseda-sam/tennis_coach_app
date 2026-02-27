@@ -216,7 +216,7 @@ async def get_demo_video(
 )
 async def get_video_ball_contact_timestamps(
     video_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> BallContactTimestampsResponse:
     """
@@ -227,12 +227,15 @@ async def get_video_ball_contact_timestamps(
     db_video = video_service.get_video_by_id(db, video_id)
     if not db_video:
         raise handle_not_found_error("video", str(video_id))
-    require_video_access(db_video, current_user)
+    require_video_access_or_public_demo(db_video, current_user)
+
+    # For unauthenticated demo access, use the video owner's user_id
+    user_id = current_user["id"] if current_user else db_video.user_id
 
     timestamps = serve_window_service.get_ball_contact_timestamps(
         db=db,
         video_id=video_id,
-        user_id=current_user["id"],
+        user_id=user_id,
     )
     return BallContactTimestampsResponse(ball_contact_timestamps=timestamps)
 
@@ -240,7 +243,7 @@ async def get_video_ball_contact_timestamps(
 @router.get("/{video_id}", response_model=VideoInfo)
 async def get_video(
     video_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> VideoInfo:
     """
@@ -257,8 +260,8 @@ async def get_video(
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        # Check authorization
-        require_video_access(db_video, current_user)
+        # Check authorization (allow public access for demo videos)
+        require_video_access_or_public_demo(db_video, current_user)
 
         return VideoInfo.model_validate(db_video)
     except (OSError, ValueError) as e:
@@ -414,7 +417,7 @@ async def get_video_url(
 @router.get("/{video_id}/analysis-status", response_model=VideoAnalysisStatus)
 async def get_video_analysis_status(
     video_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> VideoAnalysisStatus:
     """
@@ -432,7 +435,7 @@ async def get_video_analysis_status(
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
 
-        require_video_access(db_video, current_user)
+        require_video_access_or_public_demo(db_video, current_user)
 
         status_dict = video_service.get_video_analysis_status(db, video_id)
         return VideoAnalysisStatus(**status_dict)

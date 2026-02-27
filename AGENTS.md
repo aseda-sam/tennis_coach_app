@@ -91,6 +91,7 @@ docs/
 - **Background jobs:** Use RQ + `VideoJob` for anything > 5s. Jobs create their own DB sessions.
 - **API versioning:** All endpoints under `/v0/` (alpha, breaking changes allowed).
 - **DB changes:** If you modify models, update `backend/docs/database_schema.md` and create an Alembic migration.
+- **Demo compatibility:** `AnalysisDashboard` is shared between authenticated users and the public demo page (unauthenticated). When adding a new API call to AnalysisDashboard or its child components/hooks, ensure the backend endpoint allows unauthenticated access for demo videos (use `get_optional_user` + `require_video_access_or_public_demo`). If the call is only needed for authenticated users, gate it with `isDemo` in the frontend hook. Test the demo page unauthenticated after any AnalysisDashboard change.
 
 ## Documentation discipline
 
