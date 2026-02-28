@@ -172,7 +172,9 @@ const ServeThumbnailStrip: React.FC<ServeThumbnailStripProps> = ({
                 <span className="thumbnail-strip__placeholder">{i + 1}</span>
               )}
             </div>
-            <span className="thumbnail-strip__badge">{i + 1}</span>
+            {thumbnails[i] && (
+              <span className="thumbnail-strip__badge">{i + 1}</span>
+            )}
             {courtSide && (
               <span className="thumbnail-strip__side">{courtSide}</span>
             )}
