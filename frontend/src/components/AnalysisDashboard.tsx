@@ -116,6 +116,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   );
   const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
   const focusViewRef = useRef<HTMLDivElement>(null);
+  const ktpRef = useRef<HTMLDivElement>(null);
 
   // Collapsible sidebar section state (persisted across sessions)
   const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', true);
@@ -346,6 +347,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       ) {
         return;
       }
+      if (ktpRef.current?.contains(e.target as Node)) {
+        return;
+      }
       e.preventDefault();
       const forward = naturalScroll ? e.deltaY > 0 : e.deltaY < 0;
       const delta = (forward ? 1 : -1) * (1 / 30);
@@ -493,27 +497,24 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         </div>
       )}
 
-      {/* Serve Navigation Rail: thumbnails + view toggle inline */}
-      {analysisStatus?.has_analysis && hasServes && (
-        <div className="analysis-dashboard__serve-nav">
-          <ServeThumbnailStrip
-            serveWindows={sortedServeWindows}
-            currentIndex={currentServeIndex}
-            videoUrl={resolvedVideoUrl}
-            onNavigate={handleServeNavigate}
-          />
-          <AnalysisViewToggle
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-          />
-        </div>
-      )}
-
       {/* Main Content: Focus-mode serve viewer */}
       {analysisStatus?.has_analysis && (
         <div className="analysis-dashboard__focus-view" ref={focusViewRef}>
           {hasServes ? (
             <>
+              {/* Serve Navigation Rail: video column only, sits above video player */}
+              <div className="analysis-dashboard__serve-nav">
+                <ServeThumbnailStrip
+                  serveWindows={sortedServeWindows}
+                  currentIndex={currentServeIndex}
+                  videoUrl={resolvedVideoUrl}
+                  onNavigate={handleServeNavigate}
+                />
+                <AnalysisViewToggle
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                />
+              </div>
               <div className="analysis-dashboard__main-col">
                 {/* Hero View (left column at desktop) */}
                 <ErrorBoundary fallbackMessage="Video player encountered an error.">
@@ -617,17 +618,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
                 {/* Key Time Points */}
                 {biomechanicsReport?.detection_meta && (
-                  <CollapsibleSection
-                    title="Key Time Points"
-                    expanded={ktpExpanded}
-                    onToggle={() => setKtpExpanded(!ktpExpanded)}
-                  >
-                    <KTPTable
-                      detectionMeta={biomechanicsReport.detection_meta}
-                      serveStart={currentServe!.start_timestamp}
-                      onSeek={handleSeek}
-                    />
-                  </CollapsibleSection>
+                  <div ref={ktpRef}>
+                    <CollapsibleSection
+                      title="Key Time Points"
+                      expanded={ktpExpanded}
+                      onToggle={() => setKtpExpanded(!ktpExpanded)}
+                    >
+                      <KTPTable
+                        detectionMeta={biomechanicsReport.detection_meta}
+                        serveStart={currentServe!.start_timestamp}
+                        onSeek={handleSeek}
+                      />
+                    </CollapsibleSection>
+                  </div>
                 )}
               </div>
             </>
