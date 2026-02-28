@@ -21,6 +21,13 @@ export interface VideoMetadata {
   primary_player_id?: number | null; // Default player for serves from this video
 }
 
+export interface DemoTourContext {
+  /** Short factual label about the video (player, event, etc.). Not coaching advice. */
+  player_note?: string;
+  /** Per-step observational notes appended to the default step body text. */
+  step_notes?: Partial<Record<string, string>>;
+}
+
 export interface PublicDemoVideo {
   id: number;
   filename: string;
@@ -32,6 +39,7 @@ export interface PublicDemoVideo {
   camera_angle?: string;
   session_type?: string;
   is_demo: boolean;
+  tour_context?: DemoTourContext | null;
 }
 
 export interface DemoVideoListItem {

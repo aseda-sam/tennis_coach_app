@@ -1,11 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { TOUR_STEPS, TourPlaybackControls, TourStep } from './tourSteps';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  buildTourSteps,
+  DemoTourContext,
+  TourPlaybackControls,
+  TourStep,
+} from './tourSteps';
 
 const STORAGE_KEY = 'demo:tour-completed';
 
 interface UseDemoTourOptions {
   enabled: boolean;
   controlsRef: React.RefObject<TourPlaybackControls | null>;
+  tourContext?: DemoTourContext | null;
 }
 
 export interface UseDemoTourReturn {
@@ -20,28 +26,31 @@ export interface UseDemoTourReturn {
   tourCompleted: boolean;
 }
 
-function findNextValidStep(fromIndex: number, direction: 1 | -1): number {
-  let idx = fromIndex;
-  while (idx >= 0 && idx < TOUR_STEPS.length) {
-    const step = TOUR_STEPS[idx];
-    if (!step.target || document.querySelector(step.target)) {
-      return idx;
-    }
-    idx += direction;
-  }
-  return -1;
-}
-
 export function useDemoTour({
   enabled,
   controlsRef,
+  tourContext,
 }: UseDemoTourOptions): UseDemoTourReturn {
+  const steps = useMemo(() => buildTourSteps(tourContext), [tourContext]);
+
   const [isActive, setIsActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [tourCompleted, setTourCompleted] = useState(() => {
     return localStorage.getItem(STORAGE_KEY) === 'true';
   });
   const autoStarted = useRef(false);
+
+  function findNextValidStep(fromIndex: number, direction: 1 | -1): number {
+    let idx = fromIndex;
+    while (idx >= 0 && idx < steps.length) {
+      const step = steps[idx];
+      if (!step.target || document.querySelector(step.target)) {
+        return idx;
+      }
+      idx += direction;
+    }
+    return -1;
+  }
 
   // Auto-start after 800ms on first visit
   useEffect(() => {
@@ -55,6 +64,7 @@ export function useDemoTour({
       }
     }, 800);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, tourCompleted]);
 
   // Call onEnter when step changes
@@ -64,7 +74,7 @@ export function useDemoTour({
     if (prevStepRef.current === stepIndex) return;
     prevStepRef.current = stepIndex;
 
-    const step = TOUR_STEPS[stepIndex];
+    const step = steps[stepIndex];
     if (step?.onEnter && controlsRef.current) {
       setTimeout(() => {
         if (controlsRef.current) {
@@ -72,7 +82,7 @@ export function useDemoTour({
         }
       }, 100);
     }
-  }, [isActive, stepIndex, controlsRef]);
+  }, [isActive, stepIndex, controlsRef, steps]);
 
   const next = useCallback(() => {
     const nextIdx = findNextValidStep(stepIndex + 1, 1);
@@ -83,14 +93,16 @@ export function useDemoTour({
       setTourCompleted(true);
       localStorage.setItem(STORAGE_KEY, 'true');
     }
-  }, [stepIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepIndex, steps]);
 
   const prev = useCallback(() => {
     const prevIdx = findNextValidStep(stepIndex - 1, -1);
     if (prevIdx >= 0) {
       setStepIndex(prevIdx);
     }
-  }, [stepIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepIndex, steps]);
 
   const end = useCallback(() => {
     setIsActive(false);
@@ -107,13 +119,14 @@ export function useDemoTour({
       setTourCompleted(false);
       localStorage.removeItem(STORAGE_KEY);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [steps]);
 
   return {
     isActive,
-    currentStep: isActive ? (TOUR_STEPS[stepIndex] ?? null) : null,
+    currentStep: isActive ? (steps[stepIndex] ?? null) : null,
     currentStepIndex: stepIndex,
-    totalSteps: TOUR_STEPS.length,
+    totalSteps: steps.length,
     next,
     prev,
     end,

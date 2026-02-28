@@ -44,6 +44,7 @@ function DemoPage() {
   const tour = useDemoTour({
     enabled: !!demoVideo && !isLoading,
     controlsRef: tourControlsRef,
+    tourContext: demoVideo?.tour_context,
   });
 
   if (isLoading) {

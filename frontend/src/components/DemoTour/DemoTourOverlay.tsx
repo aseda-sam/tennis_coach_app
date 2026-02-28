@@ -215,6 +215,7 @@ const DemoTourOverlay: React.FC<DemoTourOverlayProps> = ({
         <DemoTourTooltip
           title={step.title}
           body={step.body}
+          playerNote={step.playerNote}
           actionHint={step.actionHint}
           stepIndex={stepIndex}
           totalSteps={totalSteps}

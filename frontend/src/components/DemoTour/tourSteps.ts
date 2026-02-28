@@ -1,3 +1,7 @@
+import { DemoTourContext } from '../../types/video';
+
+export type { DemoTourContext };
+
 export interface TourPlaybackControls {
   seekToPhase: (phaseKey: string) => void;
   setPlaybackSpeed: (speed: number) => void;
@@ -10,11 +14,13 @@ export interface TourStep {
   placement: 'top' | 'bottom' | 'left' | 'right' | 'center';
   title: string;
   body: string;
+  /** Factual context line shown below body (populated from tour_context.player_note). */
+  playerNote?: string;
   actionHint?: string;
   onEnter?: (controls: TourPlaybackControls) => void;
 }
 
-export const TOUR_STEPS: TourStep[] = [
+const BASE_STEPS: TourStep[] = [
   {
     id: 'hero-display',
     target: '[data-tour-step="hero-display"]',
@@ -61,3 +67,26 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Knee Flexion: how much you bend before the swing. More bend = more leg power into the ball.\n\nClick any card to jump to the exact frame it was measured.',
   },
 ];
+
+/**
+ * Build the tour step array, optionally enriched with per-video context
+ * from the backend's tour_context field. Context is observational — it
+ * highlights what's interesting to notice, never prescriptive coaching.
+ */
+export function buildTourSteps(context?: DemoTourContext | null): TourStep[] {
+  if (!context) return BASE_STEPS;
+
+  return BASE_STEPS.map((step) => {
+    const stepNote = context.step_notes?.[step.id];
+    const playerNote =
+      step.id === 'hero-display' ? context.player_note : undefined;
+
+    if (!stepNote && !playerNote) return step;
+
+    return {
+      ...step,
+      body: stepNote ? `${step.body}\n\n${stepNote}` : step.body,
+      playerNote: playerNote ?? step.playerNote,
+    };
+  });
+}

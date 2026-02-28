@@ -54,6 +54,14 @@
   margin-top: var(--spacing-md);
 }
 
+.demo-tour-tooltip__player-note {
+  margin-top: var(--spacing-md);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--color-text-muted);
+  font-style: normal;
+}
+
 .demo-tour-tooltip__hint {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
