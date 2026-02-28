@@ -118,7 +118,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const focusViewRef = useRef<HTMLDivElement>(null);
   const ktpRef = useRef<HTMLDivElement>(null);
   const currentTimeRef = useRef(0);
-  const wheelAccumRef = useRef(0);
 
   // Collapsible sidebar section state (persisted across sessions)
   const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', true);
@@ -344,15 +343,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   ]);
 
   // Scroll wheel — frame navigation within current serve window (only when hovering over the player/chart area).
-  // Uses refs for currentTime and accumulated delta so the listener is registered once per serve
-  // (not once per frame), preventing the event-gap jitter caused by rapid listener teardown/re-add.
+  // currentTime is read from a ref so the listener registers once per serve, not once per frame.
   useEffect(() => {
     if (!currentServe) return;
     const container = focusViewRef.current;
     if (!container) return;
-    // Reset accumulator when the serve changes so stale delta doesn't bleed across.
-    wheelAccumRef.current = 0;
-    const PIXELS_PER_FRAME = 50; // trackpad pixels of deltaY required to advance one frame
     const handleWheel = (e: WheelEvent) => {
       if (
         e.target instanceof HTMLInputElement ||
@@ -364,12 +359,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         return;
       }
       e.preventDefault();
-      wheelAccumRef.current += e.deltaY;
-      const frames = Math.trunc(wheelAccumRef.current / PIXELS_PER_FRAME);
-      if (frames === 0) return;
-      wheelAccumRef.current -= frames * PIXELS_PER_FRAME;
-      const forward = naturalScroll ? frames > 0 : frames < 0;
-      const delta = (forward ? 1 : -1) * Math.abs(frames) * (1 / 30);
+      const forward = naturalScroll ? e.deltaY > 0 : e.deltaY < 0;
+      const delta = (forward ? 1 : -1) * (1 / 30);
       handleSeek(
         Math.max(
           currentServe.start_timestamp,
