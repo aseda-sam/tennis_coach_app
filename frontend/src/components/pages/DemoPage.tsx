@@ -9,7 +9,6 @@ import LoadingIndicator from '../LoadingIndicator';
 import { useDemoTour } from '../DemoTour/useDemoTour';
 import type { TourPlaybackControls } from '../DemoTour/tourSteps';
 import DemoTourOverlay from '../DemoTour/DemoTourOverlay';
-import DemoUploadPill from '../DemoTour/DemoUploadPill';
 
 const AnalysisDashboard = React.lazy(() => import('../AnalysisDashboard'));
 
@@ -99,10 +98,6 @@ function DemoPage() {
           onPrev={tour.prev}
           onEnd={tour.end}
         />
-      )}
-
-      {!tour.isActive && tour.tourCompleted && (
-        <DemoUploadPill onUpload={handleExitToUpload} />
       )}
     </Suspense>
   );

@@ -181,6 +181,14 @@
   min-width: 0;
 }
 
+/* Demo CTA row (right of film strip on desktop, inline on mobile) */
+.analysis-dashboard__side-nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
 /* Side column (metrics + detection details) */
 .analysis-dashboard__side-col {
   display: flex;
@@ -313,6 +321,12 @@
     grid-row: 1;
   }
 
+  /* Demo CTA: right column, same row as film strip */
+  .analysis-dashboard__side-nav {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
   /* Video + phase tabs: video column, second row */
   .analysis-dashboard__main-col {
     grid-column: 1;
@@ -366,25 +380,59 @@
   }
 }
 
-/* Demo: Restart Tour button in header */
-.analysis-dashboard__restart-tour-btn {
+/* Demo: CTA buttons in side-nav row */
+.demo-cta-block__upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--transition-normal),
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal);
+}
+
+.demo-cta-block__upload-btn:hover {
+  background: var(--color-primary-dark);
+  box-shadow: var(--shadow-primary-md);
+  transform: translateY(-1px);
+}
+
+.demo-cta-block__upload-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.demo-cta-block__restart-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-md);
-  background: transparent;
+  background: var(--color-surface-secondary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-muted);
   cursor: pointer;
-  white-space: nowrap;
+  flex-shrink: 0;
   transition: var(--transition-fast);
 }
 
-.analysis-dashboard__restart-tour-btn:hover {
-  background: var(--color-surface-secondary);
+.demo-cta-block__restart-btn:hover {
+  background: var(--color-surface);
   border-color: var(--color-border-dark);
+  color: var(--color-text);
+}
+
+.demo-cta-block__restart-btn:hover {
   color: var(--color-text);
 }

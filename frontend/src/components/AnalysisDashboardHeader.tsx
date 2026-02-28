@@ -1,5 +1,4 @@
 import React from 'react';
-import { RotateCcw } from 'lucide-react';
 import './AnalysisDashboard.css';
 import Breadcrumb from './Breadcrumb';
 
@@ -10,7 +9,6 @@ interface AnalysisDashboardHeaderProps {
   serveCount?: number;
   onClose: () => void;
   isDemo?: boolean;
-  onRestartTour?: () => void;
 }
 
 const AnalysisDashboardHeader: React.FC<AnalysisDashboardHeaderProps> = ({
@@ -20,7 +18,6 @@ const AnalysisDashboardHeader: React.FC<AnalysisDashboardHeaderProps> = ({
   serveCount,
   onClose,
   isDemo = false,
-  onRestartTour,
 }) => {
   const rootLabel = isDemo ? 'Demo' : 'Library';
 
@@ -48,17 +45,6 @@ const AnalysisDashboardHeader: React.FC<AnalysisDashboardHeaderProps> = ({
   return (
     <div className="analysis-dashboard__header">
       <Breadcrumb segments={segments} />
-      {isDemo && onRestartTour && (
-        <button
-          className="analysis-dashboard__restart-tour-btn"
-          onClick={onRestartTour}
-          type="button"
-          aria-label="Restart tour"
-        >
-          <RotateCcw size={13} />
-          Restart Tour
-        </button>
-      )}
     </div>
   );
 };
