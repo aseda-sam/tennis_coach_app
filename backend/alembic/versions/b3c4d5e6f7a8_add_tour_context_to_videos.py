@@ -31,9 +31,10 @@ _MPETSHI_CONTEXT = {
             "Watch how the trunk rotation and arm extension time together "
             "through the upswing."
         ),
-        "metrics-section": (
-            "The Knee Flexion value here reflects the leg drive that propels "
-            "this much height and mass into the ball at contact."
+        "feature-charts": (
+            "For a player this tall, the Loading dip in Knee Flexion is "
+            "especially pronounced — the deeper the bend, the more height "
+            "and mass gets transferred into the swing."
         ),
     },
 }

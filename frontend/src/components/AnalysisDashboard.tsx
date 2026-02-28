@@ -15,7 +15,7 @@ import { useServeProposals } from '../hooks/useServeProposals';
 import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { useVideoUrl } from '../hooks/useVideoUrl';
-import { MetricValue, PhaseWindow } from '../types/biomechanics';
+import { PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
 import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
@@ -29,21 +29,6 @@ import ProgressBar from './ProgressBar';
 import ServeWindowEditModal from './ServeWindowEditModal';
 import ServeThumbnailStrip from './ServeThumbnailStrip';
 import Skeleton from './Skeleton';
-
-const METRIC_DISPLAY_NAMES: Record<string, string> = {
-  knee_flexion_min_deg: 'Knee Flexion',
-  toss_peak_height: 'Toss Peak Height',
-  toss_laterality: 'Toss Position',
-};
-
-function formatMetricValue(value: number | null, unit: string): string {
-  if (value === null) return 'N/A';
-  if (unit === 'deg' || unit === 'degrees') return `${Math.round(value)}\u00b0`;
-  if (unit === 'normalized') return value.toFixed(2);
-  if (unit === 'ms') return `${value} ms`;
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(2);
-}
 
 const SPEED_OPTIONS = [0.25, 0.5, 1] as const;
 
@@ -133,10 +118,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const focusViewRef = useRef<HTMLDivElement>(null);
 
   // Collapsible sidebar section state (persisted across sessions)
-  const [metricsExpanded, setMetricsExpanded] = usePersistedState(
-    'sidebar:metrics',
-    true
-  );
   const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', true);
   const [chartsExpanded, setChartsExpanded] = usePersistedState(
     'sidebar:charts',
@@ -194,10 +175,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   const phases = useMemo(
     () => biomechanicsReport?.phase_segmentation ?? [],
-    [biomechanicsReport]
-  );
-  const metrics = useMemo(
-    () => biomechanicsReport?.metrics ?? [],
     [biomechanicsReport]
   );
   // Track which phase tab was explicitly clicked — gives instant highlight
@@ -289,21 +266,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const handleToggleLoopWithPhase = useCallback(() => {
     handleToggleLoopCurrentPhase(currentPhase);
   }, [handleToggleLoopCurrentPhase, currentPhase]);
-
-  const handleMetricClick = useCallback(
-    (metric: MetricValue) => {
-      if (metric.timestamp != null) {
-        handleSeek(metric.timestamp);
-      }
-    },
-    [handleSeek]
-  );
-
-  // Metrics with timestamps, for canvas annotations
-  const annotationMetrics = useMemo(
-    () => metrics.filter((m) => m.timestamp != null && m.value != null),
-    [metrics]
-  );
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -567,7 +529,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     onTimeUpdate={handleTimeUpdate}
                     onPlayPause={handlePlayPause}
                     onSeek={handleSeek}
-                    annotations={annotationMetrics}
                     playbackSpeed={playbackSpeed}
                     onPlaybackSpeedChange={setPlaybackSpeed}
                     speedOptions={SPEED_OPTIONS}
@@ -635,69 +596,23 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               <div className="analysis-dashboard__side-col">
                 {/* Feature Curves */}
                 {biomechanicsReport?.detection_meta && (
-                  <CollapsibleSection
-                    title="Feature Curves"
-                    expanded={chartsExpanded}
-                    onToggle={() => setChartsExpanded(!chartsExpanded)}
-                  >
-                    <FeatureChartsSection
-                      detectionMeta={biomechanicsReport.detection_meta}
-                      currentTime={currentTime}
-                      serveStart={currentServe!.start_timestamp}
-                      contactTimestamp={currentServe!.contact_timestamp ?? null}
-                      onSeek={handleSeek}
-                    />
-                  </CollapsibleSection>
-                )}
-
-                {/* Metrics */}
-                {metrics.length > 0 && (
-                  <CollapsibleSection
-                    title="Metrics"
-                    expanded={metricsExpanded}
-                    onToggle={() => setMetricsExpanded(!metricsExpanded)}
-                  >
-                    <div
-                      className="analysis-dashboard__metrics-strip"
-                      data-tour-step="metrics-section"
+                  <div data-tour-step="feature-charts">
+                    <CollapsibleSection
+                      title="Feature Curves"
+                      expanded={chartsExpanded}
+                      onToggle={() => setChartsExpanded(!chartsExpanded)}
                     >
-                      {metrics.map((m) => {
-                        const isClickable =
-                          m.timestamp != null && m.value != null;
-                        return (
-                          <div
-                            key={m.metric_name}
-                            className={`analysis-dashboard__metric-card${isClickable ? ' analysis-dashboard__metric-card--clickable' : ''}`}
-                            onClick={
-                              isClickable
-                                ? () => handleMetricClick(m)
-                                : undefined
-                            }
-                            role={isClickable ? 'button' : undefined}
-                            tabIndex={isClickable ? 0 : undefined}
-                            onKeyDown={
-                              isClickable
-                                ? (e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                      e.preventDefault();
-                                      handleMetricClick(m);
-                                    }
-                                  }
-                                : undefined
-                            }
-                          >
-                            <span className="analysis-dashboard__metric-label">
-                              {METRIC_DISPLAY_NAMES[m.metric_name] ??
-                                m.metric_name.replace(/_/g, ' ')}
-                            </span>
-                            <span className="analysis-dashboard__metric-value">
-                              {formatMetricValue(m.value, m.unit)}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CollapsibleSection>
+                      <FeatureChartsSection
+                        detectionMeta={biomechanicsReport.detection_meta}
+                        currentTime={currentTime}
+                        serveStart={currentServe!.start_timestamp}
+                        contactTimestamp={
+                          currentServe!.contact_timestamp ?? null
+                        }
+                        onSeek={handleSeek}
+                      />
+                    </CollapsibleSection>
+                  </div>
                 )}
 
                 {/* Key Time Points */}

@@ -60,11 +60,11 @@ const BASE_STEPS: TourStep[] = [
     },
   },
   {
-    id: 'metrics-section',
-    target: '[data-tour-step="metrics-section"]',
+    id: 'feature-charts',
+    target: '[data-tour-step="feature-charts"]',
     placement: 'left',
-    title: 'What the Numbers Mean',
-    body: 'Knee Flexion: how much you bend before the swing. More bend = more leg power into the ball.\n\nClick any card to jump to the exact frame it was measured.',
+    title: 'The Body as a Graph',
+    body: "Each curve traces one joint angle through the entire serve. Find the lowest point on the Knee Flexion line — that's the Loading phase, the deepest bend before the legs drive the swing upward.\n\nDrag anywhere on a chart to jump the video to that moment.",
   },
 ];
 
