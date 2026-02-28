@@ -87,13 +87,14 @@ export function useServePlayback({
         }
         // Otherwise use serve bounds and stop at serve end
         if (next > currentServe.end_timestamp) {
-          if (
-            autoAdvance &&
-            currentServeIndex < sortedServeWindows.length - 1
-          ) {
-            autoAdvancePending.current = true;
-            setCurrentServeIndex(currentServeIndex + 1);
-            return t; // serve-switch effect sets correct start time
+          if (autoAdvance) {
+            if (currentServeIndex < sortedServeWindows.length - 1) {
+              autoAdvancePending.current = true;
+              setCurrentServeIndex(currentServeIndex + 1);
+              return t; // serve-switch effect sets correct start time
+            }
+            // Last serve — reset to first and pause
+            setCurrentServeIndex(0);
           }
           setIsPlaying(false);
           return currentServe.start_timestamp;
