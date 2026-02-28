@@ -350,6 +350,10 @@ export const videoApi = {
     return response.data;
   },
 
+  deleteDemoVideo: async (videoId: number): Promise<void> => {
+    await api.delete(`/admin/demos/${videoId}`);
+  },
+
   analyzeDemoPose: async (
     videoId: number,
     confidenceThreshold: number = 0.7
