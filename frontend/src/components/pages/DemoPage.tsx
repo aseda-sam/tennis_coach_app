@@ -7,7 +7,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useUploadModal } from '../layouts/AppLayout';
 import LoadingIndicator from '../LoadingIndicator';
 import { useDemoTour } from '../DemoTour/useDemoTour';
-import { TourPlaybackControls } from '../DemoTour/tourSteps';
+import type { TourPlaybackControls } from '../DemoTour/tourSteps';
 import DemoTourOverlay from '../DemoTour/DemoTourOverlay';
 import DemoUploadPill from '../DemoTour/DemoUploadPill';
 
@@ -44,7 +44,6 @@ function DemoPage() {
   const tour = useDemoTour({
     enabled: !!demoVideo && !isLoading,
     controlsRef: tourControlsRef,
-    tourContext: demoVideo?.tour_context,
   });
 
   if (isLoading) {

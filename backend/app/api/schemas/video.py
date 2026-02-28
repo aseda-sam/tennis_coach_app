@@ -96,7 +96,6 @@ class PublicDemoVideoInfo(BaseModel):
     camera_angle: Optional[str] = None
     session_type: Optional[str] = None
     is_demo: bool = True
-    tour_context: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)
 

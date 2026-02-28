@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    JSON,
     Boolean,
     Column,
     DateTime,
@@ -57,8 +56,6 @@ class Video(Base):
     )
     # Original user_id before promotion to demo (for unpromote/restore)
     original_user_id = Column(String(36), nullable=True)
-    # Per-video context for the demo tour (player note, step-level observations)
-    tour_context = Column(JSON, nullable=True)
 
     # Session metadata (serve-focused)
     session_type = Column(

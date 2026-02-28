@@ -5,7 +5,6 @@ import './DemoTourTooltip.css';
 interface DemoTourTooltipProps {
   title: string;
   body: string;
-  playerNote?: string;
   actionHint?: string;
   stepIndex: number;
   totalSteps: number;
@@ -21,7 +20,6 @@ interface DemoTourTooltipProps {
 const DemoTourTooltip: React.FC<DemoTourTooltipProps> = ({
   title,
   body,
-  playerNote,
   actionHint,
   stepIndex,
   totalSteps,
@@ -52,9 +50,6 @@ const DemoTourTooltip: React.FC<DemoTourTooltipProps> = ({
         {paragraphs.map((p, i) => (
           <p key={i}>{p}</p>
         ))}
-        {playerNote && (
-          <p className="demo-tour-tooltip__player-note">{playerNote}</p>
-        )}
       </div>
 
       {actionHint && <p className="demo-tour-tooltip__hint">{actionHint}</p>}

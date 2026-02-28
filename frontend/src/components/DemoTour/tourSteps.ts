@@ -1,7 +1,3 @@
-import { DemoTourContext } from '../../types/video';
-
-export type { DemoTourContext };
-
 export interface TourPlaybackControls {
   seekToPhase: (phaseKey: string) => void;
   setPlaybackSpeed: (speed: number) => void;
@@ -14,13 +10,11 @@ export interface TourStep {
   placement: 'top' | 'bottom' | 'left' | 'right' | 'center';
   title: string;
   body: string;
-  /** Factual context line shown below body (populated from tour_context.player_note). */
-  playerNote?: string;
   actionHint?: string;
   onEnter?: (controls: TourPlaybackControls) => void;
 }
 
-const BASE_STEPS: TourStep[] = [
+export const TOUR_STEPS: TourStep[] = [
   {
     id: 'hero-display',
     target: '[data-tour-step="hero-display"]',
@@ -67,26 +61,3 @@ const BASE_STEPS: TourStep[] = [
     body: "Each curve traces one joint angle through the entire serve. Find the lowest point on the Knee Flexion line — that's the Loading phase, the deepest bend before the legs drive the swing upward.\n\nDrag anywhere on a chart to jump the video to that moment.",
   },
 ];
-
-/**
- * Build the tour step array, optionally enriched with per-video context
- * from the backend's tour_context field. Context is observational — it
- * highlights what's interesting to notice, never prescriptive coaching.
- */
-export function buildTourSteps(context?: DemoTourContext | null): TourStep[] {
-  if (!context) return BASE_STEPS;
-
-  return BASE_STEPS.map((step) => {
-    const stepNote = context.step_notes?.[step.id];
-    const playerNote =
-      step.id === 'hero-display' ? context.player_note : undefined;
-
-    if (!stepNote && !playerNote) return step;
-
-    return {
-      ...step,
-      body: stepNote ? `${step.body}\n\n${stepNote}` : step.body,
-      playerNote: playerNote ?? step.playerNote,
-    };
-  });
-}

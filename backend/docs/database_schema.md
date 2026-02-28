@@ -14,7 +14,6 @@ Stores uploaded videos and metadata.
 - `duration`, `fps`, `width`, `height`, `frame_count`
 - `status`, `error_message`
 - `is_demo`, `is_active_demo`, `original_user_id`
-- `tour_context JSON` (nullable) — per-video context for the demo tour; shape: `{ player_note?: string, step_notes?: { [stepId]: string } }`. Observational only — describes what to notice, never prescriptive coaching advice.
 - `session_type`, `camera_angle`, `recorded_at`
 - `title VARCHAR(200)` (nullable) — user-defined label; fallback to filename in UI
 - `notes TEXT` (nullable) — free-form session memo
