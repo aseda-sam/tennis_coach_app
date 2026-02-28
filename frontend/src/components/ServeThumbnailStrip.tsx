@@ -140,6 +140,7 @@ const ServeThumbnailStrip: React.FC<ServeThumbnailStripProps> = ({
     >
       {serveWindows.map((sw, i) => {
         const isActive = i === currentIndex;
+        const distance = Math.abs(i - currentIndex);
         const courtSide = sw.court_side
           ? sw.court_side.charAt(0).toUpperCase() + sw.court_side.slice(1)
           : null;
@@ -149,6 +150,11 @@ const ServeThumbnailStrip: React.FC<ServeThumbnailStripProps> = ({
             key={sw.id}
             ref={isActive ? activeRef : undefined}
             className={`thumbnail-strip__item${isActive ? ' thumbnail-strip__item--active' : ''}`}
+            style={
+              !isActive
+                ? ({ '--distance': distance } as React.CSSProperties)
+                : undefined
+            }
             onClick={() => handleClick(i)}
             role="tab"
             aria-selected={isActive}
