@@ -297,6 +297,58 @@ Shadows signal that an element is **above** the page surface — not just distin
 
 **Do not** use shadows on cards or panels. Use `border: 1px solid var(--color-border)` instead.
 
+## Tooltips
+
+CSS-only tooltips using `data-tooltip` attribute. No JS required — pure `::after` pseudo-element.
+
+```css
+/* Apply to any container whose children need tooltips */
+.controls [data-tooltip] {
+  position: relative;
+}
+
+.controls [data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-ink-heavy);
+  color: white;
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity var(--duration-fast) var(--ease-in-out),
+    transform var(--duration-fast) var(--ease-in-out);
+  z-index: 20;
+}
+
+.controls [data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  transition-delay: 0.4s; /* avoid flashing on quick mouse passes */
+}
+
+.controls [data-tooltip]:disabled::after {
+  display: none;
+}
+```
+
+**Design rules:**
+- Background: `--color-ink-heavy` (dark, high contrast against light surfaces).
+- Text: white, `--font-size-xs`, `--font-weight-medium`, DM Sans.
+- Position: above the element, centered. 8px gap.
+- Entry: fade in + 4px upward slide. 400ms hover delay to avoid accidental flashes.
+- Disabled elements: no tooltip (hidden via `display: none`).
+- Keep labels short (2-3 words). Include keyboard shortcut in parens when applicable.
+- Use `data-tooltip` instead of `title` — browser tooltips are ugly and uncontrollable.
+
 ## Transitions
 
 Use consistent transitions for interactive elements:

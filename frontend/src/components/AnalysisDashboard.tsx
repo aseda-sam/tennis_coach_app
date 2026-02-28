@@ -430,7 +430,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         serveCount={hasServes ? sortedServeWindows.length : undefined}
         onClose={onClose}
         isDemo={isDemo}
-        onRestartTour={onRestartTour}
       />
 
       {/* Initial loading — analysis status not yet fetched */}
@@ -555,8 +554,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     autoAdvanceActive={autoAdvance}
                     autoAdvanceDisabled={sortedServeWindows.length <= 1}
                     onAutoAdvanceToggle={handleToggleAutoAdvance}
-                    phases={phases}
-                    activePhase={currentPhase?.phase}
                     contactTimestamp={currentServe!.contact_timestamp ?? null}
                     pendingContactTime={isDemo ? null : pendingContactTime}
                     onArmContact={isDemo ? undefined : handleArmContact}
@@ -612,6 +609,57 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Demo CTA — grid row 1 col 2 (flush with film strip), outside scrollable side-col */}
+              {isDemo && (
+                <div className="analysis-dashboard__side-nav">
+                  <button
+                    type="button"
+                    className="demo-cta-block__upload-btn"
+                    onClick={onExitToUpload}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    Upload Your Own Serve
+                  </button>
+                  {onRestartTour && (
+                    <button
+                      type="button"
+                      className="demo-cta-block__restart-btn"
+                      onClick={onRestartTour}
+                    >
+                      <svg
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                        <path d="M3 3v5h5" />
+                      </svg>
+                      Restart Tour
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="analysis-dashboard__side-col">
                 {/* Feature Curves */}

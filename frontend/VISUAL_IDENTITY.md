@@ -97,7 +97,7 @@ Colors for canvas-rendered measurement overlays and the stick-figure skeleton:
 The skeleton green is desaturated from the original 100% neon (#00ff88) to ~60% — shifting from "neon terminal" to "analytical tool." Joints are small and color-matched (not bright white). When a phase color is active, all bones use the phase color uniformly.
 
 ### Ink Heavy (`--color-ink-heavy: #0a0f1a`)
-**One job: display text with authority.** Large metric numbers. Hero headings where the text needs visual mass. Use instead of `--color-text` when a value needs to dominate the view. Not for body text — too heavy.
+**Two jobs: display text with authority, and tooltip backgrounds.** Large metric numbers. Hero headings where the text needs visual mass. Use instead of `--color-text` when a value needs to dominate the view. Not for body text — too heavy. Also the background color for CSS tooltips (`data-tooltip`) — high contrast against light surfaces, feels editorial.
 
 ### Sand (`--color-sand: #f5f0e8`)
 **One job: warmth without color.** Use as a background for "highlight" sections — a personal best, an onboarding card, a progress summary. Adds warmth without competing with the green accent. Sparingly: one such region per page, if at all.

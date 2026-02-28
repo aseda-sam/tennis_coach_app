@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { MetricValue, PhaseWindow } from '../types/biomechanics';
+import { MetricValue } from '../types/biomechanics';
 import { ViewMode } from './AnalysisViewToggle';
-import { Keyboard, Pause, Pencil, Play, SkipForward } from 'lucide-react';
+import { ChevronsRight, Keyboard, Pause, Pencil, Play } from 'lucide-react';
 import StickFigureCanvas from './StickFigureCanvas';
 import './HeroView.css';
 
@@ -27,8 +27,6 @@ interface HeroViewProps {
   autoAdvanceActive?: boolean;
   autoAdvanceDisabled?: boolean;
   onAutoAdvanceToggle?: () => void;
-  phases?: PhaseWindow[];
-  activePhase?: string | null;
   contactTimestamp?: number | null;
   onSetContact?: (timestamp: number) => Promise<void>;
   pendingContactTime?: number | null;
@@ -61,8 +59,6 @@ const HeroView: React.FC<HeroViewProps> = ({
   autoAdvanceActive = false,
   autoAdvanceDisabled = false,
   onAutoAdvanceToggle,
-  phases = [],
-  activePhase = null,
   contactTimestamp = null,
   onSetContact,
   pendingContactTime = null,
@@ -149,8 +145,6 @@ const HeroView: React.FC<HeroViewProps> = ({
     [serveStart, duration]
   );
 
-  const hasPhases = phases.length > 0;
-
   const contactPct = useMemo(() => {
     if (
       contactTimestamp != null &&
@@ -199,6 +193,7 @@ const HeroView: React.FC<HeroViewProps> = ({
           onClick={onPlayPause}
           type="button"
           aria-label={isPlaying ? 'Pause' : 'Play'}
+          data-tooltip={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
         >
           {isPlaying ? <Pause size={18} /> : <Play size={18} />}
         </button>
@@ -206,30 +201,14 @@ const HeroView: React.FC<HeroViewProps> = ({
         <span className="hero-view__timestamp">{formatTime(currentTime)}</span>
 
         <div className="hero-view__scrubber-container">
-          {hasPhases && (
-            <div className="hero-view__phase-track" aria-hidden="true">
-              {phases.map((phase) => {
-                const left = toPercent(phase.start_timestamp);
-                const width = toPercent(phase.end_timestamp) - left;
-                const isActive = activePhase === phase.phase;
-                return (
-                  <div
-                    key={phase.phase}
-                    className={`hero-view__phase-segment${isActive ? ' hero-view__phase-segment--active' : ''}`}
-                    style={{ left: `${left}%`, width: `${width}%` }}
-                    title={phase.phase_label}
-                  />
-                );
-              })}
-              {contactPct != null && (
-                <div
-                  className="hero-view__contact-marker"
-                  style={{ left: `${contactPct}%` }}
-                  title={`Contact: ${contactTimestamp!.toFixed(2)}s`}
-                />
-              )}
-            </div>
-          )}
+          <div className="hero-view__scrubber-track" aria-hidden="true">
+            {contactPct != null && (
+              <div
+                className="hero-view__contact-marker"
+                style={{ left: `${contactPct}%` }}
+              />
+            )}
+          </div>
           <input
             type="range"
             className="hero-view__scrubber"
@@ -276,7 +255,7 @@ const HeroView: React.FC<HeroViewProps> = ({
             aria-label={
               loopActive ? 'Stop looping phase' : 'Loop current phase'
             }
-            title={loopActive ? 'Stop looping phase' : 'Loop current phase'}
+            data-tooltip={loopActive ? 'Stop looping' : 'Loop phase'}
           >
             &#x21bb;
           </button>
@@ -293,13 +272,11 @@ const HeroView: React.FC<HeroViewProps> = ({
                 ? 'Stop auto-advancing serves'
                 : 'Auto-advance to next serve'
             }
-            title={
-              autoAdvanceActive
-                ? 'Stop auto-advancing serves (A)'
-                : 'Auto-advance to next serve (A)'
+            data-tooltip={
+              autoAdvanceActive ? 'Stop auto-advance (A)' : 'Auto-advance (A)'
             }
           >
-            <SkipForward size={14} />
+            <ChevronsRight size={14} />
           </button>
         )}
 
@@ -314,7 +291,7 @@ const HeroView: React.FC<HeroViewProps> = ({
                 type="button"
                 className="hero-view__contact-confirm-btn hero-view__contact-confirm-btn--yes"
                 onClick={onConfirmContact}
-                title="Confirm contact timestamp"
+                data-tooltip="Confirm"
               >
                 ✓
               </button>
@@ -322,7 +299,7 @@ const HeroView: React.FC<HeroViewProps> = ({
                 type="button"
                 className="hero-view__contact-confirm-btn hero-view__contact-confirm-btn--no"
                 onClick={onCancelContact}
-                title="Cancel"
+                data-tooltip="Cancel"
               >
                 ✕
               </button>
@@ -336,7 +313,7 @@ const HeroView: React.FC<HeroViewProps> = ({
                   ? onArmContact(currentTime)
                   : onSetContact!(currentTime)
               }
-              title="Set ball contact at current time (C)"
+              data-tooltip="Set contact (C)"
             >
               <span className="hero-view__contact-diamond">◆</span>
               {contactTimestamp !== null
@@ -349,7 +326,7 @@ const HeroView: React.FC<HeroViewProps> = ({
             type="button"
             className="hero-view__shortcuts-hint"
             onClick={onOpenShortcuts}
-            title="Keyboard shortcuts (?)"
+            data-tooltip="Shortcuts (?)"
             aria-label="Show keyboard shortcuts"
           >
             <Keyboard size={13} />
@@ -360,7 +337,7 @@ const HeroView: React.FC<HeroViewProps> = ({
             type="button"
             className="hero-view__shortcuts-hint"
             onClick={onEditWindow}
-            title="Edit serve window"
+            data-tooltip="Edit window"
             aria-label="Edit serve window"
           >
             <Pencil size={13} />
