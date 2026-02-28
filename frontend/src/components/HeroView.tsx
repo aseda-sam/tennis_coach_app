@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { MetricValue, PhaseWindow } from '../types/biomechanics';
 import { ViewMode } from './AnalysisViewToggle';
-import { Keyboard, Pause, Pencil, Play } from 'lucide-react';
+import { Keyboard, Pause, Pencil, Play, SkipForward } from 'lucide-react';
 import StickFigureCanvas from './StickFigureCanvas';
 import './HeroView.css';
 
@@ -24,6 +24,9 @@ interface HeroViewProps {
   loopActive?: boolean;
   loopDisabled?: boolean;
   onLoopToggle?: () => void;
+  autoAdvanceActive?: boolean;
+  autoAdvanceDisabled?: boolean;
+  onAutoAdvanceToggle?: () => void;
   phases?: PhaseWindow[];
   activePhase?: string | null;
   contactTimestamp?: number | null;
@@ -55,6 +58,9 @@ const HeroView: React.FC<HeroViewProps> = ({
   loopActive = false,
   loopDisabled = true,
   onLoopToggle,
+  autoAdvanceActive = false,
+  autoAdvanceDisabled = false,
+  onAutoAdvanceToggle,
   phases = [],
   activePhase = null,
   contactTimestamp = null,
@@ -273,6 +279,27 @@ const HeroView: React.FC<HeroViewProps> = ({
             title={loopActive ? 'Stop looping phase' : 'Loop current phase'}
           >
             &#x21bb;
+          </button>
+        )}
+
+        {onAutoAdvanceToggle && (
+          <button
+            type="button"
+            className={`hero-view__auto-advance-btn${autoAdvanceActive ? ' hero-view__auto-advance-btn--active' : ''}`}
+            onClick={onAutoAdvanceToggle}
+            disabled={autoAdvanceDisabled}
+            aria-label={
+              autoAdvanceActive
+                ? 'Stop auto-advancing serves'
+                : 'Auto-advance to next serve'
+            }
+            title={
+              autoAdvanceActive
+                ? 'Stop auto-advancing serves (A)'
+                : 'Auto-advance to next serve (A)'
+            }
+          >
+            <SkipForward size={14} />
           </button>
         )}
 

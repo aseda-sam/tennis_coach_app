@@ -169,6 +169,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     handleToggleLoopCurrentPhase,
     handleServeNavigate,
     setPlaybackSpeed,
+    autoAdvance,
+    handleToggleAutoAdvance,
   } = useServePlayback({ sortedServeWindows });
 
   // Keep a ref in sync so the wheel handler can read the latest time
@@ -324,6 +326,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             handleArmContact(currentTime);
           }
           break;
+        case 'a':
+        case 'A':
+          e.preventDefault();
+          handleToggleAutoAdvance();
+          break;
         default:
           break;
       }
@@ -340,6 +347,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     handleArmContact,
     handleConfirmContact,
     isDemo,
+    handleToggleAutoAdvance,
   ]);
 
   // Scroll wheel — frame navigation within current serve window (only when hovering over the player/chart area).
@@ -544,6 +552,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     loopActive={loopCurrentPhase}
                     loopDisabled={!currentPhase}
                     onLoopToggle={handleToggleLoopWithPhase}
+                    autoAdvanceActive={autoAdvance}
+                    autoAdvanceDisabled={sortedServeWindows.length <= 1}
+                    onAutoAdvanceToggle={handleToggleAutoAdvance}
                     phases={phases}
                     activePhase={currentPhase?.phase}
                     contactTimestamp={currentServe!.contact_timestamp ?? null}
