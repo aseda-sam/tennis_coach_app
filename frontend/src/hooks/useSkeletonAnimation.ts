@@ -249,13 +249,14 @@ export function useSkeletonAnimation({
     };
   }, [drawFrame]);
 
-  // Draw on time change
+  // Draw on time change when paused. Call synchronously so the canvas always
+  // reflects the latest state — scheduling a RAF here would let rapid seek
+  // updates cancel each other before the browser ever paints.
+  // The continuous loop below handles drawing during playback.
   useEffect(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    animationFrameRef.current = requestAnimationFrame(drawFrame);
-  }, [currentTime, drawFrame]);
+    if (isPlaying) return;
+    drawFrame();
+  }, [currentTime, drawFrame, isPlaying]);
 
   // Clear ball trail when playback stops
   useEffect(() => {

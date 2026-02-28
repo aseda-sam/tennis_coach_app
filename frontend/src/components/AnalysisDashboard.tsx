@@ -117,6 +117,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
   const focusViewRef = useRef<HTMLDivElement>(null);
   const ktpRef = useRef<HTMLDivElement>(null);
+  const currentTimeRef = useRef(0);
+  const wheelAccumRef = useRef(0);
 
   // Collapsible sidebar section state (persisted across sessions)
   const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', true);
@@ -169,6 +171,12 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     handleServeNavigate,
     setPlaybackSpeed,
   } = useServePlayback({ sortedServeWindows });
+
+  // Keep a ref in sync so the wheel handler can read the latest time
+  // without needing currentTime in its dependency array.
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
 
   const { data: biomechanicsReport } = useServeBiomechanicsReport(
     currentServe?.id ?? null
@@ -335,11 +343,16 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     isDemo,
   ]);
 
-  // Scroll wheel — frame navigation within current serve window (only when hovering over the player/chart area)
+  // Scroll wheel — frame navigation within current serve window (only when hovering over the player/chart area).
+  // Uses refs for currentTime and accumulated delta so the listener is registered once per serve
+  // (not once per frame), preventing the event-gap jitter caused by rapid listener teardown/re-add.
   useEffect(() => {
     if (!currentServe) return;
     const container = focusViewRef.current;
     if (!container) return;
+    // Reset accumulator when the serve changes so stale delta doesn't bleed across.
+    wheelAccumRef.current = 0;
+    const PIXELS_PER_FRAME = 50; // trackpad pixels of deltaY required to advance one frame
     const handleWheel = (e: WheelEvent) => {
       if (
         e.target instanceof HTMLInputElement ||
@@ -351,18 +364,22 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         return;
       }
       e.preventDefault();
-      const forward = naturalScroll ? e.deltaY > 0 : e.deltaY < 0;
-      const delta = (forward ? 1 : -1) * (1 / 30);
+      wheelAccumRef.current += e.deltaY;
+      const frames = Math.trunc(wheelAccumRef.current / PIXELS_PER_FRAME);
+      if (frames === 0) return;
+      wheelAccumRef.current -= frames * PIXELS_PER_FRAME;
+      const forward = naturalScroll ? frames > 0 : frames < 0;
+      const delta = (forward ? 1 : -1) * Math.abs(frames) * (1 / 30);
       handleSeek(
         Math.max(
           currentServe.start_timestamp,
-          Math.min(currentServe.end_timestamp, currentTime + delta)
+          Math.min(currentServe.end_timestamp, currentTimeRef.current + delta)
         )
       );
     };
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
-  }, [currentServe, currentTime, naturalScroll, handleSeek]);
+  }, [currentServe, naturalScroll, handleSeek]);
 
   // Find serves handler for the no-serves fallback state
   const handleFindServes = useCallback(async () => {
