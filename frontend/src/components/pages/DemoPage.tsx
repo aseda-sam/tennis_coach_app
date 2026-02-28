@@ -98,7 +98,6 @@ function DemoPage() {
           onNext={tour.next}
           onPrev={tour.prev}
           onEnd={tour.end}
-          onUpload={handleExitToUpload}
         />
       )}
 

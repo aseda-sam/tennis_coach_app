@@ -158,7 +158,7 @@ const HeroView: React.FC<HeroViewProps> = ({
 
   return (
     <div className="hero-view" data-tour-step="hero-view">
-      <div className="hero-view__display">
+      <div className="hero-view__display" data-tour-step="hero-display">
         {isVideoMode ? (
           <video
             ref={videoRef}

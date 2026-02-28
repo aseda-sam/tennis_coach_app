@@ -16,14 +16,21 @@ export interface TourStep {
 
 export const TOUR_STEPS: TourStep[] = [
   {
-    id: 'hero-view',
-    target: '[data-tour-step="hero-view"]',
+    id: 'hero-display',
+    target: '[data-tour-step="hero-display"]',
     placement: 'bottom',
     title: 'Every Joint, Every Frame',
     body: 'The AI tracked every joint across the entire serve. Watch the knees load, then the arm whip forward.',
     onEnter: (controls) => {
       controls.setPlaybackSpeed(0.25);
     },
+  },
+  {
+    id: 'view-toggle',
+    target: '[data-tour-step="view-toggle"]',
+    placement: 'bottom',
+    title: 'Skeleton or Video',
+    body: 'Switch between the AI pose overlay and the original footage. Both stay perfectly in sync.',
   },
   {
     id: 'thumbnail-strip',
@@ -36,8 +43,8 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'phase-tabs',
     target: '[data-tour-step="phase-tabs"]',
     placement: 'top',
-    title: '8 Moments in One Motion',
-    body: 'What looks like one swing is actually 8 distinct moments. Each tab jumps the video to that phase — so you can study what matters most.',
+    title: 'Jump to Any Phase',
+    body: 'Each tab jumps the video to that phase of the serve. Click one — the video snaps straight to it.',
     onEnter: (controls) => {
       controls.pause();
       controls.seekToPhase('loading');
@@ -52,15 +59,5 @@ export const TOUR_STEPS: TourStep[] = [
     placement: 'left',
     title: 'What the Numbers Mean',
     body: 'Knee Flexion: how much you bend before the swing. More bend = more leg power into the ball.\n\nClick any card to jump to the exact frame it was measured.',
-  },
-  {
-    id: 'your-turn',
-    target: null,
-    placement: 'center',
-    title: 'Your Turn',
-    body: 'You just saw one serve broken into 8 phases and measured frame by frame.\n\nWhat does yours look like? Upload a video — it takes about 60 seconds.',
-    onEnter: (controls) => {
-      controls.pause();
-    },
   },
 ];
