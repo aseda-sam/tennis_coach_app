@@ -42,7 +42,7 @@ const PHASE_ORDER: (string | null)[] = [
 ];
 
 const PHASE_LABEL_MAP: Record<string, string> = {
-  toss: 'Toss',
+  toss: 'Setup & Toss',
   trophy_load: 'Trophy & Load',
   acceleration: 'Acceleration',
   follow_through: 'Follow-Through',

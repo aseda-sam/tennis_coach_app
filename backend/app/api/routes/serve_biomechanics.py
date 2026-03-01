@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["serve-biomechanics"])
 
 PHASE_LABEL_MAP = {
-    "toss": "Toss",
+    "toss": "Setup & Toss",
     "trophy_load": "Trophy & Load",
     "acceleration": "Acceleration",
     "follow_through": "Follow-Through",
