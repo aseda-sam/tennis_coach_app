@@ -6,6 +6,20 @@ import {
 } from '../hooks/useVideoTrophyFrames';
 import './TrophyFilmstripModal.css';
 
+/** Map raw backend method strings to human-readable labels. */
+const METHOD_LABELS: Record<string, string> = {
+  both_arms_raised: 'Both arms raised',
+  any_wrist_above_shoulder_fallback: 'Wrist above shoulder',
+  fallback_peak_wrist_height: 'Peak wrist height',
+  toss_wrist_above_shoulder: 'Toss arm raised',
+  max_dominant_wrist_y: 'Peak dominant wrist',
+  no_search_range: 'Fallback',
+};
+
+function formatMethod(method: string): string {
+  return METHOD_LABELS[method] ?? method.replaceAll('_', ' ');
+}
+
 interface TrophyFilmstripModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -40,8 +54,8 @@ function compositeAndDownload(
   frames: TrophyFrame[],
   filename: string
 ): void {
-  const cellWidth = 200;
-  const cellHeight = 150;
+  const cellWidth = 280;
+  const cellHeight = 220;
   const labelHeight = 40;
   const gap = 16;
   const padding = 24;
@@ -81,7 +95,7 @@ function compositeAndDownload(
     ctx.fillStyle = '#888888';
     ctx.font = '11px sans-serif';
     ctx.fillText(
-      `${frames[i].method} · ${frames[i].confidence.toFixed(2)}`,
+      `${formatMethod(frames[i].method)} · ${frames[i].confidence.toFixed(2)}`,
       x + cellWidth / 2,
       y + cellHeight + 34
     );
@@ -173,7 +187,8 @@ const TrophyFilmstripModal: React.FC<TrophyFilmstripModalProps> = ({
                   </div>
                   <span className="trophy-filmstrip__label">{frame.label}</span>
                   <span className="trophy-filmstrip__meta">
-                    {frame.method} · {frame.confidence.toFixed(2)} conf
+                    {formatMethod(frame.method)} · {frame.confidence.toFixed(2)}{' '}
+                    conf
                   </span>
                 </div>
               ))}
