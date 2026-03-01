@@ -160,6 +160,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     currentTime,
     isPlaying,
     loopCurrentPhase,
+    loopPhaseWindow,
     playbackSpeed,
     handlePlayPause,
     handleSeek,
@@ -273,9 +274,13 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     setPendingContactTime(null);
   }, []);
 
+  // When at serve start, currentPhase can be undefined briefly; fall back
+  // to the first phase so the loop button is always usable once phases load.
+  const effectivePhase = currentPhase ?? phases[0];
+
   const handleToggleLoopWithPhase = useCallback(() => {
-    handleToggleLoopCurrentPhase(currentPhase);
-  }, [handleToggleLoopCurrentPhase, currentPhase]);
+    handleToggleLoopCurrentPhase(effectivePhase);
+  }, [handleToggleLoopCurrentPhase, effectivePhase]);
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -549,7 +554,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     onPlaybackSpeedChange={setPlaybackSpeed}
                     speedOptions={SPEED_OPTIONS}
                     loopActive={loopCurrentPhase}
-                    loopDisabled={!currentPhase}
+                    loopDisabled={!effectivePhase}
+                    loopPhaseLabel={loopPhaseWindow?.phase_label}
                     onLoopToggle={handleToggleLoopWithPhase}
                     autoAdvanceActive={autoAdvance}
                     autoAdvanceDisabled={sortedServeWindows.length <= 1}
@@ -678,6 +684,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                           currentServe!.contact_timestamp ?? null
                         }
                         onSeek={handleSeek}
+                        loopPhaseWindow={
+                          loopCurrentPhase ? loopPhaseWindow : null
+                        }
                       />
                     </CollapsibleSection>
                   </div>

@@ -23,6 +23,7 @@ interface HeroViewProps {
   speedOptions?: readonly number[];
   loopActive?: boolean;
   loopDisabled?: boolean;
+  loopPhaseLabel?: string;
   onLoopToggle?: () => void;
   autoAdvanceActive?: boolean;
   autoAdvanceDisabled?: boolean;
@@ -55,6 +56,7 @@ const HeroView: React.FC<HeroViewProps> = ({
   speedOptions,
   loopActive = false,
   loopDisabled = true,
+  loopPhaseLabel,
   onLoopToggle,
   autoAdvanceActive = false,
   autoAdvanceDisabled = false,
@@ -255,7 +257,11 @@ const HeroView: React.FC<HeroViewProps> = ({
             aria-label={
               loopActive ? 'Stop looping phase' : 'Loop current phase'
             }
-            data-tooltip={loopActive ? 'Stop looping' : 'Loop phase'}
+            data-tooltip={
+              loopActive
+                ? `Stop looping ${loopPhaseLabel ?? 'phase'}`
+                : 'Loop phase'
+            }
           >
             &#x21bb;
           </button>
