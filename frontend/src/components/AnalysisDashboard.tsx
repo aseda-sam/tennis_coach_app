@@ -29,6 +29,7 @@ import ProgressBar from './ProgressBar';
 import ServeWindowEditModal from './ServeWindowEditModal';
 import ServeThumbnailStrip from './ServeThumbnailStrip';
 import Skeleton from './Skeleton';
+import TrophyFilmstripModal from './TrophyFilmstripModal';
 
 const SPEED_OPTIONS = [0.25, 0.5, 1] as const;
 
@@ -127,6 +128,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   );
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isTrophyFilmstripOpen, setIsTrophyFilmstripOpen] = useState(false);
 
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
@@ -708,6 +710,18 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     </CollapsibleSection>
                   </div>
                 )}
+
+                {/* Trophy Filmstrip trigger */}
+                {biomechanicsReport?.moments &&
+                  sortedServeWindows.length > 1 && (
+                    <button
+                      type="button"
+                      className="analysis-dashboard__filmstrip-btn"
+                      onClick={() => setIsTrophyFilmstripOpen(true)}
+                    >
+                      Trophy Filmstrip
+                    </button>
+                  )}
               </div>
             </>
           ) : serveWindowsProcessing ? (
@@ -801,6 +815,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           }}
         />
       )}
+
+      <TrophyFilmstripModal
+        isOpen={isTrophyFilmstripOpen}
+        onClose={() => setIsTrophyFilmstripOpen(false)}
+        serveWindows={sortedServeWindows}
+        videoUrl={resolvedVideoUrl}
+        videoFilename={videoFilename}
+      />
     </div>
   );
 };
