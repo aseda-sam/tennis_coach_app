@@ -541,6 +541,34 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   videoUrl={resolvedVideoUrl}
                   onNavigate={handleServeNavigate}
                 />
+                {biomechanicsReport?.moments &&
+                  sortedServeWindows.length > 1 && (
+                    <>
+                      <div className="analysis-dashboard__serve-nav-divider" />
+                      <button
+                        type="button"
+                        className="analysis-dashboard__compare-btn"
+                        onClick={() => setIsTrophyFilmstripOpen(true)}
+                        title="Compare trophy positions across serves"
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <rect x="3" y="3" width="7" height="18" rx="1" />
+                          <rect x="14" y="3" width="7" height="18" rx="1" />
+                        </svg>
+                        Compare
+                      </button>
+                    </>
+                  )}
                 <AnalysisViewToggle
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
@@ -625,18 +653,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     )}
                   </div>
                 )}
-
-                {/* Trophy Filmstrip trigger — flush with video player */}
-                {biomechanicsReport?.moments &&
-                  sortedServeWindows.length > 1 && (
-                    <button
-                      type="button"
-                      className="analysis-dashboard__filmstrip-btn"
-                      onClick={() => setIsTrophyFilmstripOpen(true)}
-                    >
-                      Trophy Filmstrip
-                    </button>
-                  )}
               </div>
 
               {/* Demo CTA — grid row 1 col 2 (flush with film strip), outside scrollable side-col */}

@@ -438,24 +438,33 @@
   color: var(--color-text);
 }
 
-/* Trophy Filmstrip trigger button (main column, below phase tabs) */
-.analysis-dashboard__filmstrip-btn {
-  width: 100%;
-  margin-top: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-surface-secondary);
-  border: 1px solid var(--color-border);
+/* Serve nav: vertical divider before compare button */
+.analysis-dashboard__serve-nav-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+/* Trophy compare button — compact, icon-forward, lives in serve-nav */
+.analysis-dashboard__compare-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: none;
+  border: none;
   border-radius: var(--radius-md);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-muted);
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: var(--transition-fast);
-  text-align: center;
 }
 
-.analysis-dashboard__filmstrip-btn:hover {
-  background: var(--color-surface);
-  border-color: var(--color-border-dark);
-  color: var(--color-text);
+.analysis-dashboard__compare-btn:hover {
+  color: var(--color-court-blue);
+  background: var(--color-court-blue-soft);
 }
