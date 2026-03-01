@@ -177,6 +177,7 @@ Shared coding conventions live in `.agents/rules/` (read the relevant file for y
 - `.agents/rules/frontend-api-patterns.mdc` — Frontend API client conventions
 - `.agents/rules/testing-patterns.mdc` — When to test first vs after, what to test, contract testing
 - `.agents/rules/frontend-testing-patterns.mdc` — Frontend test patterns
+- `.agents/rules/anthropic-sdk-patterns.mdc` — Anthropic SDK tool use, agentic loops, model selection
 
 Tool-specific local rules may exist under ignored folders. Shared, repo-level guidance should live in `AGENTS.md`, `.agents/rules/`, and `.agents/skills/`.
 
