@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { ServeWindow } from '../types/serveWindow';
-import {
-  TrophyFrame,
-  useVideoTrophyFrames,
-} from '../hooks/useVideoTrophyFrames';
+import { useVideoTrophyFrames } from '../hooks/useVideoTrophyFrames';
 import './TrophyFilmstripModal.css';
 
 /** Map raw backend method strings to human-readable labels. */
@@ -26,87 +23,6 @@ interface TrophyFilmstripModalProps {
   serveWindows: ServeWindow[];
   videoUrl: string;
   videoFilename: string;
-}
-
-function downloadCompositeImage(frames: TrophyFrame[], filename: string): void {
-  const validFrames = frames.filter((f) => f.dataUrl);
-  if (validFrames.length === 0) return;
-
-  // Load all images first, then composite
-  const images: HTMLImageElement[] = [];
-  let loaded = 0;
-
-  validFrames.forEach((frame, i) => {
-    const img = new Image();
-    img.onload = () => {
-      images[i] = img;
-      loaded++;
-      if (loaded === validFrames.length) {
-        compositeAndDownload(images, validFrames, filename);
-      }
-    };
-    img.src = frame.dataUrl!;
-  });
-}
-
-function compositeAndDownload(
-  images: HTMLImageElement[],
-  frames: TrophyFrame[],
-  filename: string
-): void {
-  const cellWidth = 280;
-  const cellHeight = 220;
-  const labelHeight = 40;
-  const gap = 16;
-  const padding = 24;
-
-  const totalWidth =
-    padding * 2 + images.length * cellWidth + (images.length - 1) * gap;
-  const totalHeight = padding * 2 + cellHeight + labelHeight;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = totalWidth;
-  canvas.height = totalHeight;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  // Background
-  ctx.fillStyle = '#1a1a2e';
-  ctx.fillRect(0, 0, totalWidth, totalHeight);
-
-  images.forEach((img, i) => {
-    const x = padding + i * (cellWidth + gap);
-    const y = padding;
-
-    // Draw frame with object-fit: contain logic
-    const scale = Math.min(cellWidth / img.width, cellHeight / img.height);
-    const drawWidth = img.width * scale;
-    const drawHeight = img.height * scale;
-    const offsetX = x + (cellWidth - drawWidth) / 2;
-    const offsetY = y + (cellHeight - drawHeight) / 2;
-    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-
-    // Label
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 13px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(frames[i].label, x + cellWidth / 2, y + cellHeight + 18);
-
-    ctx.fillStyle = '#888888';
-    ctx.font = '11px sans-serif';
-    ctx.fillText(
-      `${formatMethod(frames[i].method)} · ${frames[i].confidence.toFixed(2)}`,
-      x + cellWidth / 2,
-      y + cellHeight + 34
-    );
-  });
-
-  // Trigger download
-  const link = document.createElement('a');
-  const baseName = filename.replace(/\.[^.]+$/, '');
-  link.download = `${baseName}_trophy_positions.png`;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
 }
 
 const TrophyFilmstripModal: React.FC<TrophyFilmstripModalProps> = ({
@@ -187,41 +103,15 @@ const TrophyFilmstripModal: React.FC<TrophyFilmstripModalProps> = ({
                   </div>
                   <span className="trophy-filmstrip__label">{frame.label}</span>
                   <span className="trophy-filmstrip__meta">
-                    {formatMethod(frame.method)} · {frame.confidence.toFixed(2)}{' '}
-                    conf
+                    {formatMethod(frame.method)}
+                    <br />
+                    {frame.confidence.toFixed(2)} conf
                   </span>
                 </div>
               ))}
             </div>
           )}
         </div>
-
-        {frames.length > 0 && !isLoading && (
-          <div className="trophy-filmstrip__footer">
-            <button
-              className="trophy-filmstrip__download"
-              onClick={() => downloadCompositeImage(frames, videoFilename)}
-              type="button"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Download PNG
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

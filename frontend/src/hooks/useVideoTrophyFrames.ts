@@ -64,7 +64,7 @@ export function useVideoTrophyFrames(
       if (swIndex === -1) return;
 
       // Find trophy KTP from detection_meta (has method info)
-      const trophyKtp = report.detection_meta?.ktps?.['trophy'];
+      const trophyKtp = report.detection_meta?.ktps?.['trophy_position'];
       // Also check moments for the timestamp
       const trophyMoment = report.moments?.find(
         (m) => m.moment === 'trophy_position'
