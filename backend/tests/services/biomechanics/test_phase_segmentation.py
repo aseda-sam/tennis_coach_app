@@ -197,7 +197,7 @@ class TestTrophyDetection:
         """Standard sequence (both arms raised) → trophy detected with high confidence."""
         result = _run_standard()
         tp_meta = result.detection_meta["ktps"]["trophy_position"]
-        assert tp_meta["method"] == "both_arms_raised_with_knee"
+        assert tp_meta["method"] == "both_arms_raised"
         assert tp_meta["confidence"] >= 0.8
 
     def test_trophy_falls_back_to_any_wrist(self):

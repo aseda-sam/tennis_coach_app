@@ -38,8 +38,6 @@ _FALLBACK_CONFIDENCE = 0.4
 # Trophy position detection constants
 _TROPHY_SEARCH_START = 0.15  # 15% of frames (skip pure-setup frames)
 _TROPHY_SEARCH_END = 0.50  # 50% of frames (was 70%)
-_TROPHY_KNEE_RATIO_THRESHOLD = 0.15
-_TROPHY_KNEE_RATIO_ABS_MIN = 0.05  # absolute floor for stiff-legged players
 _TOSS_PHASE_MIN_PCT = 0.10  # toss must be >= 10% of total frames
 _TOSS_PHASE_MAX_PCT = 0.55  # toss must be <= 55% of total frames
 
@@ -295,11 +293,11 @@ def _detect_ball_release(
 def _detect_trophy_position(
     features: List[Dict], search_start: int, search_end: int
 ) -> Tuple[Optional[int], Dict[str, Any]]:
-    """Detect trophy position: peak wrist height with co-occurring knee bend.
+    """Detect trophy position: peak wrist height within the search window.
 
-    Tiered composite detector:
-    Tier 1: both_arms_raised + knee validation → high confidence (0.85)
-    Tier 2: any_wrist_above_shoulder (no knee req) → medium confidence (0.6)
+    Tiered detector (arm position only — knee bend removed as unreliable):
+    Tier 1: both_arms_raised → pick frame with peak max_wrist_height (0.8)
+    Tier 2: any_wrist_above_shoulder → pick frame with peak max_wrist_height (0.6)
     Tier 3: peak max_wrist_height in window → low confidence (0.4)
 
     Returns (frame_or_none, metadata_dict).
@@ -315,54 +313,35 @@ def _detect_trophy_position(
             "search_window": search_window,
         }
 
-    # Find max knee_hip_ratio across entire serve for validation threshold
-    all_khr = [
-        f.get("knee_hip_ratio", 0.0) for f in features if f.get("has_pose", False)
+    # --- Tier 1: both_arms_raised → peak wrist height (high confidence) ---
+    tier1_candidates = [
+        (i, features[i].get("max_wrist_height", 0.0))
+        for i in range(search_start, search_end)
+        if features[i].get("both_arms_raised", False)
     ]
-    max_khr = max(all_khr) if all_khr else 0.0
-    khr_threshold = max_khr * _TROPHY_KNEE_RATIO_THRESHOLD if max_khr > 0 else 0.0
-    # Absolute minimum so stiff-legged players still pass
-    khr_threshold = max(khr_threshold, _TROPHY_KNEE_RATIO_ABS_MIN)
-
-    # --- Tier 1: both_arms_raised + knee validation (high confidence) ---
-    tier1_candidates = []
-    for i in range(search_start, search_end):
-        if features[i].get("both_arms_raised", False):
-            tier1_candidates.append((i, features[i].get("max_wrist_height", 0.0)))
-
     if tier1_candidates:
-        tier1_candidates.sort(key=lambda x: x[1], reverse=True)
-        for frame_idx, wrist_height in tier1_candidates:
-            if _validate_knee_bend(features, frame_idx, khr_threshold):
-                knee_ratio = features[frame_idx].get("knee_hip_ratio", 0.0)
-                return frame_idx, {
-                    "frame": frame_idx,
-                    "method": "both_arms_raised_with_knee",
-                    "search_window": search_window,
-                    "wrist_height": round(wrist_height, 4),
-                    "knee_validation": True,
-                    "knee_ratio_at_frame": round(knee_ratio, 4),
-                    "knee_threshold": round(khr_threshold, 4),
-                    "confidence": 0.85,
-                }
+        best_idx, best_height = max(tier1_candidates, key=lambda x: x[1])
+        return best_idx, {
+            "frame": best_idx,
+            "method": "both_arms_raised",
+            "search_window": search_window,
+            "wrist_height": round(best_height, 4),
+            "confidence": 0.8,
+        }
 
-    # --- Tier 2: any_wrist_above_shoulder, no knee requirement (medium confidence) ---
-    tier2_candidates = []
-    for i in range(search_start, search_end):
-        if features[i].get("any_wrist_above_shoulder", False):
-            tier2_candidates.append((i, features[i].get("max_wrist_height", 0.0)))
-
+    # --- Tier 2: any_wrist_above_shoulder → peak wrist height (medium confidence) ---
+    tier2_candidates = [
+        (i, features[i].get("max_wrist_height", 0.0))
+        for i in range(search_start, search_end)
+        if features[i].get("any_wrist_above_shoulder", False)
+    ]
     if tier2_candidates:
-        tier2_candidates.sort(key=lambda x: x[1], reverse=True)
-        best_idx, best_height = tier2_candidates[0]
-        knee_ratio = features[best_idx].get("knee_hip_ratio", 0.0)
+        best_idx, best_height = max(tier2_candidates, key=lambda x: x[1])
         return best_idx, {
             "frame": best_idx,
             "method": "any_wrist_above_shoulder_fallback",
             "search_window": search_window,
             "wrist_height": round(best_height, 4),
-            "knee_validation": False,
-            "knee_ratio_at_frame": round(knee_ratio, 4),
             "confidence": 0.6,
         }
 
@@ -381,28 +360,6 @@ def _detect_trophy_position(
         "wrist_height": round(best_height, 4) if best_height >= 0 else None,
         "confidence": _FALLBACK_CONFIDENCE,
     }
-
-
-def _validate_knee_bend(
-    features: List[Dict], frame_idx: int, khr_threshold: float
-) -> bool:
-    """Check if knee bend co-occurs with the candidate frame (±5 frames)."""
-    if khr_threshold <= 0:
-        return True  # No knee bend data — skip validation
-
-    n = len(features)
-    window_start = max(0, frame_idx - 5)
-    window_end = min(n, frame_idx + 6)
-
-    window_ratios = [
-        features[j].get("knee_hip_ratio", 0.0)
-        for j in range(window_start, window_end)
-        if features[j].get("has_pose", False)
-    ]
-    if not window_ratios:
-        return False
-
-    return max(window_ratios) >= khr_threshold
 
 
 def _detect_racket_low_point(
