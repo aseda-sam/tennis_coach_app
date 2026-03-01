@@ -34,26 +34,18 @@ function groupMetricsByPhase(
 }
 
 const PHASE_ORDER: (string | null)[] = [
-  'start',
-  'release',
-  'loading',
-  'cocking',
+  'toss',
+  'trophy_load',
   'acceleration',
-  'contact',
-  'deceleration',
-  'finish',
+  'follow_through',
   null,
 ];
 
 const PHASE_LABEL_MAP: Record<string, string> = {
-  start: 'Start',
-  release: 'Release',
-  loading: 'Loading',
-  cocking: 'Cocking',
+  toss: 'Toss',
+  trophy_load: 'Trophy & Load',
   acceleration: 'Acceleration',
-  contact: 'Contact',
-  deceleration: 'Deceleration',
-  finish: 'Finish',
+  follow_through: 'Follow-Through',
 };
 
 interface MetricsByPhasePanelProps {

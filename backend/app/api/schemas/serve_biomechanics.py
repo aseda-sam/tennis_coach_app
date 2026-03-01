@@ -34,14 +34,33 @@ class PhaseWindowResponse(BaseModel):
     detected: bool = Field(description="Whether phase was heuristically detected")
 
 
+class MomentMarkerResponse(BaseModel):
+    """A single timestamp marker for a Key Time Point."""
+
+    moment: str = Field(description="Moment key, e.g. ball_impact")
+    moment_label: str = Field(default="", description="Display label")
+    timestamp: Optional[float] = Field(
+        default=None, description="Timestamp in seconds, or null if undetected"
+    )
+    frame: Optional[int] = Field(
+        default=None, description="Frame index, or null if undetected"
+    )
+    confidence: float = Field(description="Detection confidence 0-1")
+    detected: bool = Field(description="Whether moment was detected")
+
+
 class BiomechanicsReportResponse(BaseModel):
-    """Biomechanics report: phases + raw metrics only."""
+    """Biomechanics report: phases + moments + raw metrics only."""
 
     id: int = Field(description="Report ID")
     serve_window_id: int = Field(description="Serve window ID")
     phase_segmentation: List[PhaseWindowResponse] = Field(
         default_factory=list,
         description="Detected phase windows for timeline",
+    )
+    moments: List[MomentMarkerResponse] = Field(
+        default_factory=list,
+        description="Key Time Point markers (single timestamps)",
     )
     metrics: List[MetricValueResponse] = Field(
         default_factory=list,

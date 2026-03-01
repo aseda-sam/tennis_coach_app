@@ -1,7 +1,10 @@
 # ADR 003: Phase Segmentation Redesign — KTP-Based Detection
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-02-22
+**Implemented:** 2026-02-28 — Reduced from 8 Kovacs phases to 4 user-facing phases
+(Toss, Trophy & Load, Acceleration, Follow-Through) + 4 moment markers.
+Version: `phase-seg-v3` / `phase-metrics-v6`.
 
 ## Context
 

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.api.schemas.serve_biomechanics import (
     BiomechanicsReportResponse,
     MetricValueResponse,
+    MomentMarkerResponse,
     PhaseWindowResponse,
 )
 from app.core.database import get_db
@@ -32,20 +33,24 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["serve-biomechanics"])
 
 PHASE_LABEL_MAP = {
-    "start": "Start",
-    "release": "Release",
-    "loading": "Loading",
-    "cocking": "Cocking",
+    "toss": "Toss",
+    "trophy_load": "Trophy & Load",
     "acceleration": "Acceleration",
-    "contact": "Contact",
-    "deceleration": "Deceleration",
-    "finish": "Finish",
+    "follow_through": "Follow-Through",
+}
+
+MOMENT_LABEL_MAP = {
+    "ball_release": "Ball Release",
+    "trophy_position": "Trophy Position",
+    "racket_low_point": "Racket Low Point",
+    "ball_impact": "Ball Impact",
 }
 
 
 def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportResponse:
     """Convert DB model to API response."""
     phase_segmentation = []
+    moments = []
     seg_data = None
     if report.phase_segmentation_json:
         seg_data = json.loads(report.phase_segmentation_json)
@@ -63,6 +68,20 @@ def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportRe
                     detected=pw.get("detected", False),
                 )
             )
+        for mm in seg_data.get("moments", []):
+            moment_name = mm["moment"]
+            moments.append(
+                MomentMarkerResponse(
+                    moment=moment_name,
+                    moment_label=MOMENT_LABEL_MAP.get(
+                        moment_name, moment_name.replace("_", " ").title()
+                    ),
+                    timestamp=mm.get("timestamp"),
+                    frame=mm.get("frame"),
+                    confidence=mm.get("confidence", 0.0),
+                    detected=mm.get("detected", False),
+                )
+            )
 
     metrics = []
     nested = report.metrics or {}
@@ -75,6 +94,7 @@ def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportRe
         id=report.id,
         serve_window_id=report.serve_window_id,
         phase_segmentation=phase_segmentation,
+        moments=moments,
         metrics=metrics,
         analysis_version=report.analysis_version,
         detection_meta=detection_meta,

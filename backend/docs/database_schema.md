@@ -78,8 +78,8 @@ No scoring, ratings, or coaching text — phases + metrics only.
 - `serve_window_id` (FK -> `serve_windows.id`, CASCADE)
 - `user_id` (owner)
 - `player_id` (FK -> `players.id`, CASCADE)
-- `phase_segmentation_json` (TEXT, JSON-serialized phase boundaries)
-- `metrics` (JSONB, nested by phase: `{"loading": {"knee_flexion_min_deg": 95.5}, "release": {...}}`)
+- `phase_segmentation_json` (TEXT, JSON-serialized phase boundaries + moment markers; `phase-seg-v3` uses 4 phases: toss, trophy_load, acceleration, follow_through)
+- `metrics` (JSONB, nested by phase: `{"toss": {"knee_flexion_min_deg": 95.5, "toss_peak_height": 1.8}}`)
 - `analysis_version`
 - `created_at`
 - Indexes:

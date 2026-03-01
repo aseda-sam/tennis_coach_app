@@ -85,7 +85,7 @@ class TestServeBiomechanicsServicePipeline:
         assert saved.user_id == "user-1"
         assert saved.phase_segmentation_json is not None
         assert saved.metrics is not None
-        assert saved.analysis_version == "phase-metrics-v5"
+        assert saved.analysis_version == "phase-metrics-v6"
 
     @patch(
         "app.services.biomechanics.serve_biomechanics_service.get_pose_frames_in_window"
@@ -147,8 +147,8 @@ class TestServeBiomechanicsServicePipeline:
         metrics = saved.metrics
         assert isinstance(metrics, dict)
         # Nested format: {phase: {metric_name: value}}
-        assert "loading" in metrics
-        assert "knee_flexion_min_deg" in metrics["loading"]
+        assert "toss" in metrics
+        assert "knee_flexion_min_deg" in metrics["toss"]
 
     def test_compute_raises_on_missing_serve(self) -> None:
         db = MagicMock()
@@ -203,8 +203,8 @@ class TestServeBiomechanicsServicePipeline:
         saved = db.add.call_args[0][0]
         metrics = saved.metrics
         # Nested format: {phase: {metric_name: value}}
-        assert metrics.get("release", {}).get("toss_peak_height") == 1.5
-        assert metrics.get("release", {}).get("toss_laterality") is None
+        assert metrics.get("toss", {}).get("toss_peak_height") == 1.5
+        assert metrics.get("toss", {}).get("toss_laterality") is None
 
     @patch(
         "app.services.biomechanics.serve_biomechanics_service._select_best_pose_detection"

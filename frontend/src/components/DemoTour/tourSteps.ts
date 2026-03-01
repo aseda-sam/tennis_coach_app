@@ -47,9 +47,9 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Each tab jumps the video to that phase of the serve. Click one — the video snaps straight to it.',
     onEnter: (controls) => {
       controls.pause();
-      controls.seekToPhase('loading');
+      controls.seekToPhase('toss');
       setTimeout(() => {
-        controls.seekToPhase('contact');
+        controls.seekToPhase('acceleration');
       }, 1200);
     },
   },
@@ -58,6 +58,6 @@ export const TOUR_STEPS: TourStep[] = [
     target: '[data-tour-step="feature-charts"]',
     placement: 'left',
     title: 'The Body as a Graph',
-    body: "Each curve traces one joint angle through the entire serve. Find the lowest point on the Knee Flexion line — that's the Loading phase, the deepest bend before the legs drive the swing upward.\n\nDrag anywhere on a chart to jump the video to that moment.",
+    body: "Each curve traces one joint angle through the entire serve. Find the lowest point on the Knee Flexion line — that's the Toss phase, the deepest bend before the legs drive the swing upward.\n\nDrag anywhere on a chart to jump the video to that moment.",
   },
 ];

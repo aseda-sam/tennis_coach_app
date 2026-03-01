@@ -32,7 +32,7 @@ from app.services.pose_data_service import (
 
 logger = logging.getLogger(__name__)
 
-ANALYSIS_VERSION = "phase-metrics-v5"
+ANALYSIS_VERSION = "phase-metrics-v6"
 
 
 class ServeBiomechanicsService:

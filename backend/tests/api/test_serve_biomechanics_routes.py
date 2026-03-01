@@ -30,18 +30,63 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
         {
             "phases": [
                 {
-                    "phase": "contact",
-                    "start_timestamp": 1.0,
-                    "end_timestamp": 1.2,
-                    "start_frame": 30,
-                    "end_frame": 36,
-                    "confidence": 1.0,
+                    "phase": "toss",
+                    "start_timestamp": 0.0,
+                    "end_timestamp": 0.7,
+                    "start_frame": 0,
+                    "end_frame": 21,
+                    "confidence": 0.8,
                     "detected": True,
-                }
+                },
+                {
+                    "phase": "trophy_load",
+                    "start_timestamp": 0.7,
+                    "end_timestamp": 0.97,
+                    "start_frame": 21,
+                    "end_frame": 29,
+                    "confidence": 0.7,
+                    "detected": True,
+                },
+                {
+                    "phase": "acceleration",
+                    "start_timestamp": 0.97,
+                    "end_timestamp": 1.3,
+                    "start_frame": 29,
+                    "end_frame": 39,
+                    "confidence": 0.7,
+                    "detected": True,
+                },
+                {
+                    "phase": "follow_through",
+                    "start_timestamp": 1.3,
+                    "end_timestamp": 2.0,
+                    "start_frame": 39,
+                    "end_frame": 59,
+                    "confidence": 0.7,
+                    "detected": True,
+                },
             ],
-            "analysis_version": "phase-seg-v1",
-            "total_phases_detected": 1,
-            "total_phases_possible": 8,
+            "moments": [
+                {
+                    "moment": "ball_release",
+                    "timestamp": 0.2,
+                    "frame": 6,
+                    "confidence": 0.7,
+                    "detected": True,
+                    "method": "toss_wrist_above_shoulder",
+                },
+                {
+                    "moment": "ball_impact",
+                    "timestamp": 1.3,
+                    "frame": 39,
+                    "confidence": 0.7,
+                    "detected": True,
+                    "method": "user_tagged",
+                },
+            ],
+            "analysis_version": "phase-seg-v3",
+            "total_phases_detected": 4,
+            "total_phases_possible": 4,
             "detection_meta": {
                 "ktps": {
                     "ball_release": {
@@ -75,8 +120,11 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
         }
     )
     report.metrics = {
-        "loading": {"knee_flexion_min_deg": 95.0},
-        "release": {"toss_peak_height": 1.8, "toss_laterality": 0.15},
+        "toss": {
+            "knee_flexion_min_deg": 95.0,
+            "toss_peak_height": 1.8,
+            "toss_laterality": 0.15,
+        },
     }
     return report
 
@@ -121,6 +169,7 @@ class TestGetServeBiomechanics:
         assert "id" in data
         assert "serve_window_id" in data
         assert "phase_segmentation" in data
+        assert "moments" in data
         assert "metrics" in data
         assert "analysis_version" in data
         assert "created_at" in data
@@ -173,6 +222,22 @@ class TestGetServeBiomechanics:
         assert "ktps" in meta
         assert "feature_curves" in meta
         assert "fps" in meta
+
+    @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
+    def test_moments_in_response(self, mock_service, biomechanics_client):
+        """Response should include moments list with correct structure."""
+        mock_service.get_or_compute_analysis.return_value = _make_mock_report()
+        response = biomechanics_client.get("/v0/serve-windows/1/biomechanics")
+        data = response.json()
+        moments = data["moments"]
+        assert isinstance(moments, list)
+        assert len(moments) == 2
+        mm = moments[0]
+        assert "moment" in mm
+        assert "moment_label" in mm
+        assert "timestamp" in mm
+        assert "confidence" in mm
+        assert "detected" in mm
 
     @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
     def test_not_found_returns_404(self, mock_service, biomechanics_client):
