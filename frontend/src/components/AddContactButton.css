@@ -439,7 +439,7 @@
 
 .form-group select {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2300bc7d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%231A3C34' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right var(--spacing-md) center;
   padding-right: var(--spacing-4xl);
@@ -467,7 +467,7 @@
 .form-group input:hover,
 .form-group select:hover {
   border-color: var(--color-primary-light);
-  box-shadow: 0 2px 8px rgba(0, 188, 125, 0.1);
+  box-shadow: 0 2px 8px rgba(200, 232, 107, 0.1);
 }
 
 .form-group input:focus,
@@ -475,7 +475,7 @@
   border-color: var(--color-primary);
   box-shadow:
     0 0 0 4px var(--color-primary-soft),
-    0 2px 12px rgba(0, 188, 125, 0.2);
+    0 2px 12px rgba(200, 232, 107, 0.2);
   transform: translateY(-1px);
 }
 
@@ -512,7 +512,7 @@
     rgba(248, 250, 252, 0.5) 0%,
     rgba(255, 255, 255, 0.8) 100%
   );
-  border-top: 1px solid rgba(0, 188, 125, 0.1);
+  border-top: 1px solid rgba(200, 232, 107, 0.1);
   flex-wrap: wrap;
 }
 
@@ -612,8 +612,8 @@
 
 .compact-btn--primary {
   background: var(--color-primary);
-  color: white;
-  box-shadow: 0 6px 14px rgba(0, 188, 125, 0.3);
+  color: var(--color-court);
+  box-shadow: 0 6px 14px rgba(200, 232, 107, 0.3);
 }
 
 .compact-btn--primary:hover {
@@ -678,8 +678,8 @@
     var(--color-primary) 0%,
     var(--color-primary-dark) 100%
   );
-  color: white;
-  box-shadow: 0 4px 12px rgba(0, 188, 125, 0.3);
+  color: var(--color-court);
+  box-shadow: 0 4px 12px rgba(200, 232, 107, 0.3);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -689,7 +689,7 @@
     var(--color-primary-darker) 100%
   );
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 188, 125, 0.4);
+  box-shadow: 0 6px 20px rgba(200, 232, 107, 0.4);
 }
 
 .btn-primary:active:not(:disabled) {

@@ -1,31 +1,52 @@
-# Visual Identity — Tennis Coach App
+# Visual Identity — S²Serve
 
 This document is the aesthetic north star. **Read this before writing any component, page, or CSS.** It gives the agent (and the developer) a shared vision to produce — not just rules about *how* to write CSS, but a clear picture of *what to produce*.
 
-> **Name in testing:** The app is currently trialling the name **"Second Serve"** in the UI. The repo and codebase still use the old name. This will be confirmed or revisited after a few weeks of feedback.
+> **Brand:** The app is branded **"S²Serve"** in all UI surfaces. The logo is an inline S² mark (lime on court green) with the "S²Serve" wordmark.
 
 ---
 
 ## In one sentence
 
-A clean, personal training log with richer tennis identity — high contrast, editorial whitespace, metrics as the hero, court-line textures, bold typography, and first-class annotation overlays.
+"Court dark, tennis ball bright" — a dark-nav, lime-accented training log with editorial whitespace, metrics as the hero, court-line textures, bold typography, and first-class annotation overlays.
 
 ---
 
-## Aesthetic Direction: Richer Clean Sport
+## Brand Colors
 
-Light, confident, and editorial — with added tennis personality. Think of a well-designed sports magazine spread: generous margins, strong typography, content given room to breathe. Court-line patterns and a deep-blue accent connect the app to the sport without overwhelming the content.
+Two anchor colors define the entire palette:
+
+| Name | Token | Hex | Role |
+|------|-------|-----|------|
+| **Court** | `--color-court` | `#1A3C34` | Deep green. Nav bar, logo bg, button text on lime, dark surfaces. |
+| **Arc** | `--color-arc` | `#C8E86B` | Tennis ball lime. Primary buttons, active states, glow accents. |
+
+Supporting tones:
+
+| Name | Token | Hex | Role |
+|------|-------|-----|------|
+| Court Deep | `--color-court-deep` | `#132B25` | Header background (slightly darker than Court) |
+| Arc Dim | `--color-arc-dim` | `#A8C84E` | Secondary button borders, hover states |
+| Arc Text | `--color-arc-text` | `#5A7A10` | Text on light backgrounds that references the Arc color |
+| Chalk | `--color-background` | `#F5F3EE` | Page canvas. Warm, not cold. |
+
+---
+
+## Aesthetic Direction: Court Dark, Ball Bright
+
+The nav is dark Court Deep. Page content sits on warm Chalk. Buttons glow Arc lime. The contrast between the dark header and light content creates a strong visual anchor.
 
 **Key qualities:**
 
-- **Light everywhere.** White surfaces, near-white backgrounds. Darkness is reserved for text and display numbers, not backgrounds.
+- **Dark nav, light content.** The header is `--color-court-deep` with Arc accents. Everything below is white/chalk surfaces. This creates a clear spatial hierarchy.
 - **Space signals importance.** Generous margins and padding say the content matters. Don't pack things in. Cramped UI feels cheap.
 - **Typography carries the personality.** The fonts do the design work — not gradients, not color blocks, not decorative elements.
-- **Green is earned.** The green accent is used for one thing: action and positive state. A primary button. A completed badge. A "you did something" moment. Not headers, not background sections, not decoration.
+- **Arc is earned.** The lime accent is used for: primary action buttons, active nav states, glow effects. Button text on Arc backgrounds is always `--color-court` (dark green), never white.
 - **Court blue (`--color-court-blue`) adds wayfinding.** Active toggle states, breadcrumb hovers, and thumbnail highlights use court blue. It signals "you are here" and "this is tennis."
 - **Court-line patterns add texture.** Subtle CSS grid lines at very low opacity (6%) appear on the analysis page background and stick-figure canvas. They whisper "court" without competing with content.
 - **Numbers are the heroes.** In the analysis view, metric values dominate visually. Everything else — labels, borders, backgrounds — exists to frame them.
 - **Annotations are first-class.** Toss height brackets, laterality arrows, and contact crosshairs use the annotation palette (cyan + magenta) with rounded-rect label backdrops. They appear in the stick-figure view and are designed to be beautiful, not just informative.
+- **Glow, not shadow, for primary actions.** Primary buttons use `--glow-arc` (soft lime glow) rather than traditional drop shadows. This reinforces the "tennis ball bright" aesthetic.
 
 ---
 
@@ -72,14 +93,17 @@ CONTACT TIME      ← DM Sans, xs, uppercase, letter-spacing-wide, --color-text-
 
 The hex values are in `design-tokens.css`. This section explains the *intent* — what each part of the palette is *for*. Use this to make color decisions, not just the values.
 
-### Green (`--color-primary: #00bc7d`)
-**One job: action and positive state.** Primary action buttons (e.g., "Analyze", "Save"). Completed status badges. Positive metric highlights. If you're using green for brand identity, decoration, or a button that isn't a primary action — stop. The scarcity of green is what makes it work. The app logo and secondary CTAs like "Upload" use `--color-ink-heavy`, not green.
+### Arc / Primary (`--color-primary: #C8E86B`)
+**One job: action and positive state.** Primary action buttons (e.g., "Analyze", "Save"). Active nav tabs. Completed status badges. **Critical:** Text on Arc backgrounds must be `--color-court` (#1A3C34), never white. White on lime is illegible. The pattern is: `background: var(--color-arc); color: var(--color-court);`
 
-### Court Blue (`--color-court-blue: #1B4B7A`)
-**One job: spatial identity and wayfinding.** Active segment in the view mode toggle. Header nav active tab. Breadcrumb hover color. Active thumbnail border. Scrubber accent. Edit-button hover accent on cards. It says "tennis court" without being literal. Use the `--soft` variant for hover backgrounds.
+### Court (`--color-court: #1A3C34`)
+**Two jobs: dark surfaces and button text.** The header background, the logo container, and the text color on all lime/Arc buttons. When you need dark-on-light for badges or labels referencing the brand, use `--color-arc-text` (#5A7A10) instead.
 
-### Amber Gold (`--color-amber: #c8941a`)
-**Second accent for non-action highlights.** Active nav tab state. Interesting data moments. Status indicators that aren't success/error. Think of it as "this is noteworthy but not a call to action." Not for primary buttons — those are either green (action) or ink-heavy (neutral CTA).
+### Court Blue (`--color-court-blue: #2B6CB0`)
+**One job: spatial identity and wayfinding.** Active segment in the view mode toggle. Breadcrumb hover color. Active thumbnail border. Scrubber accent. Edit-button hover accent on cards. It says "tennis court" without being literal. Use the `--soft` variant for hover backgrounds.
+
+### Amber Gold (`--color-amber: #D4980B`)
+**Second accent for non-action highlights.** Interesting data moments. Status indicators that aren't success/error. Think of it as "this is noteworthy but not a call to action." Not for primary buttons.
 
 ### Court Clay (`--color-court-clay: #D4784A`)
 **Reserved.** Available for future court-surface theming or accent moments. Not currently used in active UI — kept in the palette for consistency.
@@ -94,20 +118,24 @@ Colors for canvas-rendered measurement overlays and the stick-figure skeleton:
 - `--color-annotation-skeleton` (#4AD090) — desaturated analytical green. Skeleton bones, joints, phase pill fallback.
 - `--color-ground-reference` (#6B7A8D) — neutral cool blue-grey. Ground plane line — environmental reference, not skeleton.
 
-The skeleton green is desaturated from the original 100% neon (#00ff88) to ~60% — shifting from "neon terminal" to "analytical tool." Joints are small and color-matched (not bright white). When a phase color is active, all bones use the phase color uniformly.
-
 ### Ink Heavy (`--color-ink-heavy: #0a0f1a`)
-**Two jobs: display text with authority, and tooltip backgrounds.** Large metric numbers. Hero headings where the text needs visual mass. Use instead of `--color-text` when a value needs to dominate the view. Not for body text — too heavy. Also the background color for CSS tooltips (`data-tooltip`) — high contrast against light surfaces, feels editorial.
+**Two jobs: display text with authority, and tooltip backgrounds.** Large metric numbers. Hero headings where the text needs visual mass. Use instead of `--color-text` when a value needs to dominate the view. Not for body text — too heavy.
 
-### Sand (`--color-sand: #f5f0e8`)
-**One job: warmth without color.** Use as a background for "highlight" sections — a personal best, an onboarding card, a progress summary. Adds warmth without competing with the green accent. Sparingly: one such region per page, if at all.
+### Sand (`--color-sand: #EBE7DD`)
+**One job: warmth without color.** Use as a background for "highlight" sections. Adds warmth without competing with the Arc accent. Sparingly: one such region per page, if at all.
+
+### Dark nav tokens
+For elements inside the dark Court Deep header:
+- `--text-on-dark` (#C8C4BC): standard text on dark backgrounds
+- `--text-on-dark-bright` (#E8E5DF): bright/prominent text on dark backgrounds
+- `--text-on-dark-dim` (#918D85): muted text on dark backgrounds
 
 ### Everything else
-- `--color-background` (#f8f5f1): warm parchment. The page canvas. Slightly warm so pure-white cards read as surfaces without needing shadows. Do not use cold blue-tinted backgrounds.
+- `--color-background` (#F5F3EE): warm chalk. The page canvas. Slightly warm so pure-white cards read as surfaces without needing shadows. Do not use cold blue-tinted backgrounds.
 - `--color-surface` (#ffffff): cards, panels, modals. Crisp white.
-- `--color-border` (#e5e7eb): the primary depth tool. Cards and dividers are defined by their border, not their shadow.
+- `--color-border` (#DDD9D1): the primary depth tool. Cards and dividers are defined by their border, not their shadow.
 - `--color-text` (#101828): body text, card content, standard UI text.
-- `--color-text-muted` (#4a5565): metadata, timestamps, metric labels.
+- `--color-text-muted` (#7D8590): metadata, timestamps, metric labels.
 - Semantic colors (error, warning, success, info): for their named purpose only.
 
 ### The depth system: borders, not shadows
@@ -180,9 +208,9 @@ These describe what each major view should feel and look like. Use these as the 
 Open and spacious. A session log. Each card is an entry: thumbnail, title/date, serve count, status badge.
 
 - Background: `--color-background`. Cards: white surface, `--color-border` border, `--radius-2xl` corners. **No shadow on cards.**
-- The status badge is the only colored element per card. Green for complete, muted neutral for pending/processing.
-- Card footer: action buttons separated by a `border-top` divider. Right-aligned. Maximum three actions per card. Edit button hovers use court-blue accent (not green — green is for primary actions only).
-- Page header: video count (muted label), "Upload Video" button (green, primary, right side).
+- The status badge is the only colored element per card. Arc-text for complete, muted neutral for pending/processing.
+- Card footer: action buttons separated by a `border-top` divider. Right-aligned. Maximum three actions per card. Edit button hovers use court-blue accent (not Arc — Arc is for primary actions only).
+- Page header: video count (muted label), "Upload Video" button (ink-heavy bg, right side).
 - The grid breathes. `--layout-card-gap` between cards.
 
 ### Analysis Dashboard
@@ -227,9 +255,10 @@ Brief, warm, human. Talk like a coach setting up for a session — not a system 
 
 These are the patterns that produce generic-looking UI. Don't reach for them.
 
-- **Gradient backgrounds** — not for standard UI. The landing page hero is the one exception.
+- **Gradient backgrounds** — not for standard UI. The landing page hero (Court dark card) is the one exception.
 - **Shadows on cards** — use border instead. Shadow signals elevation (modal, dropdown), not just distinction.
-- **Green text** — the green accent is not a text color. Use the text hierarchy for text.
+- **White text on Arc buttons** — never. Arc (#C8E86B) is too light for white text. Always use `color: var(--color-court)` on Arc backgrounds.
+- **Arc as text color** — Arc lime is not a text color on light backgrounds. Use `--color-arc-text` (#5A7A10) for green-tinted text on light surfaces.
 - **Center-aligned body text** — left-align body text. Center-align only short, isolated headlines (hero text, empty-state messages).
 - **`translateY` hover lift on non-buttons** — subtle hover lift is for primary action buttons only. Cards and nav items should use border-color or background-color changes on hover instead.
 - **Decorating empty states** — don't add large icons, illustrated backgrounds, or color blocks to empty states. Clean message, a clear action button. Done.

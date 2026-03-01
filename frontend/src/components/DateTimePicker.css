@@ -352,7 +352,7 @@
 
 .dtp-footer__btn--primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-court);
 }
 
 .dtp-footer__btn--primary:hover {

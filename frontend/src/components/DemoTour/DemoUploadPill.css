@@ -32,7 +32,7 @@
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-lg);
   background: var(--color-primary);
-  color: white;
+  color: var(--color-court);
   border: none;
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);

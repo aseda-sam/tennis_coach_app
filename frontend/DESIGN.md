@@ -25,9 +25,9 @@ All design tokens are defined in `src/design-tokens.css`. Import this file in yo
 /* ❌ Bad - Hardcoded values */
 .button {
   padding: 12px 24px;
-  background: #00bc7d;
+  background: #C8E86B;
   border-radius: 12px;
-  box-shadow: 0 6px 14px rgba(0, 188, 125, 0.28);
+  box-shadow: 0 6px 14px rgba(200, 232, 107, 0.28);
   transition: all 0.2s ease;
 }
 ```
@@ -42,7 +42,7 @@ Used for main actions (e.g., "Upload Video", "Start Analysis").
 ```css
 .btn-primary {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-court);
   border: none;
   padding: var(--button-padding-lg);
   border-radius: var(--button-border-radius);
@@ -188,7 +188,7 @@ For displaying status indicators (e.g., analysis status, video count).
 
 .badge-success {
   background: var(--color-primary-soft);
-  color: var(--color-success-dark);
+  color: var(--color-arc-text);
   border: 1px solid var(--color-primary-light);
 }
 

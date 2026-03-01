@@ -164,7 +164,7 @@ function MockLibraryPage() {
 
 test('renders app title', () => {
   renderWithRouter('/');
-  const titleElement = screen.getByText(/Second Serve/i);
+  const titleElement = screen.getByText(/S²Serve/i);
   expect(titleElement).toBeInTheDocument();
 });
 

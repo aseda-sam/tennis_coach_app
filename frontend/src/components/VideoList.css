@@ -458,7 +458,7 @@
 
 .analysis-pill.completed {
   background: var(--color-primary-soft);
-  color: var(--color-success-dark);
+  color: var(--color-arc-text);
   border-color: var(--color-primary-light);
 }
 

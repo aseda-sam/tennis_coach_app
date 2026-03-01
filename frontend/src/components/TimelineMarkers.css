@@ -142,7 +142,7 @@
   left: 50%;
   transform: translateX(-50%) translateY(-4px);
   background: var(--color-primary);
-  color: white;
+  color: var(--color-court);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
@@ -205,7 +205,7 @@
 .timeline-marker:hover .timeline-marker-handle,
 .timeline-marker.is-dragging .timeline-marker-handle {
   transform: scale(1.2);
-  box-shadow: 0 4px 12px rgba(0, 188, 125, 0.4);
+  box-shadow: 0 4px 12px rgba(200, 232, 107, 0.4);
 }
 
 .timeline-marker--start .timeline-marker-handle {
