@@ -23,6 +23,7 @@ interface UseServePlaybackResult {
   handleToggleLoopCurrentPhase: (currentPhase: PhaseWindow | undefined) => void;
   handleServeNavigate: (index: number) => void;
   setPlaybackSpeed: (speed: number) => void;
+  setLoopPhaseWindow: (phase: PhaseWindow | null) => void;
   autoAdvance: boolean;
   handleToggleAutoAdvance: () => void;
 }
@@ -59,9 +60,7 @@ export function useServePlayback({
       } else {
         setIsPlaying(false);
       }
-      setLoopCurrentPhase(false);
       setLoopPhaseWindow(null);
-      setPlaybackSpeed(1);
     }
   }, [currentServe?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -213,6 +212,7 @@ export function useServePlayback({
     handleToggleLoopCurrentPhase,
     handleServeNavigate,
     setPlaybackSpeed,
+    setLoopPhaseWindow,
     autoAdvance,
     handleToggleAutoAdvance,
   };

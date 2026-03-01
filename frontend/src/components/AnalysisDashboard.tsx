@@ -172,6 +172,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     handleToggleLoopCurrentPhase,
     handleServeNavigate,
     setPlaybackSpeed,
+    setLoopPhaseWindow,
     autoAdvance,
     handleToggleAutoAdvance,
   } = useServePlayback({ sortedServeWindows });
@@ -279,6 +280,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   // When at serve start, currentPhase can be undefined briefly; fall back
   // to the first phase so the loop button is always usable once phases load.
   const effectivePhase = currentPhase ?? phases[0];
+
+  // After a serve switch, loop stays active but the phase window is cleared.
+  // Re-sync the loop window to the new serve's current phase once phases load.
+  useEffect(() => {
+    if (loopCurrentPhase && !loopPhaseWindow && effectivePhase) {
+      setLoopPhaseWindow(effectivePhase);
+    }
+  }, [loopCurrentPhase, loopPhaseWindow, effectivePhase, setLoopPhaseWindow]);
 
   const handleToggleLoopWithPhase = useCallback(() => {
     handleToggleLoopCurrentPhase(effectivePhase);
