@@ -8,6 +8,7 @@ import json
 import logging
 from typing import List
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session, contains_eager
 
 from app.models.player import Player
@@ -202,23 +203,34 @@ class ServeBiomechanicsService:
         user_id: str,
         limit: int = 20,
     ) -> List[ServeBiomechanicsReport]:
-        """Get historical biomechanics reports for a player.
+        """Get the latest biomechanics report per serve window for a player.
 
-        Joins serve_window → video for ordering by actual serve chronology
-        (video recorded_at, then position within video).
+        Uses a subquery to pick only the most recent report per serve window,
+        then joins serve_window → video for chronological ordering.
         """
+        # Subquery: latest report id per serve window
+        latest = (
+            db.query(
+                ServeBiomechanicsReport.serve_window_id,
+                func.max(ServeBiomechanicsReport.id).label("max_id"),
+            )
+            .filter(
+                ServeBiomechanicsReport.player_id == player_id,
+                ServeBiomechanicsReport.user_id == user_id,
+            )
+            .group_by(ServeBiomechanicsReport.serve_window_id)
+            .subquery()
+        )
+
         return (
             db.query(ServeBiomechanicsReport)
+            .join(latest, ServeBiomechanicsReport.id == latest.c.max_id)
             .join(ServeBiomechanicsReport.serve_window)
             .join(ServeWindow.video)
             .options(
                 contains_eager(ServeBiomechanicsReport.serve_window).contains_eager(
                     ServeWindow.video
                 )
-            )
-            .filter(
-                ServeBiomechanicsReport.player_id == player_id,
-                ServeBiomechanicsReport.user_id == user_id,
             )
             .order_by(
                 Video.recorded_at.asc(),
