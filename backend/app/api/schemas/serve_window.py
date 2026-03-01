@@ -99,7 +99,7 @@ class ServeWindowInfo(BaseModel):
 
     id: int = Field(description="Serve window ID")
     video_id: int = Field(description="Video ID")
-    player_id: int = Field(description="Player ID (always present)")
+    player_id: Optional[int] = Field(default=None, description="Player ID")
     start_timestamp: float = Field(description="Start timestamp in seconds")
     end_timestamp: float = Field(description="End timestamp in seconds")
     contact_timestamp: Optional[float] = Field(
