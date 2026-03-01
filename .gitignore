@@ -139,3 +139,4 @@ etc/
 
 # Backend temporary/debug outputs
 backend/tmp/
+writing/
