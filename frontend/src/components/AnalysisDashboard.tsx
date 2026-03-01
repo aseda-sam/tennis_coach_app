@@ -121,7 +121,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const currentTimeRef = useRef(0);
 
   // Collapsible sidebar section state (persisted across sessions)
-  const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', true);
+  const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', false);
   const [chartsExpanded, setChartsExpanded] = usePersistedState(
     'sidebar:charts',
     true
@@ -625,6 +625,18 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     )}
                   </div>
                 )}
+
+                {/* Trophy Filmstrip trigger — flush with video player */}
+                {biomechanicsReport?.moments &&
+                  sortedServeWindows.length > 1 && (
+                    <button
+                      type="button"
+                      className="analysis-dashboard__filmstrip-btn"
+                      onClick={() => setIsTrophyFilmstripOpen(true)}
+                    >
+                      Trophy Filmstrip
+                    </button>
+                  )}
               </div>
 
               {/* Demo CTA — grid row 1 col 2 (flush with film strip), outside scrollable side-col */}
@@ -703,13 +715,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   </div>
                 )}
 
-                {/* Key Time Points */}
+                {/* Key Time Points — debug detail */}
                 {biomechanicsReport?.detection_meta && (
                   <div ref={ktpRef}>
                     <CollapsibleSection
-                      title="Key Time Points"
+                      title="Detection Details"
                       expanded={ktpExpanded}
                       onToggle={() => setKtpExpanded(!ktpExpanded)}
+                      variant="muted"
                     >
                       <KTPTable
                         detectionMeta={biomechanicsReport.detection_meta}
@@ -719,18 +732,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     </CollapsibleSection>
                   </div>
                 )}
-
-                {/* Trophy Filmstrip trigger */}
-                {biomechanicsReport?.moments &&
-                  sortedServeWindows.length > 1 && (
-                    <button
-                      type="button"
-                      className="analysis-dashboard__filmstrip-btn"
-                      onClick={() => setIsTrophyFilmstripOpen(true)}
-                    >
-                      Trophy Filmstrip
-                    </button>
-                  )}
               </div>
             </>
           ) : serveWindowsProcessing ? (

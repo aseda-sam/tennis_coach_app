@@ -20,7 +20,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: '[data-tour-step="hero-display"]',
     placement: 'bottom',
     title: 'Every Joint, Every Frame',
-    body: 'The AI tracked every joint across the entire serve. Watch the knees load, then the arm whip forward.',
+    body: 'Every joint is tracked across the entire serve. Slow it down to spot details you\u2019d miss at full speed.',
     onEnter: (controls) => {
       controls.setPlaybackSpeed(0.25);
     },
@@ -30,21 +30,21 @@ export const TOUR_STEPS: TourStep[] = [
     target: '[data-tour-step="view-toggle"]',
     placement: 'bottom',
     title: 'Skeleton or Video',
-    body: 'Switch between the AI pose overlay and the original footage. Both stay perfectly in sync.',
+    body: 'Switch between the pose skeleton and the original footage.',
   },
   {
     id: 'thumbnail-strip',
     target: '[data-tour-step="thumbnail-strip"]',
     placement: 'bottom',
     title: 'One Video, Multiple Serves',
-    body: 'The app found each serve attempt automatically. Click a thumbnail to switch between them.',
+    body: 'Each serve attempt was detected automatically. Click a thumbnail to switch between them.',
   },
   {
     id: 'phase-tabs',
     target: '[data-tour-step="phase-tabs"]',
     placement: 'top',
     title: 'Jump to Any Phase',
-    body: 'Each tab jumps the video to that phase of the serve. Click one — the video snaps straight to it.',
+    body: 'Each tab jumps the video to that phase of the serve. Click one and the video snaps straight to it.',
     onEnter: (controls) => {
       controls.pause();
       controls.seekToPhase('toss');
@@ -58,6 +58,6 @@ export const TOUR_STEPS: TourStep[] = [
     target: '[data-tour-step="feature-charts"]',
     placement: 'left',
     title: 'The Body as a Graph',
-    body: "Each curve traces one joint angle through the entire serve. Find the lowest point on the Knee Flexion line — that's the Setup & Toss phase, the deepest bend before the legs drive the swing upward.\n\nDrag anywhere on a chart to jump the video to that moment.",
+    body: 'Each curve traces one joint angle through the entire serve. Drag anywhere on a chart to jump the video to that moment.',
   },
 ];
