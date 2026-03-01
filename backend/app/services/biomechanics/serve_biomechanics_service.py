@@ -8,7 +8,7 @@ import json
 import logging
 from typing import List
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.player import Player
 from app.models.serve_biomechanics_report import ServeBiomechanicsReport
@@ -202,9 +202,18 @@ class ServeBiomechanicsService:
         user_id: str,
         limit: int = 20,
     ) -> List[ServeBiomechanicsReport]:
-        """Get historical biomechanics reports for a player."""
+        """Get historical biomechanics reports for a player.
+
+        Eagerly loads serve_window → video so callers can access video_id
+        and video_filename without extra queries.
+        """
         return (
             db.query(ServeBiomechanicsReport)
+            .options(
+                joinedload(ServeBiomechanicsReport.serve_window).joinedload(
+                    ServeWindow.video
+                )
+            )
             .filter(
                 ServeBiomechanicsReport.player_id == player_id,
                 ServeBiomechanicsReport.user_id == user_id,

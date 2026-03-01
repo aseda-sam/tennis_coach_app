@@ -213,6 +213,16 @@ export function AppLayout() {
                     Library
                   </NavLink>
                   <NavLink
+                    to="/analysis"
+                    role="tab"
+                    className={({ isActive }) =>
+                      `view-toggle-btn ${isActive ? 'active' : ''}`
+                    }
+                    aria-selected={location.pathname === '/analysis'}
+                  >
+                    Analysis
+                  </NavLink>
+                  <NavLink
                     to="/demo"
                     role="tab"
                     className={({ isActive }) =>

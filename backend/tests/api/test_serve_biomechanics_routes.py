@@ -262,6 +262,56 @@ class TestComputeServeBiomechanics:
         assert data["id"] == 1
 
 
+class TestGetServeWindowFrame:
+    """Contract tests for GET /serve-windows/{id}/frame."""
+
+    @patch("app.api.routes.serve_biomechanics.extract_ktp_frame")
+    def test_returns_200_jpeg(self, mock_extract, biomechanics_client):
+        # Minimal JPEG bytes (not a valid image, but enough for contract test)
+        mock_extract.return_value = b"\xff\xd8\xff\xe0fake-jpeg-bytes"
+        response = biomechanics_client.get(
+            "/v0/serve-windows/1/frame?ktp=trophy_position"
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/jpeg"
+        assert "cache-control" in response.headers
+        assert response.content == b"\xff\xd8\xff\xe0fake-jpeg-bytes"
+
+    @patch("app.api.routes.serve_biomechanics.extract_ktp_frame")
+    def test_missing_ktp_returns_404(self, mock_extract, biomechanics_client):
+        mock_extract.side_effect = ValueError("KTP 'bad_ktp' not found")
+        response = biomechanics_client.get("/v0/serve-windows/1/frame?ktp=bad_ktp")
+        assert response.status_code == 404
+
+    @patch("app.api.routes.serve_biomechanics.extract_ktp_frame")
+    def test_missing_serve_window_returns_404(self, mock_extract, biomechanics_client):
+        mock_extract.side_effect = ValueError("No biomechanics report")
+        response = biomechanics_client.get(
+            "/v0/serve-windows/999/frame?ktp=trophy_position"
+        )
+        assert response.status_code == 404
+
+    def test_missing_ktp_param_returns_422(self, biomechanics_client):
+        """ktp query param is required."""
+        response = biomechanics_client.get("/v0/serve-windows/1/frame")
+        assert response.status_code == 422
+
+
+def _make_mock_report_with_video(serve_window_id: int = 1) -> ServeBiomechanicsReport:
+    """Create a mock report with serve_window.video populated for history tests."""
+    report = _make_mock_report(serve_window_id)
+
+    mock_video = MagicMock()
+    mock_video.id = 10
+    mock_video.filename = "test_serve.mp4"
+
+    mock_sw = MagicMock()
+    mock_sw.video = mock_video
+    report.serve_window = mock_sw
+
+    return report
+
+
 class TestGetPlayerBiomechanicsHistory:
     @patch("app.api.routes.serve_biomechanics.require_player_access")
     @patch("app.api.routes.serve_biomechanics.get_player_by_id")
@@ -270,7 +320,7 @@ class TestGetPlayerBiomechanicsHistory:
         self, mock_service, mock_get_player, mock_require_access, biomechanics_client
     ):
         mock_get_player.return_value = MagicMock(id=1)
-        mock_service.get_player_history.return_value = [_make_mock_report()]
+        mock_service.get_player_history.return_value = [_make_mock_report_with_video()]
         response = biomechanics_client.get("/v0/players/1/biomechanics/history")
         assert response.status_code == 200
         data = response.json()
@@ -288,3 +338,17 @@ class TestGetPlayerBiomechanicsHistory:
         response = biomechanics_client.get("/v0/players/1/biomechanics/history")
         assert response.status_code == 200
         assert response.json() == []
+
+    @patch("app.api.routes.serve_biomechanics.require_player_access")
+    @patch("app.api.routes.serve_biomechanics.get_player_by_id")
+    @patch("app.api.routes.serve_biomechanics.serve_biomechanics_service")
+    def test_history_includes_video_context(
+        self, mock_service, mock_get_player, mock_require_access, biomechanics_client
+    ):
+        """History response should include video_id and video_filename."""
+        mock_get_player.return_value = MagicMock(id=1)
+        mock_service.get_player_history.return_value = [_make_mock_report_with_video()]
+        response = biomechanics_client.get("/v0/players/1/biomechanics/history")
+        data = response.json()
+        assert data[0]["video_id"] == 10
+        assert data[0]["video_filename"] == "test_serve.mp4"

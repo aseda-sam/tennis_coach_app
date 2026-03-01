@@ -54,4 +54,6 @@ export interface ServeBiomechanicsReport {
   analysis_version: string;
   detection_meta?: DetectionMeta | null;
   created_at: string;
+  video_id?: number | null;
+  video_filename?: string | null;
 }

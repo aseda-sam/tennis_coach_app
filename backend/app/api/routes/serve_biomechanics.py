@@ -5,6 +5,7 @@ import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.api.schemas.serve_biomechanics import (
@@ -21,6 +22,7 @@ from app.services.biomechanics.metrics import metrics_to_flat_list
 from app.services.biomechanics.serve_biomechanics_service import (
     serve_biomechanics_service,
 )
+from app.services.frame_extraction_service import extract_ktp_frame
 from app.services.player_service import get_player_by_id
 from app.utils.authorization import (
     require_player_access,
@@ -47,7 +49,11 @@ MOMENT_LABEL_MAP = {
 }
 
 
-def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportResponse:
+def _report_to_response(
+    report: ServeBiomechanicsReport,
+    *,
+    include_video: bool = False,
+) -> BiomechanicsReportResponse:
     """Convert DB model to API response."""
     phase_segmentation = []
     moments = []
@@ -90,6 +96,14 @@ def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportRe
 
     detection_meta = seg_data.get("detection_meta") if seg_data else None
 
+    video_id = None
+    video_filename = None
+    if include_video:
+        sw = report.serve_window
+        if sw and sw.video:
+            video_id = sw.video.id
+            video_filename = sw.video.filename
+
     return BiomechanicsReportResponse(
         id=report.id,
         serve_window_id=report.serve_window_id,
@@ -99,6 +113,8 @@ def _report_to_response(report: ServeBiomechanicsReport) -> BiomechanicsReportRe
         analysis_version=report.analysis_version,
         detection_meta=detection_meta,
         created_at=report.created_at,
+        video_id=video_id,
+        video_filename=video_filename,
     )
 
 
@@ -134,6 +150,47 @@ async def get_serve_biomechanics(
     except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(
             e, "get_serve_biomechanics", {"serve_window_id": serve_window_id}
+        )
+
+
+@router.get("/serve-windows/{serve_window_id}/frame")
+async def get_serve_window_frame(
+    serve_window_id: int,
+    ktp: str = Query(..., description="KTP name, e.g. trophy_position"),
+    current_user: Optional[dict] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Get a JPEG frame for a Key Time Point in a serve window."""
+    try:
+        # Auth: same pattern as get_serve_biomechanics
+        sw = serve_window_service.get_serve_window_by_id_no_auth(db, serve_window_id)
+        video = video_service.get_video_by_id(db, sw.video_id)
+        if not video:
+            raise handle_not_found_error("video", str(sw.video_id))
+        require_video_access_or_public_demo(video, current_user)
+
+        jpeg_bytes = extract_ktp_frame(db, serve_window_id, ktp)
+
+        # ETag based on serve_window_id + ktp for browser caching
+        etag = f'"{serve_window_id}-{ktp}"'
+        return Response(
+            content=jpeg_bytes,
+            media_type="image/jpeg",
+            headers={
+                "Cache-Control": "public, max-age=3600, immutable",
+                "ETag": etag,
+            },
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
+        log_and_raise_error(
+            e, "get_serve_window_frame", {"serve_window_id": serve_window_id}
         )
 
 
@@ -186,7 +243,7 @@ async def get_player_biomechanics_history(
         reports = serve_biomechanics_service.get_player_history(
             db, player_id, user_id, limit=limit
         )
-        return [_report_to_response(r) for r in reports]
+        return [_report_to_response(r, include_video=True) for r in reports]
     except ValueError as e:
         raise handle_not_found_error("player", str(player_id)) from e
     except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error

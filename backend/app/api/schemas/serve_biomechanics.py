@@ -72,3 +72,11 @@ class BiomechanicsReportResponse(BaseModel):
         description="KTP detection reasoning and feature curves (stats for nerds)",
     )
     created_at: datetime = Field(description="Report creation time")
+    video_id: Optional[int] = Field(
+        default=None,
+        description="Video ID (included in history responses)",
+    )
+    video_filename: Optional[str] = Field(
+        default=None,
+        description="Video filename (included in history responses)",
+    )

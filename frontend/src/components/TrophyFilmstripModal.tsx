@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect } from 'react';
 import { ServeWindow } from '../types/serveWindow';
-import { useVideoTrophyFrames } from '../hooks/useVideoTrophyFrames';
+import {
+  TrophyFrameData,
+  useVideoTrophyFrames,
+} from '../hooks/useVideoTrophyFrames';
+import { useServeWindowFrame } from '../hooks/useServeWindowFrame';
 import './TrophyFilmstripModal.css';
 
 /** Map raw backend method strings to human-readable labels. */
@@ -13,15 +17,56 @@ const METHOD_LABELS: Record<string, string> = {
   no_search_range: 'Fallback',
 };
 
-function formatMethod(method: string): string {
+export function formatMethod(method: string): string {
   return METHOD_LABELS[method] ?? method.replaceAll('_', ' ');
 }
+
+/* ─── Reusable frame cell ─── */
+
+export interface TrophyFrameCellProps {
+  serveWindowId: number;
+  label: string;
+  method: string;
+  confidence: number;
+}
+
+export const TrophyFrameCell: React.FC<TrophyFrameCellProps> = ({
+  serveWindowId,
+  label,
+  method,
+  confidence,
+}) => {
+  const { frameUrl, isLoading } = useServeWindowFrame(serveWindowId);
+
+  return (
+    <div className="trophy-filmstrip__cell">
+      <div className="trophy-filmstrip__frame">
+        {isLoading ? (
+          <div className="trophy-filmstrip__cell-loading">
+            <div className="trophy-filmstrip__spinner" />
+          </div>
+        ) : frameUrl ? (
+          <img className="trophy-filmstrip__img" src={frameUrl} alt={label} />
+        ) : (
+          <span className="trophy-filmstrip__placeholder">No frame</span>
+        )}
+      </div>
+      <span className="trophy-filmstrip__label">{label}</span>
+      <span className="trophy-filmstrip__meta">
+        {formatMethod(method)}
+        <br />
+        {confidence.toFixed(2)} conf
+      </span>
+    </div>
+  );
+};
+
+/* ─── Modal ─── */
 
 interface TrophyFilmstripModalProps {
   isOpen: boolean;
   onClose: () => void;
   serveWindows: ServeWindow[];
-  videoUrl: string;
   videoFilename: string;
 }
 
@@ -29,14 +74,9 @@ const TrophyFilmstripModal: React.FC<TrophyFilmstripModalProps> = ({
   isOpen,
   onClose,
   serveWindows,
-  videoUrl,
   videoFilename,
 }) => {
-  const { frames, isLoading } = useVideoTrophyFrames(
-    serveWindows,
-    videoUrl,
-    isOpen
-  );
+  const { trophyData, isLoading } = useVideoTrophyFrames(serveWindows, isOpen);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -78,36 +118,22 @@ const TrophyFilmstripModal: React.FC<TrophyFilmstripModalProps> = ({
           {isLoading ? (
             <div className="trophy-filmstrip__loading">
               <div className="trophy-filmstrip__spinner" />
-              <span>Capturing trophy frames...</span>
+              <span>Loading trophy data...</span>
             </div>
-          ) : frames.length === 0 ? (
+          ) : trophyData.length === 0 ? (
             <div className="trophy-filmstrip__empty">
               No trophy positions detected.
             </div>
           ) : (
             <div className="trophy-filmstrip__strip">
-              {frames.map((frame) => (
-                <div key={frame.serveIndex} className="trophy-filmstrip__cell">
-                  <div className="trophy-filmstrip__frame">
-                    {frame.dataUrl ? (
-                      <img
-                        className="trophy-filmstrip__img"
-                        src={frame.dataUrl}
-                        alt={frame.label}
-                      />
-                    ) : (
-                      <span className="trophy-filmstrip__placeholder">
-                        No frame
-                      </span>
-                    )}
-                  </div>
-                  <span className="trophy-filmstrip__label">{frame.label}</span>
-                  <span className="trophy-filmstrip__meta">
-                    {formatMethod(frame.method)}
-                    <br />
-                    {frame.confidence.toFixed(2)} conf
-                  </span>
-                </div>
+              {trophyData.map((td: TrophyFrameData) => (
+                <TrophyFrameCell
+                  key={td.serveWindowId}
+                  serveWindowId={td.serveWindowId}
+                  label={`Serve ${td.serveIndex + 1}`}
+                  method={td.method}
+                  confidence={td.confidence}
+                />
               ))}
             </div>
           )}
