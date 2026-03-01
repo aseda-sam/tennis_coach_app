@@ -22,7 +22,7 @@ from app.services.serve_detection.feature_extractor import (
 
 logger = logging.getLogger(__name__)
 
-ANALYSIS_VERSION = "phase-seg-v3"
+ANALYSIS_VERSION = "phase-seg-v4"
 
 # Default confidence scores per phase (when KTP boundary is detected)
 _PHASE_CONFIDENCE: Dict[str, float] = {
@@ -34,6 +34,14 @@ _PHASE_CONFIDENCE: Dict[str, float] = {
 
 # Confidence assigned when using a fallback boundary
 _FALLBACK_CONFIDENCE = 0.4
+
+# Trophy position detection constants
+_TROPHY_SEARCH_START = 0.15  # 15% of frames (skip pure-setup frames)
+_TROPHY_SEARCH_END = 0.50  # 50% of frames (was 70%)
+_TROPHY_KNEE_RATIO_THRESHOLD = 0.15
+_TROPHY_KNEE_RATIO_ABS_MIN = 0.05  # absolute floor for stiff-legged players
+_TOSS_PHASE_MIN_PCT = 0.10  # toss must be >= 10% of total frames
+_TOSS_PHASE_MAX_PCT = 0.55  # toss must be <= 55% of total frames
 
 
 class ServePhase(str, Enum):
@@ -153,12 +161,14 @@ def segment_serve_phases(
     ball_release, br_meta = _detect_ball_release(pose_frames, toss_side, search_end_br)
     ktp_meta["ball_release"] = br_meta
 
-    # KTP 2: Trophy Position (after ball release, first 70% of remaining)
+    # KTP 2: Trophy Position (search within 15-50% of total frames)
     br_frame = ball_release if ball_release is not None else 0
-    remaining = total_frames - br_frame
-    search_end_tp = min(total_frames, br_frame + max(1, int(remaining * 0.7)))
+    search_start_tp = max(br_frame, int(total_frames * _TROPHY_SEARCH_START))
+    search_end_tp = min(
+        total_frames, max(search_start_tp + 1, int(total_frames * _TROPHY_SEARCH_END))
+    )
     trophy_position, tp_meta = _detect_trophy_position(
-        features, br_frame, search_end_tp
+        features, search_start_tp, search_end_tp
     )
     ktp_meta["trophy_position"] = tp_meta
 
@@ -287,11 +297,10 @@ def _detect_trophy_position(
 ) -> Tuple[Optional[int], Dict[str, Any]]:
     """Detect trophy position: peak wrist height with co-occurring knee bend.
 
-    Composite detector:
-    1. Find frames where any wrist is above its shoulder.
-    2. Among candidates, find peak max_wrist_height.
-    3. Validate knee bend co-occurrence (±5 frames must have ≥80% of max knee_hip_ratio).
-    4. Fallback: peak max_wrist_height without arm-raise filter (for beginners).
+    Tiered composite detector:
+    Tier 1: both_arms_raised + knee validation → high confidence (0.85)
+    Tier 2: any_wrist_above_shoulder (no knee req) → medium confidence (0.6)
+    Tier 3: peak max_wrist_height in window → low confidence (0.4)
 
     Returns (frame_or_none, metadata_dict).
     """
@@ -311,50 +320,53 @@ def _detect_trophy_position(
         f.get("knee_hip_ratio", 0.0) for f in features if f.get("has_pose", False)
     ]
     max_khr = max(all_khr) if all_khr else 0.0
-    khr_threshold = max_khr * 0.8 if max_khr > 0 else 0.0
+    khr_threshold = max_khr * _TROPHY_KNEE_RATIO_THRESHOLD if max_khr > 0 else 0.0
+    # Absolute minimum so stiff-legged players still pass
+    khr_threshold = max(khr_threshold, _TROPHY_KNEE_RATIO_ABS_MIN)
 
-    # Find candidate frames: any wrist above shoulder
-    candidates = []
+    # --- Tier 1: both_arms_raised + knee validation (high confidence) ---
+    tier1_candidates = []
     for i in range(search_start, search_end):
-        if features[i].get("any_wrist_above_shoulder", False):
-            candidates.append((i, features[i].get("max_wrist_height", 0.0)))
+        if features[i].get("both_arms_raised", False):
+            tier1_candidates.append((i, features[i].get("max_wrist_height", 0.0)))
 
-    if candidates:
-        # Sort by wrist height descending
-        candidates.sort(key=lambda x: x[1], reverse=True)
-
-        # Try each candidate, validate knee bend co-occurrence
-        for candidates_tried, (frame_idx, wrist_height) in enumerate(
-            candidates, start=1
-        ):
+    if tier1_candidates:
+        tier1_candidates.sort(key=lambda x: x[1], reverse=True)
+        for frame_idx, wrist_height in tier1_candidates:
             if _validate_knee_bend(features, frame_idx, khr_threshold):
                 knee_ratio = features[frame_idx].get("knee_hip_ratio", 0.0)
                 return frame_idx, {
                     "frame": frame_idx,
-                    "method": "peak_wrist_height_with_knee_validation",
+                    "method": "both_arms_raised_with_knee",
                     "search_window": search_window,
                     "wrist_height": round(wrist_height, 4),
                     "knee_validation": True,
                     "knee_ratio_at_frame": round(knee_ratio, 4),
                     "knee_threshold": round(khr_threshold, 4),
-                    "candidates_tried": candidates_tried,
+                    "confidence": 0.85,
                 }
 
-        # No candidate passed knee validation — return highest wrist height
-        best_idx, best_height = candidates[0]
+    # --- Tier 2: any_wrist_above_shoulder, no knee requirement (medium confidence) ---
+    tier2_candidates = []
+    for i in range(search_start, search_end):
+        if features[i].get("any_wrist_above_shoulder", False):
+            tier2_candidates.append((i, features[i].get("max_wrist_height", 0.0)))
+
+    if tier2_candidates:
+        tier2_candidates.sort(key=lambda x: x[1], reverse=True)
+        best_idx, best_height = tier2_candidates[0]
         knee_ratio = features[best_idx].get("knee_hip_ratio", 0.0)
         return best_idx, {
             "frame": best_idx,
-            "method": "peak_wrist_height_no_knee_validation",
+            "method": "any_wrist_above_shoulder_fallback",
             "search_window": search_window,
             "wrist_height": round(best_height, 4),
             "knee_validation": False,
             "knee_ratio_at_frame": round(knee_ratio, 4),
-            "knee_threshold": round(khr_threshold, 4),
-            "candidates_tried": len(candidates),
+            "confidence": 0.6,
         }
 
-    # Fallback: no wrist-above-shoulder frames — peak max_wrist_height
+    # --- Tier 3: peak max_wrist_height (low confidence) ---
     best_frame = None
     best_height = -1.0
     for i in range(search_start, search_end):
@@ -367,6 +379,7 @@ def _detect_trophy_position(
         "method": "fallback_peak_wrist_height",
         "search_window": search_window,
         "wrist_height": round(best_height, 4) if best_height >= 0 else None,
+        "confidence": _FALLBACK_CONFIDENCE,
     }
 
 
@@ -571,6 +584,13 @@ def _derive_phases_from_ktps(
         trophy_load_start = (
             ball_release if ball_release is not None else int(total_frames * 0.3)
         )
+        trophy_load_detected = False
+
+    # Percentage guardrails: toss phase must be 10-55% of total frames
+    min_frame = int(total_frames * _TOSS_PHASE_MIN_PCT)
+    max_frame = int(total_frames * _TOSS_PHASE_MAX_PCT)
+    if trophy_load_start < min_frame or trophy_load_start > max_frame:
+        trophy_load_start = max(min_frame, min(trophy_load_start, max_frame))
         trophy_load_detected = False
 
     # acceleration start = racket_low_point, fallback to trophy_position, fallback to 60%

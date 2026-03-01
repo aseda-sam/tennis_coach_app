@@ -73,7 +73,7 @@ class TestContractTests:
     def test_analysis_version(self):
         result = _run_standard()
         assert result.analysis_version == ANALYSIS_VERSION
-        assert result.analysis_version == "phase-seg-v3"
+        assert result.analysis_version == "phase-seg-v4"
 
     def test_detection_meta_present(self):
         """detection_meta must be present with ktps, feature_curves, fps, total_frames."""
@@ -192,6 +192,63 @@ class TestTrophyDetection:
         frames = _make_asymmetric_serve_sequence()
         result = segment_serve_phases(pose_frames=frames, **_STANDARD_PARAMS)
         assert result.total_phases_detected == 4
+
+    def test_trophy_uses_both_arms_raised_when_available(self):
+        """Standard sequence (both arms raised) → trophy detected with high confidence."""
+        result = _run_standard()
+        tp_meta = result.detection_meta["ktps"]["trophy_position"]
+        assert tp_meta["method"] == "both_arms_raised_with_knee"
+        assert tp_meta["confidence"] >= 0.8
+
+    def test_trophy_falls_back_to_any_wrist(self):
+        """Single-arm-only trophy in search window → Tier 2 fallback."""
+        from tests.biomechanics_fixtures import _make_pose
+
+        # Build a sequence where only the right arm is above shoulder
+        # in the 15-50% search window (frames 9-30 of 60).
+        frames = []
+        for i in range(60):
+            if i <= 8:
+                frames.append(_make_pose(left_wrist_y=0.6, right_wrist_y=0.6))
+            elif i <= 30:
+                # Only right wrist above shoulder (0.3); left stays below
+                frames.append(_make_pose(left_wrist_y=0.4, right_wrist_y=0.1))
+            else:
+                frames.append(_make_pose(left_wrist_y=0.6, right_wrist_y=0.6))
+        result = segment_serve_phases(pose_frames=frames, **_STANDARD_PARAMS)
+        tp_meta = result.detection_meta["ktps"]["trophy_position"]
+        assert tp_meta["method"] == "any_wrist_above_shoulder_fallback"
+        assert tp_meta["confidence"] <= 0.7
+
+    def test_trophy_not_in_first_15_percent(self):
+        """Trophy frame should be >= 15% of total frames."""
+        result = _run_standard()
+        total = result.detection_meta["total_frames"]
+        tp_frame = result.detection_meta["ktps"]["trophy_position"]["frame"]
+        assert tp_frame >= int(total * 0.15)
+
+    def test_trophy_not_after_50_percent(self):
+        """Trophy frame should be <= 50% of total frames."""
+        result = _run_standard()
+        total = result.detection_meta["total_frames"]
+        tp_frame = result.detection_meta["ktps"]["trophy_position"]["frame"]
+        assert tp_frame <= int(total * 0.50)
+
+    def test_toss_phase_guardrail_min(self):
+        """Trophy position clamped to >= 10% of total frames in phase derivation."""
+        result = _run_standard()
+        phase_map = {p.phase: p for p in result.phases}
+        total = result.detection_meta["total_frames"]
+        trophy_start = phase_map[ServePhase.TROPHY_LOAD].start_frame
+        assert trophy_start >= int(total * 0.10)
+
+    def test_toss_phase_guardrail_max(self):
+        """Trophy position clamped to <= 55% of total frames in phase derivation."""
+        result = _run_standard()
+        phase_map = {p.phase: p for p in result.phases}
+        total = result.detection_meta["total_frames"]
+        trophy_start = phase_map[ServePhase.TROPHY_LOAD].start_frame
+        assert trophy_start <= int(total * 0.55)
 
 
 class TestRacketLowPoint:

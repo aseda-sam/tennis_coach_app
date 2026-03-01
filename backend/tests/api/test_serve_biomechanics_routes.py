@@ -84,7 +84,7 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
                     "method": "user_tagged",
                 },
             ],
-            "analysis_version": "phase-seg-v3",
+            "analysis_version": "phase-seg-v4",
             "total_phases_detected": 4,
             "total_phases_possible": 4,
             "detection_meta": {
