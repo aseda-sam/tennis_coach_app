@@ -8,7 +8,7 @@ import json
 import logging
 from typing import List
 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, contains_eager
 
 from app.models.player import Player
 from app.models.serve_biomechanics_report import ServeBiomechanicsReport
@@ -204,13 +204,15 @@ class ServeBiomechanicsService:
     ) -> List[ServeBiomechanicsReport]:
         """Get historical biomechanics reports for a player.
 
-        Eagerly loads serve_window → video so callers can access video_id
-        and video_filename without extra queries.
+        Joins serve_window → video for ordering by actual serve chronology
+        (video recorded_at, then position within video).
         """
         return (
             db.query(ServeBiomechanicsReport)
+            .join(ServeBiomechanicsReport.serve_window)
+            .join(ServeWindow.video)
             .options(
-                joinedload(ServeBiomechanicsReport.serve_window).joinedload(
+                contains_eager(ServeBiomechanicsReport.serve_window).contains_eager(
                     ServeWindow.video
                 )
             )
@@ -218,7 +220,10 @@ class ServeBiomechanicsService:
                 ServeBiomechanicsReport.player_id == player_id,
                 ServeBiomechanicsReport.user_id == user_id,
             )
-            .order_by(ServeBiomechanicsReport.created_at.desc())
+            .order_by(
+                Video.recorded_at.asc(),
+                ServeWindow.start_timestamp.asc(),
+            )
             .limit(limit)
             .all()
         )
