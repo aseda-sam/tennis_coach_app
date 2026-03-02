@@ -59,6 +59,9 @@ venv.bak/
 
 # .agents/ — shared cross-tool skills (tracked)
 
+# Private docs (GTM, strategy, business — local-only)
+docs/private/
+
 # Claude AI (local-only)
 .claude/
 CLAUDE.md
