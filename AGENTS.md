@@ -108,7 +108,7 @@ docs/
 
 ## Code style
 
-- **Python:** Type hints required. `ruff` for formatting/linting. Pre-commit hook runs ruff automatically. **`uv`** for package management (not pip).
+- **Python:** Type hints required. `ruff` for formatting/linting. Pre-commit hook runs ruff automatically. **`uv`** for package management (not pip). Pydantic v2: use `ConfigDict(from_attributes=True)` for ORM schemas, `model_validate()` not `from_orm()`. Parameterize log calls (`logger.info("x=%s", x)`), never f-strings in log calls.
 - **React:** Use React Query for data fetching. Design tokens for styling (see `frontend/src/design-tokens.css`). Avoid `any` in TypeScript.
 - **General:** KISS, DRY, YAGNI. No speculative abstractions.
 
@@ -169,7 +169,6 @@ Shared coding conventions live in `.agents/rules/` (read the relevant file for y
 
 - `.agents/rules/api-patterns.mdc` — REST conventions, error contracts, file uploads
 - `.agents/rules/backend-patterns.mdc` — Layers, auth, storage, RQ jobs
-- `.agents/rules/python-code-standards.mdc` — Python style, Pydantic v2, imports
 - `.agents/rules/react-frontend.mdc` — Components, styling, form patterns, accessibility
 - `.agents/rules/frontend-design.mdc` — Visual design patterns, component aesthetics
 - `.agents/rules/react-routing.mdc` — React Router conventions, route structure, page patterns
