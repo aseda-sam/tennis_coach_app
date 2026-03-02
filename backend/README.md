@@ -159,7 +159,6 @@ backend/
 ## Docs
 
 - [`docs/README.md`](docs/README.md) - index
-- [`docs/serve-mvp.md`](../docs/serve-mvp.md) - MVP scope and serve workflow
 - [`docs/config.md`](docs/config.md) - full environment variable reference
 - [`docs/background-jobs.md`](docs/background-jobs.md) - RQ job patterns
 - [`docs/database_schema.md`](docs/database_schema.md) - schema reference

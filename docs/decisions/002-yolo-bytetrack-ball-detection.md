@@ -82,7 +82,7 @@ windows. Spline interpolation runs once across all windows combined.
 - `backend/app/services/ball_detection/contact_detector.py` — ball-racket contact
 - `backend/scripts/annotate_ball_tracking.py` — visual debugging (`--trail N` for trajectories)
 - `ml_models/yolo_tennis_ball.pt` — fine-tuned weights (lazy-loaded)
-- `docs/ball-detection-fine-tuning.md` — training guide
+- `backend/docs/ball-detection-fine-tuning.md` — training guide
 
 ## Consequences
 
