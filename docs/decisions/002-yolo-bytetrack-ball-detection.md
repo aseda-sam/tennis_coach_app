@@ -90,4 +90,4 @@ windows. Spline interpolation runs once across all windows combined.
   in `[worker]` extras.
 - **Model:** Fine-tuned `yolo_tennis_ball.pt` at `ml_models/`.
 - **Schema:** Per-frame dicts include `interpolated: bool` (True if filled by spline).
-- **Version:** `ANALYSIS_VERSION = "phase-metrics-v4"`.
+- **Version:** `ANALYSIS_VERSION = "phase-metrics-v6"`.

@@ -38,7 +38,7 @@ These constraints apply to every analysis and feedback view. They come from the 
 ## Styling (Required)
 
 - **Use design tokens**; don't hardcode colors/spacing unless there's no token.
-- **Follow the design system** in `frontend/DESIGN.md`.
+- **Follow the design system** in `frontend/VISUAL_IDENTITY.md` and `frontend/src/design-tokens.css`.
 - **Prefer component-scoped CSS** (import `./Component.css`) and consistent class naming.
 
 ### Form Fields (Required)

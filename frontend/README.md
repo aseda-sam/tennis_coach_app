@@ -69,7 +69,6 @@ frontend/
 │   ├── router.tsx             # React Router config (lazy-loaded pages)
 │   └── index.tsx              # Entry point
 ├── VISUAL_IDENTITY.md         # Aesthetic north star — read before any UI work
-├── DESIGN.md                  # CSS component patterns reference
 └── package.json
 ```
 
@@ -103,7 +102,7 @@ Demo video metadata is prefetched on the home page for fast demo load.
 - **Auth:** Supabase in production, mock user in local. `ProtectedRoute` wraps auth-gated pages. `useAuth` hook for session state.
 - **Analysis dashboard:** Shared between authenticated users and the public demo page. New API calls in this tree must handle unauthenticated demo access (see `CLAUDE.md` demo compatibility rules).
 - **Data fetching:** React Query for all API calls. API client modules live in `services/`.
-- **Styling:** Design tokens in `design-tokens.css`. Read `VISUAL_IDENTITY.md` before UI work. `DESIGN.md` has CSS component patterns.
+- **Styling:** Design tokens in `design-tokens.css`. Read `VISUAL_IDENTITY.md` before UI work.
 - **Code splitting:** Pages are `React.lazy` loaded via the router.
 
 ## Testing

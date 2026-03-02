@@ -58,7 +58,6 @@ backend/
   tests/              # pytest tests
 frontend/
   VISUAL_IDENTITY.md  # Aesthetic north star — read before any frontend work
-  DESIGN.md           # CSS component patterns reference
   src/
     components/       # React components
     hooks/            # Custom React hooks
@@ -97,8 +96,8 @@ docs/
 
 - **No standalone docs for one-time work.** Migration runbooks, one-off SQL guides, and per-feature setup notes do not get their own `.md` files. Document inline: in the migration file's docstring, the commit message, or a code comment. Standalone docs only for things that need ongoing reference.
 - **Update docs at the point of change.** If you change a model → update `database_schema.md`. Change a config var → update `config.md`. Change a script's flags → update `demo-videos.md`. Don't defer it.
-- **Docs live close to the code they describe.** Backend operational docs in `backend/docs/`. Product/system-level docs in root `docs/`. Frontend CSS patterns in `frontend/DESIGN.md`. Shared AI rules live in `.agents/rules/`.
-- **Design tokens and CSS patterns are a reference, not a rule.** `frontend/DESIGN.md` is the CSS pattern reference. Behavioral constraints are in `.agents/rules/react-frontend.mdc`.
+- **Docs live close to the code they describe.** Backend operational docs in `backend/docs/`. Product/system-level docs in root `docs/`. Shared AI rules live in `.agents/rules/`.
+- **Design tokens are a reference, not a rule.** `frontend/src/design-tokens.css` has all CSS custom properties. Behavioral constraints are in `.agents/rules/react-frontend.mdc`.
 
 ## Testing
 
@@ -110,7 +109,7 @@ docs/
 ## Code style
 
 - **Python:** Type hints required. `ruff` for formatting/linting. Pre-commit hook runs ruff automatically. **`uv`** for package management (not pip).
-- **React:** Use React Query for data fetching. Design tokens for styling (see `frontend/DESIGN.md`). Avoid `any` in TypeScript.
+- **React:** Use React Query for data fetching. Design tokens for styling (see `frontend/src/design-tokens.css`). Avoid `any` in TypeScript.
 - **General:** KISS, DRY, YAGNI. No speculative abstractions.
 
 ## Product design philosophy

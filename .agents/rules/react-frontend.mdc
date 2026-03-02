@@ -61,7 +61,6 @@ alwaysApply: false
 ## Canonical References
 
 - Design tokens: `frontend/src/design-tokens.css`
-- CSS component patterns: `frontend/DESIGN.md`
 - Design conventions & UI patterns: `.agents/rules/frontend-design.mdc`
 - Routing conventions: `.agents/rules/react-routing.mdc`
 - API layer conventions: `.agents/rules/frontend-api-patterns.mdc`
@@ -69,8 +68,7 @@ alwaysApply: false
 
 ## When to Update Docs
 
-- **If you add a new CSS component pattern** (new class convention, new component structure): add it to `frontend/DESIGN.md`.
-- **If you add a new behavioral rule** (new required pattern, constraint, or anti-pattern): add it here in `react-frontend.mdc`, not in `DESIGN.md`.
+- **If you add a new behavioral rule** (new required pattern, constraint, or anti-pattern): add it here in `react-frontend.mdc`.
 - **If you add a new design convention** (styling, motion, UX philosophy): add it to `frontend-design.mdc`.
 
 ## Before Committing Frontend Files (Required)

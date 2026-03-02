@@ -4,7 +4,7 @@
 **Date:** 2026-02-22
 **Implemented:** 2026-02-28 — Reduced from 8 Kovacs phases to 4 user-facing phases
 (Toss, Trophy & Load, Acceleration, Follow-Through) + 4 moment markers.
-Version: `phase-seg-v3` / `phase-metrics-v6`.
+Version: `phase-seg-v4` / `phase-metrics-v6`.
 
 ## Context
 
@@ -125,7 +125,7 @@ analysis tool. For a recreational player trying to improve their serve, what mat
 - **Acceleration mechanics** (TP → BI): Did they use the kinetic chain?
 - **Follow-through** (BI → end): Did they decelerate safely?
 
-This maps to **5 user-facing phases** (Start, Toss, Trophy/Load, Acceleration, Follow-Through)
+This maps to **4 user-facing phases** (Toss, Trophy & Load, Acceleration, Follow-Through)
 built on top of the 4 KTPs. We can always expose the full 8-stage breakdown as an advanced
 view later — progressive disclosure.
 
