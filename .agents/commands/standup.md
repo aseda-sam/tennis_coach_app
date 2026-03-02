@@ -36,5 +36,3 @@ Trigger phrases:
 Direct and action-oriented. Like a co-founder standup, not a status report.
 
 ---
-
-$ARGUMENTS

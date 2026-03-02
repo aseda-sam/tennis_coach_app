@@ -30,7 +30,7 @@ description: Maintain Mermaid-only architecture and flow diagrams for this repo.
 Run from repo root:
 
 ```bash
-python .cursor/skills/diagram-maintainer/scripts/validate_mermaid.py
+python .agents/skills/diagram-maintainer/scripts/validate_mermaid.py
 ```
 
 ## Diagram Templates

@@ -10,21 +10,34 @@
      COLOR SYSTEM
      ============================================ */
 
-  /* Primary Colors (Green Theme) */
-  --color-primary: #00bc7d;
-  --color-primary-dark: #009966;
-  --color-primary-darker: #007a55;
-  --color-primary-light: #33c99a;
-  --color-primary-lighter: #66d6b7;
-  --color-primary-soft: #ecfdf5;
-  --color-primary-softest: #f0fdf7;
+  /* Primary Colors (Arc / Tennis Ball Lime) */
+  --color-primary: #c8e86b;
+  --color-primary-dark: #a8c84e;
+  --color-primary-darker: #5a7a10;
+  --color-primary-light: #d4ee8a;
+  --color-primary-lighter: #e0f4a8;
+  --color-primary-soft: rgba(200, 232, 107, 0.12);
+  --color-primary-softest: rgba(200, 232, 107, 0.07);
+
+  /* Brand Colors */
+  --color-court: #1a3c34;
+  --color-court-deep: #132b25;
+  --color-arc: #c8e86b;
+  --color-arc-dim: #a8c84e;
+  --color-arc-text: #5a7a10;
+  --color-amber-text: #9e7200;
+  --text-on-dark: #c8c4bc;
+  --text-on-dark-dim: #918d85;
+  --text-on-dark-bright: #e8e5df;
+  --glow-arc: 0 0 18px rgba(200, 232, 107, 0.35);
+  --glow-arc-subtle: 0 0 12px rgba(200, 232, 107, 0.2);
 
   /* Semantic Colors */
   --color-success: #10b981;
   --color-success-light: #d1fae5;
   --color-success-dark: #059669;
 
-  --color-error: #dc2626;
+  --color-error: #dc4a4a;
   --color-error-light: #fee2e2;
   --color-error-dark: #b91c1c;
   --color-error-soft: #fef2f2;
@@ -40,10 +53,10 @@
   /* Neutral Colors */
   --color-text: #101828;
   --color-text-secondary: #374151;
-  --color-text-muted: #4a5565;
+  --color-text-muted: #7d8590;
   --color-text-disabled: #9ca3af;
 
-  --color-border: #e5e7eb;
+  --color-border: #ddd9d1;
   --color-border-light: #f3f4f6;
   --color-border-dark: #d1d5db;
 
@@ -52,17 +65,17 @@
   --color-surface-tertiary: #edeae5;
   --color-surface-hover: #f5f2ee;
 
-  --color-background: #f8f5f1;
+  --color-background: #f5f3ee;
   --color-background-alt: #f4f0eb;
 
   /* Display & Accent Colors */
   --color-ink-heavy: #0a0f1a; /* Near-black for metric values and display headings */
-  --color-sand: #f5f0e8; /* Warm neutral for milestone/highlight sections */
-  --color-sand-dark: #ede8de; /* Border color on sand backgrounds */
+  --color-sand: #ebe7dd; /* Warm neutral for milestone/highlight sections */
+  --color-sand-dark: #ddd9d1; /* Border color on sand backgrounds */
 
   /* Amber Gold — second accent for highlights, active states, non-action moments */
-  --color-amber: #c8941a;
-  --color-amber-dark: #a97a14;
+  --color-amber: #d4980b;
+  --color-amber-dark: #b07e08;
   --color-amber-soft: rgba(200, 148, 26, 0.1);
   --color-amber-softest: rgba(200, 148, 26, 0.07);
 
@@ -74,7 +87,7 @@
   --icon-badge-radius: var(--radius-md);
 
   /* Court-Inspired Palette */
-  --color-court-blue: #1b4b7a;
+  --color-court-blue: #2b6cb0;
   --color-court-blue-light: #2a6cb0;
   --color-court-blue-soft: rgba(27, 75, 122, 0.08);
   --color-court-clay: #d4784a;
@@ -210,10 +223,10 @@
 
   /* Colored Shadows (for primary actions) */
   --shadow-primary-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-primary-md: 0 6px 14px rgba(0, 188, 125, 0.28);
-  --shadow-primary-lg: 0 8px 16px rgba(0, 188, 125, 0.25);
-  --shadow-primary-xl: 0 10px 18px rgba(0, 188, 125, 0.38);
-  --shadow-primary-2xl: 0 12px 20px rgba(0, 188, 125, 0.3);
+  --shadow-primary-md: 0 6px 14px rgba(200, 232, 107, 0.28);
+  --shadow-primary-lg: 0 8px 16px rgba(200, 232, 107, 0.25);
+  --shadow-primary-xl: 0 10px 18px rgba(200, 232, 107, 0.38);
+  --shadow-primary-2xl: 0 12px 20px rgba(200, 232, 107, 0.3);
 
   /* ============================================
      TRANSITIONS & EASING

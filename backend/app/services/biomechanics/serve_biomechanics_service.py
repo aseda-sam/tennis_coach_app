@@ -8,7 +8,8 @@ import json
 import logging
 from typing import List
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.orm import Session, contains_eager
 
 from app.models.player import Player
 from app.models.serve_biomechanics_report import ServeBiomechanicsReport
@@ -32,7 +33,7 @@ from app.services.pose_data_service import (
 
 logger = logging.getLogger(__name__)
 
-ANALYSIS_VERSION = "phase-metrics-v5"
+ANALYSIS_VERSION = "phase-metrics-v6"
 
 
 class ServeBiomechanicsService:
@@ -202,14 +203,39 @@ class ServeBiomechanicsService:
         user_id: str,
         limit: int = 20,
     ) -> List[ServeBiomechanicsReport]:
-        """Get historical biomechanics reports for a player."""
-        return (
-            db.query(ServeBiomechanicsReport)
+        """Get the latest biomechanics report per serve window for a player.
+
+        Uses a subquery to pick only the most recent report per serve window,
+        then joins serve_window → video for chronological ordering.
+        """
+        # Subquery: latest report id per serve window
+        latest = (
+            db.query(
+                ServeBiomechanicsReport.serve_window_id,
+                func.max(ServeBiomechanicsReport.id).label("max_id"),
+            )
             .filter(
                 ServeBiomechanicsReport.player_id == player_id,
                 ServeBiomechanicsReport.user_id == user_id,
             )
-            .order_by(ServeBiomechanicsReport.created_at.desc())
+            .group_by(ServeBiomechanicsReport.serve_window_id)
+            .subquery()
+        )
+
+        return (
+            db.query(ServeBiomechanicsReport)
+            .join(latest, ServeBiomechanicsReport.id == latest.c.max_id)
+            .join(ServeBiomechanicsReport.serve_window)
+            .join(ServeWindow.video)
+            .options(
+                contains_eager(ServeBiomechanicsReport.serve_window).contains_eager(
+                    ServeWindow.video
+                )
+            )
+            .order_by(
+                Video.recorded_at.asc(),
+                ServeWindow.start_timestamp.asc(),
+            )
             .limit(limit)
             .all()
         )

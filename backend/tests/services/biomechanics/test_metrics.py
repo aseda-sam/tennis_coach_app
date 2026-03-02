@@ -144,20 +144,17 @@ class TestMetricsToNestedDict:
             toss_laterality=0.15,
         )
         nested = metrics_to_nested_dict(metrics)
-        assert "loading" in nested
-        assert "release" in nested
-        assert nested["loading"]["knee_flexion_min_deg"] == 95.0
-        assert nested["release"]["toss_peak_height"] == 1.8
-        assert nested["release"]["toss_laterality"] == 0.15
+        assert "toss" in nested
+        assert nested["toss"]["knee_flexion_min_deg"] == 95.0
+        assert nested["toss"]["toss_peak_height"] == 1.8
+        assert nested["toss"]["toss_laterality"] == 0.15
 
     def test_omits_none_values(self):
         """None values should not appear in the nested dict."""
         metrics = BiomechanicsMetrics(knee_flexion_min_deg=100.0)
         nested = metrics_to_nested_dict(metrics)
-        assert "loading" in nested
-        assert nested["loading"]["knee_flexion_min_deg"] == 100.0
-        # toss metrics are None — release key should be absent
-        assert "release" not in nested
+        assert "toss" in nested
+        assert nested["toss"]["knee_flexion_min_deg"] == 100.0
 
     def test_all_none_returns_empty_dict(self):
         """All-None metrics should produce an empty dict."""
@@ -184,8 +181,11 @@ class TestMetricsToFlatList:
     def test_only_includes_meta_entries(self):
         """metrics_to_flat_list should only include metrics present in METRIC_META."""
         nested = {
-            "loading": {"knee_flexion_min_deg": 95.0},
-            "release": {"toss_peak_height": 1.8, "toss_laterality": 0.15},
+            "toss": {
+                "knee_flexion_min_deg": 95.0,
+                "toss_peak_height": 1.8,
+                "toss_laterality": 0.15,
+            },
         }
         flat = metrics_to_flat_list(nested)
         names = {m["metric_name"] for m in flat}
@@ -197,7 +197,7 @@ class TestMetricsToFlatList:
 
     def test_flat_list_has_correct_structure(self):
         """Each entry in flat list should have metric_name, value, unit, phase."""
-        nested = {"loading": {"knee_flexion_min_deg": 100.0}}
+        nested = {"toss": {"knee_flexion_min_deg": 100.0}}
         flat = metrics_to_flat_list(nested)
         for entry in flat:
             assert "metric_name" in entry

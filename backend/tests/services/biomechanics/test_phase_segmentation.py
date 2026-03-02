@@ -1,12 +1,14 @@
 """Tests for KTP-based serve phase segmentation.
 
-Tests the v2 phase segmentation architecture: 4 Key Time Points (Ball Release,
+Tests the v3 phase segmentation architecture: 4 Key Time Points (Ball Release,
 Trophy Position, Racket Low Point, Ball Impact) detected sequentially, then
-8 Kovacs phases derived as intervals between KTPs.
+4 phases (Toss, Trophy & Load, Acceleration, Follow-Through) always derived
+with fallback boundaries when KTPs are missing.
 """
 
 from app.services.biomechanics.phase_segmentation import (
     ANALYSIS_VERSION,
+    MomentMarker,
     PhaseSegmentationResult,
     PhaseWindow,
     ServePhase,
@@ -64,14 +66,14 @@ class TestContractTests:
         for phase in result.phases:
             assert 0.0 <= phase.confidence <= 1.0
 
-    def test_total_phases_possible_is_eight(self):
+    def test_total_phases_possible_is_four(self):
         result = _run_standard()
-        assert result.total_phases_possible == 8
+        assert result.total_phases_possible == 4
 
     def test_analysis_version(self):
         result = _run_standard()
         assert result.analysis_version == ANALYSIS_VERSION
-        assert result.analysis_version == "phase-seg-v2"
+        assert result.analysis_version == "phase-seg-v4"
 
     def test_detection_meta_present(self):
         """detection_meta must be present with ktps, feature_curves, fps, total_frames."""
@@ -115,77 +117,138 @@ class TestContractTests:
             if frame is not None:
                 assert 0 <= frame < total, f"{ktp_name} frame {frame} out of range"
 
+    def test_result_has_moments_list(self):
+        """Result must include a moments list with MomentMarker objects."""
+        result = _run_standard()
+        assert isinstance(result.moments, list)
+        assert len(result.moments) == 4
+        for m in result.moments:
+            assert isinstance(m, MomentMarker)
+
+    def test_ball_impact_moment_detected(self):
+        """With contact_timestamp provided, ball_impact moment should be detected."""
+        result = _run_standard()
+        impact = [m for m in result.moments if m.moment == "ball_impact"]
+        assert len(impact) == 1
+        assert impact[0].detected is True
+        assert impact[0].timestamp is not None
+        assert abs(impact[0].timestamp - 1.3) < 0.1
+
 
 class TestKTPDetection:
     """Key Time Point sequential detection and phase derivation."""
 
-    def test_all_eight_phases_detected(self):
-        """A well-formed serve with contact should produce all 8 phases."""
+    def test_all_four_phases_always_present(self):
+        """A well-formed serve should produce exactly 4 phases."""
         result = _run_standard()
         phase_names = [p.phase for p in result.phases]
         for phase in list(ServePhase):
             assert phase in phase_names, f"Missing phase: {phase.value}"
-        assert result.total_phases_detected == 8
+        assert result.total_phases_detected == 4
 
     def test_ktp_sequential_ordering(self):
-        """KTP-derived phases must appear in Kovacs order: BR < TP < RLP < BI."""
+        """KTP-derived phases must appear in order: Toss < Trophy & Load < Acceleration < Follow-Through."""
         result = _run_standard()
         phase_map = {p.phase: p for p in result.phases}
 
-        # Release start (= BR) < Cocking start (= TP)
         assert (
-            phase_map[ServePhase.RELEASE].start_frame
-            < phase_map[ServePhase.COCKING].start_frame
+            phase_map[ServePhase.TOSS].start_frame
+            < phase_map[ServePhase.TROPHY_LOAD].start_frame
         )
-        # Cocking start (= TP) < Acceleration start (= RLP)
         assert (
-            phase_map[ServePhase.COCKING].start_frame
+            phase_map[ServePhase.TROPHY_LOAD].start_frame
             < phase_map[ServePhase.ACCELERATION].start_frame
         )
-        # Acceleration start (= RLP) < Contact start (= BI)
         assert (
             phase_map[ServePhase.ACCELERATION].start_frame
-            < phase_map[ServePhase.CONTACT].start_frame
+            < phase_map[ServePhase.FOLLOW_THROUGH].start_frame
         )
 
-    def test_contact_phase_matches_timestamp(self):
+    def test_follow_through_starts_near_contact(self):
+        """Follow-through should start at or near the contact timestamp."""
         result = _run_standard()
-        contact_phases = [p for p in result.phases if p.phase == ServePhase.CONTACT]
-        assert len(contact_phases) == 1
-        assert abs(contact_phases[0].start_timestamp - 1.3) < 0.1
+        ft_phases = [p for p in result.phases if p.phase == ServePhase.FOLLOW_THROUGH]
+        assert len(ft_phases) == 1
+        assert abs(ft_phases[0].start_timestamp - 1.3) < 0.1
 
-    def test_start_phase_begins_at_frame_zero(self):
+    def test_toss_phase_begins_at_frame_zero(self):
         result = _run_standard()
-        assert result.phases[0].phase == ServePhase.START
+        assert result.phases[0].phase == ServePhase.TOSS
         assert result.phases[0].start_frame == 0
-
-    def test_loading_between_release_and_cocking(self):
-        """Loading phase should sit between Release and Cocking (knee bend before trophy)."""
-        result = _run_standard()
-        phase_map = {p.phase: p for p in result.phases}
-        if ServePhase.LOADING in phase_map:
-            loading = phase_map[ServePhase.LOADING]
-            release = phase_map[ServePhase.RELEASE]
-            cocking = phase_map[ServePhase.COCKING]
-            assert loading.start_frame >= release.start_frame
-            assert loading.end_frame == cocking.start_frame
 
 
 class TestTrophyDetection:
     """Trophy position composite detector tests."""
 
     def test_trophy_detects_with_any_wrist_above_shoulder(self):
-        """Asymmetric trophy (only dominant arm raised) should still produce Cocking."""
+        """Asymmetric trophy (only dominant arm raised) should still produce Trophy & Load."""
         frames = _make_asymmetric_serve_sequence()
         result = segment_serve_phases(pose_frames=frames, **_STANDARD_PARAMS)
         phase_names = [p.phase for p in result.phases]
-        assert ServePhase.COCKING in phase_names
+        assert ServePhase.TROPHY_LOAD in phase_names
 
     def test_asymmetric_trophy_produces_full_phases(self):
-        """Beginner serve with one-arm trophy should still produce most phases."""
+        """Beginner serve with one-arm trophy should still produce all 4 phases."""
         frames = _make_asymmetric_serve_sequence()
         result = segment_serve_phases(pose_frames=frames, **_STANDARD_PARAMS)
-        assert result.total_phases_detected >= 6
+        assert result.total_phases_detected == 4
+
+    def test_trophy_uses_both_arms_raised_when_available(self):
+        """Standard sequence (both arms raised) → trophy detected with high confidence."""
+        result = _run_standard()
+        tp_meta = result.detection_meta["ktps"]["trophy_position"]
+        assert tp_meta["method"] == "both_arms_raised"
+        assert tp_meta["confidence"] >= 0.8
+
+    def test_trophy_falls_back_to_any_wrist(self):
+        """Single-arm-only trophy in search window → Tier 2 fallback."""
+        from tests.biomechanics_fixtures import _make_pose
+
+        # Build a sequence where only the right arm is above shoulder
+        # in the 15-50% search window (frames 9-30 of 60).
+        frames = []
+        for i in range(60):
+            if i <= 8:
+                frames.append(_make_pose(left_wrist_y=0.6, right_wrist_y=0.6))
+            elif i <= 30:
+                # Only right wrist above shoulder (0.3); left stays below
+                frames.append(_make_pose(left_wrist_y=0.4, right_wrist_y=0.1))
+            else:
+                frames.append(_make_pose(left_wrist_y=0.6, right_wrist_y=0.6))
+        result = segment_serve_phases(pose_frames=frames, **_STANDARD_PARAMS)
+        tp_meta = result.detection_meta["ktps"]["trophy_position"]
+        assert tp_meta["method"] == "any_wrist_above_shoulder_fallback"
+        assert tp_meta["confidence"] <= 0.7
+
+    def test_trophy_not_in_first_15_percent(self):
+        """Trophy frame should be >= 15% of total frames."""
+        result = _run_standard()
+        total = result.detection_meta["total_frames"]
+        tp_frame = result.detection_meta["ktps"]["trophy_position"]["frame"]
+        assert tp_frame >= int(total * 0.15)
+
+    def test_trophy_not_after_50_percent(self):
+        """Trophy frame should be <= 50% of total frames."""
+        result = _run_standard()
+        total = result.detection_meta["total_frames"]
+        tp_frame = result.detection_meta["ktps"]["trophy_position"]["frame"]
+        assert tp_frame <= int(total * 0.50)
+
+    def test_toss_phase_guardrail_min(self):
+        """Trophy position clamped to >= 10% of total frames in phase derivation."""
+        result = _run_standard()
+        phase_map = {p.phase: p for p in result.phases}
+        total = result.detection_meta["total_frames"]
+        trophy_start = phase_map[ServePhase.TROPHY_LOAD].start_frame
+        assert trophy_start >= int(total * 0.10)
+
+    def test_toss_phase_guardrail_max(self):
+        """Trophy position clamped to <= 55% of total frames in phase derivation."""
+        result = _run_standard()
+        phase_map = {p.phase: p for p in result.phases}
+        total = result.detection_meta["total_frames"]
+        trophy_start = phase_map[ServePhase.TROPHY_LOAD].start_frame
+        assert trophy_start <= int(total * 0.55)
 
 
 class TestRacketLowPoint:
@@ -195,28 +258,27 @@ class TestRacketLowPoint:
         """RLP should be after trophy position."""
         result = _run_standard()
         phase_map = {p.phase: p for p in result.phases}
-        if ServePhase.ACCELERATION in phase_map and ServePhase.COCKING in phase_map:
-            assert (
-                phase_map[ServePhase.ACCELERATION].start_frame
-                > phase_map[ServePhase.COCKING].start_frame
-            )
+        assert (
+            phase_map[ServePhase.ACCELERATION].start_frame
+            > phase_map[ServePhase.TROPHY_LOAD].start_frame
+        )
 
     def test_rlp_detected_before_contact(self):
         """RLP should be before ball impact."""
         result = _run_standard()
         phase_map = {p.phase: p for p in result.phases}
-        if ServePhase.ACCELERATION in phase_map and ServePhase.CONTACT in phase_map:
-            assert (
-                phase_map[ServePhase.ACCELERATION].start_frame
-                < phase_map[ServePhase.CONTACT].start_frame
-            )
+        assert (
+            phase_map[ServePhase.ACCELERATION].start_frame
+            < phase_map[ServePhase.FOLLOW_THROUGH].start_frame
+        )
 
 
 class TestMissingData:
     """Edge cases: missing contact, empty frames, None frames."""
 
-    def test_no_contact_omits_post_contact_phases(self):
-        """Without contact timestamp, Contact/Deceleration/Finish should be absent."""
+    def test_no_contact_still_has_all_four_phases(self):
+        """Without contact timestamp, all 4 phases should still exist.
+        Follow-through should have detected=False and low confidence."""
         frames = _make_serve_sequence()
         result = segment_serve_phases(
             pose_frames=frames,
@@ -229,12 +291,13 @@ class TestMissingData:
             video_height=720,
         )
         phase_names = [p.phase for p in result.phases]
-        assert ServePhase.CONTACT not in phase_names
-        assert ServePhase.DECELERATION not in phase_names
-        assert ServePhase.FINISH not in phase_names
-        # Should still have pre-contact phases
-        assert ServePhase.START in phase_names
-        assert result.total_phases_detected >= 3
+        assert len(result.phases) == 4
+        for phase in list(ServePhase):
+            assert phase in phase_names
+        # Follow-through should use fallback
+        ft = next(p for p in result.phases if p.phase == ServePhase.FOLLOW_THROUGH)
+        assert ft.detected is False
+        assert ft.confidence <= 0.5
 
     def test_handles_empty_frames(self):
         result = segment_serve_phases(
@@ -248,14 +311,15 @@ class TestMissingData:
             video_height=720,
         )
         assert isinstance(result, PhaseSegmentationResult)
-        assert result.total_phases_detected >= 1
+        assert len(result.phases) == 4
+        assert result.total_phases_detected == 4
 
     def test_handles_none_frames(self):
         """Frames with None (no pose detected) should be skipped gracefully."""
         frames = [None] * 10 + _make_serve_sequence()[10:]
         result = segment_serve_phases(pose_frames=frames, **_STANDARD_PARAMS)
         assert isinstance(result, PhaseSegmentationResult)
-        assert result.total_phases_detected >= 4
+        assert len(result.phases) == 4
 
     def test_left_handed_player(self):
         """Should work for left-handed dominant hand (toss arm = right)."""
@@ -271,7 +335,65 @@ class TestMissingData:
             video_height=720,
         )
         assert isinstance(result, PhaseSegmentationResult)
-        assert result.total_phases_detected >= 1
+        assert len(result.phases) == 4
+
+
+class TestFallbackBoundaries:
+    """All-None frames or missing KTPs should still produce 4 phases."""
+
+    def test_all_none_frames_produce_four_phases(self):
+        """Even with no pose data at all, 4 fallback phases are returned."""
+        frames = [None] * 60
+        result = segment_serve_phases(
+            pose_frames=frames,
+            fps=30.0,
+            serve_start=0.0,
+            serve_end=2.0,
+            contact_timestamp=None,
+            dominant_hand="right",
+            video_width=1280,
+            video_height=720,
+        )
+        assert len(result.phases) == 4
+        # Toss always starts at frame 0, so it's always detected.
+        # The other 3 phases should use fallbacks (low confidence, not detected).
+        for p in result.phases:
+            if p.phase != ServePhase.TOSS:
+                assert p.confidence <= 0.5
+                assert p.detected is False
+
+    def test_fallback_phases_are_monotonic(self):
+        frames = [None] * 60
+        result = segment_serve_phases(
+            pose_frames=frames,
+            fps=30.0,
+            serve_start=0.0,
+            serve_end=2.0,
+            contact_timestamp=None,
+            dominant_hand="right",
+            video_width=1280,
+            video_height=720,
+        )
+        starts = [p.start_frame for p in result.phases]
+        assert starts == sorted(starts)
+        # Strictly increasing
+        for i in range(1, len(starts)):
+            assert starts[i] > starts[i - 1]
+
+    def test_fallback_phases_cover_full_window(self):
+        frames = [None] * 60
+        result = segment_serve_phases(
+            pose_frames=frames,
+            fps=30.0,
+            serve_start=0.0,
+            serve_end=2.0,
+            contact_timestamp=None,
+            dominant_hand="right",
+            video_width=1280,
+            video_height=720,
+        )
+        assert result.phases[0].start_frame == 0
+        assert result.phases[-1].end_frame == 59
 
 
 class TestVelocitySmoothing:

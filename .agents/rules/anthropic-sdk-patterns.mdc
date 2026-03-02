@@ -1,0 +1,111 @@
+# Anthropic SDK Patterns
+
+Rules for building agentic features with the Anthropic Python SDK.
+
+## Package
+
+- Use `anthropic` Python SDK (`pip install anthropic` / `uv pip install anthropic`).
+- No LangChain, LangGraph, or CrewAI unless explicitly decided otherwise.
+
+## The agentic loop
+
+Use the **tool runner** (beta) for all agentic tool-use flows. It handles the loop, error recovery, and streaming automatically:
+
+```python
+from anthropic import Anthropic, beta_tool
+import json
+
+client = Anthropic()
+
+@beta_tool
+def my_tool(param: str) -> str:
+    """Description of what the tool does (3-4 sentences minimum).
+
+    Args:
+        param: Clear description of the parameter.
+    """
+    result = do_something(param)
+    return json.dumps(result)
+
+runner = client.beta.messages.tool_runner(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    tools=[my_tool],
+    messages=[{"role": "user", "content": "..."}],
+)
+final = runner.until_done()
+```
+
+If the tool runner doesn't fit the use case (e.g., need custom routing between iterations), use the manual loop with `MAX_ITERATIONS = 10`:
+
+```python
+for _ in range(MAX_ITERATIONS):
+    response = client.messages.create(model=..., tools=..., messages=messages)
+    messages.append({"role": "assistant", "content": response.content})
+
+    if response.stop_reason == "end_turn":
+        break
+
+    if response.stop_reason == "tool_use":
+        tool_results = []
+        for block in response.content:
+            if block.type == "tool_use":
+                try:
+                    result = execute_tool(block.name, block.input)
+                    tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": result})
+                except Exception as e:
+                    tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": str(e), "is_error": True})
+        messages.append({"role": "user", "content": tool_results})
+```
+
+## Model selection
+
+| Use case | Model |
+|---|---|
+| Complex multi-tool orchestration, ambiguous queries | `claude-opus-4-6` |
+| Production agentic tasks (cost/speed balance) | `claude-sonnet-4-6` |
+| Simple classification, single-tool, high-volume | `claude-haiku-4-5` |
+
+Default to `claude-sonnet-4-6` unless there's a reason to use another model.
+
+## Tool design rules
+
+- **Descriptions matter most.** Write 3-4 sentences per tool. This is the biggest factor in tool selection accuracy.
+- **Return only high-signal data.** Strip fields the LLM doesn't need — bloated results waste context.
+- **Use `"strict": True`** on tool definitions in production for guaranteed schema conformance.
+- **Consolidate related operations** into one tool with an `action` parameter rather than many narrow tools — but only when the operations share the same domain concept.
+- **Separate read tools from write tools.** Read tools (query metrics, fetch profiles) should never have side effects. Write/action tools (send message, save annotation) should be clearly labeled.
+
+## Error handling
+
+- Always pass tool errors back to Claude with `"is_error": True`. Claude can recover and retry or ask the user.
+- The tool runner handles this automatically for exceptions raised inside `@beta_tool` functions.
+- Set `ANTHROPIC_LOG=debug` during development for full stack traces.
+
+## Parallel tool calls
+
+- Claude may return multiple `tool_use` blocks in one response when tools are independent.
+- All `tool_result` blocks must be returned together in a single `user` message — never one at a time.
+- For dependent chains (output of tool A feeds tool B), Claude calls them sequentially across turns.
+
+## Token and cost management
+
+- Tool definitions cost tokens (~346 system prompt tokens per request + schema tokens).
+- Use `cache_control: {"type": "ephemeral"}` on large tool results for prompt caching on repeated calls.
+- For long conversations, monitor context window usage. Summarize or truncate conversation history if needed.
+
+## Integration with our backend
+
+- Agent services live in `backend/app/services/coaching/`.
+- Tools wrap existing service functions — don't duplicate business logic. A tool's implementation should call existing services, not re-query the DB directly.
+- Agent endpoints are async via RQ, same as other heavy processing.
+- No HTTP concerns in tool implementations. Tools are plain functions that return JSON-serializable data.
+- Follow existing service patterns: see `ball_detection/`, `biomechanics/`, `pose_detection/`.
+
+## What NOT to do
+
+- Don't use LangChain to wrap a single Claude API call.
+- Don't build a vector DB for structured relational data — use SQL.
+- Don't pass raw video frames or large numpy arrays as tool results.
+- Don't let the LLM generate SQL directly. Use the constrained function vocabulary defined in `backlog/llm-intelligence-layer.md`.
+- Don't hardcode model IDs in service code. Use a config constant (e.g., `settings.COACHING_LLM_MODEL`).

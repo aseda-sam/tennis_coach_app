@@ -54,10 +54,35 @@ def list_demo_videos_with_status(db: Session) -> List[dict]:
     )
     serve_counts = {video_id: count for video_id, count in serve_count_rows}
 
+    # Get the latest active (non-completed, non-failed) job per video
+    active_job_rows = (
+        db.query(VideoJob.video_id, VideoJob.job_type, VideoJob.status)
+        .filter(
+            VideoJob.video_id.in_(video_ids),
+            VideoJob.status.in_(["queued", "processing"]),
+        )
+        .order_by(VideoJob.video_id, VideoJob.id.desc())
+        .all()
+    )
+    # Keep only the most recent active job per video
+    active_jobs: dict[int, dict] = {}
+    for row in active_job_rows:
+        if row.video_id not in active_jobs:
+            active_jobs[row.video_id] = {
+                "job_type": row.job_type,
+                "status": row.status,
+            }
+
     result = []
     for video in demo_videos:
         has_pose_analysis = video.id in completed_pose_video_ids
         serve_count = serve_counts.get(video.id, 0)
+        active_job = active_jobs.get(video.id)
+        job_status = None
+        if active_job:
+            job_status = (
+                "transcoding" if active_job["job_type"] == "transcode" else "analyzing"
+            )
 
         result.append(
             {
@@ -67,6 +92,7 @@ def list_demo_videos_with_status(db: Session) -> List[dict]:
                 "is_active_demo": video.is_active_demo,
                 "has_pose_analysis": has_pose_analysis,
                 "serve_window_count": serve_count,
+                "job_status": job_status,
                 "created_at": video.created_at,
             }
         )
@@ -223,3 +249,59 @@ def enqueue_demo_pose_analysis(
         video_job.error = f"Failed to enqueue job: {e}"
         db.commit()
         raise RuntimeError(f"Failed to start analysis: {e}") from e
+
+
+def delete_demo_video(db: Session, video_id: int) -> tuple[str, int]:
+    """Delete a demo video and all associated data.
+
+    The active demo cannot be deleted — set another video as active first.
+    Cleans up both the private storage bucket and the public demo bucket (if applicable).
+
+    Args:
+        db: Database session
+        video_id: ID of the demo video to delete
+
+    Returns:
+        Tuple of (filename, video_id)
+
+    Raises:
+        ValueError: If video not found or is not a demo video
+        PermissionError: If the video is the currently active demo
+    """
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise ValueError(f"Video with ID {video_id} not found")
+    if not video.is_demo:
+        raise ValueError(f"Video {video_id} is not a demo video")
+    if video.is_active_demo:
+        raise PermissionError(
+            "Cannot delete the active demo. Set another video as active first."
+        )
+
+    filename = video.filename
+    file_path = video.file_path
+
+    # Best-effort: clean up the demo bucket copy if it exists there.
+    # set_active_demo_video copies to the demo bucket, so a formerly-active video
+    # may have a stale copy there even after being superseded.
+    if settings.STORAGE_TYPE == "supabase" and settings.SUPABASE_DEMO_BUCKET:
+        try:
+            if storage_service.demo_object_exists(file_path):
+                storage_service._supabase_client.storage.from_(
+                    settings.SUPABASE_DEMO_BUCKET
+                ).remove([file_path])
+                logger.info("Deleted demo bucket copy: %s", file_path)
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "Failed to delete demo bucket copy for video %s (%s) — continuing",
+                video_id,
+                file_path,
+            )
+
+    success, filename, video_id = video_service.delete_video_with_analyses(db, video_id)
+    if not success:
+        raise RuntimeError(
+            f"Failed to delete video {video_id} from storage or database"
+        )
+
+    return filename, video_id

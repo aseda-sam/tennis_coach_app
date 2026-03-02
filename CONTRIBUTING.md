@@ -1,6 +1,6 @@
 # Contributing Guidelines
 
-Thank you for considering contributing to Tennis Coach App!
+Thank you for considering contributing to S²Serve!
 
 ## Getting Started
 - Clone the repo: `git clone https://github.com/aseda-sam/tennis_coach_app.git`
@@ -49,7 +49,7 @@ Thank you for considering contributing to Tennis Coach App!
 - [ ] Keep tests unchanged if behavior is unchanged
 - [ ] Update tests only if contract changes (document why)
 
-See `.cursor/rules/testing-patterns.mdc` for detailed guidance.
+See `.agents/rules/testing-patterns.mdc` for detailed guidance.
 
 ## Pull Requests
 - Ensure CI passes (backend, frontend, security scans)

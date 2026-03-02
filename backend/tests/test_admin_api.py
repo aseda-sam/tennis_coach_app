@@ -327,9 +327,12 @@ class TestDemoManagementEndpoints:
             assert response.status_code == 200
             data = response.json()
             assert isinstance(data, list)
-            # Should include the demo video we created
             demo_ids = [item["id"] for item in data]
             assert demo_video.id in demo_ids
+            # Verify response shape includes job_status
+            item = next(d for d in data if d["id"] == demo_video.id)
+            assert "job_status" in item
+            assert item["job_status"] is None  # no active jobs for new video
         finally:
             db_session.delete(demo_video)
             db_session.commit()

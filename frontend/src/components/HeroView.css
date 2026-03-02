@@ -66,6 +66,43 @@
   border-top: 1px solid var(--color-border);
 }
 
+/* Tooltip — styled data-tooltip on control buttons */
+.hero-view__controls [data-tooltip] {
+  position: relative;
+}
+
+.hero-view__controls [data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-ink-heavy);
+  color: white;
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity var(--duration-fast) var(--ease-in-out),
+    transform var(--duration-fast) var(--ease-in-out);
+  z-index: 20;
+}
+
+.hero-view__controls [data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  transition-delay: 0.4s;
+}
+
+.hero-view__controls [data-tooltip]:disabled::after {
+  display: none;
+}
+
 .hero-view__play-btn {
   display: flex;
   align-items: center;
@@ -109,8 +146,8 @@
   height: 20px;
 }
 
-/* Phase segments track — positioned behind the range input */
-.hero-view__phase-track {
+/* Simple track behind the range input — holds the contact marker */
+.hero-view__scrubber-track {
   position: absolute;
   left: 0;
   right: 0;
@@ -119,27 +156,10 @@
   transform: translateY(-50%);
   border-radius: var(--radius-full);
   background: var(--color-border);
-  overflow: hidden;
   pointer-events: none;
 }
 
-.hero-view__phase-segment {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  background: var(--color-border-dark);
-  opacity: 0.5;
-  border-radius: var(--radius-full);
-  transition: opacity var(--duration-fast) var(--ease-in-out);
-}
-
-.hero-view__phase-segment--active {
-  background: var(--color-court-blue);
-  opacity: 1;
-  z-index: 1;
-}
-
-/* Contact marker — vertical line on the phase track */
+/* Contact marker — vertical line on the scrubber track */
 .hero-view__contact-marker {
   position: absolute;
   top: -1px;
@@ -152,7 +172,7 @@
   pointer-events: none;
 }
 
-/* Range input — transparent track so phase segments show through */
+/* Range input — transparent so the track behind shows through */
 .hero-view__scrubber {
   position: relative;
   z-index: 3;
@@ -217,17 +237,6 @@
 
 .hero-view__scrubber:hover::-moz-range-thumb {
   transform: scale(1.15);
-}
-
-/* When no phases are present, show a simple track behind the thumb */
-.hero-view__scrubber-container:not(:has(.hero-view__phase-track))
-  .hero-view__scrubber::-webkit-slider-runnable-track {
-  background: var(--color-border);
-}
-
-.hero-view__scrubber-container:not(:has(.hero-view__phase-track))
-  .hero-view__scrubber::-moz-range-track {
-  background: var(--color-border);
 }
 
 /* Speed selector — compact segmented group */
@@ -296,6 +305,39 @@
 }
 
 .hero-view__loop-btn--active {
+  border-color: var(--color-court-blue);
+  background: var(--color-court-blue-soft);
+  color: var(--color-court-blue);
+}
+
+/* Auto-advance button — icon-only, same pattern as loop */
+.hero-view__auto-advance-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.hero-view__auto-advance-btn:hover:not(:disabled) {
+  border-color: var(--color-border-dark);
+  color: var(--color-text);
+}
+
+.hero-view__auto-advance-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.hero-view__auto-advance-btn--active {
   border-color: var(--color-court-blue);
   background: var(--color-court-blue-soft);
   color: var(--color-court-blue);

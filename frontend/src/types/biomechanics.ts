@@ -36,12 +36,24 @@ export interface DetectionMeta {
   total_frames: number;
 }
 
+export interface MomentMarker {
+  moment: string;
+  moment_label: string;
+  timestamp: number | null;
+  frame: number | null;
+  confidence: number;
+  detected: boolean;
+}
+
 export interface ServeBiomechanicsReport {
   id: number;
   serve_window_id: number;
   phase_segmentation: PhaseWindow[];
+  moments: MomentMarker[];
   metrics: MetricValue[];
   analysis_version: string;
   detection_meta?: DetectionMeta | null;
   created_at: string;
+  video_id?: number | null;
+  video_filename?: string | null;
 }

@@ -37,6 +37,7 @@ class DemoVideoListItem(BaseModel):
     is_active_demo: bool
     has_pose_analysis: bool
     serve_window_count: int
+    job_status: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -109,6 +110,57 @@ async def set_active_demo(
         raise
     except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
         log_and_raise_error(e, "set_active_demo", {"video_id": video_id})
+
+
+@router.delete("/demos/{video_id}", status_code=status.HTTP_200_OK)
+async def delete_demo_video(
+    video_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Delete a demo video and all its associated data (admin only).
+
+    The active demo cannot be deleted. Set another video as active first.
+
+    Args:
+        video_id: ID of the demo video to delete
+
+    Returns:
+        Confirmation with deleted video ID and filename
+    """
+    require_admin(current_user)
+
+    try:
+        filename, deleted_id = demo_service.delete_demo_video(db, video_id)
+        logger.info(
+            "Admin %s deleted demo video %s (%s)",
+            current_user.get("email"),
+            video_id,
+            filename,
+        )
+        return {"message": f"Demo video '{filename}' deleted.", "video_id": deleted_id}
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not found" in error_msg:
+            raise handle_not_found_error("video", str(video_id)) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        ) from e
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete video. Please try again.",
+        ) from e
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001 - Catch all unexpected errors for API endpoint
+        log_and_raise_error(e, "delete_demo_video", {"video_id": video_id})
 
 
 @router.post("/demos/{video_id}/analyze-pose", response_model=AnalysisResponse)

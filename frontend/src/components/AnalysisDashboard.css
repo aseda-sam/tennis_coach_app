@@ -32,14 +32,14 @@
   padding: var(--spacing-xs) 0;
 }
 
-/* Serve Navigation Rail — thumbnails left, view toggle right */
+/* Serve Navigation Rail — thumbnails left, view toggle right, flush with video player */
 .analysis-dashboard__serve-nav {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
   background: var(--color-surface-secondary);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
 }
 
 .analysis-dashboard__serve-nav > .thumbnail-strip {
@@ -53,7 +53,7 @@
   display: none;
 }
 
-.analysis-dashboard__serve-nav > .view-toggle {
+.analysis-dashboard__serve-nav > .analysis-view-toggle {
   flex-shrink: 0;
 }
 
@@ -128,7 +128,7 @@
 
 .analysis-dashboard__action-btn--primary {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-court);
 }
 
 .analysis-dashboard__action-btn--primary:hover:not(:disabled) {
@@ -146,7 +146,7 @@
 
 .analysis-dashboard__action-btn--accept-all {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-court);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -179,6 +179,15 @@
   flex-direction: column;
   gap: var(--spacing-sm);
   min-width: 0;
+}
+
+/* Demo CTA row (right of film strip on desktop, inline on mobile) */
+.analysis-dashboard__side-nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
 }
 
 /* Side column (metrics + detection details) */
@@ -225,58 +234,6 @@
   margin-left: auto;
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
-}
-
-/* Metrics Strip */
-.analysis-dashboard__metrics-strip {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.analysis-dashboard__metric-card {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--spacing-md);
-  padding: var(--spacing-sm) 0;
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.analysis-dashboard__metric-card:last-child {
-  border-bottom: none;
-}
-
-.analysis-dashboard__metric-card--clickable {
-  cursor: pointer;
-  transition: var(--transition-normal);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-sm) var(--spacing-xs);
-  margin: 0 calc(-1 * var(--spacing-xs));
-}
-
-.analysis-dashboard__metric-card--clickable:hover {
-  background: var(--color-court-blue-soft);
-}
-
-.analysis-dashboard__metric-card--clickable:active {
-  transform: scale(0.98);
-}
-
-.analysis-dashboard__metric-label {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-wide);
-}
-
-.analysis-dashboard__metric-value {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-ink-heavy);
-  line-height: 1;
 }
 
 /* No Serves State */
@@ -355,10 +312,32 @@
   .analysis-dashboard__focus-view {
     display: grid;
     grid-template-columns: 1fr 380px;
+    grid-template-rows: auto 1fr;
     gap: var(--spacing-md);
   }
 
+  /* Film strip row: video column only */
+  .analysis-dashboard__serve-nav {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* Demo CTA: right column, same row as film strip */
+  .analysis-dashboard__side-nav {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  /* Video + phase tabs: video column, second row */
+  .analysis-dashboard__main-col {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  /* Side panel: starts flush with the video player */
   .analysis-dashboard__side-col {
+    grid-column: 2;
+    grid-row: 2;
     position: sticky;
     top: var(--app-header-height);
     max-height: calc(100vh - var(--app-header-height) - var(--spacing-sm));
@@ -375,10 +354,6 @@
 @media (min-width: 1024px) and (max-width: 1280px) {
   .analysis-dashboard__header {
     margin-bottom: var(--spacing-xs);
-  }
-
-  .analysis-dashboard__serve-nav {
-    padding: var(--spacing-xs) var(--spacing-sm);
   }
 
   .analysis-dashboard__phase-tab {
@@ -404,88 +379,92 @@
     grid-template-columns: 1fr 460px;
     gap: var(--spacing-lg);
   }
-
-  .analysis-dashboard__metrics-strip {
-    gap: var(--spacing-lg);
-  }
 }
 
-/* Demo: Upload Invite Banner — between serve-nav and focus-view */
-.analysis-dashboard__upload-invite {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  width: fit-content;
-  padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm)
-    var(--spacing-md);
-  margin: var(--spacing-sm) 0;
-  background: var(--color-sand);
-  border-radius: var(--radius-pill);
-}
-
-.analysis-dashboard__upload-invite-text {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  flex: 1;
-  min-width: 0;
-}
-
-.analysis-dashboard__upload-invite-label {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-amber-dark);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  flex-shrink: 0;
-  background: var(--color-amber-soft);
-  padding: 3px var(--spacing-sm);
-  border-radius: var(--radius-pill);
-}
-
-.analysis-dashboard__upload-invite-title {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.analysis-dashboard__upload-invite-button {
-  flex-shrink: 0;
+/* Demo: CTA buttons in side-nav row */
+.demo-cta-block__upload-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-xl);
+  padding: var(--spacing-sm) var(--spacing-lg);
   background: var(--color-primary);
-  color: white;
+  color: var(--color-court);
   border: none;
   border-radius: var(--radius-pill);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  white-space: nowrap;
+  flex-shrink: 0;
   transition:
     background var(--transition-normal),
     box-shadow var(--transition-normal),
     transform var(--transition-normal);
 }
 
-.analysis-dashboard__upload-invite-button:hover {
+.demo-cta-block__upload-btn:hover {
   background: var(--color-primary-dark);
   box-shadow: var(--shadow-primary-md);
   transform: translateY(-1px);
 }
 
-.analysis-dashboard__upload-invite-button:active {
+.demo-cta-block__upload-btn:active {
   transform: translateY(0);
   box-shadow: none;
 }
 
-@media (max-width: 640px) {
-  .analysis-dashboard__upload-invite-title {
-    display: none;
-  }
+.demo-cta-block__restart-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: var(--transition-fast);
+}
+
+.demo-cta-block__restart-btn:hover {
+  background: var(--color-surface);
+  border-color: var(--color-border-dark);
+  color: var(--color-text);
+}
+
+.demo-cta-block__restart-btn:hover {
+  color: var(--color-text);
+}
+
+/* Serve nav: vertical divider before compare button */
+.analysis-dashboard__serve-nav-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+/* Trophy compare button — compact, icon-forward, lives in serve-nav */
+.analysis-dashboard__compare-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: var(--transition-fast);
+}
+
+.analysis-dashboard__compare-btn:hover {
+  color: var(--color-court-blue);
+  background: var(--color-court-blue-soft);
 }

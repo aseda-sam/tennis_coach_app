@@ -56,5 +56,3 @@ Trigger phrases:
 Write to `backlog/issues.md`. Append new captures under dated headings; update existing issues in-place when new information surfaces.
 
 ---
-
-$ARGUMENTS

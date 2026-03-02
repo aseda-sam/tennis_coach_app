@@ -55,6 +55,19 @@
   box-shadow: 0 2px 8px rgba(27, 75, 122, 0.25);
 }
 
+/* Inactive thumbnails dim based on distance from current serve.
+   --distance is set inline (1 = adjacent, 2 = two away, etc.).
+   Adjacent stays quite visible; farther thumbnails recede. */
+.thumbnail-strip__item:not(.thumbnail-strip__item--active) {
+  opacity: calc(0.85 - min(var(--distance, 1), 4) * 0.1);
+  filter: saturate(calc(1 - min(var(--distance, 1), 4) * 0.12));
+}
+
+.thumbnail-strip__item:hover:not(.thumbnail-strip__item--active) {
+  opacity: 1;
+  filter: saturate(1);
+}
+
 .thumbnail-strip__item:hover:not(.thumbnail-strip__item--active)
   .thumbnail-strip__frame {
   border-color: var(--color-border-dark);

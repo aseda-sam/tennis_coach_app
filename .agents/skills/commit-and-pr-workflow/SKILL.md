@@ -1,7 +1,6 @@
 ---
 name: commit-and-pr-workflow
 description: Generates conventional commit messages, squash-merge messages, and PR titles/descriptions for this repo. Use when the user asks for a commit message, PR message, squash merge message, or to draft PR/commit text.
-disable-model-invocation: true
 ---
 
 # Commit and PR Workflow

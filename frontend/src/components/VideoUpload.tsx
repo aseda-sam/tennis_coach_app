@@ -99,6 +99,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
 
         setUploadedVideoId(response.video_id);
         setUploadProgress(100);
+
         setStep(2); // Move to Step 2: Details
       } catch (err: unknown) {
         const errorMessage = getApiErrorMessage(
@@ -112,21 +113,25 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
   );
 
   const handleFinishUpload = useCallback(async () => {
-    if (!uploadedVideoId || !sessionType) {
+    // Demo uploads: camera angle is optional, session type is fixed
+    // Regular uploads: session type is required
+    if (!uploadedVideoId || (!forceDemo && !sessionType)) {
       return;
     }
 
     setError(null);
 
     try {
-      // Update video metadata
+      const metadata: Record<string, string | undefined> = {
+        session_type: forceDemo ? 'serve_practice' : sessionType,
+        camera_angle: cameraAngle || undefined,
+      };
+      if (!forceDemo) {
+        metadata.player_tag = playerTag;
+      }
       const updatedVideo = await updateMetadataMutation.mutateAsync({
         videoId: uploadedVideoId,
-        metadata: {
-          session_type: sessionType,
-          camera_angle: cameraAngle || undefined,
-          player_tag: playerTag,
-        },
+        metadata,
       });
 
       queryClient.setQueryData(['video', uploadedVideoId], updatedVideo);
@@ -140,6 +145,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
     }
   }, [
     uploadedVideoId,
+    forceDemo,
     sessionType,
     cameraAngle,
     playerTag,
@@ -207,19 +213,21 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
 
   return (
     <div className="video-upload">
-      {/* Step Indicator */}
-      <div className="upload-steps">
-        <div
-          className={`step-indicator ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}
-        >
-          <span className="step-number">1</span>
-          <span className="step-label">Upload</span>
+      {/* Step Indicator — hidden for demo uploads (single-step) */}
+      {!forceDemo && (
+        <div className="upload-steps">
+          <div
+            className={`step-indicator ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}
+          >
+            <span className="step-number">1</span>
+            <span className="step-label">Upload</span>
+          </div>
+          <div className={`step-indicator ${step >= 2 ? 'active' : ''}`}>
+            <span className="step-number">2</span>
+            <span className="step-label">Details</span>
+          </div>
         </div>
-        <div className={`step-indicator ${step >= 2 ? 'active' : ''}`}>
-          <span className="step-number">2</span>
-          <span className="step-label">Details</span>
-        </div>
-      </div>
+      )}
 
       {step === 1 && (
         <VideoUploadDropzone
@@ -249,6 +257,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
           cameraAngle={cameraAngle}
           playerTag={playerTag}
           playerLabel={playerLabel}
+          isDemo={forceDemo}
           isSubmitting={updateMetadataMutation.isPending}
           onSessionTypeChange={setSessionType}
           onCameraAngleChange={setCameraAngle}

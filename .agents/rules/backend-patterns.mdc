@@ -64,7 +64,7 @@ alwaysApply: false
 - **Logging**: Use `get_log_extra()` to include canonical IDs (`request_id`, `job_id`, `video_id`) in logs.
 - **Tracing**: Worker tasks should use `_rq_job_span()` + `_stage_span()` for distributed tracing.
 - **Metrics**: Record job lifecycle (`record_job_started`, `record_job_succeeded`, `record_job_failed`).
-- See `backend/docs/observability.md` and `.cursor/rules/observability.mdc` for details.
+- See `backend/docs/observability.md` and `.agents/rules/observability.mdc` for details.
 
 ## Canonical Examples (Reference These)
 

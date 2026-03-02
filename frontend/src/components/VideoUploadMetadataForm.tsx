@@ -7,6 +7,7 @@ interface VideoUploadMetadataFormProps {
   cameraAngle: string;
   playerTag: 'you' | 'someone_else';
   playerLabel: string;
+  isDemo?: boolean;
   isSubmitting: boolean;
   onSessionTypeChange: (value: string) => void;
   onCameraAngleChange: (value: string) => void;
@@ -21,6 +22,7 @@ const VideoUploadMetadataForm: React.FC<VideoUploadMetadataFormProps> = ({
   cameraAngle,
   playerTag,
   playerLabel,
+  isDemo = false,
   isSubmitting,
   onSessionTypeChange,
   onCameraAngleChange,
@@ -41,24 +43,26 @@ const VideoUploadMetadataForm: React.FC<VideoUploadMetadataFormProps> = ({
       </div>
 
       <div className="details-form">
-        <div className={`form-field ${sessionType ? 'selected' : ''}`}>
-          <label>
-            Session Type{' '}
-            <span className="required-asterisk" aria-label="required">
-              *
-            </span>
-          </label>
-          <select
-            value={sessionType}
-            onChange={(e) => onSessionTypeChange(e.target.value)}
-            disabled={isSubmitting}
-          >
-            <option value="">Select session type</option>
-            <option value="serve_practice">Serve Practice</option>
-            <option value="match">Match</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
+        {!isDemo && (
+          <div className={`form-field ${sessionType ? 'selected' : ''}`}>
+            <label>
+              Session Type{' '}
+              <span className="required-asterisk" aria-label="required">
+                *
+              </span>
+            </label>
+            <select
+              value={sessionType}
+              onChange={(e) => onSessionTypeChange(e.target.value)}
+              disabled={isSubmitting}
+            >
+              <option value="">Select session type</option>
+              <option value="serve_practice">Serve Practice</option>
+              <option value="match">Match</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        )}
 
         <div className={`form-field ${cameraAngle ? 'selected' : ''}`}>
           <label>Camera Angle</label>
@@ -74,48 +78,50 @@ const VideoUploadMetadataForm: React.FC<VideoUploadMetadataFormProps> = ({
           </select>
         </div>
 
-        <div className="player-tag-section">
-          <div className="player-tag-title">Who Is Serving?</div>
-          <div className="player-tag-options">
-            <label
-              className={`player-tag-option ${
-                playerTag === 'you' ? 'selected' : ''
-              }`}
-            >
-              <input
-                type="radio"
-                name="playerTag"
-                value="you"
-                checked={playerTag === 'you'}
-                onChange={() => onPlayerTagChange('you')}
-                disabled={isSubmitting}
-              />
-              <span>
-                <strong>{playerLabel}</strong>
-              </span>
-            </label>
-            <label
-              className={`player-tag-option ${
-                playerTag === 'someone_else' ? 'selected' : ''
-              }`}
-            >
-              <input
-                type="radio"
-                name="playerTag"
-                value="someone_else"
-                checked={playerTag === 'someone_else'}
-                onChange={() => onPlayerTagChange('someone_else')}
-                disabled={isSubmitting}
-              />
-              <span>
-                <strong>Someone Else</strong>
-              </span>
-            </label>
+        {!isDemo && (
+          <div className="player-tag-section">
+            <div className="player-tag-title">Who Is Serving?</div>
+            <div className="player-tag-options">
+              <label
+                className={`player-tag-option ${
+                  playerTag === 'you' ? 'selected' : ''
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="playerTag"
+                  value="you"
+                  checked={playerTag === 'you'}
+                  onChange={() => onPlayerTagChange('you')}
+                  disabled={isSubmitting}
+                />
+                <span>
+                  <strong>{playerLabel}</strong>
+                </span>
+              </label>
+              <label
+                className={`player-tag-option ${
+                  playerTag === 'someone_else' ? 'selected' : ''
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="playerTag"
+                  value="someone_else"
+                  checked={playerTag === 'someone_else'}
+                  onChange={() => onPlayerTagChange('someone_else')}
+                  disabled={isSubmitting}
+                />
+                <span>
+                  <strong>Someone Else</strong>
+                </span>
+              </label>
+            </div>
+            <p className="player-tag-note">
+              New serves detected in this video will be saved under this player.
+            </p>
           </div>
-          <p className="player-tag-note">
-            New serves detected in this video will be saved under this player.
-          </p>
-        </div>
+        )}
 
         <div className="finish-upload-actions">
           <button
@@ -130,7 +136,7 @@ const VideoUploadMetadataForm: React.FC<VideoUploadMetadataFormProps> = ({
             type="button"
             onClick={onFinish}
             className="finish-upload-btn"
-            disabled={!sessionType || isSubmitting}
+            disabled={(!isDemo && !sessionType) || isSubmitting}
           >
             {isSubmitting ? 'Finishing...' : 'Finish Upload'}
           </button>

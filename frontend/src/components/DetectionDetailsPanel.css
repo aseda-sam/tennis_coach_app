@@ -73,6 +73,14 @@
   letter-spacing: var(--letter-spacing-wide);
 }
 
+.detection-details__chart-hint {
+  margin-left: 6px;
+  font-weight: var(--font-weight-regular);
+  text-transform: none;
+  letter-spacing: normal;
+  opacity: 0.6;
+}
+
 /* Separator between charts */
 .detection-details__separator {
   border: none;

@@ -21,10 +21,10 @@
   top: 0;
   z-index: var(--z-sticky);
   width: 100%;
-  background: rgba(248, 245, 241, 0.97);
+  background: rgba(19, 43, 37, 0.97);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--color-sand-dark);
+  border-bottom: 1px solid rgba(200, 232, 107, 0.1);
   box-shadow: var(--shadow-xs);
 }
 
@@ -63,7 +63,7 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-lg);
-  background: var(--color-ink-heavy);
+  background: var(--color-arc);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -100,7 +100,7 @@
   border: none;
   cursor: pointer;
   background: transparent;
-  color: var(--color-text);
+  color: var(--text-on-dark);
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
   transition: var(--transition-slow);
@@ -110,20 +110,20 @@
 }
 
 .view-toggle-btn:hover {
-  color: var(--color-text);
-  background: rgba(0, 0, 0, 0.02);
+  color: var(--text-on-dark-bright);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .view-toggle-btn.active {
-  color: var(--color-amber-dark);
-  background: var(--color-amber-soft);
+  color: var(--color-arc);
+  background: rgba(200, 232, 107, 0.12);
   font-weight: var(--font-weight-semibold);
 }
 
 .app-title {
   font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
+  color: var(--text-on-dark-bright);
   margin: 0;
   line-height: var(--line-height-tight);
   letter-spacing: var(--letter-spacing-relaxed);
@@ -151,8 +151,8 @@
 
 .sign-in-btn {
   padding: var(--spacing-sm) var(--spacing-lg);
-  background: var(--color-primary);
-  color: white;
+  background: var(--color-arc);
+  color: var(--color-court);
   border: none;
   border-radius: var(--radius-xl);
   font-size: var(--font-size-base);
@@ -298,7 +298,7 @@
 
 .view-videos-btn {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-court);
   border: none;
   padding: var(--button-padding-lg);
   border-radius: var(--radius-xl);
@@ -350,7 +350,7 @@
 
 .upload-new-btn {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-court);
   border: none;
   padding: var(--spacing-md) var(--spacing-2xl);
   border-radius: var(--radius-xl);

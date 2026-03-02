@@ -21,10 +21,9 @@ Source-of-truth diagrams live here as Mermaid blocks in Markdown files.
 ## Validate
 
 ```bash
-python .cursor/skills/diagram-maintainer/scripts/validate_mermaid.py
+python .agents/skills/diagram-maintainer/scripts/validate_mermaid.py
 ```
 
-## Rendering in Cursor
+## Rendering
 
-If Mermaid isn't rendering, enable Markdown Mermaid preview in Cursor settings
-(`markdown.preview.mermaid`) and open the Markdown preview (Cmd+Shift+V).
+To preview Mermaid diagrams, use your editor's Markdown preview (most editors support Mermaid natively or via extensions). Open the Markdown preview with Cmd+Shift+V.

@@ -57,6 +57,10 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
                 <span>Step ±3 frames</span>
               </div>
               <div className="keyboard-modal__shortcut">
+                <kbd>A</kbd>
+                <span>Toggle auto-advance serves</span>
+              </div>
+              <div className="keyboard-modal__shortcut">
                 <kbd>Scroll</kbd>
                 <span>Navigate frames</span>
                 {onNaturalScrollChange && (

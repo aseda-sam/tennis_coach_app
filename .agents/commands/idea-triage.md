@@ -63,5 +63,3 @@ Score each item 1–5 on each dimension:
 - Prefer instrumentation that improves model/heuristic quality from real user edits.
 
 ---
-
-$ARGUMENTS

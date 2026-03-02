@@ -97,6 +97,7 @@ data/videos/raw/*
 data/videos/processed/*
 data/videos/demo/*
 data/analysis_cache/*
+data/trophy_frames/*
 
 # Keep directories but ignore contents
 !data/videos/raw/.gitkeep
@@ -138,3 +139,4 @@ etc/
 
 # Backend temporary/debug outputs
 backend/tmp/
+writing/
