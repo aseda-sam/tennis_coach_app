@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PhaseWindow } from '../types/biomechanics';
 import usePersistedState from './usePersistedState';
 import { ServeWindow } from '../types/serveWindow';
@@ -23,6 +23,9 @@ interface UseServePlaybackResult {
   handleToggleLoopCurrentPhase: (currentPhase: PhaseWindow | undefined) => void;
   handleServeNavigate: (index: number) => void;
   setPlaybackSpeed: (speed: number) => void;
+  setLoopPhaseWindow: (phase: PhaseWindow | null) => void;
+  autoAdvance: boolean;
+  handleToggleAutoAdvance: () => void;
 }
 
 export function useServePlayback({
@@ -39,6 +42,11 @@ export function useServePlayback({
     'pref:playback-speed',
     1
   );
+  const [autoAdvance, setAutoAdvance] = usePersistedState(
+    'pref:auto-advance',
+    false
+  );
+  const autoAdvancePending = useRef(false);
 
   const currentServe = sortedServeWindows[currentServeIndex] ?? null;
 
@@ -46,10 +54,13 @@ export function useServePlayback({
   useEffect(() => {
     if (currentServe) {
       setCurrentTime(currentServe.start_timestamp);
-      setIsPlaying(false);
-      setLoopCurrentPhase(false);
+      if (autoAdvancePending.current) {
+        autoAdvancePending.current = false;
+        // Keep playing — auto-advance triggered this switch
+      } else {
+        setIsPlaying(false);
+      }
       setLoopPhaseWindow(null);
-      setPlaybackSpeed(1);
     }
   }, [currentServe?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -75,6 +86,15 @@ export function useServePlayback({
         }
         // Otherwise use serve bounds and stop at serve end
         if (next > currentServe.end_timestamp) {
+          if (autoAdvance) {
+            if (currentServeIndex < sortedServeWindows.length - 1) {
+              autoAdvancePending.current = true;
+              setCurrentServeIndex(currentServeIndex + 1);
+              return t; // serve-switch effect sets correct start time
+            }
+            // Last serve — reset to first and pause
+            setCurrentServeIndex(0);
+          }
           setIsPlaying(false);
           return currentServe.start_timestamp;
         }
@@ -89,6 +109,9 @@ export function useServePlayback({
     loopCurrentPhase,
     loopPhaseWindow,
     playbackSpeed,
+    autoAdvance,
+    currentServeIndex,
+    sortedServeWindows.length,
   ]);
 
   const handlePlayPause = useCallback(() => {
@@ -147,12 +170,22 @@ export function useServePlayback({
         return;
       }
       if (!currentPhase) return;
+      setAutoAdvance(false);
       setLoopCurrentPhase(true);
       setLoopPhaseWindow(currentPhase);
       setCurrentTime(currentPhase.start_timestamp);
     },
-    [loopCurrentPhase]
+    [loopCurrentPhase, setAutoAdvance]
   );
+
+  const handleToggleAutoAdvance = useCallback(() => {
+    const next = !autoAdvance;
+    setAutoAdvance(next);
+    if (next) {
+      setLoopCurrentPhase(false);
+      setLoopPhaseWindow(null);
+    }
+  }, [autoAdvance, setAutoAdvance]);
 
   const handleServeNavigate = useCallback(
     (index: number) => {
@@ -179,5 +212,8 @@ export function useServePlayback({
     handleToggleLoopCurrentPhase,
     handleServeNavigate,
     setPlaybackSpeed,
+    setLoopPhaseWindow,
+    autoAdvance,
+    handleToggleAutoAdvance,
   };
 }

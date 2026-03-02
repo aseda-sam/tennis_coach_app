@@ -41,6 +41,17 @@
   transform: rotate(90deg);
 }
 
+/* Muted variant — de-emphasised debug / detail sections */
+.collapsible-section--muted {
+  border-style: dashed;
+  border-color: var(--color-border-light);
+  opacity: 0.7;
+}
+
+.collapsible-section--muted:hover {
+  opacity: 0.9;
+}
+
 /* Content area */
 .collapsible-section__content {
   padding: 0 var(--spacing-lg) var(--spacing-lg);

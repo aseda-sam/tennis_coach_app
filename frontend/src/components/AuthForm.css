@@ -76,7 +76,7 @@
   width: 100%;
   padding: var(--button-padding-lg);
   background: var(--color-primary);
-  color: white;
+  color: var(--color-court);
   border: none;
   border-radius: var(--button-border-radius);
   font-size: var(--font-size-lg);

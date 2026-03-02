@@ -132,9 +132,15 @@ const ServeThumbnailStrip: React.FC<ServeThumbnailStripProps> = ({
   if (serveWindows.length === 0) return null;
 
   return (
-    <div className="thumbnail-strip" ref={stripRef} role="tablist">
+    <div
+      className="thumbnail-strip"
+      ref={stripRef}
+      role="tablist"
+      data-tour-step="thumbnail-strip"
+    >
       {serveWindows.map((sw, i) => {
         const isActive = i === currentIndex;
+        const distance = Math.abs(i - currentIndex);
         const courtSide = sw.court_side
           ? sw.court_side.charAt(0).toUpperCase() + sw.court_side.slice(1)
           : null;
@@ -144,6 +150,11 @@ const ServeThumbnailStrip: React.FC<ServeThumbnailStripProps> = ({
             key={sw.id}
             ref={isActive ? activeRef : undefined}
             className={`thumbnail-strip__item${isActive ? ' thumbnail-strip__item--active' : ''}`}
+            style={
+              !isActive
+                ? ({ '--distance': distance } as React.CSSProperties)
+                : undefined
+            }
             onClick={() => handleClick(i)}
             role="tab"
             aria-selected={isActive}
@@ -161,7 +172,9 @@ const ServeThumbnailStrip: React.FC<ServeThumbnailStripProps> = ({
                 <span className="thumbnail-strip__placeholder">{i + 1}</span>
               )}
             </div>
-            <span className="thumbnail-strip__badge">{i + 1}</span>
+            {thumbnails[i] && (
+              <span className="thumbnail-strip__badge">{i + 1}</span>
+            )}
             {courtSide && (
               <span className="thumbnail-strip__side">{courtSide}</span>
             )}

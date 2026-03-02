@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <defs>
+    <filter id="arc-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <radialGradient id="corner-glow" cx="80%" cy="80%" r="60%">
+      <stop offset="0%" stop-color="#C8E86B" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#C8E86B" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Court green background -->
+  <rect width="64" height="64" rx="14" fill="#1A3C34"/>
+  <rect width="64" height="64" rx="14" fill="url(#corner-glow)"/>
+  <!-- S bold -->
+  <text x="7" y="48" font-family="'DM Sans', 'Inter', sans-serif" font-weight="800" font-size="38" fill="#F5F3EE" letter-spacing="-1.5">S</text>
+  <!-- ² Arc glow superscript -->
+  <text x="39" y="25" font-family="'DM Sans', 'Inter', sans-serif" font-weight="800" font-size="18" fill="#C8E86B" filter="url(#arc-glow)">2</text>
+</svg>

@@ -41,6 +41,7 @@ export interface DemoVideoListItem {
   is_active_demo: boolean;
   has_pose_analysis: boolean;
   serve_window_count: number;
+  job_status: 'transcoding' | 'analyzing' | null;
   created_at: string;
 }
 

@@ -7,7 +7,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { DetectionMeta } from '../types/biomechanics';
+import { DetectionMeta, PhaseWindow } from '../types/biomechanics';
 import './DetectionDetailsPanel.css';
 
 /** Custom dot renderer: draws a playback circle and/or a contact diamond at their respective frames. */
@@ -90,25 +90,32 @@ function formatMethod(method: string): string {
 interface FeatureChartProps {
   data: number[];
   label: string;
+  hint?: string;
   fps: number;
   contactFrame: number | null;
   currentFrame: number | null;
   color: string;
   onFrameClick: (frame: number) => void;
+  frameRange?: [number, number] | null;
 }
 
 const FeatureChart: React.FC<FeatureChartProps> = ({
   data,
   label,
+  hint,
   contactFrame,
   currentFrame,
   color,
   onFrameClick,
+  frameRange,
 }) => {
-  const chartData = useMemo(
-    () => data.map((value, i) => ({ frame: i, value })),
-    [data]
-  );
+  const chartData = useMemo(() => {
+    const startFrame = frameRange ? frameRange[0] : 0;
+    const endFrame = frameRange ? frameRange[1] : data.length - 1;
+    return data
+      .slice(startFrame, endFrame + 1)
+      .map((value, i) => ({ frame: startFrame + i, value }));
+  }, [data, frameRange]);
 
   const handleClick = useCallback(
     (state: { activeLabel?: string | number } | null) => {
@@ -121,7 +128,10 @@ const FeatureChart: React.FC<FeatureChartProps> = ({
 
   return (
     <div className="detection-details__chart">
-      <span className="detection-details__chart-label">{label}</span>
+      <span className="detection-details__chart-label">
+        {label}
+        {hint && <span className="detection-details__chart-hint">{hint}</span>}
+      </span>
       <ResponsiveContainer width="100%" height={100}>
         <LineChart
           data={chartData}
@@ -263,6 +273,7 @@ interface FeatureChartsSectionProps {
   serveStart: number;
   contactTimestamp: number | null;
   onSeek: (t: number) => void;
+  loopPhaseWindow?: PhaseWindow | null;
 }
 
 export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
@@ -271,9 +282,23 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
   serveStart,
   contactTimestamp,
   onSeek,
+  loopPhaseWindow,
 }) => {
   const { fps, total_frames } = useDetectionHelpers(detectionMeta, serveStart);
   const { feature_curves } = detectionMeta;
+
+  const frameRange = useMemo<[number, number] | null>(() => {
+    if (!loopPhaseWindow || fps <= 0) return null;
+    const start = Math.max(
+      0,
+      Math.round((loopPhaseWindow.start_timestamp - serveStart) * fps)
+    );
+    const end = Math.min(
+      total_frames - 1,
+      Math.round((loopPhaseWindow.end_timestamp - serveStart) * fps)
+    );
+    return [start, end];
+  }, [loopPhaseWindow, fps, serveStart, total_frames]);
 
   const currentFrame = useMemo(() => {
     if (fps <= 0) return null;
@@ -289,6 +314,17 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
     return frame;
   }, [contactTimestamp, serveStart, fps, total_frames]);
 
+  // When looping, only show contact marker if it falls within the looped range.
+  const visibleContactFrame = useMemo(() => {
+    if (contactFrame === null || frameRange === null) return contactFrame;
+    return contactFrame >= frameRange[0] && contactFrame <= frameRange[1]
+      ? contactFrame
+      : null;
+  }, [contactFrame, frameRange]);
+
+  const showContactFooter =
+    contactTimestamp !== null && visibleContactFrame !== null;
+
   const handleFrameClick = useCallback(
     (frame: number) => {
       if (fps <= 0) return;
@@ -301,54 +337,58 @@ export const FeatureChartsSection: React.FC<FeatureChartsSectionProps> = ({
     <div className="detection-details__section">
       <FeatureChart
         data={feature_curves.max_wrist_height}
-        label="Wrist Height"
+        label="Higher Wrist Height"
         fps={fps}
-        contactFrame={contactFrame}
+        contactFrame={visibleContactFrame}
         currentFrame={currentFrame}
         color="var(--color-court-blue-light)"
         onFrameClick={handleFrameClick}
+        frameRange={frameRange}
       />
       <hr className="detection-details__separator" />
       <FeatureChart
-        data={feature_curves.knee_hip_ratio}
+        data={feature_curves.knee_hip_ratio.map((v) => -v)}
         label="Knee Bend"
+        hint="higher = deeper bend"
         fps={fps}
-        contactFrame={contactFrame}
+        contactFrame={visibleContactFrame}
         currentFrame={currentFrame}
         color="var(--color-court-clay)"
         onFrameClick={handleFrameClick}
+        frameRange={frameRange}
       />
       <hr className="detection-details__separator" />
       <FeatureChart
         data={feature_curves.max_wrist_velocity}
-        label="Wrist Velocity"
+        label="Faster Wrist Speed"
         fps={fps}
-        contactFrame={contactFrame}
+        contactFrame={visibleContactFrame}
         currentFrame={currentFrame}
         color="var(--color-primary-dark)"
         onFrameClick={handleFrameClick}
+        frameRange={frameRange}
       />
-      <div className="detection-details__contact-footer">
-        <svg
-          className="detection-details__legend-diamond"
-          width="10"
-          height="10"
-          viewBox="-6 -6 12 12"
-        >
-          <polygon
-            points="0,-5 5,0 0,5 -5,0"
-            fill="#f5a623"
-            stroke="white"
-            strokeWidth="1.5"
-          />
-        </svg>
-        <span className="detection-details__legend-label">Ball contact</span>
-        {contactTimestamp !== null && (
+      {showContactFooter && (
+        <div className="detection-details__contact-footer">
+          <svg
+            className="detection-details__legend-diamond"
+            width="10"
+            height="10"
+            viewBox="-6 -6 12 12"
+          >
+            <polygon
+              points="0,-5 5,0 0,5 -5,0"
+              fill="#f5a623"
+              stroke="white"
+              strokeWidth="1.5"
+            />
+          </svg>
+          <span className="detection-details__legend-label">Ball contact</span>
           <span className="detection-details__contact-current">
-            {contactTimestamp.toFixed(2)}s
+            {contactTimestamp!.toFixed(2)}s
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

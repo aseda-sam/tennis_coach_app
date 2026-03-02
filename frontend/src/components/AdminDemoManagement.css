@@ -26,13 +26,14 @@
   gap: var(--spacing-4xl);
 }
 
-/* Active Demo Section */
-.admin-demo-management__active-section h3,
-.admin-demo-management__videos-section h3 {
+/* Section labels */
+.admin-demo-management__section-label {
   margin: 0 0 var(--spacing-lg) 0;
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-text-muted);
 }
 
 /* Active Demo Card - Clickable to go to demo */
@@ -85,7 +86,7 @@
   letter-spacing: var(--letter-spacing-wide);
   white-space: nowrap;
   background: var(--color-primary-soft);
-  color: var(--color-success-dark);
+  color: var(--color-arc-text);
   border: 1px solid var(--color-primary-light);
 }
 
@@ -102,9 +103,43 @@
   font-weight: var(--font-weight-medium);
 }
 
-.admin-demo-management__status-row .status-warning {
-  color: var(--color-warning-dark);
+.admin-demo-management__status-row .status-warn {
+  color: var(--color-text-muted);
   font-weight: var(--font-weight-medium);
+}
+
+/* Job status badge */
+.admin-demo-management__job-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  background: var(--color-sand);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.admin-demo-management__job-badge::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  animation: admin-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes admin-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 /* Actions bar */
@@ -127,7 +162,7 @@
   gap: var(--spacing-xs);
   padding: var(--spacing-sm) var(--spacing-lg);
   background: var(--color-primary);
-  color: white;
+  color: var(--color-court);
   border: none;
   border-radius: var(--radius-md);
   font-size: var(--font-size-md);
@@ -224,6 +259,23 @@
   cursor: not-allowed;
 }
 
+.admin-demo-management__action-btn.danger {
+  color: var(--color-error);
+  border-color: var(--color-error-light, #fca5a5);
+}
+
+.admin-demo-management__action-btn.danger:hover:not(:disabled) {
+  background: var(--color-error-soft, #fef2f2);
+  border-color: var(--color-error);
+}
+
+/* Shown in place of delete button when video is the active demo */
+.admin-demo-management__delete-blocked {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
 /* Empty state */
 .admin-demo-management__empty {
   text-align: center;
@@ -246,7 +298,7 @@
   margin-top: var(--spacing-md);
   padding: var(--spacing-sm) var(--spacing-lg);
   background: var(--color-primary);
-  color: white;
+  color: var(--color-court);
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;

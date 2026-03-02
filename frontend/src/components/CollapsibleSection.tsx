@@ -6,6 +6,7 @@ interface CollapsibleSectionProps {
   expanded: boolean;
   onToggle: () => void;
   children: React.ReactNode;
+  variant?: 'default' | 'muted';
 }
 
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
@@ -13,9 +14,12 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   expanded,
   onToggle,
   children,
+  variant = 'default',
 }) => {
   return (
-    <div className="collapsible-section">
+    <div
+      className={`collapsible-section${variant === 'muted' ? ' collapsible-section--muted' : ''}`}
+    >
       <button
         type="button"
         className="collapsible-section__toggle"

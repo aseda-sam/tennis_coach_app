@@ -51,7 +51,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               onClick={onWatchTutorial}
               type="button"
             >
-              <Video size={16} color="var(--color-primary)" />
+              <Video size={16} color="var(--color-arc-text)" />
               Watch Intro Video
             </button>
           </div>
@@ -95,7 +95,7 @@ const DemoLanding: React.FC<DemoLandingProps> = ({
               <div className="demo-landing__card-inner">
                 <div className="demo-landing__card-header">
                   <div className="demo-landing__card-icon demo-landing__card-icon--outline">
-                    <Upload size={20} color="var(--color-primary)" />
+                    <Upload size={20} color="var(--color-arc-text)" />
                   </div>
                   <div className="demo-landing__card-title-wrap">
                     <div className="demo-landing__card-eyebrow">Your Turn</div>

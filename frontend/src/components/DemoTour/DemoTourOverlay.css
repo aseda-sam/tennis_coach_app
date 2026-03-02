@@ -1,0 +1,99 @@
+/* Tour Overlay — spotlight via box-shadow spread */
+
+.demo-tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover);
+  pointer-events: none;
+  animation: tour-overlay-fadein 300ms ease-out forwards;
+}
+
+@keyframes tour-overlay-fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Spotlight cutout — transparent hole with massive box-shadow for dimming */
+.demo-tour-overlay__spotlight {
+  position: fixed;
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 0 0 9999px rgba(15, 23, 42, 0.6),
+    0 0 0 3px rgba(27, 75, 122, 0.75);
+  pointer-events: none;
+  transition:
+    top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Centered backdrop for steps without a target */
+.demo-tour-overlay__centered-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  pointer-events: none;
+}
+
+/* Tooltip wrapper — sequenced fade-in after spotlight settles */
+.demo-tour-overlay__tooltip-wrapper {
+  position: fixed;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out;
+  pointer-events: none;
+}
+
+.demo-tour-overlay__tooltip-wrapper--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Centered tooltip positioning */
+.demo-tour-overlay__centered-backdrop + .demo-tour-overlay__tooltip-wrapper {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) translateY(6px);
+}
+
+.demo-tour-overlay__centered-backdrop
+  + .demo-tour-overlay__tooltip-wrapper--visible {
+  transform: translate(-50%, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-tour-overlay {
+    animation: none;
+    opacity: 1;
+  }
+
+  .demo-tour-overlay__spotlight {
+    transition: none;
+  }
+
+  .demo-tour-overlay__tooltip-wrapper {
+    transition: none;
+    transform: none;
+  }
+
+  .demo-tour-overlay__tooltip-wrapper--visible {
+    transform: none;
+  }
+
+  .demo-tour-overlay__centered-backdrop + .demo-tour-overlay__tooltip-wrapper {
+    transform: translate(-50%, -50%);
+  }
+
+  .demo-tour-overlay__centered-backdrop
+    + .demo-tour-overlay__tooltip-wrapper--visible {
+    transform: translate(-50%, -50%);
+  }
+}

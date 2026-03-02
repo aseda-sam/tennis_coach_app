@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import React, {
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -14,7 +15,7 @@ import { useServeProposals } from '../hooks/useServeProposals';
 import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { useVideoUrl } from '../hooks/useVideoUrl';
-import { MetricValue, PhaseWindow } from '../types/biomechanics';
+import { PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
 import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
@@ -22,27 +23,13 @@ import CollapsibleSection from './CollapsibleSection';
 import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
-import { Upload } from 'lucide-react';
+import { TourPlaybackControls } from './DemoTour/tourSteps';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProgressBar from './ProgressBar';
 import ServeWindowEditModal from './ServeWindowEditModal';
 import ServeThumbnailStrip from './ServeThumbnailStrip';
 import Skeleton from './Skeleton';
-
-const METRIC_DISPLAY_NAMES: Record<string, string> = {
-  knee_flexion_min_deg: 'Knee Flexion',
-  toss_peak_height: 'Toss Peak Height',
-  toss_laterality: 'Toss Position',
-};
-
-function formatMetricValue(value: number | null, unit: string): string {
-  if (value === null) return 'N/A';
-  if (unit === 'deg' || unit === 'degrees') return `${Math.round(value)}\u00b0`;
-  if (unit === 'normalized') return value.toFixed(2);
-  if (unit === 'ms') return `${value} ms`;
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(2);
-}
+import TrophyFilmstripModal from './TrophyFilmstripModal';
 
 const SPEED_OPTIONS = [0.25, 0.5, 1] as const;
 
@@ -54,6 +41,8 @@ interface AnalysisDashboardProps {
   onClose: () => void;
   isDemo?: boolean;
   onExitToUpload?: () => void;
+  tourControlsRef?: React.Ref<TourPlaybackControls>;
+  onRestartTour?: () => void;
 }
 
 function findCurrentPhase(
@@ -79,6 +68,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   onClose,
   isDemo = false,
   onExitToUpload,
+  tourControlsRef,
+  onRestartTour,
 }) => {
   const queryClient = useQueryClient();
   const { resolvedUrl: resolvedVideoUrl } = useVideoUrl({ videoId, videoUrl });
@@ -126,19 +117,18 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   );
   const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
   const focusViewRef = useRef<HTMLDivElement>(null);
+  const ktpRef = useRef<HTMLDivElement>(null);
+  const currentTimeRef = useRef(0);
 
   // Collapsible sidebar section state (persisted across sessions)
-  const [metricsExpanded, setMetricsExpanded] = usePersistedState(
-    'sidebar:metrics',
-    true
-  );
-  const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', true);
+  const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', false);
   const [chartsExpanded, setChartsExpanded] = usePersistedState(
     'sidebar:charts',
     true
   );
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isTrophyFilmstripOpen, setIsTrophyFilmstripOpen] = useState(false);
 
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
@@ -172,6 +162,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     currentTime,
     isPlaying,
     loopCurrentPhase,
+    loopPhaseWindow,
     playbackSpeed,
     handlePlayPause,
     handleSeek,
@@ -181,7 +172,16 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     handleToggleLoopCurrentPhase,
     handleServeNavigate,
     setPlaybackSpeed,
+    setLoopPhaseWindow,
+    autoAdvance,
+    handleToggleAutoAdvance,
   } = useServePlayback({ sortedServeWindows });
+
+  // Keep a ref in sync so the wheel handler can read the latest time
+  // without needing currentTime in its dependency array.
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
 
   const { data: biomechanicsReport } = useServeBiomechanicsReport(
     currentServe?.id ?? null
@@ -191,13 +191,28 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     () => biomechanicsReport?.phase_segmentation ?? [],
     [biomechanicsReport]
   );
-  const metrics = useMemo(
-    () => biomechanicsReport?.metrics ?? [],
-    [biomechanicsReport]
-  );
   // Track which phase tab was explicitly clicked — gives instant highlight
   // without waiting for the video seek to complete.
   const [activePhaseKey, setActivePhaseKey] = useState<string | null>(null);
+
+  // Expose playback controls for demo tour
+  useImperativeHandle(
+    tourControlsRef,
+    () => ({
+      seekToPhase: (phaseKey: string) => {
+        const phase = phases.find((p) => p.phase === phaseKey);
+        if (phase) {
+          setActivePhaseKey(phase.phase);
+          handlePhaseJump(phase);
+        }
+      },
+      setPlaybackSpeed,
+      pause: () => {
+        if (isPlaying) handlePlayPause();
+      },
+    }),
+    [phases, handlePhaseJump, setPlaybackSpeed, isPlaying, handlePlayPause]
+  );
 
   // Clear override when playback starts (natural phase transitions take over)
   useEffect(() => {
@@ -262,24 +277,21 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     setPendingContactTime(null);
   }, []);
 
+  // When at serve start, currentPhase can be undefined briefly; fall back
+  // to the first phase so the loop button is always usable once phases load.
+  const effectivePhase = currentPhase ?? phases[0];
+
+  // After a serve switch, loop stays active but the phase window is cleared.
+  // Re-sync the loop window to the new serve's current phase once phases load.
+  useEffect(() => {
+    if (loopCurrentPhase && !loopPhaseWindow && effectivePhase) {
+      setLoopPhaseWindow(effectivePhase);
+    }
+  }, [loopCurrentPhase, loopPhaseWindow, effectivePhase, setLoopPhaseWindow]);
+
   const handleToggleLoopWithPhase = useCallback(() => {
-    handleToggleLoopCurrentPhase(currentPhase);
-  }, [handleToggleLoopCurrentPhase, currentPhase]);
-
-  const handleMetricClick = useCallback(
-    (metric: MetricValue) => {
-      if (metric.timestamp != null) {
-        handleSeek(metric.timestamp);
-      }
-    },
-    [handleSeek]
-  );
-
-  // Metrics with timestamps, for canvas annotations
-  const annotationMetrics = useMemo(
-    () => metrics.filter((m) => m.timestamp != null && m.value != null),
-    [metrics]
-  );
+    handleToggleLoopCurrentPhase(effectivePhase);
+  }, [handleToggleLoopCurrentPhase, effectivePhase]);
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -330,6 +342,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             handleArmContact(currentTime);
           }
           break;
+        case 'a':
+        case 'A':
+          e.preventDefault();
+          handleToggleAutoAdvance();
+          break;
         default:
           break;
       }
@@ -346,9 +363,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     handleArmContact,
     handleConfirmContact,
     isDemo,
+    handleToggleAutoAdvance,
   ]);
 
-  // Scroll wheel — frame navigation within current serve window (only when hovering over the player/chart area)
+  // Scroll wheel — frame navigation within current serve window (only when hovering over the player/chart area).
+  // currentTime is read from a ref so the listener registers once per serve, not once per frame.
   useEffect(() => {
     if (!currentServe) return;
     const container = focusViewRef.current;
@@ -360,19 +379,22 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
       ) {
         return;
       }
+      if (ktpRef.current?.contains(e.target as Node)) {
+        return;
+      }
       e.preventDefault();
       const forward = naturalScroll ? e.deltaY > 0 : e.deltaY < 0;
       const delta = (forward ? 1 : -1) * (1 / 30);
       handleSeek(
         Math.max(
           currentServe.start_timestamp,
-          Math.min(currentServe.end_timestamp, currentTime + delta)
+          Math.min(currentServe.end_timestamp, currentTimeRef.current + delta)
         )
       );
     };
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
-  }, [currentServe, currentTime, naturalScroll, handleSeek]);
+  }, [currentServe, naturalScroll, handleSeek]);
 
   // Find serves handler for the no-serves fallback state
   const handleFindServes = useCallback(async () => {
@@ -506,49 +528,52 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         </div>
       )}
 
-      {/* Serve Navigation Rail: thumbnails + view toggle inline */}
-      {analysisStatus?.has_analysis && hasServes && (
-        <div className="analysis-dashboard__serve-nav">
-          <ServeThumbnailStrip
-            serveWindows={sortedServeWindows}
-            currentIndex={currentServeIndex}
-            videoUrl={resolvedVideoUrl}
-            onNavigate={handleServeNavigate}
-          />
-          <AnalysisViewToggle
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-          />
-        </div>
-      )}
-
-      {/* Demo: Upload invite banner */}
-      {isDemo && onExitToUpload && analysisStatus?.has_analysis && (
-        <div className="analysis-dashboard__upload-invite">
-          <div className="analysis-dashboard__upload-invite-text">
-            <span className="analysis-dashboard__upload-invite-label">
-              Your Turn
-            </span>
-            <span className="analysis-dashboard__upload-invite-title">
-              Analyze Your Own Serve
-            </span>
-          </div>
-          <button
-            className="analysis-dashboard__upload-invite-button"
-            onClick={onExitToUpload}
-            type="button"
-          >
-            <Upload size={14} />
-            Upload Your Video
-          </button>
-        </div>
-      )}
-
       {/* Main Content: Focus-mode serve viewer */}
       {analysisStatus?.has_analysis && (
         <div className="analysis-dashboard__focus-view" ref={focusViewRef}>
           {hasServes ? (
             <>
+              {/* Serve Navigation Rail: video column only, sits above video player */}
+              <div className="analysis-dashboard__serve-nav">
+                <ServeThumbnailStrip
+                  serveWindows={sortedServeWindows}
+                  currentIndex={currentServeIndex}
+                  videoUrl={resolvedVideoUrl}
+                  onNavigate={handleServeNavigate}
+                />
+                {biomechanicsReport?.moments &&
+                  sortedServeWindows.length > 1 && (
+                    <>
+                      <div className="analysis-dashboard__serve-nav-divider" />
+                      <button
+                        type="button"
+                        className="analysis-dashboard__compare-btn"
+                        onClick={() => setIsTrophyFilmstripOpen(true)}
+                        title="Compare trophy positions across serves"
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <rect x="3" y="3" width="7" height="18" rx="1" />
+                          <rect x="14" y="3" width="7" height="18" rx="1" />
+                        </svg>
+                        Compare
+                      </button>
+                    </>
+                  )}
+                <AnalysisViewToggle
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                />
+              </div>
               <div className="analysis-dashboard__main-col">
                 {/* Hero View (left column at desktop) */}
                 <ErrorBoundary fallbackMessage="Video player encountered an error.">
@@ -564,15 +589,16 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     onTimeUpdate={handleTimeUpdate}
                     onPlayPause={handlePlayPause}
                     onSeek={handleSeek}
-                    annotations={annotationMetrics}
                     playbackSpeed={playbackSpeed}
                     onPlaybackSpeedChange={setPlaybackSpeed}
                     speedOptions={SPEED_OPTIONS}
                     loopActive={loopCurrentPhase}
-                    loopDisabled={!currentPhase}
+                    loopDisabled={!effectivePhase}
+                    loopPhaseLabel={loopPhaseWindow?.phase_label}
                     onLoopToggle={handleToggleLoopWithPhase}
-                    phases={phases}
-                    activePhase={currentPhase?.phase}
+                    autoAdvanceActive={autoAdvance}
+                    autoAdvanceDisabled={sortedServeWindows.length <= 1}
+                    onAutoAdvanceToggle={handleToggleAutoAdvance}
                     contactTimestamp={currentServe!.contact_timestamp ?? null}
                     pendingContactTime={isDemo ? null : pendingContactTime}
                     onArmContact={isDemo ? undefined : handleArmContact}
@@ -592,6 +618,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                   <div
                     className="analysis-dashboard__phase-tabs"
                     role="tablist"
+                    data-tour-step="phase-tabs"
                   >
                     {phases.map((phase) => (
                       <button
@@ -628,84 +655,98 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 )}
               </div>
 
+              {/* Demo CTA — grid row 1 col 2 (flush with film strip), outside scrollable side-col */}
+              {isDemo && (
+                <div className="analysis-dashboard__side-nav">
+                  <button
+                    type="button"
+                    className="demo-cta-block__upload-btn"
+                    onClick={onExitToUpload}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    Upload Your Own Serve
+                  </button>
+                  {onRestartTour && (
+                    <button
+                      type="button"
+                      className="demo-cta-block__restart-btn"
+                      onClick={onRestartTour}
+                    >
+                      <svg
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                        <path d="M3 3v5h5" />
+                      </svg>
+                      Restart Tour
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="analysis-dashboard__side-col">
                 {/* Feature Curves */}
                 {biomechanicsReport?.detection_meta && (
-                  <CollapsibleSection
-                    title="Feature Curves"
-                    expanded={chartsExpanded}
-                    onToggle={() => setChartsExpanded(!chartsExpanded)}
-                  >
-                    <FeatureChartsSection
-                      detectionMeta={biomechanicsReport.detection_meta}
-                      currentTime={currentTime}
-                      serveStart={currentServe!.start_timestamp}
-                      contactTimestamp={currentServe!.contact_timestamp ?? null}
-                      onSeek={handleSeek}
-                    />
-                  </CollapsibleSection>
+                  <div data-tour-step="feature-charts">
+                    <CollapsibleSection
+                      title="Feature Curves"
+                      expanded={chartsExpanded}
+                      onToggle={() => setChartsExpanded(!chartsExpanded)}
+                    >
+                      <FeatureChartsSection
+                        detectionMeta={biomechanicsReport.detection_meta}
+                        currentTime={currentTime}
+                        serveStart={currentServe!.start_timestamp}
+                        contactTimestamp={
+                          currentServe!.contact_timestamp ?? null
+                        }
+                        onSeek={handleSeek}
+                        loopPhaseWindow={
+                          loopCurrentPhase ? loopPhaseWindow : null
+                        }
+                      />
+                    </CollapsibleSection>
+                  </div>
                 )}
 
-                {/* Metrics */}
-                {metrics.length > 0 && (
-                  <CollapsibleSection
-                    title="Metrics"
-                    expanded={metricsExpanded}
-                    onToggle={() => setMetricsExpanded(!metricsExpanded)}
-                  >
-                    <div className="analysis-dashboard__metrics-strip">
-                      {metrics.map((m) => {
-                        const isClickable =
-                          m.timestamp != null && m.value != null;
-                        return (
-                          <div
-                            key={m.metric_name}
-                            className={`analysis-dashboard__metric-card${isClickable ? ' analysis-dashboard__metric-card--clickable' : ''}`}
-                            onClick={
-                              isClickable
-                                ? () => handleMetricClick(m)
-                                : undefined
-                            }
-                            role={isClickable ? 'button' : undefined}
-                            tabIndex={isClickable ? 0 : undefined}
-                            onKeyDown={
-                              isClickable
-                                ? (e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                      e.preventDefault();
-                                      handleMetricClick(m);
-                                    }
-                                  }
-                                : undefined
-                            }
-                          >
-                            <span className="analysis-dashboard__metric-label">
-                              {METRIC_DISPLAY_NAMES[m.metric_name] ??
-                                m.metric_name.replace(/_/g, ' ')}
-                            </span>
-                            <span className="analysis-dashboard__metric-value">
-                              {formatMetricValue(m.value, m.unit)}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CollapsibleSection>
-                )}
-
-                {/* Key Time Points */}
+                {/* Key Time Points — debug detail */}
                 {biomechanicsReport?.detection_meta && (
-                  <CollapsibleSection
-                    title="Key Time Points"
-                    expanded={ktpExpanded}
-                    onToggle={() => setKtpExpanded(!ktpExpanded)}
-                  >
-                    <KTPTable
-                      detectionMeta={biomechanicsReport.detection_meta}
-                      serveStart={currentServe!.start_timestamp}
-                      onSeek={handleSeek}
-                    />
-                  </CollapsibleSection>
+                  <div ref={ktpRef}>
+                    <CollapsibleSection
+                      title="Detection Details"
+                      expanded={ktpExpanded}
+                      onToggle={() => setKtpExpanded(!ktpExpanded)}
+                      variant="muted"
+                    >
+                      <KTPTable
+                        detectionMeta={biomechanicsReport.detection_meta}
+                        serveStart={currentServe!.start_timestamp}
+                        onSeek={handleSeek}
+                      />
+                    </CollapsibleSection>
+                  </div>
                 )}
               </div>
             </>
@@ -800,6 +841,13 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           }}
         />
       )}
+
+      <TrophyFilmstripModal
+        isOpen={isTrophyFilmstripOpen}
+        onClose={() => setIsTrophyFilmstripOpen(false)}
+        serveWindows={sortedServeWindows}
+        videoFilename={videoFilename}
+      />
     </div>
   );
 };

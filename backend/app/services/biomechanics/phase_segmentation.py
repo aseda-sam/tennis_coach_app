@@ -1,7 +1,9 @@
 """Serve phase segmentation using KTP-based detection from pose keypoints.
 
-Segments a serve into 8 Kovacs phases by detecting 4 Key Time Points (KTPs)
-and deriving phase intervals from them.
+Segments a serve into 4 phases (Toss, Trophy & Load, Acceleration,
+Follow-Through) by detecting 4 Key Time Points (KTPs) and deriving
+phase intervals from them.  Every serve always produces exactly 4 phases;
+missing KTPs trigger fallback boundaries with lower confidence.
 
 KTPs: Ball Release → Trophy Position → Racket Low Point → Ball Impact
 
@@ -20,42 +22,46 @@ from app.services.serve_detection.feature_extractor import (
 
 logger = logging.getLogger(__name__)
 
-ANALYSIS_VERSION = "phase-seg-v2"
+ANALYSIS_VERSION = "phase-seg-v4"
 
-# Default confidence scores per phase
+# Default confidence scores per phase (when KTP boundary is detected)
 _PHASE_CONFIDENCE: Dict[str, float] = {
-    "start": 1.0,
-    "release": 0.8,
-    "loading": 0.7,
-    "cocking": 0.7,
+    "toss": 0.8,
+    "trophy_load": 0.7,
     "acceleration": 0.7,
-    "contact": 1.0,
-    "deceleration": 0.6,
-    "finish": 0.7,
+    "follow_through": 0.7,
 }
+
+# Confidence assigned when using a fallback boundary
+_FALLBACK_CONFIDENCE = 0.4
+
+# Trophy position detection constants
+_TROPHY_SEARCH_START = 0.15  # 15% of frames (skip pure-setup frames)
+_TROPHY_SEARCH_END = 0.50  # 50% of frames (was 70%)
+_TOSS_PHASE_MIN_PCT = 0.10  # toss must be >= 10% of total frames
+_TOSS_PHASE_MAX_PCT = 0.55  # toss must be <= 55% of total frames
 
 
 class ServePhase(str, Enum):
-    START = "start"
-    RELEASE = "release"
-    LOADING = "loading"
-    COCKING = "cocking"
+    TOSS = "toss"
+    TROPHY_LOAD = "trophy_load"
     ACCELERATION = "acceleration"
-    CONTACT = "contact"
-    DECELERATION = "deceleration"
-    FINISH = "finish"
+    FOLLOW_THROUGH = "follow_through"
+
+
+class ServeMoment(str, Enum):
+    BALL_RELEASE = "ball_release"
+    TROPHY_POSITION = "trophy_position"
+    RACKET_LOW_POINT = "racket_low_point"
+    BALL_IMPACT = "ball_impact"
 
 
 # Ordered list of phases (kept for downstream consumers)
 PHASE_ORDER = [
-    ServePhase.START,
-    ServePhase.RELEASE,
-    ServePhase.LOADING,
-    ServePhase.COCKING,
+    ServePhase.TOSS,
+    ServePhase.TROPHY_LOAD,
     ServePhase.ACCELERATION,
-    ServePhase.CONTACT,
-    ServePhase.DECELERATION,
-    ServePhase.FINISH,
+    ServePhase.FOLLOW_THROUGH,
 ]
 
 
@@ -69,8 +75,18 @@ class PhaseWindow(BaseModel):
     detected: bool
 
 
+class MomentMarker(BaseModel):
+    moment: ServeMoment
+    timestamp: Optional[float] = None
+    frame: Optional[int] = None
+    confidence: float
+    detected: bool
+    method: Optional[str] = None
+
+
 class PhaseSegmentationResult(BaseModel):
     phases: List[PhaseWindow]
+    moments: List[MomentMarker] = []
     analysis_version: str
     total_phases_detected: int
     total_phases_possible: int
@@ -88,10 +104,11 @@ def segment_serve_phases(
     video_height: int,
     contact_source: Optional[str] = None,
 ) -> PhaseSegmentationResult:
-    """Segment a serve into Kovacs 8-stage phases using KTP-based detection.
+    """Segment a serve into 4 phases using KTP-based detection.
 
     Detects 4 Key Time Points (Ball Release, Trophy Position, Racket Low Point,
-    Ball Impact) sequentially, then derives 8 phase intervals from them.
+    Ball Impact) sequentially, then derives 4 phase intervals with fallback
+    boundaries when KTPs are missing.
 
     Args:
         pose_frames: List of pose keypoint dicts (one per frame), None for missing.
@@ -105,7 +122,7 @@ def segment_serve_phases(
         contact_source: How contact_timestamp was set — "manual" or "auto".
 
     Returns:
-        PhaseSegmentationResult with detected phases.
+        PhaseSegmentationResult with exactly 4 phases and moment markers.
     """
     if fps <= 0:
         fps = 30.0
@@ -114,14 +131,18 @@ def segment_serve_phases(
     total_frames = len(pose_frames)
 
     if total_frames == 0:
-        phases = [
-            _make_phase_window(ServePhase.START, 0, 0, serve_start, serve_start, 1.0)
-        ]
+        phases, moments = _build_fallback_phases(
+            total_frames=0,
+            fps=fps,
+            serve_start=serve_start,
+            serve_end=serve_end,
+        )
         return PhaseSegmentationResult(
             phases=phases,
+            moments=moments,
             analysis_version=ANALYSIS_VERSION,
-            total_phases_detected=1,
-            total_phases_possible=8,
+            total_phases_detected=4,
+            total_phases_possible=4,
         )
 
     # Extract per-frame features
@@ -138,12 +159,14 @@ def segment_serve_phases(
     ball_release, br_meta = _detect_ball_release(pose_frames, toss_side, search_end_br)
     ktp_meta["ball_release"] = br_meta
 
-    # KTP 2: Trophy Position (after ball release, first 70% of remaining)
+    # KTP 2: Trophy Position (search within 15-50% of total frames)
     br_frame = ball_release if ball_release is not None else 0
-    remaining = total_frames - br_frame
-    search_end_tp = min(total_frames, br_frame + max(1, int(remaining * 0.7)))
+    search_start_tp = max(br_frame, int(total_frames * _TROPHY_SEARCH_START))
+    search_end_tp = min(
+        total_frames, max(search_start_tp + 1, int(total_frames * _TROPHY_SEARCH_END))
+    )
     trophy_position, tp_meta = _detect_trophy_position(
-        features, br_frame, search_end_tp
+        features, search_start_tp, search_end_tp
     )
     ktp_meta["trophy_position"] = tp_meta
 
@@ -179,25 +202,24 @@ def segment_serve_phases(
         "total_frames": total_frames,
     }
 
-    # --- Derive 8 phases from KTPs ---
-    phases = _derive_phases_from_ktps(
+    # --- Derive 4 phases + moments from KTPs ---
+    phases, moments = _derive_phases_from_ktps(
         total_frames=total_frames,
         fps=fps,
         serve_start=serve_start,
+        serve_end=serve_end,
         ball_release=ball_release,
         trophy_position=trophy_position,
         racket_low_point=racket_low_point,
         ball_impact=ball_impact,
-        features=features,
-        pose_frames=pose_frames,
-        dom_side=dom_side,
     )
 
     return PhaseSegmentationResult(
         phases=phases,
+        moments=moments,
         analysis_version=ANALYSIS_VERSION,
-        total_phases_detected=len(phases),
-        total_phases_possible=8,
+        total_phases_detected=4,
+        total_phases_possible=4,
         detection_meta=detection_meta,
     )
 
@@ -271,13 +293,12 @@ def _detect_ball_release(
 def _detect_trophy_position(
     features: List[Dict], search_start: int, search_end: int
 ) -> Tuple[Optional[int], Dict[str, Any]]:
-    """Detect trophy position: peak wrist height with co-occurring knee bend.
+    """Detect trophy position: peak wrist height within the search window.
 
-    Composite detector:
-    1. Find frames where any wrist is above its shoulder.
-    2. Among candidates, find peak max_wrist_height.
-    3. Validate knee bend co-occurrence (±5 frames must have ≥80% of max knee_hip_ratio).
-    4. Fallback: peak max_wrist_height without arm-raise filter (for beginners).
+    Tiered detector (arm position only — knee bend removed as unreliable):
+    Tier 1: both_arms_raised → pick frame with peak max_wrist_height (0.8)
+    Tier 2: any_wrist_above_shoulder → pick frame with peak max_wrist_height (0.6)
+    Tier 3: peak max_wrist_height in window → low confidence (0.4)
 
     Returns (frame_or_none, metadata_dict).
     """
@@ -292,55 +313,39 @@ def _detect_trophy_position(
             "search_window": search_window,
         }
 
-    # Find max knee_hip_ratio across entire serve for validation threshold
-    all_khr = [
-        f.get("knee_hip_ratio", 0.0) for f in features if f.get("has_pose", False)
+    # --- Tier 1: both_arms_raised → peak wrist height (high confidence) ---
+    tier1_candidates = [
+        (i, features[i].get("max_wrist_height", 0.0))
+        for i in range(search_start, search_end)
+        if features[i].get("both_arms_raised", False)
     ]
-    max_khr = max(all_khr) if all_khr else 0.0
-    khr_threshold = max_khr * 0.8 if max_khr > 0 else 0.0
-
-    # Find candidate frames: any wrist above shoulder
-    candidates = []
-    for i in range(search_start, search_end):
-        if features[i].get("any_wrist_above_shoulder", False):
-            candidates.append((i, features[i].get("max_wrist_height", 0.0)))
-
-    if candidates:
-        # Sort by wrist height descending
-        candidates.sort(key=lambda x: x[1], reverse=True)
-
-        # Try each candidate, validate knee bend co-occurrence
-        for candidates_tried, (frame_idx, wrist_height) in enumerate(
-            candidates, start=1
-        ):
-            if _validate_knee_bend(features, frame_idx, khr_threshold):
-                knee_ratio = features[frame_idx].get("knee_hip_ratio", 0.0)
-                return frame_idx, {
-                    "frame": frame_idx,
-                    "method": "peak_wrist_height_with_knee_validation",
-                    "search_window": search_window,
-                    "wrist_height": round(wrist_height, 4),
-                    "knee_validation": True,
-                    "knee_ratio_at_frame": round(knee_ratio, 4),
-                    "knee_threshold": round(khr_threshold, 4),
-                    "candidates_tried": candidates_tried,
-                }
-
-        # No candidate passed knee validation — return highest wrist height
-        best_idx, best_height = candidates[0]
-        knee_ratio = features[best_idx].get("knee_hip_ratio", 0.0)
+    if tier1_candidates:
+        best_idx, best_height = max(tier1_candidates, key=lambda x: x[1])
         return best_idx, {
             "frame": best_idx,
-            "method": "peak_wrist_height_no_knee_validation",
+            "method": "both_arms_raised",
             "search_window": search_window,
             "wrist_height": round(best_height, 4),
-            "knee_validation": False,
-            "knee_ratio_at_frame": round(knee_ratio, 4),
-            "knee_threshold": round(khr_threshold, 4),
-            "candidates_tried": len(candidates),
+            "confidence": 0.8,
         }
 
-    # Fallback: no wrist-above-shoulder frames — peak max_wrist_height
+    # --- Tier 2: any_wrist_above_shoulder → peak wrist height (medium confidence) ---
+    tier2_candidates = [
+        (i, features[i].get("max_wrist_height", 0.0))
+        for i in range(search_start, search_end)
+        if features[i].get("any_wrist_above_shoulder", False)
+    ]
+    if tier2_candidates:
+        best_idx, best_height = max(tier2_candidates, key=lambda x: x[1])
+        return best_idx, {
+            "frame": best_idx,
+            "method": "any_wrist_above_shoulder_fallback",
+            "search_window": search_window,
+            "wrist_height": round(best_height, 4),
+            "confidence": 0.6,
+        }
+
+    # --- Tier 3: peak max_wrist_height (low confidence) ---
     best_frame = None
     best_height = -1.0
     for i in range(search_start, search_end):
@@ -353,29 +358,8 @@ def _detect_trophy_position(
         "method": "fallback_peak_wrist_height",
         "search_window": search_window,
         "wrist_height": round(best_height, 4) if best_height >= 0 else None,
+        "confidence": _FALLBACK_CONFIDENCE,
     }
-
-
-def _validate_knee_bend(
-    features: List[Dict], frame_idx: int, khr_threshold: float
-) -> bool:
-    """Check if knee bend co-occurs with the candidate frame (±5 frames)."""
-    if khr_threshold <= 0:
-        return True  # No knee bend data — skip validation
-
-    n = len(features)
-    window_start = max(0, frame_idx - 5)
-    window_end = min(n, frame_idx + 6)
-
-    window_ratios = [
-        features[j].get("knee_hip_ratio", 0.0)
-        for j in range(window_start, window_end)
-        if features[j].get("has_pose", False)
-    ]
-    if not window_ratios:
-        return False
-
-    return max(window_ratios) >= khr_threshold
 
 
 def _detect_racket_low_point(
@@ -414,7 +398,7 @@ def _detect_racket_low_point(
     }
 
 
-# --- Post-contact detectors ---
+# --- Velocity smoothing (kept for future use) ---
 
 
 def _smooth_velocities(features: List[Dict], window: int = 3) -> List[Dict]:
@@ -432,106 +416,188 @@ def _smooth_velocities(features: List[Dict], window: int = 3) -> List[Dict]:
     return smoothed
 
 
-def _detect_finish_frame(
-    pose_frames: List[Optional[Dict]], dom_side: str, contact_frame: int
-) -> Optional[int]:
-    """Detect finish: dominant wrist drops below shoulder after contact."""
-    wrist_key = f"{dom_side}_wrist"
-    shoulder_key = f"{dom_side}_shoulder"
-
-    for i in range(contact_frame + 1, len(pose_frames)):
-        frame = pose_frames[i]
-        if frame is None:
-            continue
-        wrist = frame.get(wrist_key)
-        shoulder = frame.get(shoulder_key)
-        # Screen coords: larger Y = lower
-        if wrist and shoulder and wrist[1] > shoulder[1]:
-            return i
-    return None
-
-
 # --- Phase derivation ---
 
 
-def _find_loading_start(
-    features: List[Dict], search_start: int, search_end: int
-) -> Optional[int]:
-    """Find frame with peak knee bend between ball release and trophy position."""
-    best_frame = None
-    best_ratio = -1.0
-    for i in range(search_start, min(search_end, len(features))):
-        ratio = features[i].get("knee_hip_ratio", 0.0)
-        if features[i].get("has_pose", False) and ratio > best_ratio:
-            best_ratio = ratio
-            best_frame = i
-    return best_frame
-
-
-def _derive_phases_from_ktps(
-    total_frames: int,
+def _build_moment_markers(
     fps: float,
     serve_start: float,
     ball_release: Optional[int],
     trophy_position: Optional[int],
     racket_low_point: Optional[int],
     ball_impact: Optional[int],
-    features: List[Dict],
-    pose_frames: List[Optional[Dict]],
-    dom_side: str,
-) -> List[PhaseWindow]:
-    """Derive 8 Kovacs phases from 4 Key Time Points.
+    ktp_meta: Optional[Dict[str, Any]] = None,
+) -> List[MomentMarker]:
+    """Convert detected KTPs into MomentMarker objects."""
+    markers = []
+    ktp_map = [
+        (ServeMoment.BALL_RELEASE, ball_release, "ball_release"),
+        (ServeMoment.TROPHY_POSITION, trophy_position, "trophy_position"),
+        (ServeMoment.RACKET_LOW_POINT, racket_low_point, "racket_low_point"),
+        (ServeMoment.BALL_IMPACT, ball_impact, "ball_impact"),
+    ]
+    for moment_enum, frame, meta_key in ktp_map:
+        method = None
+        if ktp_meta and meta_key in ktp_meta:
+            method = ktp_meta[meta_key].get("method")
+        if frame is not None:
+            markers.append(
+                MomentMarker(
+                    moment=moment_enum,
+                    timestamp=round(serve_start + frame / fps, 4),
+                    frame=frame,
+                    confidence=0.7,
+                    detected=True,
+                    method=method,
+                )
+            )
+        else:
+            markers.append(
+                MomentMarker(
+                    moment=moment_enum,
+                    confidence=0.0,
+                    detected=False,
+                    method=method,
+                )
+            )
+    return markers
 
-    Builds a boundary list where each entry marks a phase start frame,
-    then converts to PhaseWindows.
+
+def _build_fallback_phases(
+    total_frames: int,
+    fps: float,
+    serve_start: float,
+    serve_end: float,
+) -> Tuple[List[PhaseWindow], List[MomentMarker]]:
+    """Build 4 fallback phases (all percentage-based) + empty moments."""
+    if total_frames <= 0:
+        # Degenerate case: zero-length serve
+        phases = [
+            _make_phase_window(
+                p, 0, 0, serve_start, serve_start, _FALLBACK_CONFIDENCE, detected=False
+            )
+            for p in PHASE_ORDER
+        ]
+        moments = [
+            MomentMarker(moment=m, confidence=0.0, detected=False) for m in ServeMoment
+        ]
+        return phases, moments
+
+    last_frame = total_frames - 1
+    boundaries = [
+        0,
+        max(1, int(total_frames * 0.3)),
+        max(2, int(total_frames * 0.6)),
+        max(3, int(total_frames * 0.85)),
+    ]
+    # Enforce monotonic
+    for i in range(1, len(boundaries)):
+        boundaries[i] = max(boundaries[i], boundaries[i - 1] + 1)
+
+    phases = []
+    for i, phase in enumerate(PHASE_ORDER):
+        start_f = boundaries[i]
+        end_f = boundaries[i + 1] if i + 1 < len(boundaries) else last_frame
+        phases.append(
+            _make_phase_window(
+                phase,
+                start_f,
+                end_f,
+                serve_start + start_f / fps,
+                serve_start + end_f / fps,
+                _FALLBACK_CONFIDENCE,
+                detected=False,
+            )
+        )
+
+    moments = [
+        MomentMarker(moment=m, confidence=0.0, detected=False) for m in ServeMoment
+    ]
+    return phases, moments
+
+
+def _derive_phases_from_ktps(
+    total_frames: int,
+    fps: float,
+    serve_start: float,
+    serve_end: float,
+    ball_release: Optional[int],
+    trophy_position: Optional[int],
+    racket_low_point: Optional[int],
+    ball_impact: Optional[int],
+) -> Tuple[List[PhaseWindow], List[MomentMarker]]:
+    """Derive 4 phases + moment markers from 4 Key Time Points.
+
+    Always returns exactly 4 phases. When a KTP boundary is missing,
+    a percentage-based fallback is used with lower confidence.
     """
     last_frame = max(total_frames - 1, 0)
 
-    # Build boundary list: (frame, phase_that_starts_here)
-    boundaries: List[Tuple[int, ServePhase]] = [(0, ServePhase.START)]
+    # --- Resolve boundaries with fallbacks ---
+    # trophy_load start = trophy_position, fallback to ball_release, fallback to 30%
+    trophy_load_start = trophy_position
+    trophy_load_detected = trophy_position is not None
+    if trophy_load_start is None:
+        trophy_load_start = (
+            ball_release if ball_release is not None else int(total_frames * 0.3)
+        )
+        trophy_load_detected = False
 
-    if ball_release is not None:
-        boundaries.append((ball_release, ServePhase.RELEASE))
+    # Percentage guardrails: toss phase must be 10-55% of total frames
+    min_frame = int(total_frames * _TOSS_PHASE_MIN_PCT)
+    max_frame = int(total_frames * _TOSS_PHASE_MAX_PCT)
+    if trophy_load_start < min_frame or trophy_load_start > max_frame:
+        trophy_load_start = max(min_frame, min(trophy_load_start, max_frame))
+        trophy_load_detected = False
 
-    if trophy_position is not None:
-        # Insert Loading before Cocking if knee bend detected between BR and TP
-        if ball_release is not None:
-            loading_start = _find_loading_start(features, ball_release, trophy_position)
-            if (
-                loading_start is not None
-                and loading_start > ball_release
-                and loading_start < trophy_position
-            ):
-                boundaries.append((loading_start, ServePhase.LOADING))
-        boundaries.append((trophy_position, ServePhase.COCKING))
+    # acceleration start = racket_low_point, fallback to trophy_position, fallback to 60%
+    accel_start = racket_low_point
+    accel_detected = racket_low_point is not None
+    if accel_start is None:
+        accel_start = (
+            trophy_position if trophy_position is not None else int(total_frames * 0.6)
+        )
+        accel_detected = False
 
-    if racket_low_point is not None:
-        boundaries.append((racket_low_point, ServePhase.ACCELERATION))
+    # follow_through start = ball_impact, fallback to 85%
+    ft_start = ball_impact
+    ft_detected = ball_impact is not None
+    if ft_start is None:
+        ft_start = int(total_frames * 0.85)
+        ft_detected = False
 
-    if ball_impact is not None:
-        boundaries.append((ball_impact, ServePhase.CONTACT))
-        contact_end = min(ball_impact + 1, last_frame)
+    # Enforce strict monotonic ordering: each boundary > previous
+    boundaries = [0, trophy_load_start, accel_start, ft_start]
+    for i in range(1, len(boundaries)):
+        boundaries[i] = max(boundaries[i], boundaries[i - 1] + 1)
+    # Clamp to valid frame range
+    boundaries = [min(b, last_frame) for b in boundaries]
 
-        if contact_end < last_frame:
-            finish_frame = _detect_finish_frame(pose_frames, dom_side, ball_impact)
-            if finish_frame is not None and finish_frame > contact_end:
-                boundaries.append((contact_end, ServePhase.DECELERATION))
-                boundaries.append((finish_frame, ServePhase.FINISH))
-            else:
-                boundaries.append((contact_end, ServePhase.DECELERATION))
+    detected_flags = [True, trophy_load_detected, accel_detected, ft_detected]
 
-    # Convert boundaries to PhaseWindows
-    result = []
-    for idx in range(len(boundaries)):
-        frame, phase = boundaries[idx]
-        end_frame = boundaries[idx + 1][0] if idx + 1 < len(boundaries) else last_frame
+    phases = []
+    for i, phase in enumerate(PHASE_ORDER):
+        start_f = boundaries[i]
+        end_f = boundaries[i + 1] if i + 1 < len(boundaries) else last_frame
+        det = detected_flags[i]
+        conf = _PHASE_CONFIDENCE[phase.value] if det else _FALLBACK_CONFIDENCE
+        phases.append(
+            _make_phase_window(
+                phase,
+                start_f,
+                end_f,
+                serve_start + start_f / fps,
+                serve_start + end_f / fps,
+                conf,
+                detected=det,
+            )
+        )
 
-        start_ts = serve_start + frame / fps
-        end_ts = serve_start + end_frame / fps
+    moments = _build_moment_markers(
+        fps, serve_start, ball_release, trophy_position, racket_low_point, ball_impact
+    )
 
-        result.append(_make_phase_window(phase, frame, end_frame, start_ts, end_ts))
-
-    return result
+    return phases, moments
 
 
 def _make_phase_window(
@@ -541,6 +607,7 @@ def _make_phase_window(
     start_timestamp: float,
     end_timestamp: float,
     confidence: Optional[float] = None,
+    detected: bool = True,
 ) -> PhaseWindow:
     return PhaseWindow(
         phase=phase,
@@ -551,5 +618,5 @@ def _make_phase_window(
         confidence=confidence
         if confidence is not None
         else _PHASE_CONFIDENCE.get(phase.value, 0.5),
-        detected=True,
+        detected=detected,
     )

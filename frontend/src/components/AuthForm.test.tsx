@@ -54,7 +54,7 @@ describe('AuthForm', () => {
 
       expect(screen.getByText('Welcome back')).toBeInTheDocument();
       expect(
-        screen.getByText('Sign in to continue to Second Serve')
+        screen.getByText('Sign in to continue to S²Serve')
       ).toBeInTheDocument();
     });
 
@@ -134,7 +134,7 @@ describe('AuthForm', () => {
 
       expect(screen.getByText('Create your account')).toBeInTheDocument();
       expect(
-        screen.getByText('Join Second Serve to analyze your serve')
+        screen.getByText('Join S²Serve to analyze your serve')
       ).toBeInTheDocument();
     });
 

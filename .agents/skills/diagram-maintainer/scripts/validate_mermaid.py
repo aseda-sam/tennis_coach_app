@@ -9,7 +9,7 @@ END_FENCE = "```"
 
 
 def repo_root() -> Path:
-    # scripts/ -> diagram-maintainer/ -> skills/ -> .cursor/ -> repo/
+    # scripts/ -> diagram-maintainer/ -> skills/ -> .agents/ -> repo/
     return Path(__file__).resolve().parents[4]
 
 

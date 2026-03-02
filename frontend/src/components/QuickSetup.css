@@ -85,7 +85,7 @@ select.quick-setup-input {
 
 .quick-setup-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 188, 125, 0.1);
+  box-shadow: 0 0 0 3px rgba(200, 232, 107, 0.1);
 }
 
 .quick-setup-input:disabled {
@@ -108,7 +108,7 @@ select.quick-setup-input {
   padding: 12px 24px;
   font-size: 16px;
   font-weight: 600;
-  color: white;
+  color: var(--color-court);
   background: linear-gradient(
     135deg,
     var(--color-primary) 0%,

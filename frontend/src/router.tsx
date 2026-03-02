@@ -9,6 +9,9 @@ const LibraryPage = React.lazy(() => import('./components/pages/LibraryPage'));
 const VideoAnalysisPage = React.lazy(
   () => import('./components/pages/VideoAnalysisPage')
 );
+const PlayerAnalysisPage = React.lazy(
+  () => import('./components/pages/PlayerAnalysisPage')
+);
 const AdminDemosPage = React.lazy(
   () => import('./components/pages/AdminDemosPage')
 );
@@ -74,6 +77,22 @@ export const router = createBrowserRouter(
                 }
               >
                 <VideoAnalysisPage />
+              </React.Suspense>
+            </ProtectedRoute>
+          ),
+        },
+        {
+          path: 'analysis',
+          element: (
+            <ProtectedRoute>
+              <React.Suspense
+                fallback={
+                  <div className="app-container">
+                    <div className="app-loading" />
+                  </div>
+                }
+              >
+                <PlayerAnalysisPage />
               </React.Suspense>
             </ProtectedRoute>
           ),

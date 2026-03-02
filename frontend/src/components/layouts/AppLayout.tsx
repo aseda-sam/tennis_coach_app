@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AccountMenu } from '../AccountMenu';
 import ErrorBoundary from '../ErrorBoundary';
-import { Activity, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import LoadingIndicator from '../LoadingIndicator';
 import LoomVideoModal from '../LoomVideoModal';
 import { QuickSetup } from '../QuickSetup';
@@ -179,9 +179,27 @@ export function AppLayout() {
               <div className="app-header-left">
                 <NavLink to="/" className="app-brand" aria-label="Go to home">
                   <div className="app-logo">
-                    <Activity size={18} color="white" strokeWidth={2.5} />
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 100 100"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <text
+                        x="50"
+                        y="72"
+                        textAnchor="middle"
+                        fontFamily="DM Sans, sans-serif"
+                        fontWeight="700"
+                        fontSize="60"
+                        fill="#1A3C34"
+                      >
+                        S²
+                      </text>
+                    </svg>
                   </div>
-                  <h1 className="app-title">Second Serve</h1>
+                  <h1 className="app-title">S²Serve</h1>
                 </NavLink>
               </div>
 
@@ -211,6 +229,16 @@ export function AppLayout() {
                     aria-selected={location.pathname === '/library'}
                   >
                     Library
+                  </NavLink>
+                  <NavLink
+                    to="/analysis"
+                    role="tab"
+                    className={({ isActive }) =>
+                      `view-toggle-btn ${isActive ? 'active' : ''}`
+                    }
+                    aria-selected={location.pathname === '/analysis'}
+                  >
+                    Analysis
                   </NavLink>
                   <NavLink
                     to="/demo"

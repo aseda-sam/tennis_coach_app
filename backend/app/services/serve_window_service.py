@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.schemas.serve_window import ServeWindowCreate, ServeWindowUpdate
 from app.core.shot_types import SERVE_SUBTYPES, is_valid_serve_subtype
 from app.models.player import Player
+from app.models.serve_biomechanics_report import ServeBiomechanicsReport
 from app.models.serve_window import ServeWindow
 from app.services import player_service, video_service
 
@@ -408,16 +409,35 @@ def reassign_video_serve_windows(
     user_id: str,
     player_id: int,
 ) -> int:
-    """Reassign all serve windows for a video to a new player."""
+    """Reassign all serve windows for a video to a new player.
+
+    Also cascades the player_id update to any biomechanics reports
+    linked to those serve windows.
+    """
     validate_player_ownership(db, player_id, user_id)
-    updated_count = (
-        db.query(ServeWindow)
+    sw_ids = [
+        sw.id
+        for sw in db.query(ServeWindow.id)
         .filter(
             ServeWindow.video_id == video_id,
             ServeWindow.user_id == user_id,
         )
+        .all()
+    ]
+    if not sw_ids:
+        return 0
+
+    updated_count = (
+        db.query(ServeWindow)
+        .filter(ServeWindow.id.in_(sw_ids))
         .update({ServeWindow.player_id: player_id}, synchronize_session=False)
     )
+
+    # Cascade to biomechanics reports
+    db.query(ServeBiomechanicsReport).filter(
+        ServeBiomechanicsReport.serve_window_id.in_(sw_ids)
+    ).update({ServeBiomechanicsReport.player_id: player_id}, synchronize_session=False)
+
     db.commit()
     return updated_count
 

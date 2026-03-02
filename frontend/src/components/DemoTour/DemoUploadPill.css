@@ -1,0 +1,83 @@
+/* Floating upload CTA pill — appears after tour completion */
+
+.demo-upload-pill {
+  position: fixed;
+  bottom: var(--spacing-6xl);
+  right: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: var(--color-background);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xs);
+  animation: upload-pill-fadein 400ms ease-out forwards;
+  z-index: var(--z-dropdown);
+}
+
+@keyframes upload-pill-fadein {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.demo-upload-pill__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-primary);
+  color: var(--color-court);
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--transition-normal),
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal);
+}
+
+.demo-upload-pill__action:hover {
+  background: var(--color-primary-dark);
+  box-shadow: var(--shadow-primary-md);
+  transform: translateY(-1px);
+}
+
+.demo-upload-pill__action:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.demo-upload-pill__dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.demo-upload-pill__dismiss:hover {
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-upload-pill {
+    animation: none;
+    opacity: 1;
+  }
+}

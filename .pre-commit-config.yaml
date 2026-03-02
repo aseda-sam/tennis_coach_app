@@ -82,7 +82,7 @@ repos:
       # --- pre-push: mermaid diagram validation ----
       - id: mermaid-validate
         name: "diagrams · mermaid validation (pre-push)"
-        entry: python .cursor/skills/diagram-maintainer/scripts/validate_mermaid.py
+        entry: python .agents/skills/diagram-maintainer/scripts/validate_mermaid.py
         language: system
         files: ^docs/diagrams/.*\.md$
         pass_filenames: false

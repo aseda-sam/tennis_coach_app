@@ -10,7 +10,8 @@ import {
 } from '../types/video';
 import { getAuthHeaders } from '../utils/authInterceptor';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/v0';
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL || 'http://localhost:8000/v0';
 const DEFAULT_TIMEOUT_MS = 30000;
 
 type ApiRequestConfig = {
@@ -348,6 +349,10 @@ export const videoApi = {
       `/admin/demos/${videoId}/set-active`
     );
     return response.data;
+  },
+
+  deleteDemoVideo: async (videoId: number): Promise<void> => {
+    await api.delete(`/admin/demos/${videoId}`);
   },
 
   analyzeDemoPose: async (

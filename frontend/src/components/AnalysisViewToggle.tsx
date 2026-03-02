@@ -13,9 +13,14 @@ const AnalysisViewToggle: React.FC<AnalysisViewToggleProps> = ({
   onViewModeChange,
 }) => {
   return (
-    <div className="view-toggle" role="tablist" aria-label="View mode">
+    <div
+      className="analysis-view-toggle"
+      role="tablist"
+      aria-label="View mode"
+      data-tour-step="view-toggle"
+    >
       <button
-        className={`view-toggle__option${viewMode === 'video-focus' ? ' view-toggle__option--active' : ''}`}
+        className={`analysis-view-toggle__option${viewMode === 'video-focus' ? ' analysis-view-toggle__option--active' : ''}`}
         onClick={() => onViewModeChange('video-focus')}
         role="tab"
         aria-selected={viewMode === 'video-focus'}
@@ -24,7 +29,7 @@ const AnalysisViewToggle: React.FC<AnalysisViewToggleProps> = ({
         Video
       </button>
       <button
-        className={`view-toggle__option${viewMode === 'analysis-focus' ? ' view-toggle__option--active' : ''}`}
+        className={`analysis-view-toggle__option${viewMode === 'analysis-focus' ? ' analysis-view-toggle__option--active' : ''}`}
         onClick={() => onViewModeChange('analysis-focus')}
         role="tab"
         aria-selected={viewMode === 'analysis-focus'}
