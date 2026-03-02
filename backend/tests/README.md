@@ -69,4 +69,4 @@ pytest tests/api/test_serve_biomechanics_routes.py
 4. **Use PROFILE-based config** in tests, not internal fields
 5. **Keep tests stable** when refactoring (only change if contract changes)
 
-See `.cursor/rules/testing-patterns.mdc` for detailed guidance.
+See `.agents/rules/testing-patterns.mdc` for detailed guidance.

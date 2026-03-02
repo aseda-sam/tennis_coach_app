@@ -1,4 +1,4 @@
-# Tennis Coach App - Backend
+# S²Serve — Backend
 
 Technical guide for contributors working in `backend/`.
 
@@ -145,7 +145,11 @@ backend/
 │   │   └── database.py      # DB session setup
 │   ├── models/              # SQLAlchemy models
 │   ├── services/            # Business logic (no HTTP concerns)
+│   ├── dependencies/        # FastAPI dependency injection helpers
+│   ├── utils/               # Error handling, auth helpers, logging, rate limiting
 │   └── main.py              # FastAPI app entry point
+├── ml_models/               # Pre-trained model weights (MediaPipe pose, YOLO ball detection)
+├── scripts/                 # Utility scripts (backfill, annotation, DB tools)
 ├── docs/                    # Topic docs (see docs/README.md)
 ├── alembic/                 # DB migrations
 ├── tests/                   # pytest tests
