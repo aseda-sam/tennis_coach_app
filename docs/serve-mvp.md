@@ -6,15 +6,15 @@ This project is currently optimizing for a **focused serve-analysis loop**:
 - **3–5 metrics**: simple + coach-meaningful
 - **No recommendations or coaching text**: phases + raw metrics only. The user and their coach decide what to do with the data.
 
-Out of scope (for now): ball detection/trajectory, multi-shot rally analysis, complex interaction effects.
+Out of scope (for now): multi-shot rally analysis, complex interaction effects.
 
 ## The “serve loop” (today)
 
 1. **Upload** a serve drill video
 2. **Tag serve windows** (time windows + contact timestamp)
-3. Run **pose detection** (background job)
+3. Run **pose detection + ball detection** (background job)
 4. Open **biomechanics report** (lazy compute) → stores phases + metrics
-5. Render a small set of metrics in the biomechanics panel
+5. Render a small set of metrics and feature curves in the analysis dashboard
 
 ## Data model (what matters for MVP)
 

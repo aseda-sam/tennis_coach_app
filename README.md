@@ -12,10 +12,6 @@ S²Serve (Second Serve) is a serve-analysis app that turns video into biomechani
   <img src="docs/assets/landing-page.png" alt="S²Serve home page with interactive demo and upload CTAs" width="720" />
 </p>
 
-<p align="center">
-  <img src="docs/assets/phase-walkthrough.gif" alt="Walkthrough of the analysis dashboard scrubbing through serve phases" width="640" />
-</p>
-
 ## Why this exists
 
 Most tennis apps either over-index on dashboards or over-promise coaching. This project aims for a simpler middle:
