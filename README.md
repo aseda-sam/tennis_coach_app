@@ -1,4 +1,4 @@
-# Serve Tennis Coach
+# S²Serve
 
 [![CI](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/aseda-sam/tennis_coach_app/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -6,10 +6,14 @@
 
 Upload a tennis serve. See what your body is actually doing. Take that back to the court.
 
-Serve Tennis Coach is a serve-analysis app that turns video into biomechanics phases and raw metrics you can actually use in practice. It is built as a coach-prep tool, not a replacement for a coach.
+S²Serve (Second Serve) is a serve-analysis app that turns video into biomechanics phases and raw metrics you can actually use in practice. It is built as a coach-prep tool, not a replacement for a coach.
 
 <p align="center">
-  <img src="docs/assets/analysis-dashboard.png" alt="Analysis dashboard showing video playback with pose overlay and serve breakdown" width="720" />
+  <img src="docs/assets/landing-page.png" alt="S²Serve home page with interactive demo and upload CTAs" width="720" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/phase-walkthrough.gif" alt="Walkthrough of the analysis dashboard scrubbing through serve phases" width="640" />
 </p>
 
 ## Why this exists
@@ -31,7 +35,7 @@ The app started as a personal build while working through LTA coaching concepts 
 - Rewatch video with overlays for context
 
 <p align="center">
-  <img src="docs/assets/video-library.png" alt="Video library showing uploaded serve sessions" width="720" />
+  <img src="docs/assets/analysis-dashboard.png" alt="Analysis dashboard showing pose overlay, feature curves, and 4-phase serve breakdown" width="720" />
 </p>
 
 ## Quick start
