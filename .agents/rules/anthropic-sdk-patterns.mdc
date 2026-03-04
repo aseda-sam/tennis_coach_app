@@ -108,4 +108,4 @@ Default to `claude-sonnet-4-6` unless there's a reason to use another model.
 - Don't build a vector DB for structured relational data — use SQL.
 - Don't pass raw video frames or large numpy arrays as tool results.
 - Don't let the LLM generate SQL directly. Use the constrained function vocabulary defined in `backlog/llm-intelligence-layer.md`.
-- Don't hardcode model IDs in service code. Use a config constant (e.g., `settings.COACHING_LLM_MODEL`).
+- Don't hardcode model IDs in service code. Use a config constant (e.g., `settings.LLM_MODEL`).

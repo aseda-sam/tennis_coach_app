@@ -47,6 +47,7 @@ backend/
     api/schemas/      # Pydantic request/response models
     models/           # SQLAlchemy ORM models
     services/         # Business logic (no HTTP concerns)
+    services/coaching/ # LLM coaching layer (see coaching/README.md)
     dependencies/     # FastAPI dependency injection helpers
     core/config.py    # Settings / env vars
     core/database.py  # DB session setup
@@ -68,6 +69,7 @@ frontend/
     constants/        # App-wide constants
     design-tokens.css # Design system tokens
 data/
+  llm_logs/           # JSONL logs of LLM calls (eval dataset, gitignored)
   videos/
     raw/              # Uploaded user videos
     processed/        # Transcoded/processed videos
