@@ -114,6 +114,12 @@
   gap: var(--spacing-xs);
 }
 
+.coaching-panel__notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .coaching-panel__notes-label {
   font-family: var(--font-family-sans);
   font-size: var(--font-size-xs);
@@ -121,6 +127,28 @@
   letter-spacing: var(--letter-spacing-wide);
   color: var(--color-text-muted);
   text-transform: uppercase;
+}
+
+.coaching-panel__saved-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-success);
+  animation: coaching-saved-in 0.2s ease-out;
+}
+
+@keyframes coaching-saved-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .coaching-panel__notes-list {

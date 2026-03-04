@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
   useCoachingFeedback,
@@ -17,6 +17,7 @@ const CoachingFeedbackPanel: React.FC<CoachingFeedbackPanelProps> = ({
   isDemo,
 }) => {
   const [noteText, setNoteText] = useState('');
+  const [justSaved, setJustSaved] = useState(false);
   const {
     data: feedback,
     isLoading,
@@ -26,6 +27,18 @@ const CoachingFeedbackPanel: React.FC<CoachingFeedbackPanelProps> = ({
   const { data: notes } = useCoachingNotes(serveWindowId, !isDemo);
   const saveNote = useSaveCoachingNote(serveWindowId);
 
+  // Clear the "Saved" indicator after 2 seconds
+  useEffect(() => {
+    if (!justSaved) return;
+    const timer = setTimeout(() => setJustSaved(false), 2000);
+    return () => clearTimeout(timer);
+  }, [justSaved]);
+
+  // Reset justSaved when switching serves
+  useEffect(() => {
+    setJustSaved(false);
+  }, [serveWindowId]);
+
   const handleGetFeedback = () => {
     refetch();
   };
@@ -33,7 +46,10 @@ const CoachingFeedbackPanel: React.FC<CoachingFeedbackPanelProps> = ({
   const handleSaveNote = useCallback(() => {
     if (!noteText.trim()) return;
     saveNote.mutate(noteText.trim(), {
-      onSuccess: () => setNoteText(''),
+      onSuccess: () => {
+        setNoteText('');
+        setJustSaved(true);
+      },
     });
   }, [noteText, saveNote]);
 
@@ -74,7 +90,27 @@ const CoachingFeedbackPanel: React.FC<CoachingFeedbackPanelProps> = ({
 
       {/* Notes section */}
       <div className="coaching-panel__notes">
-        <label className="coaching-panel__notes-label">EVAL NOTES</label>
+        <div className="coaching-panel__notes-header">
+          <label className="coaching-panel__notes-label">EVAL NOTES</label>
+          {justSaved && (
+            <span className="coaching-panel__saved-badge">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Saved
+            </span>
+          )}
+        </div>
         {notes && notes.length > 0 && (
           <div className="coaching-panel__notes-list">
             {notes.map((n, i) => (
