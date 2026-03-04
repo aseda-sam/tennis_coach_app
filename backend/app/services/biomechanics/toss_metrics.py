@@ -115,6 +115,24 @@ def _compute_toss_metrics(
     if toss_peak_height is not None and toss_peak_height < 0:
         toss_peak_height = 0.0
 
+    # Data quality gate: if peak is at or below shoulder level, the "peak" is
+    # likely a ground ball or other false detection. All ball-derived metrics
+    # (peak height, laterality, drop) share the same bad best frame, so null
+    # them all out rather than propagate nonsensical values.
+    if toss_peak_height is not None and toss_peak_height <= 0:
+        logger.info(
+            "Toss peak at/below shoulder (height=%.2f) for sw %s — likely ground ball, "
+            "nulling ball-derived metrics",
+            toss_peak_height,
+            serve_window.id,
+        )
+        return {
+            "toss_peak_height": None,
+            "toss_peak_timestamp": round(toss_peak_timestamp, 4),
+            "toss_laterality": None,
+            "toss_drop": None,
+        }
+
     # Toss laterality: horizontal distance of ball from body center, normalized
     toss_laterality: Optional[float] = None
     if best.get("ball_x") is not None and pose_at_start is not None:

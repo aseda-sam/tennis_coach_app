@@ -120,6 +120,35 @@ class TestComputeTossMetrics:
         assert result is not None
         assert result["toss_laterality"] is None
 
+    # --- ground ball gate tests ---
+
+    def test_ground_ball_nulls_all_ball_metrics(self) -> None:
+        """When peak is at/below shoulder level (ground ball), all ball metrics are None."""
+        # ball_y=300 is BELOW shoulder_y=200 (higher y = lower in frame),
+        # so toss_peak_height would be <= 0 — ground ball detected
+        ball_list = [
+            {"ball_x": 700.0, "ball_y": 300.0, "timestamp_ms": 500.0},
+            {"ball_x": 700.0, "ball_y": 350.0, "timestamp_ms": 1000.0},
+        ]
+        pose_data = [
+            {
+                "left_shoulder": [600.0, 200.0],
+                "right_shoulder": [680.0, 200.0],
+                "left_ankle": [610.0, 600.0],
+                "right_ankle": [670.0, 600.0],
+            }
+        ]
+        result = _compute_toss_metrics(
+            self._make_serve_window(contact=1.0),
+            self._make_ball_detection(ball_list),
+            self._make_video(),
+            self._make_pose_detection(pose_data),
+        )
+        assert result is not None
+        assert result["toss_peak_height"] is None
+        assert result["toss_laterality"] is None
+        assert result["toss_drop"] is None
+
     # --- toss_drop tests ---
 
     def test_toss_drop_computed_when_ball_tracked_at_contact(self) -> None:
