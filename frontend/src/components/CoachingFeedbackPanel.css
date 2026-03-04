@@ -50,11 +50,56 @@
   border-radius: var(--radius-lg);
 }
 
+/* Markdown rendering inside feedback */
 .coaching-panel__feedback-text {
   font-size: var(--font-size-sm);
   line-height: 1.6;
   color: var(--color-text);
-  white-space: pre-wrap;
+}
+
+.coaching-panel__feedback-text p {
+  margin: 0 0 0.6em;
+}
+
+.coaching-panel__feedback-text p:last-child {
+  margin-bottom: 0;
+}
+
+.coaching-panel__feedback-text strong {
+  font-weight: 600;
+  color: var(--color-ink-heavy);
+}
+
+.coaching-panel__feedback-text hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 0.8em 0;
+}
+
+.coaching-panel__feedback-text ul,
+.coaching-panel__feedback-text ol {
+  margin: 0.4em 0;
+  padding-left: 1.4em;
+}
+
+.coaching-panel__feedback-text li {
+  margin-bottom: 0.3em;
+}
+
+.coaching-panel__feedback-text h1,
+.coaching-panel__feedback-text h2,
+.coaching-panel__feedback-text h3 {
+  font-family: var(--font-family-sans);
+  font-weight: 600;
+  margin: 0.8em 0 0.3em;
+}
+
+.coaching-panel__feedback-text h2 {
+  font-size: var(--font-size-sm);
+}
+
+.coaching-panel__feedback-text h3 {
+  font-size: var(--font-size-sm);
 }
 
 .coaching-panel__meta {

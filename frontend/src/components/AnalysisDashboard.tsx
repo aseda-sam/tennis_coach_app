@@ -118,7 +118,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   );
   const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
   const focusViewRef = useRef<HTMLDivElement>(null);
-  const ktpRef = useRef<HTMLDivElement>(null);
   const currentTimeRef = useRef(0);
 
   // Collapsible sidebar section state (persisted across sessions)
@@ -142,6 +141,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const {
     serveWindows,
     updateServeWindow,
+    deleteServeWindow,
     loading: serveWindowsLoading,
   } = useServeWindows({
     videoId,
@@ -372,24 +372,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     handleToggleAutoAdvance,
   ]);
 
-  // Scroll wheel — frame navigation within current serve window (only when hovering over the player/chart area).
-  // currentTime is read from a ref so the listener registers once per serve, not once per frame.
-  useEffect(() => {
-    if (!currentServe) return;
-    const container = focusViewRef.current;
-    if (!container) return;
-    const handleWheel = (e: WheelEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLSelectElement
-      ) {
-        return;
-      }
-      if (ktpRef.current?.contains(e.target as Node)) {
-        return;
-      }
-      e.preventDefault();
-      const forward = naturalScroll ? e.deltaY > 0 : e.deltaY < 0;
+  // Scroll wheel — frame scrub only on the video player display
+  const handleWheelScrub = useCallback(
+    (deltaY: number) => {
+      if (!currentServe) return;
+      const forward = naturalScroll ? deltaY > 0 : deltaY < 0;
       const delta = (forward ? 1 : -1) * (1 / 30);
       handleSeek(
         Math.max(
@@ -397,10 +384,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           Math.min(currentServe.end_timestamp, currentTimeRef.current + delta)
         )
       );
-    };
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, [currentServe, naturalScroll, handleSeek]);
+    },
+    [currentServe, naturalScroll, handleSeek]
+  );
 
   // Find serves handler for the no-serves fallback state
   const handleFindServes = useCallback(async () => {
@@ -616,6 +602,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                         ? () => setIsEditModalOpen(true)
                         : undefined
                     }
+                    onWheelScrub={handleWheelScrub}
                   />
                 </ErrorBoundary>
 
@@ -739,7 +726,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
                 {/* Key Time Points — debug detail */}
                 {biomechanicsReport?.detection_meta && (
-                  <div ref={ktpRef}>
+                  <div>
                     <CollapsibleSection
                       title="Detection Details"
                       expanded={ktpExpanded}
@@ -858,6 +845,17 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
             setIsEditModalOpen(false);
           }}
+          onDelete={
+            !isDemo
+              ? async (id: number) => {
+                  await deleteServeWindow(id);
+                  queryClient.invalidateQueries({
+                    queryKey: ['serve-windows'],
+                  });
+                  setIsEditModalOpen(false);
+                }
+              : undefined
+          }
         />
       )}
 

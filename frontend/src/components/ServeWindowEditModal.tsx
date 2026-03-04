@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { X, Scissors } from 'lucide-react';
+import { X, Scissors, Trash2 } from 'lucide-react';
 import type { ServeWindow } from '../types/serveWindow';
 import type { ServeWindowSplitResponse } from '../services/serveWindowApi';
 import { serveWindowApi } from '../services/serveWindowApi';
@@ -29,6 +29,7 @@ interface ServeWindowEditModalProps {
   videoUrl: string;
   onSaved: (updated: ServeWindow) => void;
   onSplit: (response: ServeWindowSplitResponse) => void;
+  onDelete?: (serveWindowId: number) => Promise<void>;
 }
 
 const ServeWindowEditModal: React.FC<ServeWindowEditModalProps> = ({
@@ -40,10 +41,12 @@ const ServeWindowEditModal: React.FC<ServeWindowEditModalProps> = ({
   videoUrl,
   onSaved,
   onSplit,
+  onDelete,
 }) => {
   const [startTime, setStartTime] = useState(serveWindow.start_timestamp);
   const [endTime, setEndTime] = useState(serveWindow.end_timestamp);
   const [splitMode, setSplitMode] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [splitPoint, setSplitPoint] = useState(
     (serveWindow.start_timestamp + serveWindow.end_timestamp) / 2
   );
@@ -210,7 +213,23 @@ const ServeWindowEditModal: React.FC<ServeWindowEditModalProps> = ({
     },
   });
 
-  const isPending = updateMutation.isPending || splitMutation.isPending;
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (onDelete) await onDelete(serveWindow.id);
+    },
+    onSuccess: () => {
+      onClose();
+    },
+    onError: (err: unknown) => {
+      setError(getApiErrorMessage(err, 'Failed to delete serve window.'));
+      setConfirmingDelete(false);
+    },
+  });
+
+  const isPending =
+    updateMutation.isPending ||
+    splitMutation.isPending ||
+    deleteMutation.isPending;
 
   const handleSave = () => {
     setError(null);
@@ -763,56 +782,145 @@ const ServeWindowEditModal: React.FC<ServeWindowEditModalProps> = ({
         <div
           style={{
             display: 'flex',
-            justifyContent: 'flex-end',
+            justifyContent: 'space-between',
             gap: 'var(--spacing-md)',
             padding: 'var(--spacing-lg) var(--spacing-2xl)',
             borderTop: '1px solid var(--color-border)',
             flexShrink: 0,
           }}
         >
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isPending}
-            style={{
-              padding: 'var(--button-padding-md)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--button-border-radius)',
-              background: 'var(--color-surface)',
-              color: 'var(--color-text)',
-              fontFamily: 'var(--font-family-sans)',
-              fontSize: 'var(--font-size-base)',
-              fontWeight: 'var(--font-weight-medium)',
-              cursor: 'pointer',
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isPending}
-            style={{
-              padding: 'var(--button-padding-md)',
-              border: 'none',
-              borderRadius: 'var(--button-border-radius)',
-              background: splitMode
-                ? 'var(--color-error)'
-                : 'var(--color-primary)',
-              color: '#fff',
-              fontFamily: 'var(--font-family-sans)',
-              fontSize: 'var(--font-size-base)',
-              fontWeight: 'var(--font-weight-semibold)',
-              cursor: isPending ? 'not-allowed' : 'pointer',
-              opacity: isPending ? 0.7 : 1,
-            }}
-          >
-            {isPending
-              ? 'Saving...'
-              : splitMode
-                ? 'Confirm split'
-                : 'Save changes'}
-          </button>
+          {/* Left: delete */}
+          <div>
+            {onDelete &&
+              !splitMode &&
+              (confirmingDelete ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-sm)',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-family-sans)',
+                      fontSize: 'var(--font-size-sm)',
+                      color: 'var(--color-error-dark)',
+                    }}
+                  >
+                    Delete this serve?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => deleteMutation.mutate()}
+                    disabled={isPending}
+                    style={{
+                      padding: 'var(--button-padding-sm)',
+                      border: 'none',
+                      borderRadius: 'var(--button-border-radius)',
+                      background: 'var(--color-error)',
+                      color: '#fff',
+                      fontFamily: 'var(--font-family-sans)',
+                      fontSize: 'var(--font-size-sm)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      cursor: isPending ? 'not-allowed' : 'pointer',
+                      opacity: isPending ? 0.7 : 1,
+                    }}
+                  >
+                    {deleteMutation.isPending ? 'Deleting...' : 'Confirm'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={isPending}
+                    style={{
+                      padding: 'var(--button-padding-sm)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--button-border-radius)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)',
+                      fontFamily: 'var(--font-family-sans)',
+                      fontSize: 'var(--font-size-sm)',
+                      fontWeight: 'var(--font-weight-medium)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    No
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(true)}
+                  disabled={isPending}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-xs)',
+                    padding: 'var(--button-padding-sm)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--button-border-radius)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text-muted)',
+                    fontFamily: 'var(--font-family-sans)',
+                    fontSize: 'var(--font-size-sm)',
+                    fontWeight: 'var(--font-weight-medium)',
+                    cursor: 'pointer',
+                    transition: 'var(--transition-fast)',
+                  }}
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </button>
+              ))}
+          </div>
+
+          {/* Right: cancel + save */}
+          <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isPending}
+              style={{
+                padding: 'var(--button-padding-md)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--button-border-radius)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                fontFamily: 'var(--font-family-sans)',
+                fontSize: 'var(--font-size-base)',
+                fontWeight: 'var(--font-weight-medium)',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isPending}
+              style={{
+                padding: 'var(--button-padding-md)',
+                border: 'none',
+                borderRadius: 'var(--button-border-radius)',
+                background: splitMode
+                  ? 'var(--color-error)'
+                  : 'var(--color-primary)',
+                color: '#fff',
+                fontFamily: 'var(--font-family-sans)',
+                fontSize: 'var(--font-size-base)',
+                fontWeight: 'var(--font-weight-semibold)',
+                cursor: isPending ? 'not-allowed' : 'pointer',
+                opacity: isPending ? 0.7 : 1,
+              }}
+            >
+              {isPending
+                ? 'Saving...'
+                : splitMode
+                  ? 'Confirm split'
+                  : 'Save changes'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

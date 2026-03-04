@@ -36,6 +36,7 @@ interface HeroViewProps {
   onCancelContact?: () => void;
   onOpenShortcuts?: () => void;
   onEditWindow?: () => void;
+  onWheelScrub?: (deltaY: number) => void;
 }
 
 const HeroView: React.FC<HeroViewProps> = ({
@@ -69,7 +70,9 @@ const HeroView: React.FC<HeroViewProps> = ({
   onCancelContact,
   onOpenShortcuts,
   onEditWindow,
+  onWheelScrub,
 }) => {
+  const displayRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const pipVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -158,9 +161,26 @@ const HeroView: React.FC<HeroViewProps> = ({
     return null;
   }, [contactTimestamp, serveStart, serveEnd, toPercent]);
 
+  // Scroll wheel frame scrub — only on the video display area
+  useEffect(() => {
+    if (!onWheelScrub) return;
+    const el = displayRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      onWheelScrub(e.deltaY);
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [onWheelScrub]);
+
   return (
     <div className="hero-view" data-tour-step="hero-view">
-      <div className="hero-view__display" data-tour-step="hero-display">
+      <div
+        className="hero-view__display"
+        data-tour-step="hero-display"
+        ref={displayRef}
+      >
         {isVideoMode ? (
           <video
             ref={videoRef}

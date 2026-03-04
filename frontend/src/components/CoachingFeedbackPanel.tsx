@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import {
   useCoachingFeedback,
   useCoachingNotes,
@@ -25,22 +26,22 @@ const CoachingFeedbackPanel: React.FC<CoachingFeedbackPanelProps> = ({
   const { data: notes } = useCoachingNotes(serveWindowId, !isDemo);
   const saveNote = useSaveCoachingNote(serveWindowId);
 
-  if (isDemo || !serveWindowId) return null;
-
   const handleGetFeedback = () => {
     refetch();
   };
 
-  const handleSaveNote = () => {
+  const handleSaveNote = useCallback(() => {
     if (!noteText.trim()) return;
     saveNote.mutate(noteText.trim(), {
       onSuccess: () => setNoteText(''),
     });
-  };
+  }, [noteText, saveNote]);
+
+  if (isDemo || !serveWindowId) return null;
 
   return (
     <div className="coaching-panel">
-      {/* Feedback section */}
+      {/* Trigger button */}
       {!feedback && !isLoading && !isFetching && (
         <button
           type="button"
@@ -62,7 +63,7 @@ const CoachingFeedbackPanel: React.FC<CoachingFeedbackPanelProps> = ({
       {feedback && !isFetching && (
         <div className="coaching-panel__feedback">
           <div className="coaching-panel__feedback-text">
-            {feedback.feedback}
+            <ReactMarkdown>{feedback.feedback}</ReactMarkdown>
           </div>
           <div className="coaching-panel__meta">
             {feedback.input_tokens + feedback.output_tokens} tokens &middot;{' '}
@@ -71,7 +72,7 @@ const CoachingFeedbackPanel: React.FC<CoachingFeedbackPanelProps> = ({
         </div>
       )}
 
-      {/* Notes section — always visible when we have a serve window */}
+      {/* Notes section */}
       <div className="coaching-panel__notes">
         <label className="coaching-panel__notes-label">EVAL NOTES</label>
         {notes && notes.length > 0 && (
