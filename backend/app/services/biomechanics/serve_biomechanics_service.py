@@ -33,7 +33,7 @@ from app.services.pose_data_service import (
 
 logger = logging.getLogger(__name__)
 
-ANALYSIS_VERSION = "phase-metrics-v6"
+ANALYSIS_VERSION = "phase-metrics-v7"
 
 
 class ServeBiomechanicsService:
@@ -174,6 +174,8 @@ class ServeBiomechanicsService:
                 and video.camera_angle != "profile"
             ):
                 metrics.toss_laterality = toss_metrics["toss_laterality"]
+            if toss_metrics and toss_metrics.get("toss_drop") is not None:
+                metrics.toss_drop = toss_metrics["toss_drop"]
 
         report = ServeBiomechanicsReport(
             serve_window_id=serve_window_id,

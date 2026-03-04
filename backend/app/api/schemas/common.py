@@ -10,10 +10,12 @@ class ErrorResponse(BaseModel):
 
     error: Dict[str, Any] = Field(
         description="Error details",
-        example={
-            "code": "VALIDATION_ERROR",
-            "message": "Invalid input data",
-            "details": {"field": "filename", "value": "invalid.mp4"},
+        json_schema_extra={
+            "example": {
+                "code": "VALIDATION_ERROR",
+                "message": "Invalid input data",
+                "details": {"field": "filename", "value": "invalid.mp4"},
+            }
         },
     )
 

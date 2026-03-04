@@ -119,3 +119,79 @@ class TestComputeTossMetrics:
         )
         assert result is not None
         assert result["toss_laterality"] is None
+
+    # --- toss_drop tests ---
+
+    def test_toss_drop_computed_when_ball_tracked_at_contact(self) -> None:
+        """toss_drop should be a positive float when ball is tracked near contact."""
+        # Peak at 500ms (ball_y=50), contact at 1.0s, ball near contact at 1000ms (ball_y=150)
+        ball_list = [
+            {"ball_x": 700.0, "ball_y": 50.0, "timestamp_ms": 500.0},
+            {"ball_x": 700.0, "ball_y": 150.0, "timestamp_ms": 1000.0},
+        ]
+        pose_data = [
+            {
+                "left_shoulder": [600.0, 200.0],
+                "right_shoulder": [680.0, 200.0],
+                "left_ankle": [610.0, 600.0],
+                "right_ankle": [670.0, 600.0],
+            }
+        ]
+        result = _compute_toss_metrics(
+            self._make_serve_window(contact=1.0),
+            self._make_ball_detection(ball_list),
+            self._make_video(),
+            self._make_pose_detection(pose_data),
+        )
+        assert result is not None
+        assert result["toss_drop"] is not None
+        # player_height_px = 600 - 200 = 400
+        # toss_drop = (150 - 50) / 400 = 0.25
+        assert result["toss_drop"] == 0.25
+
+    def test_toss_drop_none_when_no_ball_near_contact(self) -> None:
+        """toss_drop should be None when no ball frame is within 67ms tolerance of contact."""
+        # Peak at 500ms, contact at 1.0s, but nearest ball frame is at 800ms (200ms away)
+        ball_list = [
+            {"ball_x": 700.0, "ball_y": 50.0, "timestamp_ms": 500.0},
+            {"ball_x": 700.0, "ball_y": 120.0, "timestamp_ms": 800.0},
+        ]
+        pose_data = [
+            {
+                "left_shoulder": [600.0, 200.0],
+                "right_shoulder": [680.0, 200.0],
+                "left_ankle": [610.0, 600.0],
+                "right_ankle": [670.0, 600.0],
+            }
+        ]
+        result = _compute_toss_metrics(
+            self._make_serve_window(contact=1.0),
+            self._make_ball_detection(ball_list),
+            self._make_video(),
+            self._make_pose_detection(pose_data),
+        )
+        assert result is not None
+        assert result["toss_drop"] is None
+
+    def test_toss_drop_none_when_contact_timestamp_missing(self) -> None:
+        """toss_drop should be None when contact_timestamp is None."""
+        ball_list = [
+            {"ball_x": 700.0, "ball_y": 50.0, "timestamp_ms": 500.0},
+            {"ball_x": 700.0, "ball_y": 150.0, "timestamp_ms": 1000.0},
+        ]
+        pose_data = [
+            {
+                "left_shoulder": [600.0, 200.0],
+                "right_shoulder": [680.0, 200.0],
+                "left_ankle": [610.0, 600.0],
+                "right_ankle": [670.0, 600.0],
+            }
+        ]
+        result = _compute_toss_metrics(
+            self._make_serve_window(contact=None),
+            self._make_ball_detection(ball_list),
+            self._make_video(),
+            self._make_pose_detection(pose_data),
+        )
+        assert result is not None
+        assert result["toss_drop"] is None

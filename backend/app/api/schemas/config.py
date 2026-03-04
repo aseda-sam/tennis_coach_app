@@ -8,15 +8,15 @@ class UploadLimits(BaseModel):
 
     max_file_size_bytes: int = Field(
         description="Maximum upload size in bytes",
-        example=104857600,
+        json_schema_extra={"example": 104857600},
     )
     max_video_duration_seconds: int = Field(
         description="Maximum video duration in seconds",
-        example=300,
+        json_schema_extra={"example": 300},
     )
     supported_formats: list[str] = Field(
         description="Supported file extensions",
-        example=[".mp4", ".mov"],
+        json_schema_extra={"example": [".mp4", ".mov"]},
     )
 
 

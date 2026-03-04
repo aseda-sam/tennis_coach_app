@@ -125,10 +125,29 @@ def _compute_toss_metrics(
             toss_laterality = (best["ball_x"] - body_center_x) / player_height_px
             toss_laterality = round(toss_laterality, 4)
 
+    # Toss drop: how far ball dropped from peak to contact, normalized by player height
+    toss_drop: Optional[float] = None
+    contact_ms = (serve_window.contact_timestamp or 0) * 1000
+    contact_tolerance_ms = 67  # ~2 frames at 30fps
+    valid_frames = [f for f in ball_list if f.get("ball_y") is not None]
+    if valid_frames and serve_window.contact_timestamp is not None:
+        nearest = min(valid_frames, key=lambda f: abs(f["timestamp_ms"] - contact_ms))
+        if (
+            abs(nearest["timestamp_ms"] - contact_ms) <= contact_tolerance_ms
+            and player_height_px > 0
+        ):
+            toss_drop = (nearest["ball_y"] - best["ball_y"]) / player_height_px
+            toss_drop = round(toss_drop, 4)
+        else:
+            toss_drop = None
+    else:
+        toss_drop = None
+
     return {
         "toss_peak_height": round(toss_peak_height, 4)
         if toss_peak_height is not None
         else None,
         "toss_peak_timestamp": round(toss_peak_timestamp, 4),
         "toss_laterality": toss_laterality,
+        "toss_drop": toss_drop,
     }

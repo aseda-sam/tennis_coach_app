@@ -21,6 +21,7 @@ METRIC_META: Dict[str, Dict[str, str]] = {
     "knee_flexion_min_deg": {"unit": "deg", "phase": "toss"},
     "toss_peak_height": {"unit": "normalized", "phase": "toss"},
     "toss_laterality": {"unit": "normalized", "phase": "toss"},
+    "toss_drop": {"unit": "normalized", "phase": "toss"},
 }
 
 
@@ -77,6 +78,7 @@ class BiomechanicsMetrics(BaseModel):
     knee_flexion_min_deg: Optional[float] = None
     toss_peak_height: Optional[float] = None
     toss_laterality: Optional[float] = None
+    toss_drop: Optional[float] = None
     # Annotation timestamps (stored in JSONB _annotations, not in flat metric list directly)
     toss_peak_timestamp: Optional[float] = None
 
