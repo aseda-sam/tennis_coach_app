@@ -19,6 +19,7 @@ import { PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
 import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
+import CoachingFeedbackPanel from './CoachingFeedbackPanel';
 import CollapsibleSection from './CollapsibleSection';
 import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
 import ErrorBoundary from './ErrorBoundary';
@@ -125,6 +126,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const [chartsExpanded, setChartsExpanded] = usePersistedState(
     'sidebar:charts',
     true
+  );
+
+  const [coachingExpanded, setCoachingExpanded] = usePersistedState(
+    'sidebar:coaching',
+    false
   );
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -747,6 +753,19 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                       />
                     </CollapsibleSection>
                   </div>
+                )}
+
+                {!isDemo && (
+                  <CollapsibleSection
+                    title="Coaching Feedback"
+                    expanded={coachingExpanded}
+                    onToggle={() => setCoachingExpanded(!coachingExpanded)}
+                  >
+                    <CoachingFeedbackPanel
+                      serveWindowId={currentServe?.id ?? null}
+                      isDemo={isDemo}
+                    />
+                  </CollapsibleSection>
                 )}
               </div>
             </>

@@ -1,0 +1,137 @@
+.coaching-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.coaching-panel__trigger-btn {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.coaching-panel__trigger-btn:hover {
+  border-color: var(--color-court-blue);
+}
+
+.coaching-panel__loading {
+  padding: var(--spacing-md);
+  text-align: center;
+}
+
+.coaching-panel__loading-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  animation: coaching-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes coaching-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.coaching-panel__feedback {
+  padding: var(--spacing-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.coaching-panel__feedback-text {
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
+.coaching-panel__meta {
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.coaching-panel__notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.coaching-panel__notes-label {
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.coaching-panel__notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.coaching-panel__note-item {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-sand);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.coaching-panel__notes-input {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  background: var(--color-surface);
+  resize: vertical;
+}
+
+.coaching-panel__notes-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.coaching-panel__notes-input:focus {
+  outline: none;
+  border-color: var(--color-court-blue);
+}
+
+.coaching-panel__save-btn {
+  align-self: flex-end;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-ink-heavy);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.coaching-panel__save-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.coaching-panel__save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -71,3 +71,62 @@ def log_llm_call(
             f.write(json.dumps(record) + "\n")
     except OSError:
         logger.exception("Failed to write LLM log to %s", log_path)
+
+
+def get_notes_log_path(log_dir: Optional[Path] = None) -> Path:
+    """Get the open-coding notes JSONL path."""
+    if log_dir:
+        directory = log_dir
+    elif settings.LLM_LOG_DIR:
+        directory = Path(settings.LLM_LOG_DIR)
+    else:
+        directory = _DEFAULT_LOG_DIR
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / "open_coding_notes.jsonl"
+
+
+def log_open_coding_note(
+    *,
+    serve_window_id: int,
+    note: str,
+    user_id: int,
+    log_dir: Optional[Path] = None,
+) -> dict[str, Any]:
+    """Append an open-coding annotation to the notes JSONL log."""
+    record = {
+        "timestamp": time.time(),
+        "serve_window_id": serve_window_id,
+        "note": note,
+        "user_id": user_id,
+    }
+    log_path = get_notes_log_path(log_dir)
+    try:
+        with open(log_path, "a") as f:
+            f.write(json.dumps(record) + "\n")
+    except OSError:
+        logger.exception("Failed to write note to %s", log_path)
+    return record
+
+
+def get_open_coding_notes(
+    serve_window_id: int,
+    *,
+    log_dir: Optional[Path] = None,
+) -> list[dict[str, Any]]:
+    """Read open-coding notes for a specific serve window."""
+    log_path = get_notes_log_path(log_dir)
+    if not log_path.exists():
+        return []
+    notes = []
+    try:
+        with open(log_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                record = json.loads(line)
+                if record.get("serve_window_id") == serve_window_id:
+                    notes.append(record)
+    except (OSError, json.JSONDecodeError):
+        logger.exception("Failed to read notes from %s", log_path)
+    return notes

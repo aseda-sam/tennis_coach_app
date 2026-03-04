@@ -1,5 +1,20 @@
 /** Serve biomechanics API types (phases + raw metrics only, no scoring). */
 
+export interface CoachingFeedbackResponse {
+  feedback: string;
+  model: string;
+  latency_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export interface CoachingNoteResponse {
+  serve_window_id: number;
+  note: string;
+  timestamp: number;
+  user_id: number;
+}
+
 export interface MetricValue {
   metric_name: string;
   value: number | null;
