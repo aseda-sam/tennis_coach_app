@@ -72,6 +72,18 @@
   line-height: 1.4;
 }
 
+/* ── Knee angle arc ── */
+.metric-card__angle-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.metric-card__angle-arc {
+  width: 56px;
+  flex-shrink: 0;
+}
+
 .metric-card__strip {
   margin-top: 10px;
 }

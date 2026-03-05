@@ -1,4 +1,6 @@
 import React from 'react';
+import KneeAngleArc from './KneeAngleArc';
+import KneeFrameOverlay from './KneeFrameOverlay';
 import MetricDistributionStrip from './MetricDistributionStrip';
 import './MetricCard.css';
 
@@ -31,6 +33,7 @@ interface MetricCardProps {
   timestamp?: number | null;
   historyValues: number[];
   onScrubTo?: (timestamp: number) => void;
+  serveWindowId?: number | null;
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({
@@ -39,6 +42,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   timestamp,
   historyValues,
   onScrubTo,
+  serveWindowId,
 }) => {
   const displayName = DISPLAY_NAMES[metricName] ?? metricName;
   const unit = UNITS[metricName] ?? '';
@@ -93,6 +97,8 @@ const MetricCard: React.FC<MetricCardProps> = ({
     );
   }
 
+  const showAngleArc = metricName === 'knee_flexion_min_deg' && !isNull;
+
   // Standard card
   return (
     <Tag
@@ -102,10 +108,30 @@ const MetricCard: React.FC<MetricCardProps> = ({
       title={isClickable ? `Scrub to ${displayName}` : undefined}
     >
       <p className="metric-card__label">{displayName}</p>
-      <p className="metric-card__value">
-        {isNull ? '—' : formatValue(value)}
-        {!isNull && unit && <span className="metric-card__unit">{unit}</span>}
-      </p>
+      {showAngleArc ? (
+        <div className="metric-card__angle-row">
+          <p className="metric-card__value">
+            {formatValue(value)}
+            {unit && <span className="metric-card__unit">{unit}</span>}
+          </p>
+          <div className="metric-card__angle-arc">
+            {serveWindowId && timestamp != null ? (
+              <KneeFrameOverlay
+                serveWindowId={serveWindowId}
+                timestamp={timestamp}
+                angle={value}
+              />
+            ) : (
+              <KneeAngleArc angle={value} />
+            )}
+          </div>
+        </div>
+      ) : (
+        <p className="metric-card__value">
+          {isNull ? '—' : formatValue(value)}
+          {!isNull && unit && <span className="metric-card__unit">{unit}</span>}
+        </p>
+      )}
       {isNull && (
         <p className="metric-card__null-text">
           {NULL_EXPLANATIONS[metricName] ?? 'Not available'}

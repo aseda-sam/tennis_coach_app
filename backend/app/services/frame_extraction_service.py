@@ -111,6 +111,71 @@ def _crop_to_pose(
     return frame[crop_y1:crop_y2, crop_x1:crop_x2]
 
 
+def extract_frame_at_timestamp(
+    db: Session, serve_window_id: int, timestamp: float
+) -> bytes:
+    """Extract a JPEG frame at an absolute video timestamp from a serve window's video.
+
+    Args:
+        db: Database session.
+        serve_window_id: ID of the serve window.
+        timestamp: Absolute timestamp in seconds (within the serve window).
+
+    Returns:
+        JPEG image bytes (cropped to pose bounding box).
+
+    Raises:
+        ValueError: If serve window, video, or frame is missing/unreadable.
+    """
+    serve_window = (
+        db.query(ServeWindow).filter(ServeWindow.id == serve_window_id).first()
+    )
+    if not serve_window:
+        raise ValueError(f"Serve window {serve_window_id} not found")
+
+    video = serve_window.video
+    if not video:
+        video = db.query(Video).filter(Video.id == serve_window.video_id).first()
+    if not video:
+        raise ValueError(f"Video {serve_window.video_id} not found")
+
+    fps = video.fps or 30.0
+    absolute_frame = int(timestamp * fps)
+
+    # Relative frame within serve window (for pose crop)
+    relative_frame = int((timestamp - serve_window.start_timestamp) * fps)
+
+    temp_path = None
+    try:
+        local_path = storage_service.get_local_file_path(video.file_path)
+        if storage_service.storage_type == "supabase":
+            temp_path = local_path
+
+        cap = cv2.VideoCapture(str(local_path))
+        cap.set(cv2.CAP_PROP_POS_FRAMES, absolute_frame)
+        ret, frame = cap.read()
+        cap.release()
+
+        if not ret or frame is None:
+            raise ValueError(
+                f"Could not read frame {absolute_frame} from video {video.id}"
+            )
+
+        frame = _crop_frame_to_pose(db, video, serve_window, fps, relative_frame, frame)
+
+        success, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        if not success:
+            raise ValueError(f"Failed to encode frame as JPEG for video {video.id}")
+
+        return buffer.tobytes()
+    finally:
+        if temp_path and Path(temp_path).exists():
+            try:
+                Path(temp_path).unlink()
+            except OSError:
+                logger.warning("Failed to clean up temp file: %s", temp_path)
+
+
 def extract_ktp_frame(db: Session, serve_window_id: int, ktp_name: str) -> bytes:
     """Extract a single JPEG frame for a Key Time Point from a serve window's video.
 

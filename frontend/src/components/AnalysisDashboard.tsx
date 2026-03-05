@@ -716,6 +716,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                           timestamp={m.timestamp}
                           historyValues={metricHistory[m.metric_name] ?? []}
                           onScrubTo={handleSeek}
+                          serveWindowId={currentServe?.id ?? null}
                         />
                       ))}
                   </div>

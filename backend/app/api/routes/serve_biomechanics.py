@@ -32,7 +32,10 @@ from app.services.coaching.llm_logger import (
     log_open_coding_note,
 )
 from app.services.coaching.player_history import get_player_metric_history
-from app.services.frame_extraction_service import extract_ktp_frame
+from app.services.frame_extraction_service import (
+    extract_frame_at_timestamp,
+    extract_ktp_frame,
+)
 from app.services.player_service import get_player_by_id
 from app.utils.authorization import (
     require_player_access,
@@ -167,11 +170,22 @@ async def get_serve_biomechanics(
 @router.get("/serve-windows/{serve_window_id}/frame")
 async def get_serve_window_frame(
     serve_window_id: int,
-    ktp: str = Query(..., description="KTP name, e.g. trophy_position"),
+    ktp: Optional[str] = Query(None, description="KTP name, e.g. trophy_position"),
+    timestamp: Optional[float] = Query(
+        None, description="Absolute video timestamp in seconds"
+    ),
     current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> Response:
-    """Get a JPEG frame for a Key Time Point in a serve window."""
+    """Get a JPEG frame for a Key Time Point or timestamp in a serve window.
+
+    Provide either `ktp` (KTP name) or `timestamp` (absolute seconds).
+    """
+    if ktp is None and timestamp is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide either 'ktp' or 'timestamp' query parameter",
+        )
     try:
         # Auth: same pattern as get_serve_biomechanics
         sw = serve_window_service.get_serve_window_by_id_no_auth(db, serve_window_id)
@@ -180,10 +194,13 @@ async def get_serve_window_frame(
             raise handle_not_found_error("video", str(sw.video_id))
         require_video_access_or_public_demo(video, current_user)
 
-        jpeg_bytes = extract_ktp_frame(db, serve_window_id, ktp)
+        if timestamp is not None:
+            jpeg_bytes = extract_frame_at_timestamp(db, serve_window_id, timestamp)
+            etag = f'"{serve_window_id}-ts-{timestamp}"'
+        else:
+            jpeg_bytes = extract_ktp_frame(db, serve_window_id, ktp)  # type: ignore[arg-type]
+            etag = f'"{serve_window_id}-{ktp}"'
 
-        # ETag based on serve_window_id + ktp for browser caching
-        etag = f'"{serve_window_id}-{ktp}"'
         return Response(
             content=jpeg_bytes,
             media_type="image/jpeg",
