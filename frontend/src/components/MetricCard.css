@@ -45,6 +45,61 @@
   border-top: 1px solid var(--color-border);
 }
 
+/* ── Header row (label + info icon) ── */
+.metric-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+}
+
+/* ── Info button ── */
+.metric-card__info-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+  position: relative;
+  top: 1px;
+}
+
+.metric-card__info-btn:hover {
+  opacity: 0.8;
+}
+
+/* ── Info popover (portaled to body) ── */
+.metric-card__info-popover {
+  position: fixed;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
+  width: 220px;
+  text-align: left;
+}
+
+.metric-card__info-popover p {
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.metric-card__info-popover p + p {
+  margin-top: 6px;
+}
+
 /* ── Standard elements ── */
 .metric-card__label {
   font-family: var(--font-sans, 'DM Sans', sans-serif);

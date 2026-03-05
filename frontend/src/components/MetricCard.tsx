@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import KneeFrameOverlay from './KneeFrameOverlay';
 import MetricDistributionStrip from './MetricDistributionStrip';
 import './MetricCard.css';
@@ -19,12 +20,100 @@ const NULL_EXPLANATIONS: Record<string, string> = {
 };
 
 const DESCRIPTIONS: Record<string, string> = {
-  knee_flexion_min_deg: 'Deepest knee angle before contact',
-  toss_peak_height: 'Ball peak relative to body height',
+  knee_flexion_min_deg: 'Lowest point of your knee bend',
+  toss_peak_height: 'How high your toss went',
+};
+
+const INFO_DETAILS: Record<string, string[]> = {
+  knee_flexion_min_deg: [
+    'The angle between your thigh and shin. A straight leg is 180°, a deep squat is closer to 90°.',
+    'Lower numbers mean a deeper bend.',
+  ],
+  toss_peak_height: [
+    'Measured as a multiple of your body height. 2.0 means the ball peaked at twice your height.',
+    'The gray dots show your toss heights from other serves. The green dot is this serve.',
+  ],
 };
 
 /** Metrics shown in the sidebar. Everything else from the API is hidden. */
 export const VISIBLE_METRICS = new Set(Object.keys(DISPLAY_NAMES));
+
+const InfoPopover: React.FC<{ lines: string[] }> = ({ lines }) => {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  const updatePosition = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const popoverWidth = 220;
+    // Center popover under the button; clamp so it doesn't overflow viewport
+    let left = rect.left + rect.width / 2 - popoverWidth / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - popoverWidth - 8));
+    setPos({ top: rect.bottom + 6, left });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const handleClick = (e: MouseEvent) => {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target as Node) &&
+        btnRef.current &&
+        !btnRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    const handleScroll = () => setOpen(false);
+    document.addEventListener('mousedown', handleClick);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [open, updatePosition]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        className="metric-card__info-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(!open);
+        }}
+        type="button"
+        aria-label="More info"
+      >
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.4" />
+          <path
+            d="M8 7v4M8 5.5v-.01"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+      {open &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            className="metric-card__info-popover"
+            style={{ top: pos.top, left: pos.left }}
+          >
+            {lines.map((line, i) => (
+              <p key={i}>{line}</p>
+            ))}
+          </div>,
+          document.body
+        )}
+    </>
+  );
+};
 
 const TALL_METRICS = new Set(['toss_peak_height']);
 
@@ -75,7 +164,12 @@ const MetricCard: React.FC<MetricCardProps> = ({
         type={isClickable ? 'button' : undefined}
         title={isClickable ? `Scrub to ${displayName}` : undefined}
       >
-        <p className="metric-card__label">{displayName}</p>
+        <div className="metric-card__header">
+          <p className="metric-card__label">{displayName}</p>
+          {!isNull && INFO_DETAILS[metricName] && (
+            <InfoPopover lines={INFO_DETAILS[metricName]} />
+          )}
+        </div>
         {!isNull && DESCRIPTIONS[metricName] && (
           <p className="metric-card__description">{DESCRIPTIONS[metricName]}</p>
         )}
@@ -111,7 +205,12 @@ const MetricCard: React.FC<MetricCardProps> = ({
       type={isClickable ? 'button' : undefined}
       title={isClickable ? `Scrub to ${displayName}` : undefined}
     >
-      <p className="metric-card__label">{displayName}</p>
+      <div className="metric-card__header">
+        <p className="metric-card__label">{displayName}</p>
+        {!isNull && INFO_DETAILS[metricName] && (
+          <InfoPopover lines={INFO_DETAILS[metricName]} />
+        )}
+      </div>
       {!isNull && DESCRIPTIONS[metricName] && (
         <p className="metric-card__description">{DESCRIPTIONS[metricName]}</p>
       )}
