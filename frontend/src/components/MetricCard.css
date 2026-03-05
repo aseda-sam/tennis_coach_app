@@ -25,28 +25,17 @@
 
 /* ── Tall card (toss height) ── */
 .metric-card--tall {
-  grid-row: span 2;
+  grid-row: span 3;
+  grid-column: 1;
   display: flex;
   flex-direction: column;
 }
 
-.metric-card__tall-body {
-  flex: 1;
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-.metric-card__tall-value-col {
-  flex: 1;
-  min-width: 0;
-}
-
 .metric-card__tall-gauge {
-  flex-shrink: 0;
-  width: 48px;
-  align-self: stretch;
+  flex: 1;
+  min-height: 0;
+  width: 24px;
+  margin: 4px auto 0;
 }
 
 /* ── Standard elements ── */

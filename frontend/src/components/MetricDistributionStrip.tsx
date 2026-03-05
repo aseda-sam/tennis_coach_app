@@ -6,6 +6,19 @@ interface MetricDistributionStripProps {
   orientation?: 'horizontal' | 'vertical';
 }
 
+/** Fraction (0–1) representing how far up the vertical gauge the current value sits. */
+export function currentValuePosition(
+  values: number[],
+  currentValue: number
+): number {
+  const allValues = [...values, currentValue];
+  const min = Math.min(...allValues);
+  const max = Math.max(...allValues);
+  const range = max - min;
+  if (range === 0) return 0.5;
+  return (currentValue - min) / range;
+}
+
 const MetricDistributionStrip: React.FC<MetricDistributionStripProps> = ({
   values,
   currentValue,
@@ -30,11 +43,11 @@ const MetricDistributionStrip: React.FC<MetricDistributionStripProps> = ({
   };
 
   if (orientation === 'vertical') {
-    // Tall vertical gauge — fills parent height via CSS (100%)
-    // viewBox is 48 wide × 160 tall; preserveAspectRatio keeps it centered
-    const trackX = 16;
-    const trackTop = 14;
-    const trackBottom = 146;
+    // Vertical gauge. Uses a tall narrow viewBox with xMidYMid meet
+    // so circles stay round. The parent stretches this vertically via CSS.
+    const trackX = 8;
+    const trackTop = 8;
+    const trackBottom = 192;
     const trackLen = trackBottom - trackTop;
     const toY = (v: number) => trackBottom - (toPos(v) / 100) * trackLen;
 
@@ -42,7 +55,7 @@ const MetricDistributionStrip: React.FC<MetricDistributionStripProps> = ({
       <svg
         width="100%"
         height="100%"
-        viewBox="0 0 48 160"
+        viewBox="0 0 16 200"
         preserveAspectRatio="xMidYMid meet"
         style={{ display: 'block' }}
         role="img"
@@ -55,7 +68,7 @@ const MetricDistributionStrip: React.FC<MetricDistributionStripProps> = ({
           x2={trackX}
           y2={trackBottom}
           stroke="var(--color-border-dark)"
-          strokeWidth="1"
+          strokeWidth="0.5"
         />
         {/* Past serves */}
         {values.map((v, i) => (
@@ -63,42 +76,20 @@ const MetricDistributionStrip: React.FC<MetricDistributionStripProps> = ({
             key={i}
             cx={trackX}
             cy={toY(v)}
-            r={3}
+            r={2.5}
             fill="var(--color-text-muted)"
-            opacity={0.4}
+            opacity={0.45}
           />
         ))}
         {/* Current serve — tennis ball */}
         <circle
           cx={trackX}
           cy={toY(currentValue)}
-          r={6}
+          r={5}
           fill="var(--color-arc)"
           stroke="var(--color-arc-dim)"
-          strokeWidth="1.5"
+          strokeWidth="1.2"
         />
-        {/* Max label (top) */}
-        <text
-          x={trackX + 12}
-          y={trackTop + 4}
-          fontSize="10"
-          fontFamily="var(--font-mono)"
-          fill="var(--color-text-muted)"
-          textAnchor="start"
-        >
-          {formatLabel(max)}
-        </text>
-        {/* Min label (bottom) */}
-        <text
-          x={trackX + 12}
-          y={trackBottom + 4}
-          fontSize="10"
-          fontFamily="var(--font-mono)"
-          fill="var(--color-text-muted)"
-          textAnchor="start"
-        >
-          {formatLabel(min)}
-        </text>
       </svg>
     );
   }

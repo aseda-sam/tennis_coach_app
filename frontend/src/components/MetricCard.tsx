@@ -61,7 +61,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
   const Tag = isClickable ? 'button' : 'div';
 
-  // Tall card (toss height): value + vertical gauge side by side, spans 2 rows
+  // Tall card: value at top, gauge fills remaining height
   if (isTall) {
     return (
       <Tag
@@ -71,30 +71,24 @@ const MetricCard: React.FC<MetricCardProps> = ({
         title={isClickable ? `Scrub to ${displayName}` : undefined}
       >
         <p className="metric-card__label">{displayName}</p>
-        <div className="metric-card__tall-body">
-          <div className="metric-card__tall-value-col">
-            <p className="metric-card__value">
-              {isNull ? '—' : formatValue(value)}
-              {!isNull && unit && (
-                <span className="metric-card__unit">{unit}</span>
-              )}
-            </p>
-            {isNull && (
-              <p className="metric-card__null-text">
-                {NULL_EXPLANATIONS[metricName] ?? 'Not available'}
-              </p>
-            )}
+        <p className="metric-card__value">
+          {isNull ? '—' : formatValue(value)}
+          {!isNull && unit && <span className="metric-card__unit">{unit}</span>}
+        </p>
+        {isNull && (
+          <p className="metric-card__null-text">
+            {NULL_EXPLANATIONS[metricName] ?? 'Not available'}
+          </p>
+        )}
+        {hasStrip && (
+          <div className="metric-card__tall-gauge">
+            <MetricDistributionStrip
+              values={historyValues}
+              currentValue={value!}
+              orientation="vertical"
+            />
           </div>
-          {hasStrip && (
-            <div className="metric-card__tall-gauge">
-              <MetricDistributionStrip
-                values={historyValues}
-                currentValue={value!}
-                orientation="vertical"
-              />
-            </div>
-          )}
-        </div>
+        )}
       </Tag>
     );
   }
