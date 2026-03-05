@@ -768,15 +768,27 @@ export function drawGroundPlane(
   ctx.restore();
 }
 
-/** Draw the ball trail line and head dot on the stick-figure canvas. */
+/**
+ * Draw the ball trail line and head dot on the stick-figure canvas.
+ * @param framesSinceBall — frames since last ball detection. The trail and
+ *   head fade out over ~10 frames, signalling "tracking lost" rather than
+ *   showing a frozen dot at the last known position.
+ */
 export function drawStickBallTrail(
   ctx: CanvasRenderingContext2D,
-  trail: { x: number; y: number }[]
+  trail: { x: number; y: number }[],
+  framesSinceBall: number = 0
 ): void {
+  const FADE_FRAMES = 10;
+  const staleFade =
+    framesSinceBall <= 0 ? 1 : Math.max(0, 1 - framesSinceBall / FADE_FRAMES);
+
+  if (staleFade <= 0) return;
+
   if (trail.length >= 2) {
     for (let i = 0; i < trail.length - 1; i++) {
       const t = (i + 1) / trail.length;
-      const alpha = 0.1 + 0.8 * t;
+      const alpha = (0.1 + 0.8 * t) * staleFade;
       const lineWidth = 1 + 2 * t;
       ctx.strokeStyle = `rgba(196, 217, 59, ${alpha})`;
       ctx.lineWidth = lineWidth;
@@ -789,6 +801,7 @@ export function drawStickBallTrail(
 
   if (trail.length >= 1) {
     const head = trail[trail.length - 1];
+    ctx.globalAlpha = staleFade;
     ctx.shadowColor = BALL_COLOR;
     ctx.shadowBlur = STICK_BALL_HEAD_GLOW_BLUR;
     ctx.fillStyle = BALL_COLOR;
@@ -799,6 +812,7 @@ export function drawStickBallTrail(
     ctx.fill();
     ctx.stroke();
     ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
   }
 }
 

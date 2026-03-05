@@ -50,6 +50,7 @@ export function useSkeletonAnimation({
   const animationFrameRef = useRef<number | null>(null);
   const lastRenderedTimeRef = useRef<number>(-1);
   const ballTrailRef = useRef<{ x: number; y: number }[]>([]);
+  const framesSinceBallRef = useRef<number>(0);
   const normRefRef = useRef<NormalizationRef | null>(null);
   const normRefServeStartRef = useRef<number | undefined>(undefined);
 
@@ -131,9 +132,10 @@ export function useSkeletonAnimation({
     const timeDelta = Math.abs(currentTime - lastRenderedTimeRef.current);
     if (lastRenderedTimeRef.current >= 0 && timeDelta > 0.1) {
       ballTrailRef.current = [];
+      framesSinceBallRef.current = 0;
     }
 
-    // Ball trail
+    // Ball trail — track frames since last detection to fade when stale
     const trail = ballTrailRef.current;
     if (frame.ball_position && frame.ball_position.length >= 2) {
       const ballKps = { ...frame.keypoints, _ball: frame.ball_position };
@@ -145,9 +147,12 @@ export function useSkeletonAnimation({
         if (trail.length > BALL_TRAIL_LENGTH) {
           trail.splice(0, trail.length - BALL_TRAIL_LENGTH);
         }
+        framesSinceBallRef.current = 0;
       }
+    } else {
+      framesSinceBallRef.current++;
     }
-    drawStickBallTrail(ctx, trail);
+    drawStickBallTrail(ctx, trail, framesSinceBallRef.current);
 
     // HUD
     drawStickHud({
