@@ -52,8 +52,8 @@ def get_all_v7_reports(db: Session) -> list[ServeBiomechanicsReport]:
         has_value = False
         for phase_metrics in r.metrics.values():
             if isinstance(phase_metrics, dict):
-                for m in phase_metrics.values():
-                    if isinstance(m, dict) and m.get("value") is not None:
+                for v in phase_metrics.values():
+                    if v is not None:
                         has_value = True
                         break
             if has_value:

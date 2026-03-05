@@ -26,7 +26,11 @@ from app.services.biomechanics.serve_biomechanics_service import (
     serve_biomechanics_service,
 )
 from app.services.coaching.coaching_service import generate_coaching_feedback
-from app.services.coaching.llm_logger import get_open_coding_notes, log_open_coding_note
+from app.services.coaching.llm_logger import (
+    get_latest_coaching_trace,
+    get_open_coding_notes,
+    log_open_coding_note,
+)
 from app.services.coaching.player_history import get_player_metric_history
 from app.services.frame_extraction_service import extract_ktp_frame
 from app.services.player_service import get_player_by_id
@@ -255,6 +259,43 @@ async def get_player_biomechanics_history(
     except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
         log_and_raise_error(
             e, "get_player_biomechanics_history", {"player_id": player_id}
+        )
+
+
+@router.get(
+    "/serve-windows/{serve_window_id}/coaching/cached",
+    response_model=Optional[CoachingFeedbackResponse],
+)
+async def get_cached_coaching_feedback(
+    serve_window_id: int,
+    current_user: Optional[dict] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> Optional[CoachingFeedbackResponse]:
+    """Return the latest cached coaching trace for a serve window, or null."""
+    try:
+        sw = serve_window_service.get_serve_window_by_id_no_auth(db, serve_window_id)
+        video = video_service.get_video_by_id(db, sw.video_id)
+        if not video:
+            raise handle_not_found_error("video", str(sw.video_id))
+        require_video_access_or_public_demo(video, current_user)
+
+        trace = get_latest_coaching_trace(serve_window_id)
+        if trace is None:
+            return None
+        return CoachingFeedbackResponse(
+            feedback=trace["output"],
+            model=trace["model"],
+            latency_ms=trace["latency_ms"],
+            input_tokens=trace["input_tokens"],
+            output_tokens=trace["output_tokens"],
+        )
+    except ValueError as e:
+        raise handle_not_found_error("serve_window", str(serve_window_id)) from e
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
+        log_and_raise_error(
+            e, "get_cached_coaching_feedback", {"serve_window_id": serve_window_id}
         )
 
 

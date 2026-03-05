@@ -23,6 +23,13 @@ export const biomechanicsApi = {
   ): Promise<CoachingFeedbackResponse> =>
     api.get(`/serve-windows/${serveWindowId}/coaching`).then((r) => r.data),
 
+  getCachedCoachingFeedback: (
+    serveWindowId: number
+  ): Promise<CoachingFeedbackResponse | null> =>
+    api
+      .get(`/serve-windows/${serveWindowId}/coaching/cached`)
+      .then((r) => r.data),
+
   getCoachingNotes: (serveWindowId: number): Promise<CoachingNoteResponse[]> =>
     api
       .get(`/serve-windows/${serveWindowId}/coaching/notes`)

@@ -108,6 +108,23 @@
   color: var(--color-text-muted);
 }
 
+.coaching-panel__regenerate-btn {
+  margin-left: var(--spacing-sm);
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.coaching-panel__regenerate-btn:hover {
+  color: var(--color-court-blue);
+}
+
 .coaching-panel__notes {
   display: flex;
   flex-direction: column;

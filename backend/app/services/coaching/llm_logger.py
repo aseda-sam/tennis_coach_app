@@ -108,6 +108,33 @@ def log_open_coding_note(
     return record
 
 
+def get_latest_coaching_trace(
+    serve_window_id: int,
+    *,
+    log_dir: Optional[Path] = None,
+) -> Optional[dict[str, Any]]:
+    """Read the most recent coaching trace for a serve window."""
+    log_path = get_log_path(log_dir)
+    if not log_path.exists():
+        return None
+    latest = None
+    try:
+        with open(log_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                record = json.loads(line)
+                if (
+                    record.get("serve_window_id") == serve_window_id
+                    and record.get("error") is None
+                ):
+                    latest = record
+    except (OSError, json.JSONDecodeError):
+        logger.exception("Failed to read coaching traces from %s", log_path)
+    return latest
+
+
 def get_open_coding_notes(
     serve_window_id: int,
     *,

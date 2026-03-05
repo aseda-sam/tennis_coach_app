@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
+  useCachedCoachingFeedback,
   useCoachingFeedback,
   useCoachingNotes,
   useSaveCoachingNote,
@@ -18,14 +19,25 @@ const CoachingFeedbackPanel: React.FC<CoachingFeedbackPanelProps> = ({
 }) => {
   const [noteText, setNoteText] = useState('');
   const [justSaved, setJustSaved] = useState(false);
+
+  // Auto-fetch cached trace
+  const { data: cachedFeedback, isLoading: cachedLoading } =
+    useCachedCoachingFeedback(serveWindowId);
+
+  // Manual regenerate
   const {
-    data: feedback,
-    isLoading,
-    isFetching,
+    data: freshFeedback,
+    isLoading: freshLoading,
+    isFetching: freshFetching,
     refetch,
   } = useCoachingFeedback(serveWindowId);
+
   const { data: notes } = useCoachingNotes(serveWindowId, !isDemo);
   const saveNote = useSaveCoachingNote(serveWindowId);
+
+  // Use fresh feedback if available, otherwise cached
+  const feedback = freshFeedback ?? cachedFeedback;
+  const isGenerating = freshLoading || freshFetching;
 
   // Clear the "Saved" indicator after 2 seconds
   useEffect(() => {
@@ -39,7 +51,7 @@ const CoachingFeedbackPanel: React.FC<CoachingFeedbackPanelProps> = ({
     setJustSaved(false);
   }, [serveWindowId]);
 
-  const handleGetFeedback = () => {
+  const handleRegenerate = () => {
     refetch();
   };
 
@@ -57,18 +69,28 @@ const CoachingFeedbackPanel: React.FC<CoachingFeedbackPanelProps> = ({
 
   return (
     <div className="coaching-panel">
-      {/* Trigger button */}
-      {!feedback && !isLoading && !isFetching && (
+      {/* Loading cached trace */}
+      {cachedLoading && !feedback && (
+        <div className="coaching-panel__loading">
+          <span className="coaching-panel__loading-text">
+            Loading feedback...
+          </span>
+        </div>
+      )}
+
+      {/* No cached trace — offer to generate */}
+      {!cachedLoading && !feedback && !isGenerating && (
         <button
           type="button"
           className="coaching-panel__trigger-btn"
-          onClick={handleGetFeedback}
+          onClick={handleRegenerate}
         >
           Get Coaching Feedback
         </button>
       )}
 
-      {(isLoading || isFetching) && (
+      {/* Generating fresh feedback */}
+      {isGenerating && (
         <div className="coaching-panel__loading">
           <span className="coaching-panel__loading-text">
             Thinking about your serve...
@@ -76,14 +98,26 @@ const CoachingFeedbackPanel: React.FC<CoachingFeedbackPanelProps> = ({
         </div>
       )}
 
-      {feedback && !isFetching && (
+      {/* Show feedback */}
+      {feedback && !isGenerating && (
         <div className="coaching-panel__feedback">
           <div className="coaching-panel__feedback-text">
             <ReactMarkdown>{feedback.feedback}</ReactMarkdown>
           </div>
           <div className="coaching-panel__meta">
             {feedback.input_tokens + feedback.output_tokens} tokens &middot;{' '}
-            {Math.round(feedback.latency_ms)}ms
+            {feedback.latency_ms < 1000
+              ? `${Math.round(feedback.latency_ms)}ms`
+              : feedback.latency_ms < 60000
+                ? `${(feedback.latency_ms / 1000).toFixed(1)}s`
+                : `${Math.floor(feedback.latency_ms / 60000)}m ${Math.round((feedback.latency_ms % 60000) / 1000)}s`}
+            <button
+              type="button"
+              className="coaching-panel__regenerate-btn"
+              onClick={handleRegenerate}
+            >
+              Regenerate
+            </button>
           </div>
         </div>
       )}
