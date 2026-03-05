@@ -19,9 +19,10 @@ import { PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
 import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
-import CoachingFeedbackPanel from './CoachingFeedbackPanel';
 import CollapsibleSection from './CollapsibleSection';
-import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
+import { FeatureChartsSection } from './DetectionDetailsPanel';
+import MetricCard from './MetricCard';
+import { useMetricHistory } from '../hooks/useMetricHistory';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
 import { TourPlaybackControls } from './DemoTour/tourSteps';
@@ -121,15 +122,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const currentTimeRef = useRef(0);
 
   // Collapsible sidebar section state (persisted across sessions)
-  const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', false);
   const [chartsExpanded, setChartsExpanded] = usePersistedState(
     'sidebar:charts',
     true
-  );
-
-  const [coachingExpanded, setCoachingExpanded] = usePersistedState(
-    'sidebar:coaching',
-    false
   );
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -192,6 +187,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const { data: biomechanicsReport } = useServeBiomechanicsReport(
     currentServe?.id ?? null
   );
+
+  const metricHistory = useMetricHistory(biomechanicsReport?.player_id, isDemo);
 
   const phases = useMemo(
     () => biomechanicsReport?.phase_segmentation ?? [],
@@ -700,6 +697,22 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               )}
 
               <div className="analysis-dashboard__side-col">
+                {/* Metric Cards */}
+                {biomechanicsReport?.metrics && (
+                  <div className="analysis-dashboard__metric-cards">
+                    {biomechanicsReport.metrics.map((m) => (
+                      <MetricCard
+                        key={m.metric_name}
+                        metricName={m.metric_name}
+                        value={m.value}
+                        timestamp={m.timestamp}
+                        historyValues={metricHistory[m.metric_name] ?? []}
+                        onScrubTo={handleSeek}
+                      />
+                    ))}
+                  </div>
+                )}
+
                 {/* Feature Curves */}
                 {biomechanicsReport?.detection_meta && (
                   <div data-tour-step="feature-charts">
@@ -722,37 +735,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                       />
                     </CollapsibleSection>
                   </div>
-                )}
-
-                {/* Key Time Points — debug detail */}
-                {biomechanicsReport?.detection_meta && (
-                  <div>
-                    <CollapsibleSection
-                      title="Detection Details"
-                      expanded={ktpExpanded}
-                      onToggle={() => setKtpExpanded(!ktpExpanded)}
-                      variant="muted"
-                    >
-                      <KTPTable
-                        detectionMeta={biomechanicsReport.detection_meta}
-                        serveStart={currentServe!.start_timestamp}
-                        onSeek={handleSeek}
-                      />
-                    </CollapsibleSection>
-                  </div>
-                )}
-
-                {!isDemo && (
-                  <CollapsibleSection
-                    title="Coaching Feedback"
-                    expanded={coachingExpanded}
-                    onToggle={() => setCoachingExpanded(!coachingExpanded)}
-                  >
-                    <CoachingFeedbackPanel
-                      serveWindowId={currentServe?.id ?? null}
-                      isDemo={isDemo}
-                    />
-                  </CollapsibleSection>
                 )}
               </div>
             </>

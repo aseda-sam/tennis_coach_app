@@ -68,6 +68,7 @@ export interface ServeBiomechanicsReport {
   metrics: MetricValue[];
   analysis_version: string;
   detection_meta?: DetectionMeta | null;
+  player_id?: number | null;
   created_at: string;
   video_id?: number | null;
   video_filename?: string | null;

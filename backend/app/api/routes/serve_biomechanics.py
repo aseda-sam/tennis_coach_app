@@ -122,6 +122,7 @@ def _report_to_response(
         metrics=metrics,
         analysis_version=report.analysis_version,
         detection_meta=detection_meta,
+        player_id=report.player_id,
         created_at=report.created_at,
         video_id=video_id,
         video_filename=video_filename,

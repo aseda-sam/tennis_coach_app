@@ -71,6 +71,10 @@ class BiomechanicsReportResponse(BaseModel):
         default=None,
         description="KTP detection reasoning and feature curves (stats for nerds)",
     )
+    player_id: Optional[int] = Field(
+        default=None,
+        description="Player ID (for fetching metric history)",
+    )
     created_at: datetime = Field(description="Report creation time")
     video_id: Optional[int] = Field(
         default=None,

@@ -197,6 +197,13 @@
   gap: var(--spacing-lg);
 }
 
+.analysis-dashboard__metric-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-flow: dense;
+  gap: var(--spacing-sm);
+}
+
 /* Phase tab strip */
 .analysis-dashboard__phase-tabs {
   display: flex;
