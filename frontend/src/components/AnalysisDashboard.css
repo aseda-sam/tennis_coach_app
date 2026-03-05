@@ -200,7 +200,7 @@
 .analysis-dashboard__metric-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-
+  grid-auto-flow: dense;
   gap: var(--spacing-sm);
 }
 

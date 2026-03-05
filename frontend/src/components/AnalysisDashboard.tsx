@@ -12,6 +12,7 @@ import usePersistedState from '../hooks/usePersistedState';
 import { useServeBiomechanicsReport } from '../hooks/useServeBiomechanicsReport';
 import { useServePlayback } from '../hooks/useServePlayback';
 import { useServeProposals } from '../hooks/useServeProposals';
+import { useMetricHistory } from '../hooks/useMetricHistory';
 import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { useVideoUrl } from '../hooks/useVideoUrl';
@@ -186,6 +187,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const { data: biomechanicsReport } = useServeBiomechanicsReport(
     currentServe?.id ?? null
   );
+
+  const metricHistory = useMetricHistory(biomechanicsReport?.player_id, isDemo);
 
   const phases = useMemo(
     () => biomechanicsReport?.phase_segmentation ?? [],
@@ -697,14 +700,22 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 {/* Metric Cards */}
                 {biomechanicsReport?.metrics && (
                   <div className="analysis-dashboard__metric-cards">
-                    {biomechanicsReport.metrics
+                    {[...biomechanicsReport.metrics]
                       .filter((m) => VISIBLE_METRICS.has(m.metric_name))
+                      .sort((a, b) => {
+                        // Toss height first (tall card fills col 1)
+                        const tall = 'toss_peak_height';
+                        if (a.metric_name === tall) return -1;
+                        if (b.metric_name === tall) return 1;
+                        return 0;
+                      })
                       .map((m) => (
                         <MetricCard
                           key={m.metric_name}
                           metricName={m.metric_name}
                           value={m.value}
                           timestamp={m.timestamp}
+                          historyValues={metricHistory[m.metric_name] ?? []}
                           onScrubTo={handleSeek}
                           serveWindowId={currentServe?.id ?? null}
                         />
