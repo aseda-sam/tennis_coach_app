@@ -9,7 +9,14 @@ import {
 } from '../hooks/useVideos';
 import type { VideoFilters as VideoFiltersType } from '../services/api';
 import { VideoMetadata } from '../types/video';
-import { Trash2, Upload, Video, X } from 'lucide-react';
+import {
+  CircleDot,
+  PersonStanding,
+  Trash2,
+  Upload,
+  Video,
+  X,
+} from 'lucide-react';
 import LoadingIndicator from './LoadingIndicator';
 import VideoEditModal from './VideoEditModal';
 import VideoFiltersComponent from './VideoFilters';
@@ -43,7 +50,8 @@ const VideoList: React.FC<VideoListProps> = ({
   } = useVideos(filters);
 
   const videoIds = videos.map((v: VideoMetadata) => v.id);
-  const { isLoading: statusesLoading } = useVideoAnalysisStatuses(videoIds);
+  const { data: analysisStatuses, isLoading: statusesLoading } =
+    useVideoAnalysisStatuses(videoIds);
 
   const { data: playerProfile, isLoading: profileLoading } = usePlayerProfile();
 
@@ -220,6 +228,9 @@ const VideoList: React.FC<VideoListProps> = ({
         <div className="video-grid">
           {sortedVideos.map((video: VideoMetadata) => {
             const playerTag = getPlayerTag(video);
+            const status = analysisStatuses?.[video.id];
+            const hasPose = status?.analysis_types?.includes('pose_detection');
+            const hasBall = status?.has_ball_detection;
             return (
               <div
                 key={video.id}
@@ -278,6 +289,28 @@ const VideoList: React.FC<VideoListProps> = ({
 
                   {/* Action Buttons */}
                   <div className="video-card-actions">
+                    <div className="video-card-indicators">
+                      <span
+                        className={`indicator-icon ${hasPose ? 'indicator-done' : 'indicator-pending'}`}
+                        title={
+                          hasPose
+                            ? 'Pose estimation complete'
+                            : 'No pose estimation'
+                        }
+                      >
+                        <PersonStanding size={15} strokeWidth={2} />
+                      </span>
+                      <span
+                        className={`indicator-icon ${hasBall ? 'indicator-done' : 'indicator-pending'}`}
+                        title={
+                          hasBall
+                            ? 'Ball tracking complete'
+                            : 'No ball tracking'
+                        }
+                      >
+                        <CircleDot size={14} strokeWidth={2} />
+                      </span>
+                    </div>
                     <button
                       className="edit-card-btn"
                       onClick={(e) => {
