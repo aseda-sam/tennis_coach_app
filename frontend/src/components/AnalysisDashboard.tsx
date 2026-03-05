@@ -845,6 +845,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         onClose={() => setIsTrophyFilmstripOpen(false)}
         serveWindows={sortedServeWindows}
         videoFilename={videoFilename}
+        activeServeWindowId={currentServe?.id}
       />
     </div>
   );
