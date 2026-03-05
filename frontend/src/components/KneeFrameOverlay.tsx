@@ -20,7 +20,8 @@ const KneeFrameOverlay: React.FC<KneeFrameOverlayProps> = ({
 }) => {
   const { frameUrl, isLoading } = useServeWindowFrameAtTimestamp(
     serveWindowId,
-    timestamp
+    timestamp,
+    'lower_body'
   );
 
   if (isLoading) {

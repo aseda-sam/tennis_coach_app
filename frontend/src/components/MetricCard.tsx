@@ -1,29 +1,25 @@
 import React from 'react';
 import KneeAngleArc from './KneeAngleArc';
 import KneeFrameOverlay from './KneeFrameOverlay';
-import MetricDistributionStrip from './MetricDistributionStrip';
 import './MetricCard.css';
 
 const DISPLAY_NAMES: Record<string, string> = {
   knee_flexion_min_deg: 'Knee Bend',
   toss_peak_height: 'Toss Height',
-  toss_laterality: 'Toss Laterality',
-  toss_drop: 'Toss Drop',
 };
 
 const UNITS: Record<string, string> = {
   knee_flexion_min_deg: '°',
   toss_peak_height: '',
-  toss_laterality: '',
-  toss_drop: '',
 };
 
 const NULL_EXPLANATIONS: Record<string, string> = {
   knee_flexion_min_deg: 'Knee angle could not be measured',
   toss_peak_height: 'Ball toss was not detected',
-  toss_laterality: 'Requires behind-the-player camera angle',
-  toss_drop: 'Ball tracking too sparse to measure drop',
 };
+
+/** Metrics shown in the sidebar. Everything else from the API is hidden. */
+export const VISIBLE_METRICS = new Set(Object.keys(DISPLAY_NAMES));
 
 const TALL_METRICS = new Set(['toss_peak_height']);
 
@@ -31,7 +27,6 @@ interface MetricCardProps {
   metricName: string;
   value: number | null;
   timestamp?: number | null;
-  historyValues: number[];
   onScrubTo?: (timestamp: number) => void;
   serveWindowId?: number | null;
 }
@@ -40,7 +35,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
   metricName,
   value,
   timestamp,
-  historyValues,
   onScrubTo,
   serveWindowId,
 }) => {
@@ -49,7 +43,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
   const isNull = value == null;
   const isClickable = !isNull && timestamp != null && onScrubTo != null;
   const isTall = TALL_METRICS.has(metricName);
-  const hasStrip = !isNull && historyValues.length >= 3;
 
   const handleClick = () => {
     if (isClickable && timestamp != null && onScrubTo) {
@@ -65,7 +58,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
   const Tag = isClickable ? 'button' : 'div';
 
-  // Tall card: value at top, gauge fills remaining height
+  // Tall card: value at top, fills remaining height
   if (isTall) {
     return (
       <Tag
@@ -84,20 +77,11 @@ const MetricCard: React.FC<MetricCardProps> = ({
             {NULL_EXPLANATIONS[metricName] ?? 'Not available'}
           </p>
         )}
-        {hasStrip && (
-          <div className="metric-card__tall-gauge">
-            <MetricDistributionStrip
-              values={historyValues}
-              currentValue={value!}
-              orientation="vertical"
-            />
-          </div>
-        )}
       </Tag>
     );
   }
 
-  const showAngleArc = metricName === 'knee_flexion_min_deg' && !isNull;
+  const showFrame = metricName === 'knee_flexion_min_deg' && !isNull;
 
   // Standard card
   return (
@@ -108,7 +92,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
       title={isClickable ? `Scrub to ${displayName}` : undefined}
     >
       <p className="metric-card__label">{displayName}</p>
-      {showAngleArc ? (
+      {showFrame ? (
         <div className="metric-card__angle-row">
           <p className="metric-card__value">
             {formatValue(value)}
@@ -136,14 +120,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
         <p className="metric-card__null-text">
           {NULL_EXPLANATIONS[metricName] ?? 'Not available'}
         </p>
-      )}
-      {hasStrip && (
-        <div className="metric-card__strip">
-          <MetricDistributionStrip
-            values={historyValues}
-            currentValue={value!}
-          />
-        </div>
       )}
     </Tag>
   );

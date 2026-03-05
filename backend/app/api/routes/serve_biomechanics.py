@@ -174,6 +174,7 @@ async def get_serve_window_frame(
     timestamp: Optional[float] = Query(
         None, description="Absolute video timestamp in seconds"
     ),
+    crop: Optional[str] = Query(None, description="Crop profile, e.g. lower_body"),
     current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> Response:
@@ -195,8 +196,10 @@ async def get_serve_window_frame(
         require_video_access_or_public_demo(video, current_user)
 
         if timestamp is not None:
-            jpeg_bytes = extract_frame_at_timestamp(db, serve_window_id, timestamp)
-            etag = f'"{serve_window_id}-ts-{timestamp}"'
+            jpeg_bytes = extract_frame_at_timestamp(
+                db, serve_window_id, timestamp, crop_profile=crop
+            )
+            etag = f'"{serve_window_id}-ts-{timestamp}-{crop}"'
         else:
             jpeg_bytes = extract_ktp_frame(db, serve_window_id, ktp)  # type: ignore[arg-type]
             etag = f'"{serve_window_id}-{ktp}"'

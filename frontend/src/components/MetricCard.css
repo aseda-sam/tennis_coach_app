@@ -31,13 +31,6 @@
   flex-direction: column;
 }
 
-.metric-card__tall-gauge {
-  flex: 1;
-  min-height: 0;
-  width: 24px;
-  margin: 4px auto 0;
-}
-
 /* ── Standard elements ── */
 .metric-card__label {
   font-family: var(--font-sans, 'DM Sans', sans-serif);
@@ -82,8 +75,4 @@
 .metric-card__angle-arc {
   width: 56px;
   flex-shrink: 0;
-}
-
-.metric-card__strip {
-  margin-top: 10px;
 }

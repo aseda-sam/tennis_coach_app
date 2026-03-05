@@ -15,7 +15,6 @@ import {
   drawStickHud,
   drawStickSkeleton,
   drawTossHeightAnnotation,
-  drawTossLateralityAnnotation,
   normalizePose,
   normalizePoseFixed,
 } from '../utils/canvasDrawing';
@@ -203,19 +202,6 @@ export function useSkeletonAnimation({
             ballY: peakNorm._ball.y,
             shoulderY: peakNorm._shoulder_mid.y,
             canvasWidth: containerWidth,
-            canvasHeight: containerHeight,
-            value: metric.value,
-            opacity: 1,
-          });
-        }
-
-        if (metric.metric_name === 'toss_laterality') {
-          // Body center X from shoulder midpoint
-          drawTossLateralityAnnotation({
-            ctx,
-            ballX: peakNorm._ball.x,
-            bodyCenterX: peakNorm._shoulder_mid.x,
-            ballY: peakNorm._ball.y,
             canvasHeight: containerHeight,
             value: metric.value,
             opacity: 1,

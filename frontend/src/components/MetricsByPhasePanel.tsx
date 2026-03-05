@@ -4,7 +4,6 @@ import { MetricValue } from '../types/biomechanics';
 const METRIC_DISPLAY_NAMES: Record<string, string> = {
   knee_flexion_min_deg: 'Knee Flexion',
   toss_peak_height: 'Toss Peak Height',
-  toss_laterality: 'Toss Position',
 };
 
 function formatMetricValue(metric: MetricValue): string {

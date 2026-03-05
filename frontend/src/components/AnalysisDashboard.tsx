@@ -21,8 +21,7 @@ import AnalysisDashboardHeader from './AnalysisDashboardHeader';
 import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
 import CollapsibleSection from './CollapsibleSection';
 import { FeatureChartsSection } from './DetectionDetailsPanel';
-import MetricCard from './MetricCard';
-import { useMetricHistory } from '../hooks/useMetricHistory';
+import MetricCard, { VISIBLE_METRICS } from './MetricCard';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
 import { TourPlaybackControls } from './DemoTour/tourSteps';
@@ -187,8 +186,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const { data: biomechanicsReport } = useServeBiomechanicsReport(
     currentServe?.id ?? null
   );
-
-  const metricHistory = useMetricHistory(biomechanicsReport?.player_id, isDemo);
 
   const phases = useMemo(
     () => biomechanicsReport?.phase_segmentation ?? [],
@@ -701,6 +698,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                 {biomechanicsReport?.metrics && (
                   <div className="analysis-dashboard__metric-cards">
                     {[...biomechanicsReport.metrics]
+                      .filter((m) => VISIBLE_METRICS.has(m.metric_name))
                       .sort((a, b) => {
                         // Toss height first (tall card fills col 1)
                         const tall = 'toss_peak_height';
@@ -714,7 +712,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                           metricName={m.metric_name}
                           value={m.value}
                           timestamp={m.timestamp}
-                          historyValues={metricHistory[m.metric_name] ?? []}
                           onScrubTo={handleSeek}
                           serveWindowId={currentServe?.id ?? null}
                         />

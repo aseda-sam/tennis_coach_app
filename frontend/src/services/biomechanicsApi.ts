@@ -20,10 +20,12 @@ export const biomechanicsApi = {
 
   getFrameAtTimestamp: async (
     serveWindowId: number,
-    timestamp: number
+    timestamp: number,
+    crop?: string
   ): Promise<Blob> => {
     const authHeaders = await getAuthHeaders();
-    const url = `${API_BASE_URL}/serve-windows/${serveWindowId}/frame?timestamp=${timestamp}`;
+    let url = `${API_BASE_URL}/serve-windows/${serveWindowId}/frame?timestamp=${timestamp}`;
+    if (crop) url += `&crop=${encodeURIComponent(crop)}`;
     const response = await fetch(url, { headers: authHeaders });
     if (!response.ok) throw new Error(`Frame fetch failed: ${response.status}`);
     return response.blob();

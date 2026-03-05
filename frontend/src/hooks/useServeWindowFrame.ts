@@ -75,12 +75,13 @@ export function useServeWindowFrame(
  */
 export function useServeWindowFrameAtTimestamp(
   serveWindowId: number | null,
-  timestamp: number | null | undefined
+  timestamp: number | null | undefined,
+  crop?: string
 ): { frameUrl: string | null; isLoading: boolean } {
   const { data: blob, isLoading } = useQuery({
-    queryKey: ['serve-window-frame-ts', serveWindowId, timestamp],
+    queryKey: ['serve-window-frame-ts', serveWindowId, timestamp, crop],
     queryFn: () =>
-      biomechanicsApi.getFrameAtTimestamp(serveWindowId!, timestamp!),
+      biomechanicsApi.getFrameAtTimestamp(serveWindowId!, timestamp!, crop),
     enabled: serveWindowId != null && timestamp != null,
     staleTime: STALE_TIME,
   });
