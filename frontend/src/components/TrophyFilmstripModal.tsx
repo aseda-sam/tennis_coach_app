@@ -28,6 +28,7 @@ export interface TrophyFrameCellProps {
   label: string;
   method: string;
   confidence: number;
+  isActive?: boolean;
 }
 
 export const TrophyFrameCell: React.FC<TrophyFrameCellProps> = ({
@@ -35,11 +36,14 @@ export const TrophyFrameCell: React.FC<TrophyFrameCellProps> = ({
   label,
   method,
   confidence,
+  isActive,
 }) => {
   const { frameUrl, isLoading } = useServeWindowFrame(serveWindowId);
 
   return (
-    <div className="trophy-filmstrip__cell">
+    <div
+      className={`trophy-filmstrip__cell${isActive ? ' trophy-filmstrip__cell--active' : ''}`}
+    >
       <div className="trophy-filmstrip__frame">
         {isLoading ? (
           <div className="trophy-filmstrip__cell-loading">
@@ -68,6 +72,7 @@ interface TrophyFilmstripModalProps {
   onClose: () => void;
   serveWindows: ServeWindow[];
   videoFilename: string;
+  activeServeWindowId?: number;
 }
 
 const TrophyFilmstripModal: React.FC<TrophyFilmstripModalProps> = ({
@@ -75,6 +80,7 @@ const TrophyFilmstripModal: React.FC<TrophyFilmstripModalProps> = ({
   onClose,
   serveWindows,
   videoFilename,
+  activeServeWindowId,
 }) => {
   const { trophyData, isLoading } = useVideoTrophyFrames(serveWindows, isOpen);
 
@@ -133,6 +139,7 @@ const TrophyFilmstripModal: React.FC<TrophyFilmstripModalProps> = ({
                   label={`Serve ${td.serveIndex + 1}`}
                   method={td.method}
                   confidence={td.confidence}
+                  isActive={td.serveWindowId === activeServeWindowId}
                 />
               ))}
             </div>
