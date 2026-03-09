@@ -321,10 +321,11 @@ class TestVideoAPI:
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_optional_user] = mock_get_optional_user
 
-        with TestClient(app) as test_client:
-            yield test_client
-
-        app.dependency_overrides.clear()
+        try:
+            with TestClient(app) as test_client:
+                yield test_client
+        finally:
+            app.dependency_overrides.clear()
 
     def test_get_demo_video_public_access(
         self,

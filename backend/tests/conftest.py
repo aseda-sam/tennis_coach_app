@@ -213,11 +213,12 @@ def client(db_session: Generator) -> Generator[TestClient, None, None]:
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = mock_get_current_user
 
-    # Ensure PROFILE=local for this test client
-    with patch.object(settings, "PROFILE", "local"), TestClient(app) as test_client:
-        yield test_client
-
-    app.dependency_overrides.clear()
+    try:
+        # Ensure PROFILE=local for this test client
+        with patch.object(settings, "PROFILE", "local"), TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.fixture

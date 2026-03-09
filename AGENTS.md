@@ -109,6 +109,8 @@ docs/
 - **Contract tests** for API endpoints (status codes + response shape). If you change a schema, update tests.
 - **Unit tests** for service/business logic with mocked dependencies.
 - **Mock externals** (Redis, storage, external APIs) unless explicitly integration testing.
+- **Contract test fixtures must patch the lifespan.** Any `TestClient(app)` fixture with a mocked DB (`MagicMock`) must also `patch("app.main.create_tables_if_not_exists")` and `patch("app.main.start_rq_worker", return_value=None)` — otherwise the lifespan connects to real Postgres/Redis and the fixture lies about needing "no real DB."
+- **Clean up `dependency_overrides` in `finally`.** Always wrap `yield client` / `overrides.clear()` in `try/finally` so overrides don't leak on setup failure.
 
 ## Code style
 
