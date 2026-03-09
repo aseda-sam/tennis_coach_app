@@ -282,10 +282,10 @@ class TestGetServeWindowFrame:
         )
         assert response.status_code == 404
 
-    def test_missing_ktp_param_returns_422(self, biomechanics_client):
-        """ktp query param is required."""
+    def test_missing_both_params_returns_400(self, biomechanics_client):
+        """Either ktp or timestamp is required; omitting both returns 400."""
         response = biomechanics_client.get("/v0/serve-windows/1/frame")
-        assert response.status_code == 422
+        assert response.status_code == 400
 
 
 def _make_mock_report_with_video(serve_window_id: int = 1) -> ServeBiomechanicsReport:
