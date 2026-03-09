@@ -30,21 +30,12 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
         {
             "phases": [
                 {
-                    "phase": "toss",
+                    "phase": "toss_and_load",
                     "start_timestamp": 0.0,
-                    "end_timestamp": 0.7,
-                    "start_frame": 0,
-                    "end_frame": 21,
-                    "confidence": 0.8,
-                    "detected": True,
-                },
-                {
-                    "phase": "trophy_load",
-                    "start_timestamp": 0.7,
                     "end_timestamp": 0.97,
-                    "start_frame": 21,
+                    "start_frame": 0,
                     "end_frame": 29,
-                    "confidence": 0.7,
+                    "confidence": 0.8,
                     "detected": True,
                 },
                 {
@@ -84,9 +75,9 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
                     "method": "user_tagged",
                 },
             ],
-            "analysis_version": "phase-seg-v4",
-            "total_phases_detected": 4,
-            "total_phases_possible": 4,
+            "analysis_version": "phase-seg-v5",
+            "total_phases_detected": 3,
+            "total_phases_possible": 3,
             "detection_meta": {
                 "ktps": {
                     "ball_release": {
@@ -120,7 +111,7 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
         }
     )
     report.metrics = {
-        "toss": {
+        "toss_and_load": {
             "knee_flexion_min_deg": 95.0,
             "toss_peak_height": 1.8,
             "toss_laterality": 0.15,

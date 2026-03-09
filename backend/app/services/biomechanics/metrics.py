@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 # Metadata for API: unit and phase per metric (no thresholds/scoring).
 # Only metrics listed here appear in the API response (metrics_to_flat_list).
 METRIC_META: Dict[str, Dict[str, str]] = {
-    "knee_flexion_min_deg": {"unit": "deg", "phase": "toss"},
-    "toss_peak_height": {"unit": "normalized", "phase": "toss"},
-    "toss_laterality": {"unit": "normalized", "phase": "toss"},
-    "toss_drop": {"unit": "normalized", "phase": "toss"},
+    "knee_flexion_min_deg": {"unit": "deg", "phase": "toss_and_load"},
+    "toss_peak_height": {"unit": "normalized", "phase": "toss_and_load"},
+    "toss_laterality": {"unit": "normalized", "phase": "toss_and_load"},
+    "toss_drop": {"unit": "normalized", "phase": "toss_and_load"},
 }
 
 

@@ -27,10 +27,10 @@ logger = logging.getLogger(__name__)
 # Metrics to aggregate and their JSONB paths.
 # Each entry: (metric_name, jsonb_phase_key, jsonb_metric_key)
 _METRIC_PATHS = [
-    ("knee_flexion_min_deg", "toss", "knee_flexion_min_deg"),
-    ("toss_peak_height", "toss", "toss_peak_height"),
-    ("toss_laterality", "toss", "toss_laterality"),
-    ("toss_drop", "toss", "toss_drop"),
+    ("knee_flexion_min_deg", "toss_and_load", "knee_flexion_min_deg"),
+    ("toss_peak_height", "toss_and_load", "toss_peak_height"),
+    ("toss_laterality", "toss_and_load", "toss_laterality"),
+    ("toss_drop", "toss_and_load", "toss_drop"),
 ]
 
 

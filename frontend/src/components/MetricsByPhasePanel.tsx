@@ -33,16 +33,14 @@ function groupMetricsByPhase(
 }
 
 const PHASE_ORDER: (string | null)[] = [
-  'toss',
-  'trophy_load',
+  'toss_and_load',
   'acceleration',
   'follow_through',
   null,
 ];
 
 const PHASE_LABEL_MAP: Record<string, string> = {
-  toss: 'Setup & Toss',
-  trophy_load: 'Trophy & Load',
+  toss_and_load: 'Toss & Load',
   acceleration: 'Acceleration',
   follow_through: 'Follow-Through',
 };
