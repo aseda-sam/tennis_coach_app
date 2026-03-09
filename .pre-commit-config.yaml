@@ -64,9 +64,18 @@ repos:
       # --- pre-push: backend tests ----
       - id: backend-pytest
         name: "backend · pytest (pre-push)"
-        entry: bash -c 'cd backend && .venv/bin/python -m pytest -x -q --tb=short'
+        entry: bash -c 'cd backend && uv run pytest -x -q --tb=short'
         language: system
         files: ^backend/
+        pass_filenames: false
+        stages: [pre-push]
+
+      # --- pre-push: backend type checking ----
+      - id: backend-pyright
+        name: "backend · pyright (pre-push)"
+        entry: bash -c 'cd backend && uv run pyright app/'
+        language: system
+        files: ^backend/app/
         pass_filenames: false
         stages: [pre-push]
 

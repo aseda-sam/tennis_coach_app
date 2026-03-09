@@ -53,7 +53,7 @@ def calculate_elbow_angle(
             wrist = pose_landmarks.get("left_wrist")
 
         # Check if all required keypoints are available
-        if not all([shoulder, elbow, wrist]):
+        if shoulder is None or elbow is None or wrist is None:
             logger.warning(
                 f"Insufficient keypoints for {contact_hand} arm elbow angle calculation"
             )
@@ -136,7 +136,7 @@ def calculate_knee_angle(pose_landmarks: Dict, side: str) -> Optional[float]:
             ankle = pose_landmarks.get("left_ankle")
 
         # Check if all required keypoints are available
-        if not all([hip, knee, ankle]):
+        if hip is None or knee is None or ankle is None:
             logger.debug(
                 f"Insufficient keypoints for {side} leg knee angle calculation"
             )
@@ -185,8 +185,13 @@ def calculate_knee_hip_ratio(
         left_shoulder = pose_landmarks.get("left_shoulder")
         right_shoulder = pose_landmarks.get("right_shoulder")
 
-        if not all(
-            [left_hip, right_hip, left_knee, right_knee, left_shoulder, right_shoulder]
+        if (
+            left_hip is None
+            or right_hip is None
+            or left_knee is None
+            or right_knee is None
+            or left_shoulder is None
+            or right_shoulder is None
         ):
             logger.debug("Insufficient keypoints for knee-hip ratio calculation")
             return None

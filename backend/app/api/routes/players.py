@@ -24,18 +24,7 @@ router = APIRouter(tags=["players"])
 
 def _create_player_info(db: Session, player: Player) -> PlayerInfo:
     """Convert Player model to PlayerInfo schema."""
-    return PlayerInfo(
-        id=player.id,
-        name=player.name,
-        dominant_hand=player.dominant_hand,
-        backhand_style=player.backhand_style,
-        height_cm=player.height_cm,
-        age_group=player.age_group,
-        gender=player.gender,
-        notes=player.notes,
-        created_at=player.created_at,
-        updated_at=player.updated_at,
-    )
+    return PlayerInfo.model_validate(player)
 
 
 @router.post("/", response_model=PlayerInfo, status_code=status.HTTP_201_CREATED)

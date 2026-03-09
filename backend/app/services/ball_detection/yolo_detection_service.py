@@ -10,6 +10,9 @@ Internal flow per window:
   5. After all windows: apply TrajectorySmoother (spline interpolation for short gaps)
 """
 
+# pyright: reportMissingImports=false, reportPrivateImportUsage=false, reportCallIssue=false, reportOptionalOperand=false, reportArgumentType=false
+# supervision and ultralytics are optional ML deps (installed in worker only).
+
 from __future__ import annotations
 
 import logging

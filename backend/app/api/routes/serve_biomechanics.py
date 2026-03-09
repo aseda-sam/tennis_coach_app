@@ -77,9 +77,8 @@ def _report_to_response(
             phase_segmentation.append(
                 PhaseWindowResponse(
                     phase=phase_name,
-                    phase_label=PHASE_LABEL_MAP.get(
-                        phase_name, phase_name.replace("_", " ").title()
-                    ),
+                    phase_label=PHASE_LABEL_MAP.get(phase_name)
+                    or phase_name.replace("_", " ").title(),
                     start_timestamp=pw["start_timestamp"],
                     end_timestamp=pw["end_timestamp"],
                     confidence=pw.get("confidence", 0.0),
@@ -91,9 +90,8 @@ def _report_to_response(
             moments.append(
                 MomentMarkerResponse(
                     moment=moment_name,
-                    moment_label=MOMENT_LABEL_MAP.get(
-                        moment_name, moment_name.replace("_", " ").title()
-                    ),
+                    moment_label=MOMENT_LABEL_MAP.get(moment_name)
+                    or moment_name.replace("_", " ").title(),
                     timestamp=mm.get("timestamp"),
                     frame=mm.get("frame"),
                     confidence=mm.get("confidence", 0.0),

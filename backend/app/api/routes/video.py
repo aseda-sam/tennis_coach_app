@@ -666,10 +666,10 @@ async def upload_video(
 
         file_content = file.file.read()
 
-        db_video, metadata = video_service.handle_video_upload(
+        db_video, _metadata = video_service.handle_video_upload(
             db=db,
             file_content=file_content,
-            filename=file.filename,
+            filename=file.filename or "upload",
             file_size=file_size,
             content_type=file.content_type,
             is_demo=is_demo,
@@ -697,8 +697,6 @@ async def upload_video(
             file_size=db_video.file_size,
             status="uploaded",
             message="Video uploaded successfully",
-            metadata=metadata,
-            quality_metrics=None,  # Video quality assessment removed for MVP
         )
     except (OSError, ValueError) as e:
         log_and_raise_error(

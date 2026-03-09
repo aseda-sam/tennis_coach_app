@@ -88,6 +88,7 @@ class PoseDetectionService:
         Returns:
             Path to model file
         """
+        import urllib.error
         import urllib.request
         from pathlib import Path
 
@@ -136,7 +137,9 @@ class PoseDetectionService:
         return self._detect_pose_in_frame_with_detector(frame, self.pose_detector)
 
     def _detect_pose_in_frame_with_detector(
-        self, frame: np.ndarray, detector: "PoseLandmarker"
+        self,
+        frame: np.ndarray,
+        detector: "PoseLandmarker",  # pyright: ignore[reportInvalidTypeForm]
     ) -> Optional[Dict[str, List[float]]]:
         """
         Detect human pose in a single frame using specified detector.
@@ -192,7 +195,7 @@ class PoseDetectionService:
         detection_threshold: Optional[float] = None,
         max_frames: Optional[int] = None,
         mode: str = "full",  # "scout" or "full"
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Analyze a video file for pose detection with streaming frame processing.
 
@@ -461,8 +464,10 @@ class PoseDetectionService:
 
         # Create a mapping of frame_index -> pose_data for all frames
         # Initialize all frames as None
-        all_frames_pose_data = [None] * total_video_frames
-        all_frames_confidence = [0.0] * total_video_frames
+        all_frames_pose_data: list[Optional[Dict[str, Any]]] = [
+            None
+        ] * total_video_frames
+        all_frames_confidence: list[float] = [0.0] * total_video_frames
 
         try:
             # Process each window
@@ -629,7 +634,7 @@ class PoseDetectionService:
         return merged
 
     def save_detection_results(
-        self, db: Session, video_id: int, detection_results: Dict[str, any]
+        self, db: Session, video_id: int, detection_results: Dict[str, Any]
     ) -> PoseDetection:
         """
         Save pose detection results to database.

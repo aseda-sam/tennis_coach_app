@@ -217,7 +217,8 @@ def generate_coaching_feedback(
     except anthropic.APIError as e:
         raise RuntimeError(f"Coaching LLM call failed: {e}") from e
 
-    output_text = response.content[0].text
+    content_block = response.content[0]
+    output_text = content_block.text  # pyright: ignore[reportAttributeAccessIssue]
     input_tokens = response.usage.input_tokens
     output_tokens = response.usage.output_tokens
 

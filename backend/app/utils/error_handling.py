@@ -172,7 +172,7 @@ def handle_service_error(
 
 def log_and_raise_error(
     error: Exception, operation: str, context: Optional[Dict[str, Any]] = None
-) -> None:
+) -> NoReturn:
     """Log error and raise appropriate API error."""
 
     logger.error(

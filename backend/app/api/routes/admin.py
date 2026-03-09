@@ -277,7 +277,7 @@ async def upload_video_for_user(
         db_video, metadata = video_service.handle_video_upload(
             db=db,
             file_content=file_content,
-            filename=file.filename,
+            filename=file.filename or "upload",
             file_size=file_size,
             content_type=file.content_type,
             is_demo=is_demo,
@@ -300,7 +300,6 @@ async def upload_video_for_user(
             status="uploaded",
             message="Video uploaded successfully",
             metadata=VideoMetadata(**metadata) if metadata else None,
-            quality_metrics=None,
         )
     except ValueError as e:
         raise HTTPException(

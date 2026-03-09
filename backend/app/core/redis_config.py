@@ -55,7 +55,7 @@ class InstrumentedRedis(Redis):
     """Redis client with lightweight command metrics logging."""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # pyright: ignore[reportArgumentType]
         self._metrics_enabled = os.getenv("REDIS_COMMAND_METRICS", "").lower() in (
             "1",
             "true",
@@ -93,7 +93,7 @@ class InstrumentedRedis(Redis):
                 )
                 self._last_log_time = now
                 self._command_counts.clear()
-        return super().execute_command(*args, **options)
+        return super().execute_command(*args, **options)  # pyright: ignore[reportArgumentType]
 
 
 def _safe_int(value: str, default: int) -> int:

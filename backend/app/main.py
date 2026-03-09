@@ -5,6 +5,7 @@ import os
 import subprocess
 import time
 import uuid
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Callable, Optional
@@ -145,7 +146,7 @@ def start_rq_worker() -> Optional[subprocess.Popen]:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> None:
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan manager."""
     # Startup
     logger.info("=" * 60)
@@ -220,7 +221,7 @@ app = FastAPI(
 
 # Rate limiting
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # pyright: ignore[reportArgumentType]
 
 # Add CORS middleware
 app.add_middleware(
@@ -275,9 +276,9 @@ async def add_process_time_header(request: Request, call_next: Callable) -> Requ
 
 
 # Register exception handlers
-app.add_exception_handler(APIError, api_error_handler)
-app.add_exception_handler(ValueError, validation_error_handler)
-app.add_exception_handler(Exception, general_error_handler)
+app.add_exception_handler(APIError, api_error_handler)  # pyright: ignore[reportArgumentType]
+app.add_exception_handler(ValueError, validation_error_handler)  # pyright: ignore[reportArgumentType]
+app.add_exception_handler(Exception, general_error_handler)  # pyright: ignore[reportArgumentType]
 
 
 # Include API routes with versioning

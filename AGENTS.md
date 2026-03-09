@@ -28,9 +28,11 @@ cd frontend && npm run lint
 cd frontend && npm run format
 
 # Backend dependency management (uses uv, not pip)
-cd backend && uv pip install -e ".[dev]"   # install/sync all deps
-cd backend && uv pip install <package>      # add a package to the venv
-# After adding a package, also add it to pyproject.toml dependencies
+cd backend && uv sync --extra dev           # install/sync all deps
+cd backend && uv add <package>              # add a package
+
+# Backend type checking
+cd backend && uv run pyright app/
 ```
 
 - Frontend: http://localhost:3000
@@ -110,7 +112,7 @@ docs/
 
 ## Code style
 
-- **Python:** Type hints required. `ruff` for formatting/linting. Pre-commit hook runs ruff automatically. **`uv`** for package management (not pip). Pydantic v2: use `ConfigDict(from_attributes=True)` for ORM schemas, `model_validate()` not `from_orm()`. Parameterize log calls (`logger.info("x=%s", x)`), never f-strings in log calls.
+- **Python:** Type hints required. `ruff` for formatting/linting. `pyright` (basic mode) for type checking — runs on push. Pre-commit hook runs ruff automatically. **`uv`** for package management (not pip); use `uv sync` / `uv add` / `uv run`. Pydantic v2: use `ConfigDict(from_attributes=True)` for ORM schemas, `model_validate()` not `from_orm()`. Parameterize log calls (`logger.info("x=%s", x)`), never f-strings in log calls.
 - **React:** Use React Query for data fetching. Design tokens for styling (see `frontend/src/design-tokens.css`). Avoid `any` in TypeScript.
 - **General:** KISS, DRY, YAGNI. No speculative abstractions.
 
@@ -139,6 +141,7 @@ A pre-commit hook runs automatically on every `git commit`. If it fails, the com
 | `frontend-eslint`         | commit   | ESLint on `.ts/.tsx` files                     | No — run `cd frontend && npm run lint:fix` |
 | `frontend-prettier`       | commit   | Checks formatting of `.ts/.tsx/.css`           | No — run `cd frontend && npm run format`   |
 | `backend-pytest`          | **push** | Runs backend test suite                        | No — fix failing tests                     |
+| `backend-pyright`         | **push** | Runs pyright type checker on backend           | No — fix type errors                       |
 | `frontend-typecheck`      | **push** | TypeScript `tsc --noEmit`                      | No — fix type errors                       |
 | `mermaid-validate`        | **push** | Validates Mermaid diagrams in `docs/diagrams/` | No — fix broken diagrams                   |
 

@@ -18,6 +18,7 @@ from app.services import player_service
 from app.services.storage_service import storage_service
 from app.utils.error_handling import handle_file_error
 from app.utils.file_validation import (
+    VideoMetadataDict,
     ensure_unique_filename,
     get_safe_filename,
     validate_video_file,
@@ -103,7 +104,7 @@ def _create_temp_file_for_processing(file_content: bytes, filename: str) -> Path
 
 def extract_video_metadata(
     video_path: Path,
-) -> dict[str, Optional[float | int | datetime]]:
+) -> VideoMetadataDict:
     """Extract metadata from video file using OpenCV and ffprobe."""
     try:
         cap = cv2.VideoCapture(str(video_path))
@@ -180,7 +181,7 @@ def handle_video_upload(
     camera_angle: Optional[str],
     recorded_at: Optional[datetime],
     client_recorded_at: Optional[datetime] = None,
-) -> tuple[Video, dict[str, Optional[float | int | datetime]]]:
+) -> tuple[Video, VideoMetadataDict]:
     """Handle common upload flow and create video record."""
     if not filename:
         raise handle_file_error("invalid", "", "No file provided")
@@ -652,7 +653,7 @@ def get_video_analysis_status(db: Session, video_id: int) -> dict:
         "analysis_types": analysis_types,
         "has_ball_detection": has_ball_detection,
         "ball_detection_rate": ball_detection.detection_rate
-        if has_ball_detection
+        if ball_detection and ball_detection.status == "completed"
         else None,
         "ball_detection_status": ball_detection.status if ball_detection else None,
     }
@@ -738,7 +739,9 @@ def get_bulk_analysis_status(
                 "has_analysis": has_analysis,
                 "analysis_types": analysis_types,
                 "has_ball_detection": has_ball,
-                "ball_detection_rate": ball_det.detection_rate if has_ball else None,
+                "ball_detection_rate": ball_det.detection_rate
+                if ball_det and ball_det.status == "completed"
+                else None,
                 "ball_detection_status": ball_det.status if ball_det else None,
             }
         )
