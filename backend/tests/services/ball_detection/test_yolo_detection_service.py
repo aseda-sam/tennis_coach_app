@@ -78,6 +78,9 @@ class _MockDetections:
         self.class_id = class_id
         self.tracker_id = tracker_id
 
+    def __len__(self) -> int:
+        return len(self.xyxy)
+
     def __getitem__(self, mask):
         return _MockDetections(
             xyxy=self.xyxy[mask],

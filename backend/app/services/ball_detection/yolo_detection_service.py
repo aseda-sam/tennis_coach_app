@@ -247,6 +247,8 @@ class YoloBallDetectionService:
             # ByteTrack tracker — fresh instance per window
             tracker = sv.ByteTrack()
             tracked_frames: List[tuple] = []
+            # Also store raw filtered detections per frame for fallback
+            raw_filtered: List[tuple] = []
 
             cap = cv2.VideoCapture(str(video_path))
             if not cap.isOpened():
@@ -277,6 +279,7 @@ class YoloBallDetectionService:
                 )
                 detections = detections[mask]
 
+                raw_filtered.append((idx, timestamp_ms, detections))
                 tracked = tracker.update_with_detections(detections)
                 tracked_frames.append((idx, timestamp_ms, tracked))
 
@@ -288,15 +291,70 @@ class YoloBallDetectionService:
             # Select the ball track: highest peak displacement
             ball_track_id = _select_ball_track(tracked_frames)
 
-            # Build output dicts from the selected track
-            for fidx, ts, tracked in tracked_frames:
-                if ball_track_id is not None and tracked.tracker_id is not None:
-                    track_mask = tracked.tracker_id == ball_track_id
-                    if track_mask.any():
-                        bbox = tracked.xyxy[track_mask][0]
+            # Count how many YOLO-detected frames ByteTrack kept
+            yolo_detected = sum(1 for _, _, d in raw_filtered if len(d) > 0)
+            bt_kept = 0
+            if ball_track_id is not None:
+                bt_kept = sum(
+                    1
+                    for _, _, t in tracked_frames
+                    if t.tracker_id is not None and ball_track_id in t.tracker_id
+                )
+
+            # If ByteTrack retains < 25% of YOLO detections, it's losing
+            # too many frames (common with low-res / intermittent detections).
+            # Fall back to using the best raw YOLO detection per frame.
+            use_bytetrack = yolo_detected > 0 and bt_kept / yolo_detected >= 0.25
+            if not use_bytetrack and yolo_detected > 0:
+                self._logger.info(
+                    "ByteTrack retained %d/%d YOLO detections (%.0f%%), "
+                    "falling back to raw YOLO detections",
+                    bt_kept,
+                    yolo_detected,
+                    bt_kept / yolo_detected * 100,
+                )
+
+            # Build output dicts
+            if use_bytetrack:
+                for fidx, ts, tracked in tracked_frames:
+                    if ball_track_id is not None and tracked.tracker_id is not None:
+                        track_mask = tracked.tracker_id == ball_track_id
+                        if track_mask.any():
+                            bbox = tracked.xyxy[track_mask][0]
+                            cx = float((bbox[0] + bbox[2]) / 2.0)
+                            cy = float((bbox[1] + bbox[3]) / 2.0)
+                            conf = float(tracked.confidence[track_mask][0])
+                            raw_detections.append(
+                                {
+                                    "frame_index": fidx,
+                                    "timestamp_ms": ts,
+                                    "ball_x": cx,
+                                    "ball_y": cy,
+                                    "confidence": conf,
+                                    "interpolated": False,
+                                }
+                            )
+                            continue
+
+                    raw_detections.append(
+                        {
+                            "frame_index": fidx,
+                            "timestamp_ms": ts,
+                            "ball_x": None,
+                            "ball_y": None,
+                            "confidence": None,
+                            "interpolated": False,
+                        }
+                    )
+            else:
+                # Fallback: best YOLO detection per frame (highest confidence)
+                for fidx, ts, dets in raw_filtered:
+                    if len(dets) > 0:
+                        best = int(dets.confidence.argmax())
+                        bbox = dets.xyxy[best]
                         cx = float((bbox[0] + bbox[2]) / 2.0)
                         cy = float((bbox[1] + bbox[3]) / 2.0)
-                        conf = float(tracked.confidence[track_mask][0])
+                        conf = float(dets.confidence[best])
                         raw_detections.append(
                             {
                                 "frame_index": fidx,
@@ -307,18 +365,17 @@ class YoloBallDetectionService:
                                 "interpolated": False,
                             }
                         )
-                        continue
-
-                raw_detections.append(
-                    {
-                        "frame_index": fidx,
-                        "timestamp_ms": ts,
-                        "ball_x": None,
-                        "ball_y": None,
-                        "confidence": None,
-                        "interpolated": False,
-                    }
-                )
+                    else:
+                        raw_detections.append(
+                            {
+                                "frame_index": fidx,
+                                "timestamp_ms": ts,
+                                "ball_x": None,
+                                "ball_y": None,
+                                "confidence": None,
+                                "interpolated": False,
+                            }
+                        )
 
         # Spline interpolation: fill short gaps where YOLO missed the ball.
         # Relaxed params: YOLO detects the ball in fewer frames but with high
