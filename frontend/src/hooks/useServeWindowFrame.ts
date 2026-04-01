@@ -1,51 +1,32 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { biomechanicsApi } from '../services/biomechanicsApi';
 
 const STALE_TIME = 5 * 60 * 1000;
 
 /**
- * Create an object URL from a blob, revoking the previous one.
- * Returns a stable URL that updates only when the blob identity changes.
+ * Create an object URL from a blob and revoke it on cleanup.
+ *
+ * Uses useEffect (not useMemo) so that React StrictMode's simulated
+ * unmount+remount cycle correctly re-creates the URL in the second setup
+ * call. With useMemo, a cache-hit blob (same reference) would not re-run
+ * the factory after StrictMode revoked the URL, leaving a dead URL in the
+ * img src on every second open of a modal.
  */
 function useBlobUrl(blob: Blob | null | undefined): string | null {
-  const urlRef = useRef<string | null>(null);
-  const blobRef = useRef<Blob | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
 
-  // Only create a new URL when we get a genuinely new blob
-  const url = useMemo(() => {
+  useEffect(() => {
     if (!blob) {
-      if (urlRef.current) {
-        URL.revokeObjectURL(urlRef.current);
-        urlRef.current = null;
-        blobRef.current = null;
-      }
-      return null;
-    }
-    // Same blob object — reuse existing URL
-    if (blob === blobRef.current && urlRef.current) {
-      return urlRef.current;
-    }
-    // New blob — revoke old, create new
-    if (urlRef.current) {
-      URL.revokeObjectURL(urlRef.current);
+      setUrl(null);
+      return;
     }
     const newUrl = URL.createObjectURL(blob);
-    urlRef.current = newUrl;
-    blobRef.current = blob;
-    return newUrl;
-  }, [blob]);
-
-  // Revoke on unmount
-  useEffect(() => {
+    setUrl(newUrl);
     return () => {
-      if (urlRef.current) {
-        URL.revokeObjectURL(urlRef.current);
-        urlRef.current = null;
-        blobRef.current = null;
-      }
+      URL.revokeObjectURL(newUrl);
     };
-  }, []);
+  }, [blob]);
 
   return url;
 }
