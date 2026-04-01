@@ -147,21 +147,28 @@ const MetricCard: React.FC<MetricCardProps> = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   const formatValue = (v: number) => {
     if (Math.abs(v) >= 100) return v.toFixed(0);
     if (Math.abs(v) >= 10) return v.toFixed(1);
     return v.toFixed(2);
   };
 
-  const Tag = isClickable ? 'button' : 'div';
-
   // Tall card: value at top, vertical gauge fills remaining height
   if (isTall) {
     return (
-      <Tag
+      <div
         className={`metric-card metric-card--tall${isNull ? ' metric-card--null' : ''}${isClickable ? ' metric-card--clickable' : ''}`}
         onClick={isClickable ? handleClick : undefined}
-        type={isClickable ? 'button' : undefined}
+        role={isClickable ? 'button' : undefined}
+        tabIndex={isClickable ? 0 : undefined}
+        onKeyDown={isClickable ? handleKeyDown : undefined}
         title={isClickable ? `Scrub to ${displayName}` : undefined}
       >
         <div className="metric-card__header">
@@ -191,7 +198,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
             />
           </div>
         )}
-      </Tag>
+      </div>
     );
   }
 
@@ -199,10 +206,12 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
   // Standard card
   return (
-    <Tag
+    <div
       className={`metric-card${isNull ? ' metric-card--null' : ''}${isClickable ? ' metric-card--clickable' : ''}`}
       onClick={isClickable ? handleClick : undefined}
-      type={isClickable ? 'button' : undefined}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={isClickable ? handleKeyDown : undefined}
       title={isClickable ? `Scrub to ${displayName}` : undefined}
     >
       <div className="metric-card__header">
@@ -232,7 +241,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
           />
         </div>
       )}
-    </Tag>
+    </div>
   );
 };
 
