@@ -111,6 +111,8 @@ docs/
 - **Mock externals** (Redis, storage, external APIs) unless explicitly integration testing.
 - **Contract test fixtures must patch the lifespan.** Any `TestClient(app)` fixture with a mocked DB (`MagicMock`) must also `patch("app.main.create_tables_if_not_exists")` and `patch("app.main.start_rq_worker", return_value=None)` — otherwise the lifespan connects to real Postgres/Redis and the fixture lies about needing "no real DB."
 - **Clean up `dependency_overrides` in `finally`.** Always wrap `yield client` / `overrides.clear()` in `try/finally` so overrides don't leak on setup failure.
+- **E2E tests** live in `frontend/e2e/` and use Playwright (`cd frontend && npm run test:e2e`). The app must be running (`docker compose up`) before running them. Scope E2E tests to flows that are high-risk to break silently: the demo page (unauthenticated), the analysis dashboard, and the coaching panel. Don't add E2E tests for logic already covered by Vitest unit tests.
+- **Playwright MCP** is configured in `.mcp.json` and enabled in `.claude/settings.json`. This gives Claude live browser tools (`browser_navigate`, `browser_click`, `browser_snapshot`, etc.) to inspect the running app interactively — useful for reproducing UI bugs without writing a test first.
 
 ## Code style
 
