@@ -66,6 +66,7 @@ docs/private/
 .claude/
 CLAUDE.md
 /AGENTS.local.md
+.playwright-mcp/
 
 # Ruff
 .ruff_cache/
