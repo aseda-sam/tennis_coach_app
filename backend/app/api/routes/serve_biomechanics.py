@@ -108,11 +108,13 @@ def _report_to_response(
 
     video_id = None
     video_filename = None
+    video_recorded_at = None
     if include_video:
         sw = report.serve_window
         if sw and sw.video:
             video_id = sw.video.id
             video_filename = sw.video.filename
+            video_recorded_at = sw.video.recorded_at
 
     return BiomechanicsReportResponse(
         id=report.id,
@@ -126,6 +128,7 @@ def _report_to_response(
         created_at=report.created_at,
         video_id=video_id,
         video_filename=video_filename,
+        video_recorded_at=video_recorded_at,
     )
 
 

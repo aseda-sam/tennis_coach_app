@@ -1,0 +1,65 @@
+.toss-drop-progress {
+  padding: 8px 0 4px;
+}
+
+.toss-drop-progress__legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin: 0 0 10px;
+  flex-wrap: wrap;
+}
+
+.toss-drop-progress__legend-above,
+.toss-drop-progress__legend-below {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.toss-drop-progress__legend-above {
+  background: #d4784a;
+}
+
+.toss-drop-progress__legend-below {
+  background: var(--color-primary);
+}
+
+.toss-drop-progress__legend-mean {
+  display: inline-block;
+  width: 12px;
+  height: 1px;
+  border-top: 1px dashed var(--color-text-muted);
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.toss-drop-progress__sessions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.toss-drop-progress__session {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.toss-drop-progress__session-label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.toss-drop-progress__chart {
+  display: block;
+  overflow: visible;
+}

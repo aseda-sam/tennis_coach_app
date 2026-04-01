@@ -7,21 +7,25 @@ import './MetricCard.css';
 const DISPLAY_NAMES: Record<string, string> = {
   knee_flexion_min_deg: 'Knee Bend',
   toss_peak_height: 'Toss Height',
+  toss_drop: 'Ball Drop',
 };
 
 const UNITS: Record<string, string> = {
   knee_flexion_min_deg: '°',
   toss_peak_height: '',
+  toss_drop: '',
 };
 
 const NULL_EXPLANATIONS: Record<string, string> = {
   knee_flexion_min_deg: 'Knee angle could not be measured',
   toss_peak_height: 'Ball toss was not detected',
+  toss_drop: 'Set a contact timestamp to measure ball drop',
 };
 
 const DESCRIPTIONS: Record<string, string> = {
   knee_flexion_min_deg: 'Lowest point of your knee bend',
   toss_peak_height: 'How high your toss went',
+  toss_drop: 'How far the ball fell before contact',
 };
 
 const INFO_DETAILS: Record<string, string[]> = {
@@ -32,6 +36,10 @@ const INFO_DETAILS: Record<string, string[]> = {
   toss_peak_height: [
     'Measured as a multiple of your body height. 2.0 means the ball peaked at twice your height.',
     'The gray dots show your toss heights from other serves. The green dot is this serve.',
+  ],
+  toss_drop: [
+    'Measured as a fraction of your shoulder-to-ankle height. 0.3 means the ball dropped 30% of your torso height before you made contact.',
+    'Lower = you hit the ball higher in its arc. Compare to your own history only.',
   ],
 };
 

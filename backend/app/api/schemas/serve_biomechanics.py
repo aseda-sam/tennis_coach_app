@@ -84,6 +84,10 @@ class BiomechanicsReportResponse(BaseModel):
         default=None,
         description="Video filename (included in history responses)",
     )
+    video_recorded_at: Optional[datetime] = Field(
+        default=None,
+        description="When the video was recorded (included in history responses)",
+    )
 
 
 class CoachingFeedbackResponse(BaseModel):

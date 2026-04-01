@@ -72,4 +72,5 @@ export interface ServeBiomechanicsReport {
   created_at: string;
   video_id?: number | null;
   video_filename?: string | null;
+  video_recorded_at?: string | null;
 }

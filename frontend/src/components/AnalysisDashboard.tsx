@@ -13,6 +13,8 @@ import { useServeBiomechanicsReport } from '../hooks/useServeBiomechanicsReport'
 import { useServePlayback } from '../hooks/useServePlayback';
 import { useServeProposals } from '../hooks/useServeProposals';
 import { useMetricHistory } from '../hooks/useMetricHistory';
+import { useTossDropProgress } from '../hooks/useTossDropProgress';
+import TossDropProgressSection from './TossDropProgressSection';
 import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { useVideoUrl } from '../hooks/useVideoUrl';
@@ -189,6 +191,12 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   );
 
   const metricHistory = useMetricHistory(biomechanicsReport?.player_id, isDemo);
+  const {
+    sessions: tossDropSessions,
+    mean: tossDropMean,
+    totalCount: tossDropCount,
+    isLoading: tossDropLoading,
+  } = useTossDropProgress(biomechanicsReport?.player_id, isDemo);
 
   const phases = useMemo(
     () => biomechanicsReport?.phase_segmentation ?? [],
@@ -721,6 +729,15 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                         />
                       ))}
                   </div>
+                )}
+
+                {/* Ball Drop Trend — hidden in demo, needs ≥3 data points */}
+                {!isDemo && tossDropCount >= 3 && (
+                  <TossDropProgressSection
+                    sessions={tossDropSessions}
+                    mean={tossDropMean}
+                    isLoading={tossDropLoading}
+                  />
                 )}
 
                 {/* Feature Curves */}
