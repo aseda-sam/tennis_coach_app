@@ -85,3 +85,9 @@ No scoring, ratings, or coaching text — phases + metrics only.
 - Indexes:
   - `ix_biomechanics_reports_player_created` on (`player_id`, `created_at`)
   - `ix_biomechanics_reports_user_player` on (`user_id`, `player_id`)
+
+### API response notes
+
+`BiomechanicsReportResponse` (returned by both the single-report and history endpoints) includes denormalized video context:
+- `video_id`, `video_filename` — from `serve_window.video`
+- `video_recorded_at` — `videos.recorded_at`, preferred over `created_at` for session date labels and chronological sorting in progress views. Exposed since `phase-metrics-v8`.

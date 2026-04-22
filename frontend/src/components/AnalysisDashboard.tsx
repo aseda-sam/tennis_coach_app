@@ -131,6 +131,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isTrophyFilmstripOpen, setIsTrophyFilmstripOpen] = useState(false);
+  const [tossDropExpanded, setTossDropExpanded] = useState(true);
 
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
@@ -737,6 +738,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     sessions={tossDropSessions}
                     mean={tossDropMean}
                     isLoading={tossDropLoading}
+                    currentServeWindowId={currentServe?.id ?? null}
+                    expanded={tossDropExpanded}
+                    onToggle={() => setTossDropExpanded((v) => !v)}
                   />
                 )}
 
