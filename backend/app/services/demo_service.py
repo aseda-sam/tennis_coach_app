@@ -278,7 +278,6 @@ def delete_demo_video(db: Session, video_id: int) -> tuple[str, int]:
             "Cannot delete the active demo. Set another video as active first."
         )
 
-    filename = video.filename
     file_path = video.file_path
 
     # Best-effort: clean up the demo bucket copy if it exists there.
