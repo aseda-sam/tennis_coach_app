@@ -71,6 +71,10 @@ class BiomechanicsReportResponse(BaseModel):
         default=None,
         description="KTP detection reasoning and feature curves (stats for nerds)",
     )
+    player_id: Optional[int] = Field(
+        default=None,
+        description="Player ID (for fetching metric history)",
+    )
     created_at: datetime = Field(description="Report creation time")
     video_id: Optional[int] = Field(
         default=None,
@@ -80,3 +84,32 @@ class BiomechanicsReportResponse(BaseModel):
         default=None,
         description="Video filename (included in history responses)",
     )
+    video_recorded_at: Optional[datetime] = Field(
+        default=None,
+        description="When the video was recorded (included in history responses)",
+    )
+
+
+class CoachingFeedbackResponse(BaseModel):
+    """LLM coaching feedback for a serve."""
+
+    feedback: str = Field(description="Coaching feedback text (markdown)")
+    model: str = Field(description="LLM model used")
+    latency_ms: float = Field(description="LLM call latency in milliseconds")
+    input_tokens: int = Field(description="Input token count")
+    output_tokens: int = Field(description="Output token count")
+
+
+class CoachingNoteRequest(BaseModel):
+    """Open-coding annotation for a serve."""
+
+    note: str = Field(description="The annotation text", min_length=1, max_length=2000)
+
+
+class CoachingNoteResponse(BaseModel):
+    """Saved open-coding note."""
+
+    serve_window_id: int
+    note: str
+    timestamp: float = Field(description="Unix timestamp when saved")
+    user_id: int

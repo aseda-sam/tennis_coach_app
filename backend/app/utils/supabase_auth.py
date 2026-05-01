@@ -1,5 +1,8 @@
 """Supabase authentication utilities for token verification."""
 
+# pyright: reportAttributeAccessIssue=false, reportOptionalMemberAccess=false, reportMissingImports=false
+# Supabase/GoTrue SDK type stubs are incomplete — suppress known false positives.
+
 import logging
 from typing import Optional
 

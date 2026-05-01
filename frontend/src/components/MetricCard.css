@@ -1,0 +1,149 @@
+.metric-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-border-radius, 8px);
+  padding: var(--card-padding, 12px);
+  transition: box-shadow 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.metric-card--clickable {
+  cursor: pointer;
+}
+
+.metric-card--clickable:hover {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.metric-card--clickable:focus-visible {
+  outline: 2px solid var(--color-court-blue);
+  outline-offset: 2px;
+}
+
+.metric-card--null {
+  opacity: 0.5;
+}
+
+/* ── Tall card (toss height) ── */
+.metric-card--tall {
+  grid-row: span 3;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-card__tall-gauge {
+  flex: 1;
+  min-height: 0;
+  width: 24px;
+  margin: 8px auto 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* ── Header row (label + info icon) ── */
+.metric-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+}
+
+/* ── Info button ── */
+.metric-card__info-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+  position: relative;
+  top: 1px;
+}
+
+.metric-card__info-btn:hover {
+  opacity: 0.8;
+}
+
+/* ── Info popover (portaled to body) ── */
+.metric-card__info-popover {
+  position: fixed;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
+  width: 220px;
+  text-align: left;
+}
+
+.metric-card__info-popover p {
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.metric-card__info-popover p + p {
+  margin-top: 6px;
+}
+
+/* ── Standard elements ── */
+.metric-card__label {
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: var(--font-size-xs, 11px);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin: 0 0 2px;
+}
+
+.metric-card__description {
+  font-family: var(--font-sans, 'DM Sans', sans-serif);
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-muted);
+  margin: 0 0 6px;
+  line-height: 1.3;
+}
+
+.metric-card__value {
+  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-size: var(--font-size-display-lg, 28px);
+  font-weight: 500;
+  color: var(--color-ink-heavy);
+  line-height: 1;
+  margin: 0 0 2px;
+}
+
+.metric-card__unit {
+  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-size: var(--font-size-xs, 11px);
+  color: var(--color-text-muted);
+  margin-left: 4px;
+}
+
+.metric-card__null-text {
+  font-size: var(--font-size-sm, 13px);
+  color: var(--color-text-muted);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+/* ── Knee frame thumbnail ── */
+.metric-card__frame {
+  margin-top: 8px;
+  align-self: stretch;
+}

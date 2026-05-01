@@ -1,5 +1,9 @@
 import api, { API_BASE_URL } from './api';
-import { ServeBiomechanicsReport } from '../types/biomechanics';
+import {
+  CoachingFeedbackResponse,
+  CoachingNoteResponse,
+  ServeBiomechanicsReport,
+} from '../types/biomechanics';
 import { getAuthHeaders } from '../utils/authInterceptor';
 
 export const biomechanicsApi = {
@@ -13,6 +17,44 @@ export const biomechanicsApi = {
     if (!response.ok) throw new Error(`Frame fetch failed: ${response.status}`);
     return response.blob();
   },
+
+  getFrameAtTimestamp: async (
+    serveWindowId: number,
+    timestamp: number,
+    crop?: string
+  ): Promise<Blob> => {
+    const authHeaders = await getAuthHeaders();
+    let url = `${API_BASE_URL}/serve-windows/${serveWindowId}/frame?timestamp=${timestamp}`;
+    if (crop) url += `&crop=${encodeURIComponent(crop)}`;
+    const response = await fetch(url, { headers: authHeaders });
+    if (!response.ok) throw new Error(`Frame fetch failed: ${response.status}`);
+    return response.blob();
+  },
+
+  getCoachingFeedback: (
+    serveWindowId: number
+  ): Promise<CoachingFeedbackResponse> =>
+    api.get(`/serve-windows/${serveWindowId}/coaching`).then((r) => r.data),
+
+  getCachedCoachingFeedback: (
+    serveWindowId: number
+  ): Promise<CoachingFeedbackResponse | null> =>
+    api
+      .get(`/serve-windows/${serveWindowId}/coaching/cached`)
+      .then((r) => r.data),
+
+  getCoachingNotes: (serveWindowId: number): Promise<CoachingNoteResponse[]> =>
+    api
+      .get(`/serve-windows/${serveWindowId}/coaching/notes`)
+      .then((r) => r.data),
+
+  saveCoachingNote: (
+    serveWindowId: number,
+    note: string
+  ): Promise<CoachingNoteResponse> =>
+    api
+      .post(`/serve-windows/${serveWindowId}/coaching/notes`, { note })
+      .then((r) => r.data),
 
   getPlayerHistory: (
     playerId: number,

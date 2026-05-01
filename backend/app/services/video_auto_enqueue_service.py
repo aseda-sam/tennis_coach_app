@@ -44,6 +44,9 @@ def auto_enqueue_video_analysis(
         )
         return
 
+    pose_job: VideoJob | None = None
+    transcode_job: VideoJob | None = None
+
     try:
         # Create pose detection job record (will be started after transcode if needed)
         pose_job = VideoJob(
@@ -128,10 +131,11 @@ def auto_enqueue_video_analysis(
                 )
     except Exception:  # noqa: BLE001 - Intentionally catch all to ensure upload succeeds
         # Enqueue functions already log errors internally, just ensure upload doesn't fail
-        if "transcode_job" in locals():
+        if transcode_job is not None:
             transcode_job.status = "failed"
             transcode_job.error = "Failed to enqueue job to Redis"
-        pose_job.status = "failed"
-        pose_job.error = "Failed to enqueue job to Redis"
+        if pose_job is not None:
+            pose_job.status = "failed"
+            pose_job.error = "Failed to enqueue job to Redis"
         db.commit()
         logger.debug("Failed to enqueue jobs, but upload succeeded")

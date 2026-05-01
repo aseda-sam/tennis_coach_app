@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     AUTO_COMPUTE_BIOMECHANICS: bool = True
     AUTO_CONTACT_DETECTOR_VERSION: str = "v1"
 
+    # LLM Coaching
+    ANTHROPIC_API_KEY: Optional[str] = None
+    LLM_MODEL: str = "claude-sonnet-4-6"
+    LLM_LOG_DIR: Optional[str] = None
+    LLM_MAX_TOKENS: int = 1024
+
     # ML Models
     ML_MODELS_DIR: str = "ml_models"
 

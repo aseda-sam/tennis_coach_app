@@ -1,10 +1,12 @@
 """Serve window model for storing tagged or auto-detected serve windows."""
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
-    Column,
     DateTime,
     Float,
     ForeignKey,
@@ -13,9 +15,14 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.player import Player
+    from app.models.serve_biomechanics_report import ServeBiomechanicsReport
+    from app.models.video import Video
 
 
 class ServeWindow(Base):
@@ -23,74 +30,83 @@ class ServeWindow(Base):
 
     __tablename__ = "serve_windows"
 
-    id = Column(Integer, primary_key=True, index=True)
-    video_id = Column(
-        Integer, ForeignKey("videos.id", ondelete="CASCADE"), nullable=False, index=True
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    video_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("videos.id", ondelete="CASCADE"), index=True
     )
-    user_id = Column(String(36), nullable=False, index=True)  # Auth/tenancy boundary
-    player_id = Column(
+    user_id: Mapped[str] = mapped_column(
+        String(36), index=True
+    )  # Auth/tenancy boundary
+    player_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("players.id", ondelete="CASCADE"),
-        nullable=True,
         index=True,
     )  # Nullable while pending auto-detected proposals are unassigned
 
     # Timing - manually tagged
-    start_timestamp = Column(Float, nullable=False)  # When serve window starts
-    end_timestamp = Column(Float, nullable=False)  # When serve window ends
-    contact_timestamp = Column(Float, nullable=True)  # Optional - may not make contact
+    start_timestamp: Mapped[float] = mapped_column(Float)  # When serve window starts
+    end_timestamp: Mapped[float] = mapped_column(Float)  # When serve window ends
+    contact_timestamp: Mapped[float | None] = mapped_column(
+        Float
+    )  # Optional - may not make contact
 
     # Context
-    court_side = Column(String(10), nullable=True)  # 'deuce', 'ad'
-    serve_number = Column(Integer, nullable=True)  # 1, 2
-    serve_subtype = Column(String(20), nullable=True)  # 'flat', 'slice', 'kick'
+    court_side: Mapped[str | None] = mapped_column(String(10))  # 'deuce', 'ad'
+    serve_number: Mapped[int | None] = mapped_column(Integer)  # 1, 2
+    serve_subtype: Mapped[str | None] = mapped_column(
+        String(20)
+    )  # 'flat', 'slice', 'kick'
 
     # Outcome
-    in_out = Column(
-        String(20), nullable=True
-    )  # 'in', 'out_long', 'out_wide', 'net', 'unknown'
+    in_out: Mapped[str | None] = mapped_column(String(20))
+    # 'in', 'out_long', 'out_wide', 'net', 'unknown'
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
 
     # Provenance tracking
-    source = Column(String(20), nullable=False, default="manual")
+    source: Mapped[str] = mapped_column(String(20), default="manual")
     # Values: "manual", "auto"
-    contact_source = Column(String(10), nullable=True)
+    contact_source: Mapped[str | None] = mapped_column(String(10))
     # Values: "manual" (user-tagged), "auto" (ball detection or lazy fallback)
 
     # Proposal metadata (one-table workflow)
-    model_version = Column(String(50), nullable=True)  # e.g., "heuristic-v1"
-    confidence = Column(Float, nullable=True)  # 0.0 - 1.0
-    detection_features = Column(Text, nullable=True)  # JSON string
-    status = Column(String(20), nullable=False, default="accepted")
+    model_version: Mapped[str | None] = mapped_column(
+        String(50)
+    )  # e.g., "heuristic-v1"
+    confidence: Mapped[float | None] = mapped_column(Float)  # 0.0 - 1.0
+    detection_features: Mapped[str | None] = mapped_column(Text)  # JSON string
+    status: Mapped[str] = mapped_column(String(20), default="accepted")
     # Values: "pending", "accepted", "rejected", "edited"
-    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Original timestamps (if edited from proposal)
-    original_start_timestamp = Column(Float, nullable=True)
-    original_end_timestamp = Column(Float, nullable=True)
+    original_start_timestamp: Mapped[float | None] = mapped_column(Float)
+    original_end_timestamp: Mapped[float | None] = mapped_column(Float)
 
     # Active/split tracking
-    is_active = Column(Boolean, nullable=False, default=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # False when this window has been superseded by a split operation
-    parent_window_id = Column(
+    parent_window_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("serve_windows.id", ondelete="SET NULL"),
-        nullable=True,
     )
     # Set when this window was created as a child of a split
 
     # Relationships
-    video = relationship("Video", back_populates="serve_windows")
-    player = relationship("Player", back_populates="serve_windows")
-    parent_window = relationship(
+    video: Mapped["Video"] = relationship("Video", back_populates="serve_windows")  # type: ignore[name-defined]
+    player: Mapped["Player | None"] = relationship(
+        "Player", back_populates="serve_windows"
+    )  # type: ignore[name-defined]
+    parent_window: Mapped["ServeWindow | None"] = relationship(
         "ServeWindow",
         remote_side="ServeWindow.id",
         foreign_keys=[parent_window_id],
         backref="child_windows",
     )
-    biomechanics_reports = relationship(
+    biomechanics_reports: Mapped[list["ServeBiomechanicsReport"]] = relationship(  # type: ignore[name-defined]
         "ServeBiomechanicsReport",
         back_populates="serve_window",
         cascade="all, delete-orphan",

@@ -88,10 +88,41 @@ backend/tests/
 - **Redis/RQ:** Patch `rq.Queue` or the specific enqueue call. Don't start a real Redis connection.
 - **Settings:** Use `patch.object(settings, "FIELD", value)` — don't monkeypatch env vars directly.
 
+## Fixture safety rules
+
+These rules prevent real bugs we've already seen. Follow them strictly.
+
+- **Contract test fixtures must patch the app lifespan.** `TestClient(app)` runs the FastAPI lifespan, which connects to Postgres (`create_tables_if_not_exists`) and Redis (`start_rq_worker`). If a fixture uses a mocked DB (`MagicMock()`), it MUST also patch these lifespan functions — otherwise the "no real DB needed" claim is a lie and tests fail without Docker:
+  ```python
+  with (
+      patch("app.main.create_tables_if_not_exists"),
+      patch("app.main.start_rq_worker", return_value=None),
+      TestClient(app) as client,
+  ):
+  ```
+  The `client` fixture in root conftest.py uses a real `db_session`, so Postgres is expected — no lifespan patch needed there.
+
+- **Always clean up `dependency_overrides` in a `finally` block.** If `TestClient(app)` raises during setup (e.g., lifespan error), code after `yield` never runs, and overrides leak to subsequent tests:
+  ```python
+  # WRONG — overrides leak on setup failure:
+  with TestClient(app) as client:
+      yield client
+  app.dependency_overrides.clear()
+
+  # RIGHT:
+  try:
+      with TestClient(app) as client:
+          yield client
+  finally:
+      app.dependency_overrides.clear()
+  ```
+
+- **Don't define pytest markers that no tests use.** Dead markers are confusing config. Add them when tests actually need them, not speculatively.
+
 ## DB vs pure unit tests
 
 - **Needs DB:** Any test using `client` or `db_session` fixtures (contract tests, integration tests).
-- **Pure unit:** Biomechanics service tests, utility tests — no DB fixture needed, run without Postgres.
+- **Pure unit / contract:** Biomechanics service tests, utility tests, mock-client API tests — no DB fixture needed, run without Postgres. Their fixtures must patch the lifespan (see above).
 
 ## Where to look (canonical examples)
 

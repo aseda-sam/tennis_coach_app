@@ -913,7 +913,7 @@ def analyze_pose_detection_scout_refine_rq(
                     .order_by(BallDetection.created_at.desc())
                     .first()
                 )
-                if ball_record:
+                if ball_record and scout_pose_detection_db:
                     video_obj = db.query(Video).filter(Video.id == video_id).first()
                     if video_obj:
                         windows_missing_contact = (

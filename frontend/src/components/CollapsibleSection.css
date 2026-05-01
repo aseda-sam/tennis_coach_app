@@ -7,18 +7,30 @@
   overflow: hidden;
 }
 
-/* Toggle header */
+/* Toggle header row */
+.collapsible-section__header {
+  display: flex;
+  align-items: center;
+}
+
 .collapsible-section__toggle {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  width: 100%;
+  flex: 1;
   padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm);
   border: none;
   background: none;
   cursor: pointer;
   color: var(--color-text-muted);
   transition: color var(--duration-fast) var(--ease-in-out);
+}
+
+.collapsible-section__header-actions {
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
 .collapsible-section__toggle:hover {

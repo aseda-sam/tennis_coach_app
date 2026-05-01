@@ -4,11 +4,25 @@ import os
 import re
 import secrets
 import unicodedata
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
+
+from typing_extensions import TypedDict
 
 from app.core.config import env_limits, settings
 from app.utils.error_handling import handle_file_error
+
+
+class VideoMetadataDict(TypedDict):
+    """Typed dict for video metadata extracted by ffprobe/OpenCV."""
+
+    duration: float | None
+    fps: float | None
+    width: int | None
+    height: int | None
+    frame_count: int | None
+    recorded_at: datetime | None
 
 
 def _validate_magic_bytes(file_content: bytes) -> bool:
@@ -38,7 +52,7 @@ def validate_video_file(
     filename: str,
     file_size: int,
     content_type: Optional[str] = None,
-    metadata: Optional[Dict[str, any]] = None,
+    metadata: Optional[VideoMetadataDict] = None,
     file_content: Optional[bytes] = None,
 ) -> None:
     """
@@ -104,13 +118,15 @@ def validate_video_file(
     # Validate video metadata (optional)
     if metadata:
         # Resolution validation
-        if metadata.get("width") and metadata.get("height"):
+        vid_width = metadata.get("width")
+        vid_height = metadata.get("height")
+        if vid_width and vid_height:
             max_width, max_height = env_limits["max_resolution"]
             max_dim = max(max_width, max_height)
             min_dim = min(max_width, max_height)
             if (
-                max(metadata["width"], metadata["height"]) > max_dim
-                or min(metadata["width"], metadata["height"]) > min_dim
+                max(vid_width, vid_height) > max_dim
+                or min(vid_width, vid_height) > min_dim
             ):
                 raise handle_file_error(
                     "resolution_too_high",
@@ -119,9 +135,8 @@ def validate_video_file(
                 )
 
         # FPS validation
-        if metadata.get("fps") and metadata["fps"] > (
-            env_limits["max_fps"] + settings.FPS_TOLERANCE
-        ):
+        vid_fps = metadata.get("fps")
+        if vid_fps and vid_fps > (env_limits["max_fps"] + settings.FPS_TOLERANCE):
             raise handle_file_error(
                 "fps_too_high",
                 filename,
@@ -129,10 +144,8 @@ def validate_video_file(
             )
 
         # Duration validation
-        if (
-            metadata.get("duration")
-            and metadata["duration"] > settings.effective_max_video_duration
-        ):
+        vid_duration = metadata.get("duration")
+        if vid_duration and vid_duration > settings.effective_max_video_duration:
             raise handle_file_error(
                 "duration_too_long",
                 filename,

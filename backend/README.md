@@ -47,7 +47,7 @@ For contributors who need faster iteration or want to run the backend directly (
 ```bash
 # Install deps (uses uv, not pip)
 cd backend
-uv pip install -e ".[dev]"
+uv sync --extra dev
 
 # Minimal .env for local dev
 cat > .env <<'EOF'

@@ -10,10 +10,14 @@ from sqlalchemy.orm import Session
 
 from app.api.schemas.serve_biomechanics import (
     BiomechanicsReportResponse,
+    CoachingFeedbackResponse,
+    CoachingNoteRequest,
+    CoachingNoteResponse,
     MetricValueResponse,
     MomentMarkerResponse,
     PhaseWindowResponse,
 )
+from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user, get_optional_user
 from app.models.serve_biomechanics_report import ServeBiomechanicsReport
@@ -22,7 +26,17 @@ from app.services.biomechanics.metrics import metrics_to_flat_list
 from app.services.biomechanics.serve_biomechanics_service import (
     serve_biomechanics_service,
 )
-from app.services.frame_extraction_service import extract_ktp_frame
+from app.services.coaching.coaching_service import generate_coaching_feedback
+from app.services.coaching.llm_logger import (
+    get_latest_coaching_trace,
+    get_open_coding_notes,
+    log_open_coding_note,
+)
+from app.services.coaching.player_history import get_player_metric_history
+from app.services.frame_extraction_service import (
+    extract_frame_at_timestamp,
+    extract_ktp_frame,
+)
 from app.services.player_service import get_player_by_id
 from app.utils.authorization import (
     require_player_access,
@@ -35,8 +49,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["serve-biomechanics"])
 
 PHASE_LABEL_MAP = {
-    "toss": "Setup & Toss",
-    "trophy_load": "Trophy & Load",
+    "toss_and_load": "Toss & Load",
     "acceleration": "Acceleration",
     "follow_through": "Follow-Through",
 }
@@ -65,9 +78,8 @@ def _report_to_response(
             phase_segmentation.append(
                 PhaseWindowResponse(
                     phase=phase_name,
-                    phase_label=PHASE_LABEL_MAP.get(
-                        phase_name, phase_name.replace("_", " ").title()
-                    ),
+                    phase_label=PHASE_LABEL_MAP.get(phase_name)
+                    or phase_name.replace("_", " ").title(),
                     start_timestamp=pw["start_timestamp"],
                     end_timestamp=pw["end_timestamp"],
                     confidence=pw.get("confidence", 0.0),
@@ -79,9 +91,8 @@ def _report_to_response(
             moments.append(
                 MomentMarkerResponse(
                     moment=moment_name,
-                    moment_label=MOMENT_LABEL_MAP.get(
-                        moment_name, moment_name.replace("_", " ").title()
-                    ),
+                    moment_label=MOMENT_LABEL_MAP.get(moment_name)
+                    or moment_name.replace("_", " ").title(),
                     timestamp=mm.get("timestamp"),
                     frame=mm.get("frame"),
                     confidence=mm.get("confidence", 0.0),
@@ -98,11 +109,13 @@ def _report_to_response(
 
     video_id = None
     video_filename = None
+    video_recorded_at = None
     if include_video:
         sw = report.serve_window
         if sw and sw.video:
             video_id = sw.video.id
             video_filename = sw.video.filename
+            video_recorded_at = sw.video.recorded_at
 
     return BiomechanicsReportResponse(
         id=report.id,
@@ -112,9 +125,11 @@ def _report_to_response(
         metrics=metrics,
         analysis_version=report.analysis_version,
         detection_meta=detection_meta,
+        player_id=report.player_id,
         created_at=report.created_at,
         video_id=video_id,
         video_filename=video_filename,
+        video_recorded_at=video_recorded_at,
     )
 
 
@@ -156,11 +171,23 @@ async def get_serve_biomechanics(
 @router.get("/serve-windows/{serve_window_id}/frame")
 async def get_serve_window_frame(
     serve_window_id: int,
-    ktp: str = Query(..., description="KTP name, e.g. trophy_position"),
+    ktp: Optional[str] = Query(None, description="KTP name, e.g. trophy_position"),
+    timestamp: Optional[float] = Query(
+        None, description="Absolute video timestamp in seconds"
+    ),
+    crop: Optional[str] = Query(None, description="Crop profile, e.g. lower_body"),
     current_user: Optional[dict] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> Response:
-    """Get a JPEG frame for a Key Time Point in a serve window."""
+    """Get a JPEG frame for a Key Time Point or timestamp in a serve window.
+
+    Provide either `ktp` (KTP name) or `timestamp` (absolute seconds).
+    """
+    if ktp is None and timestamp is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide either 'ktp' or 'timestamp' query parameter",
+        )
     try:
         # Auth: same pattern as get_serve_biomechanics
         sw = serve_window_service.get_serve_window_by_id_no_auth(db, serve_window_id)
@@ -169,10 +196,15 @@ async def get_serve_window_frame(
             raise handle_not_found_error("video", str(sw.video_id))
         require_video_access_or_public_demo(video, current_user)
 
-        jpeg_bytes = extract_ktp_frame(db, serve_window_id, ktp)
+        if timestamp is not None:
+            jpeg_bytes = extract_frame_at_timestamp(
+                db, serve_window_id, timestamp, crop_profile=crop
+            )
+            etag = f'"{serve_window_id}-ts-{timestamp}-{crop}"'
+        else:
+            jpeg_bytes = extract_ktp_frame(db, serve_window_id, ktp)  # type: ignore[arg-type]
+            etag = f'"{serve_window_id}-{ktp}"'
 
-        # ETag based on serve_window_id + ktp for browser caching
-        etag = f'"{serve_window_id}-{ktp}"'
         return Response(
             content=jpeg_bytes,
             media_type="image/jpeg",
@@ -250,3 +282,180 @@ async def get_player_biomechanics_history(
         log_and_raise_error(
             e, "get_player_biomechanics_history", {"player_id": player_id}
         )
+
+
+@router.get(
+    "/serve-windows/{serve_window_id}/coaching/cached",
+    response_model=Optional[CoachingFeedbackResponse],
+)
+async def get_cached_coaching_feedback(
+    serve_window_id: int,
+    current_user: Optional[dict] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> Optional[CoachingFeedbackResponse]:
+    """Return the latest cached coaching trace for a serve window, or null."""
+    try:
+        sw = serve_window_service.get_serve_window_by_id_no_auth(db, serve_window_id)
+        video = video_service.get_video_by_id(db, sw.video_id)
+        if not video:
+            raise handle_not_found_error("video", str(sw.video_id))
+        require_video_access_or_public_demo(video, current_user)
+
+        trace = get_latest_coaching_trace(serve_window_id)
+        if trace is None:
+            return None
+        return CoachingFeedbackResponse(
+            feedback=trace["output"],
+            model=trace["model"],
+            latency_ms=trace["latency_ms"],
+            input_tokens=trace["input_tokens"],
+            output_tokens=trace["output_tokens"],
+        )
+    except ValueError as e:
+        raise handle_not_found_error("serve_window", str(serve_window_id)) from e
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
+        log_and_raise_error(
+            e, "get_cached_coaching_feedback", {"serve_window_id": serve_window_id}
+        )
+
+
+@router.get(
+    "/serve-windows/{serve_window_id}/coaching",
+    response_model=CoachingFeedbackResponse,
+)
+async def get_coaching_feedback(
+    serve_window_id: int,
+    current_user: Optional[dict] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> CoachingFeedbackResponse:
+    """Generate LLM coaching feedback for a serve window."""
+    if not settings.ANTHROPIC_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Coaching feedback is not configured on this server (ANTHROPIC_API_KEY missing).",
+        )
+    try:
+        sw = serve_window_service.get_serve_window_by_id_no_auth(db, serve_window_id)
+        video = video_service.get_video_by_id(db, sw.video_id)
+        if not video:
+            raise handle_not_found_error("video", str(sw.video_id))
+        require_video_access_or_public_demo(video, current_user)
+
+        # Get biomechanics report
+        user_id = current_user["id"] if current_user else sw.user_id
+        report = serve_biomechanics_service.get_or_compute_analysis(
+            db, serve_window_id, user_id
+        )
+
+        # Convert to coaching input
+        metrics, phases, moments = [], [], []
+        if report.phase_segmentation_json:
+            seg_data = json.loads(report.phase_segmentation_json)
+            for pw in seg_data.get("phases", []):
+                phase_name = pw["phase"]
+                phases.append(
+                    {
+                        "phase": phase_name,
+                        "phase_label": PHASE_LABEL_MAP.get(
+                            phase_name, phase_name.replace("_", " ").title()
+                        ),
+                        "start_timestamp": pw["start_timestamp"],
+                        "end_timestamp": pw["end_timestamp"],
+                        "confidence": pw.get("confidence", 0.0),
+                        "detected": pw.get("detected", False),
+                    }
+                )
+            for mm in seg_data.get("moments", []):
+                moment_name = mm["moment"]
+                moments.append(
+                    {
+                        "moment": moment_name,
+                        "moment_label": MOMENT_LABEL_MAP.get(
+                            moment_name, moment_name.replace("_", " ").title()
+                        ),
+                        "timestamp": mm.get("timestamp"),
+                        "frame": mm.get("frame"),
+                        "confidence": mm.get("confidence", 0.0),
+                        "detected": mm.get("detected", False),
+                    }
+                )
+        metrics = metrics_to_flat_list(report.metrics or {})
+
+        # Get player history
+        recorded_at = video.recorded_at if video else None
+        history = get_player_metric_history(
+            db,
+            report.player_id,
+            before=recorded_at,
+            exclude_serve_window_id=serve_window_id,
+        )
+
+        result = generate_coaching_feedback(
+            metrics=metrics,
+            phases=phases,
+            moments=moments,
+            serve_window_id=serve_window_id,
+            history=history,
+        )
+        return CoachingFeedbackResponse(
+            feedback=result.feedback,
+            model=result.model,
+            latency_ms=result.latency_ms,
+            input_tokens=result.input_tokens,
+            output_tokens=result.output_tokens,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error
+        log_and_raise_error(
+            e, "get_coaching_feedback", {"serve_window_id": serve_window_id}
+        )
+
+
+@router.post(
+    "/serve-windows/{serve_window_id}/coaching/notes",
+    response_model=CoachingNoteResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def save_coaching_note(
+    serve_window_id: int,
+    body: CoachingNoteRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CoachingNoteResponse:
+    """Save an open-coding annotation for a serve window."""
+    # Verify serve window exists and user has access
+    sw = serve_window_service.get_serve_window_by_id_no_auth(db, serve_window_id)
+    video = video_service.get_video_by_id(db, sw.video_id)
+    if not video:
+        raise handle_not_found_error("video", str(sw.video_id))
+    require_video_access_or_public_demo(video, current_user)
+
+    record = log_open_coding_note(
+        serve_window_id=serve_window_id,
+        note=body.note,
+        user_id=current_user["id"],
+    )
+    return CoachingNoteResponse(**record)
+
+
+@router.get(
+    "/serve-windows/{serve_window_id}/coaching/notes",
+    response_model=List[CoachingNoteResponse],
+)
+async def get_coaching_notes(
+    serve_window_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> List[CoachingNoteResponse]:
+    """Get open-coding notes for a serve window."""
+    sw = serve_window_service.get_serve_window_by_id_no_auth(db, serve_window_id)
+    video = video_service.get_video_by_id(db, sw.video_id)
+    if not video:
+        raise handle_not_found_error("video", str(sw.video_id))
+    require_video_access_or_public_demo(video, current_user)
+
+    notes = get_open_coding_notes(serve_window_id)
+    return [CoachingNoteResponse(**n) for n in notes]

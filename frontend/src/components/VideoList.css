@@ -144,6 +144,35 @@
   cursor: pointer;
 }
 
+/* Analysis status indicators (bottom-left of card) */
+.video-card-indicators {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-right: auto;
+}
+
+.indicator-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  transition: var(--transition-normal);
+}
+
+.indicator-done {
+  color: var(--color-court-blue);
+  background: var(--color-court-blue-soft);
+}
+
+.indicator-pending {
+  color: var(--color-text-disabled);
+  background: transparent;
+  opacity: 0.4;
+}
+
 .video-card:hover {
   border-color: var(--color-border-dark);
 }

@@ -28,9 +28,11 @@ cd frontend && npm run lint
 cd frontend && npm run format
 
 # Backend dependency management (uses uv, not pip)
-cd backend && uv pip install -e ".[dev]"   # install/sync all deps
-cd backend && uv pip install <package>      # add a package to the venv
-# After adding a package, also add it to pyproject.toml dependencies
+cd backend && uv sync --extra dev           # install/sync all deps
+cd backend && uv add <package>              # add a package
+
+# Backend type checking
+cd backend && uv run pyright app/
 ```
 
 - Frontend: http://localhost:3000
@@ -47,6 +49,7 @@ backend/
     api/schemas/      # Pydantic request/response models
     models/           # SQLAlchemy ORM models
     services/         # Business logic (no HTTP concerns)
+    services/coaching/ # LLM coaching layer (see coaching/README.md)
     dependencies/     # FastAPI dependency injection helpers
     core/config.py    # Settings / env vars
     core/database.py  # DB session setup
@@ -68,6 +71,7 @@ frontend/
     constants/        # App-wide constants
     design-tokens.css # Design system tokens
 data/
+  llm_logs/           # JSONL logs of LLM calls (eval dataset, gitignored)
   videos/
     raw/              # Uploaded user videos
     processed/        # Transcoded/processed videos
@@ -105,10 +109,14 @@ docs/
 - **Contract tests** for API endpoints (status codes + response shape). If you change a schema, update tests.
 - **Unit tests** for service/business logic with mocked dependencies.
 - **Mock externals** (Redis, storage, external APIs) unless explicitly integration testing.
+- **Contract test fixtures must patch the lifespan.** Any `TestClient(app)` fixture with a mocked DB (`MagicMock`) must also `patch("app.main.create_tables_if_not_exists")` and `patch("app.main.start_rq_worker", return_value=None)` — otherwise the lifespan connects to real Postgres/Redis and the fixture lies about needing "no real DB."
+- **Clean up `dependency_overrides` in `finally`.** Always wrap `yield client` / `overrides.clear()` in `try/finally` so overrides don't leak on setup failure.
+- **E2E tests** live in `frontend/e2e/` and use Playwright (`cd frontend && npm run test:e2e`). The app must be running (`docker compose up`) before running them. Scope E2E tests to flows that are high-risk to break silently: the demo page (unauthenticated), the analysis dashboard, and the coaching panel. Don't add E2E tests for logic already covered by Vitest unit tests.
+- **Playwright MCP** is configured in `.mcp.json` and enabled in `.claude/settings.json`. This gives Claude live browser tools (`browser_navigate`, `browser_click`, `browser_snapshot`, etc.) to inspect the running app interactively — useful for reproducing UI bugs without writing a test first.
 
 ## Code style
 
-- **Python:** Type hints required. `ruff` for formatting/linting. Pre-commit hook runs ruff automatically. **`uv`** for package management (not pip). Pydantic v2: use `ConfigDict(from_attributes=True)` for ORM schemas, `model_validate()` not `from_orm()`. Parameterize log calls (`logger.info("x=%s", x)`), never f-strings in log calls.
+- **Python:** Type hints required. `ruff` for formatting/linting. `pyright` (basic mode) for type checking — runs on push. Pre-commit hook runs ruff automatically. **`uv`** for package management (not pip); use `uv sync` / `uv add` / `uv run`. Pydantic v2: use `ConfigDict(from_attributes=True)` for ORM schemas, `model_validate()` not `from_orm()`. Parameterize log calls (`logger.info("x=%s", x)`), never f-strings in log calls.
 - **React:** Use React Query for data fetching. Design tokens for styling (see `frontend/src/design-tokens.css`). Avoid `any` in TypeScript.
 - **General:** KISS, DRY, YAGNI. No speculative abstractions.
 
@@ -137,6 +145,7 @@ A pre-commit hook runs automatically on every `git commit`. If it fails, the com
 | `frontend-eslint`         | commit   | ESLint on `.ts/.tsx` files                     | No — run `cd frontend && npm run lint:fix` |
 | `frontend-prettier`       | commit   | Checks formatting of `.ts/.tsx/.css`           | No — run `cd frontend && npm run format`   |
 | `backend-pytest`          | **push** | Runs backend test suite                        | No — fix failing tests                     |
+| `backend-pyright`         | **push** | Runs pyright type checker on backend           | No — fix type errors                       |
 | `frontend-typecheck`      | **push** | TypeScript `tsc --noEmit`                      | No — fix type errors                       |
 | `mermaid-validate`        | **push** | Validates Mermaid diagrams in `docs/diagrams/` | No — fix broken diagrams                   |
 

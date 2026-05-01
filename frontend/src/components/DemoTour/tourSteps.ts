@@ -47,7 +47,7 @@ export const TOUR_STEPS: TourStep[] = [
     body: 'Each tab jumps the video to that phase of the serve. Click one and the video snaps straight to it.',
     onEnter: (controls) => {
       controls.pause();
-      controls.seekToPhase('toss');
+      controls.seekToPhase('toss_and_load');
       setTimeout(() => {
         controls.seekToPhase('acceleration');
       }, 1200);

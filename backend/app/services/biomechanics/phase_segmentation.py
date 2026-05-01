@@ -1,13 +1,13 @@
 """Serve phase segmentation using KTP-based detection from pose keypoints.
 
-Segments a serve into 4 phases (Toss, Trophy & Load, Acceleration,
+Segments a serve into 3 phases (Toss & Load, Acceleration,
 Follow-Through) by detecting 4 Key Time Points (KTPs) and deriving
-phase intervals from them.  Every serve always produces exactly 4 phases;
+phase intervals from them.  Every serve always produces exactly 3 phases;
 missing KTPs trigger fallback boundaries with lower confidence.
 
 KTPs: Ball Release → Trophy Position → Racket Low Point → Ball Impact
 
-Architecture rationale: see docs/decisions/003-phase-segmentation-redesign.md
+Architecture rationale: see docs/decisions/004-three-phase-segmentation.md
 """
 
 import logging
@@ -22,12 +22,11 @@ from app.services.serve_detection.feature_extractor import (
 
 logger = logging.getLogger(__name__)
 
-ANALYSIS_VERSION = "phase-seg-v4"
+ANALYSIS_VERSION = "phase-seg-v5"
 
 # Default confidence scores per phase (when KTP boundary is detected)
 _PHASE_CONFIDENCE: Dict[str, float] = {
-    "toss": 0.8,
-    "trophy_load": 0.7,
+    "toss_and_load": 0.8,
     "acceleration": 0.7,
     "follow_through": 0.7,
 }
@@ -38,13 +37,12 @@ _FALLBACK_CONFIDENCE = 0.4
 # Trophy position detection constants
 _TROPHY_SEARCH_START = 0.15  # 15% of frames (skip pure-setup frames)
 _TROPHY_SEARCH_END = 0.50  # 50% of frames (was 70%)
-_TOSS_PHASE_MIN_PCT = 0.10  # toss must be >= 10% of total frames
-_TOSS_PHASE_MAX_PCT = 0.55  # toss must be <= 55% of total frames
+_TOSS_PHASE_MIN_PCT = 0.10  # toss_and_load must be >= 10% of total frames
+_TOSS_PHASE_MAX_PCT = 0.70  # toss_and_load must be <= 70% of total frames
 
 
 class ServePhase(str, Enum):
-    TOSS = "toss"
-    TROPHY_LOAD = "trophy_load"
+    TOSS_AND_LOAD = "toss_and_load"
     ACCELERATION = "acceleration"
     FOLLOW_THROUGH = "follow_through"
 
@@ -58,8 +56,7 @@ class ServeMoment(str, Enum):
 
 # Ordered list of phases (kept for downstream consumers)
 PHASE_ORDER = [
-    ServePhase.TOSS,
-    ServePhase.TROPHY_LOAD,
+    ServePhase.TOSS_AND_LOAD,
     ServePhase.ACCELERATION,
     ServePhase.FOLLOW_THROUGH,
 ]
@@ -104,10 +101,10 @@ def segment_serve_phases(
     video_height: int,
     contact_source: Optional[str] = None,
 ) -> PhaseSegmentationResult:
-    """Segment a serve into 4 phases using KTP-based detection.
+    """Segment a serve into 3 phases using KTP-based detection.
 
     Detects 4 Key Time Points (Ball Release, Trophy Position, Racket Low Point,
-    Ball Impact) sequentially, then derives 4 phase intervals with fallback
+    Ball Impact) sequentially, then derives 3 phase intervals with fallback
     boundaries when KTPs are missing.
 
     Args:
@@ -122,7 +119,7 @@ def segment_serve_phases(
         contact_source: How contact_timestamp was set — "manual" or "auto".
 
     Returns:
-        PhaseSegmentationResult with exactly 4 phases and moment markers.
+        PhaseSegmentationResult with exactly 3 phases and moment markers.
     """
     if fps <= 0:
         fps = 30.0
@@ -141,8 +138,8 @@ def segment_serve_phases(
             phases=phases,
             moments=moments,
             analysis_version=ANALYSIS_VERSION,
-            total_phases_detected=4,
-            total_phases_possible=4,
+            total_phases_detected=3,
+            total_phases_possible=3,
         )
 
     # Extract per-frame features
@@ -202,7 +199,7 @@ def segment_serve_phases(
         "total_frames": total_frames,
     }
 
-    # --- Derive 4 phases + moments from KTPs ---
+    # --- Derive 3 phases + moments from KTPs ---
     phases, moments = _derive_phases_from_ktps(
         total_frames=total_frames,
         fps=fps,
@@ -218,8 +215,8 @@ def segment_serve_phases(
         phases=phases,
         moments=moments,
         analysis_version=ANALYSIS_VERSION,
-        total_phases_detected=4,
-        total_phases_possible=4,
+        total_phases_detected=3,
+        total_phases_possible=3,
         detection_meta=detection_meta,
     )
 
@@ -469,7 +466,7 @@ def _build_fallback_phases(
     serve_start: float,
     serve_end: float,
 ) -> Tuple[List[PhaseWindow], List[MomentMarker]]:
-    """Build 4 fallback phases (all percentage-based) + empty moments."""
+    """Build 3 fallback phases (all percentage-based) + empty moments."""
     if total_frames <= 0:
         # Degenerate case: zero-length serve
         phases = [
@@ -486,9 +483,8 @@ def _build_fallback_phases(
     last_frame = total_frames - 1
     boundaries = [
         0,
-        max(1, int(total_frames * 0.3)),
-        max(2, int(total_frames * 0.6)),
-        max(3, int(total_frames * 0.85)),
+        max(1, int(total_frames * 0.6)),
+        max(2, int(total_frames * 0.85)),
     ]
     # Enforce monotonic
     for i in range(1, len(boundaries)):
@@ -526,37 +522,26 @@ def _derive_phases_from_ktps(
     racket_low_point: Optional[int],
     ball_impact: Optional[int],
 ) -> Tuple[List[PhaseWindow], List[MomentMarker]]:
-    """Derive 4 phases + moment markers from 4 Key Time Points.
+    """Derive 3 phases + moment markers from 4 Key Time Points.
 
-    Always returns exactly 4 phases. When a KTP boundary is missing,
+    Always returns exactly 3 phases. When a KTP boundary is missing,
     a percentage-based fallback is used with lower confidence.
     """
     last_frame = max(total_frames - 1, 0)
 
     # --- Resolve boundaries with fallbacks ---
-    # trophy_load start = trophy_position, fallback to ball_release, fallback to 30%
-    trophy_load_start = trophy_position
-    trophy_load_detected = trophy_position is not None
-    if trophy_load_start is None:
-        trophy_load_start = (
-            ball_release if ball_release is not None else int(total_frames * 0.3)
-        )
-        trophy_load_detected = False
-
-    # Percentage guardrails: toss phase must be 10-55% of total frames
-    min_frame = int(total_frames * _TOSS_PHASE_MIN_PCT)
-    max_frame = int(total_frames * _TOSS_PHASE_MAX_PCT)
-    if trophy_load_start < min_frame or trophy_load_start > max_frame:
-        trophy_load_start = max(min_frame, min(trophy_load_start, max_frame))
-        trophy_load_detected = False
-
-    # acceleration start = racket_low_point, fallback to trophy_position, fallback to 60%
+    # acceleration start = racket_low_point, fallback to 60%
     accel_start = racket_low_point
     accel_detected = racket_low_point is not None
     if accel_start is None:
-        accel_start = (
-            trophy_position if trophy_position is not None else int(total_frames * 0.6)
-        )
+        accel_start = int(total_frames * 0.6)
+        accel_detected = False
+
+    # Percentage guardrails: toss_and_load phase must be 10-70% of total frames
+    min_frame = int(total_frames * _TOSS_PHASE_MIN_PCT)
+    max_frame = int(total_frames * _TOSS_PHASE_MAX_PCT)
+    if accel_start < min_frame or accel_start > max_frame:
+        accel_start = max(min_frame, min(accel_start, max_frame))
         accel_detected = False
 
     # follow_through start = ball_impact, fallback to 85%
@@ -567,13 +552,13 @@ def _derive_phases_from_ktps(
         ft_detected = False
 
     # Enforce strict monotonic ordering: each boundary > previous
-    boundaries = [0, trophy_load_start, accel_start, ft_start]
+    boundaries = [0, accel_start, ft_start]
     for i in range(1, len(boundaries)):
         boundaries[i] = max(boundaries[i], boundaries[i - 1] + 1)
     # Clamp to valid frame range
     boundaries = [min(b, last_frame) for b in boundaries]
 
-    detected_flags = [True, trophy_load_detected, accel_detected, ft_detected]
+    detected_flags = [True, accel_detected, ft_detected]
 
     phases = []
     for i, phase in enumerate(PHASE_ORDER):

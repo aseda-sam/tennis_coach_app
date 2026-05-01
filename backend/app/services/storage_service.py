@@ -1,11 +1,20 @@
 """Storage service for handling file uploads and downloads across different storage backends."""
 
+# pyright: reportArgumentType=false, reportAttributeAccessIssue=false, reportReturnType=false
+# Supabase SDK type stubs are incomplete — bucket names are Optional[str] from settings,
+# and the storage client is lazily initialized. Suppressing known false positives.
+
+from __future__ import annotations
+
 import logging
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from app.core.config import settings
+
+if TYPE_CHECKING:
+    from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +33,7 @@ class StorageService:
     def _init_supabase(self) -> None:
         """Initialize cloud storage client for remote file storage."""
         try:
-            from supabase import Client, create_client
+            from supabase import create_client
 
             if not settings.SUPABASE_URL or not settings.SUPABASE_SECRET_KEY:
                 logger.warning(
@@ -51,12 +60,17 @@ class StorageService:
             logger.error("Failed to initialize cloud storage client: %s", e)
             raise RuntimeError(f"Failed to initialize cloud storage client: {e}") from e
 
-    def _validate_supabase_config(self) -> None:
-        """Validate cloud storage configuration and client."""
+    def _get_supabase_client(self) -> Client:
+        """Return the validated Supabase client, or raise if not initialized."""
         if not self._supabase_client:
             raise ValueError(
                 "Cloud storage client not initialized. Check SUPABASE_URL and SUPABASE_SECRET_KEY."
             )
+        return self._supabase_client
+
+    def _validate_supabase_config(self) -> None:
+        """Validate cloud storage configuration and client."""
+        self._get_supabase_client()
         if not settings.SUPABASE_STORAGE_BUCKET:
             raise ValueError("SUPABASE_STORAGE_BUCKET must be set")
 

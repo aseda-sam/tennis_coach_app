@@ -1,5 +1,20 @@
 /** Serve biomechanics API types (phases + raw metrics only, no scoring). */
 
+export interface CoachingFeedbackResponse {
+  feedback: string;
+  model: string;
+  latency_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export interface CoachingNoteResponse {
+  serve_window_id: number;
+  note: string;
+  timestamp: number;
+  user_id: number;
+}
+
 export interface MetricValue {
   metric_name: string;
   value: number | null;
@@ -53,7 +68,9 @@ export interface ServeBiomechanicsReport {
   metrics: MetricValue[];
   analysis_version: string;
   detection_meta?: DetectionMeta | null;
+  player_id?: number | null;
   created_at: string;
   video_id?: number | null;
   video_filename?: string | null;
+  video_recorded_at?: string | null;
 }

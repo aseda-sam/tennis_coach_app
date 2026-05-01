@@ -85,10 +85,15 @@ def unauthenticated_client():
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_optional_user] = mock_get_optional_user
 
-    with TestClient(app) as client:
-        yield client
-
-    app.dependency_overrides.clear()
+    try:
+        with (
+            patch("app.main.create_tables_if_not_exists"),
+            patch("app.main.start_rq_worker", return_value=None),
+            TestClient(app) as client,
+        ):
+            yield client
+    finally:
+        app.dependency_overrides.clear()
 
 
 # ---------------------------------------------------------------------------

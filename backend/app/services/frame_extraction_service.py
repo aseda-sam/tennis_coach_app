@@ -3,7 +3,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional, Set
 
 import cv2
 import numpy as np
@@ -25,6 +25,19 @@ _PAD_TOP = 0.50  # Extra above highest keypoint (racket headroom)
 _PAD_BOTTOM = 0.15  # Below lowest keypoint
 _PAD_SIDES = 0.30  # Left/right of bounding box
 
+# Named crop profiles: (focus_joints, pad_top, pad_bottom, pad_sides)
+_LOWER_BODY_JOINTS = {
+    "left_hip",
+    "right_hip",
+    "left_knee",
+    "right_knee",
+    "left_ankle",
+    "right_ankle",
+}
+CROP_PROFILES: Dict[str, tuple] = {
+    "lower_body": (_LOWER_BODY_JOINTS, 0.25, 0.20, 0.40),
+}
+
 
 def _crop_frame_to_pose(
     db: Session,
@@ -33,6 +46,7 @@ def _crop_frame_to_pose(
     fps: float,
     ktp_frame: int,
     frame: np.ndarray,
+    crop_profile: Optional[str] = None,
 ) -> np.ndarray:
     """Look up pose keypoints for the KTP frame and crop to the player.
 
@@ -51,7 +65,16 @@ def _crop_frame_to_pose(
             return frame
 
         h, w = frame.shape[:2]
-        return _crop_to_pose(frame, keypoints, h, w)
+        kwargs: Dict = {}
+        if crop_profile and crop_profile in CROP_PROFILES:
+            joints, pt, pb, ps = CROP_PROFILES[crop_profile]
+            kwargs = {
+                "focus_joints": joints,
+                "pad_top": pt,
+                "pad_bottom": pb,
+                "pad_sides": ps,
+            }
+        return _crop_to_pose(frame, keypoints, h, w, **kwargs)
     except Exception:  # noqa: BLE001
         logger.debug(
             "Pose crop failed for serve window %s, returning full frame",
@@ -66,26 +89,30 @@ def _crop_to_pose(
     keypoints: Dict,
     frame_height: int,
     frame_width: int,
+    focus_joints: Optional[Set[str]] = None,
+    pad_top: float = _PAD_TOP,
+    pad_bottom: float = _PAD_BOTTOM,
+    pad_sides: float = _PAD_SIDES,
 ) -> np.ndarray:
     """Crop frame to pose bounding box with padding.
 
-    Computes a bounding box from all visible keypoints, adds generous padding
-    (especially above the top to keep the racket in frame), and returns the
-    cropped region.  Always returns a non-empty image.
+    Computes a bounding box from visible keypoints, adds padding, and returns
+    the cropped region. When ``focus_joints`` is provided, only those joints
+    drive the bounding box (others are ignored).
     """
     xs = []
     ys = []
-    for _name, coords in keypoints.items():
+    for name, coords in keypoints.items():
+        if focus_joints and name not in focus_joints:
+            continue
         if isinstance(coords, (list, tuple)) and len(coords) >= 2:
             x, y = float(coords[0]), float(coords[1])
-            # Skip clearly invalid points (0,0 or out-of-frame)
             if x <= 0 and y <= 0:
                 continue
             xs.append(x)
             ys.append(y)
 
     if len(xs) < 2:
-        # Not enough landmarks — return full frame
         return frame
 
     min_x, max_x = min(xs), max(xs)
@@ -94,21 +121,85 @@ def _crop_to_pose(
     box_w = max_x - min_x
     box_h = max_y - min_y
 
-    # Apply padding
-    pad_top = box_h * _PAD_TOP
-    pad_bottom = box_h * _PAD_BOTTOM
-    pad_side = box_w * _PAD_SIDES
+    crop_x1 = int(max(0, min_x - box_w * pad_sides))
+    crop_y1 = int(max(0, min_y - box_h * pad_top))
+    crop_x2 = int(min(frame_width, max_x + box_w * pad_sides))
+    crop_y2 = int(min(frame_height, max_y + box_h * pad_bottom))
 
-    crop_x1 = int(max(0, min_x - pad_side))
-    crop_y1 = int(max(0, min_y - pad_top))
-    crop_x2 = int(min(frame_width, max_x + pad_side))
-    crop_y2 = int(min(frame_height, max_y + pad_bottom))
-
-    # Sanity check: crop must be at least 50x50
     if (crop_x2 - crop_x1) < 50 or (crop_y2 - crop_y1) < 50:
         return frame
 
     return frame[crop_y1:crop_y2, crop_x1:crop_x2]
+
+
+def extract_frame_at_timestamp(
+    db: Session,
+    serve_window_id: int,
+    timestamp: float,
+    crop_profile: Optional[str] = None,
+) -> bytes:
+    """Extract a JPEG frame at an absolute video timestamp from a serve window's video.
+
+    Args:
+        db: Database session.
+        serve_window_id: ID of the serve window.
+        timestamp: Absolute timestamp in seconds (within the serve window).
+
+    Returns:
+        JPEG image bytes (cropped to pose bounding box).
+
+    Raises:
+        ValueError: If serve window, video, or frame is missing/unreadable.
+    """
+    serve_window = (
+        db.query(ServeWindow).filter(ServeWindow.id == serve_window_id).first()
+    )
+    if not serve_window:
+        raise ValueError(f"Serve window {serve_window_id} not found")
+
+    video = serve_window.video
+    if not video:
+        video = db.query(Video).filter(Video.id == serve_window.video_id).first()
+    if not video:
+        raise ValueError(f"Video {serve_window.video_id} not found")
+
+    fps = video.fps or 30.0
+    absolute_frame = int(timestamp * fps)
+
+    # Relative frame within serve window (for pose crop)
+    relative_frame = int((timestamp - serve_window.start_timestamp) * fps)
+
+    temp_path = None
+    try:
+        local_path = storage_service.get_local_file_path(video.file_path)
+        if storage_service.storage_type == "supabase":
+            temp_path = local_path
+
+        cap = cv2.VideoCapture(str(local_path))
+        cap.set(cv2.CAP_PROP_POS_FRAMES, absolute_frame)
+        ret, frame = cap.read()
+        cap.release()
+
+        if not ret or frame is None:
+            raise ValueError(
+                f"Could not read frame {absolute_frame} from video {video.id}"
+            )
+
+        frame = _crop_frame_to_pose(
+            db, video, serve_window, fps, relative_frame, frame, crop_profile
+        )
+
+        success, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        if not success:
+            raise ValueError(f"Failed to encode frame as JPEG for video {video.id}")
+
+        return buffer.tobytes()
+    finally:
+        if temp_path and Path(temp_path).exists():
+            try:
+                Path(temp_path).unlink()
+            except OSError:
+                logger.warning("Failed to clean up temp file: %s", temp_path)
 
 
 def extract_ktp_frame(db: Session, serve_window_id: int, ktp_name: str) -> bytes:

@@ -5,7 +5,7 @@ Pure computation — no DB access.
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 
@@ -18,9 +18,10 @@ logger = logging.getLogger(__name__)
 # Metadata for API: unit and phase per metric (no thresholds/scoring).
 # Only metrics listed here appear in the API response (metrics_to_flat_list).
 METRIC_META: Dict[str, Dict[str, str]] = {
-    "knee_flexion_min_deg": {"unit": "deg", "phase": "toss"},
-    "toss_peak_height": {"unit": "normalized", "phase": "toss"},
-    "toss_laterality": {"unit": "normalized", "phase": "toss"},
+    "knee_flexion_min_deg": {"unit": "deg", "phase": "toss_and_load"},
+    "toss_peak_height": {"unit": "normalized", "phase": "toss_and_load"},
+    "toss_laterality": {"unit": "normalized", "phase": "toss_and_load"},
+    "toss_drop": {"unit": "normalized", "phase": "toss_and_load"},
 }
 
 
@@ -77,17 +78,20 @@ class BiomechanicsMetrics(BaseModel):
     knee_flexion_min_deg: Optional[float] = None
     toss_peak_height: Optional[float] = None
     toss_laterality: Optional[float] = None
+    toss_drop: Optional[float] = None
     # Annotation timestamps (stored in JSONB _annotations, not in flat metric list directly)
     toss_peak_timestamp: Optional[float] = None
+    knee_flexion_min_timestamp: Optional[float] = None
 
 
 # Fields stored under _annotations in JSONB, not as regular phase metrics.
-ANNOTATION_FIELDS = {"toss_peak_timestamp"}
+ANNOTATION_FIELDS = {"toss_peak_timestamp", "knee_flexion_min_timestamp"}
 
 # Maps metric name → annotation field name for timestamp lookup.
 METRIC_TIMESTAMP_MAP: Dict[str, str] = {
     "toss_peak_height": "toss_peak_timestamp",
     "toss_laterality": "toss_peak_timestamp",
+    "knee_flexion_min_deg": "knee_flexion_min_timestamp",
 }
 
 
@@ -133,7 +137,11 @@ def compute_biomechanics_metrics(
         contact_frame = max(0, min(contact_frame, len(pose_frames) - 1))
 
     # Knee flexion — minimum angle from serve start through contact
-    metrics.knee_flexion_min_deg = _compute_min_knee_flexion(pose_frames, contact_frame)
+    knee_result = _compute_min_knee_flexion(pose_frames, contact_frame)
+    if knee_result is not None:
+        metrics.knee_flexion_min_deg = knee_result[0]
+        frame_idx = knee_result[1]
+        metrics.knee_flexion_min_timestamp = serve_start + frame_idx / fps
 
     return metrics
 
@@ -141,7 +149,7 @@ def compute_biomechanics_metrics(
 def _compute_min_knee_flexion(
     pose_frames: List[Optional[Dict]],
     contact_frame: Optional[int],
-) -> Optional[float]:
+) -> Optional[Tuple[float, int]]:
     """Compute minimum knee flexion angle from serve start through contact.
 
     Searches from the beginning of the serve window to contact.  The deepest
@@ -157,6 +165,7 @@ def _compute_min_knee_flexion(
     end = min(end, len(pose_frames))
 
     min_angle = None
+    min_frame = 0
     for i in range(start, end):
         frame = pose_frames[i]
         if frame is None:
@@ -165,8 +174,11 @@ def _compute_min_knee_flexion(
             angle = calculate_knee_angle(frame, side)
             if angle is not None and (min_angle is None or angle < min_angle):
                 min_angle = angle
+                min_frame = i
 
     if min_angle is not None and min_angle < 80.0:
         return None
 
-    return round(min_angle, 1) if min_angle is not None else None
+    if min_angle is not None:
+        return (round(min_angle, 1), min_frame)
+    return None

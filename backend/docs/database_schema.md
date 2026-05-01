@@ -78,10 +78,16 @@ No scoring, ratings, or coaching text — phases + metrics only.
 - `serve_window_id` (FK -> `serve_windows.id`, CASCADE)
 - `user_id` (owner)
 - `player_id` (FK -> `players.id`, CASCADE)
-- `phase_segmentation_json` (TEXT, JSON-serialized phase boundaries + moment markers; `phase-seg-v4` uses 4 phases: toss, trophy_load, acceleration, follow_through)
-- `metrics` (JSONB, nested by phase: `{"toss": {"knee_flexion_min_deg": 95.5, "toss_peak_height": 1.8}}`)
+- `phase_segmentation_json` (TEXT, JSON-serialized phase boundaries + moment markers; `phase-seg-v5` uses 3 phases: toss_and_load, acceleration, follow_through)
+- `metrics` (JSONB, nested by phase: `{"toss_and_load": {"knee_flexion_min_deg": 95.5, "toss_peak_height": 1.8, "toss_drop": 0.25}}`)
 - `analysis_version`
 - `created_at`
 - Indexes:
   - `ix_biomechanics_reports_player_created` on (`player_id`, `created_at`)
   - `ix_biomechanics_reports_user_player` on (`user_id`, `player_id`)
+
+### API response notes
+
+`BiomechanicsReportResponse` (returned by both the single-report and history endpoints) includes denormalized video context:
+- `video_id`, `video_filename` — from `serve_window.video`
+- `video_recorded_at` — `videos.recorded_at`, preferred over `created_at` for session date labels and chronological sorting in progress views. Exposed since `phase-metrics-v8`.

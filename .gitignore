@@ -66,6 +66,7 @@ docs/private/
 .claude/
 CLAUDE.md
 /AGENTS.local.md
+.playwright-mcp/
 
 # Ruff
 .ruff_cache/
@@ -101,6 +102,9 @@ data/videos/processed/*
 data/videos/demo/*
 data/analysis_cache/*
 data/trophy_frames/*
+data/llm_logs/*
+data/experiments/*
+data/tennis.duckdb
 
 # Keep directories but ignore contents
 !data/videos/raw/.gitkeep

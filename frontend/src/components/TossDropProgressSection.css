@@ -1,0 +1,182 @@
+.toss-drop-progress {
+  padding: 4px 0 4px;
+}
+
+/* Trend line */
+.toss-drop-progress__trend {
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 8px;
+  letter-spacing: 0.01em;
+}
+
+.toss-drop-progress__trend--down {
+  color: var(--color-success-dark, #059669);
+}
+
+.toss-drop-progress__trend--up {
+  color: var(--color-error, #dc4a4a);
+}
+
+.toss-drop-progress__trend--flat {
+  color: var(--color-text-muted);
+}
+
+/* SVG chart */
+.toss-drop-progress__svg {
+  display: block;
+  overflow: visible;
+}
+
+/* Connecting line between dots */
+.toss-drop-progress__line {
+  fill: none;
+  stroke: var(--color-text-secondary);
+  stroke-width: 1.5;
+  opacity: 0.5;
+}
+
+/* Mean reference line */
+.toss-drop-progress__mean-line {
+  stroke: var(--color-text-secondary);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  opacity: 0.6;
+}
+
+/* Current-session highlight band — solid black */
+.toss-drop-progress__session-band {
+  fill: #000000;
+}
+
+/* Mean reference line inside dark band — light so it stays visible */
+.toss-drop-progress__mean-line--on-dark {
+  stroke: rgba(255, 255, 255, 0.55);
+}
+
+/* Dots */
+.toss-drop-progress__dot {
+  fill: var(--color-text-secondary);
+  opacity: 0.55;
+}
+
+.toss-drop-progress__dot--in-session {
+  fill: #ffffff;
+  stroke: none;
+  opacity: 1;
+}
+
+.toss-drop-progress__dot--current {
+  fill: var(--color-primary);
+  opacity: 1;
+  stroke: var(--color-primary-dark);
+  stroke-width: 1.5;
+}
+
+/* Session date labels */
+.toss-drop-progress__session-tick {
+  font-size: 9px;
+  fill: var(--color-text-muted);
+  font-family: var(--font-mono, monospace);
+}
+
+/* Legend */
+.toss-drop-progress__legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin: 4px 0 0;
+}
+
+.toss-drop-progress__legend-dot-svg,
+.toss-drop-progress__legend-line-svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+/* Expand button (top-right of section header) */
+.toss-drop-progress__expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--duration-fast) var(--ease-in-out),
+    background var(--duration-fast) var(--ease-in-out);
+}
+
+.toss-drop-progress__expand-btn:hover {
+  color: var(--color-text);
+  background: var(--color-border-light);
+}
+
+/* Fullscreen overlay */
+.toss-drop-progress__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal-backdrop, 1000);
+  padding: 20px;
+  animation: toss-drop-fade 0.12s ease-out;
+}
+
+@keyframes toss-drop-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.toss-drop-progress__overlay-panel {
+  background: var(--color-surface);
+  border-radius: var(--radius-3xl);
+  width: min(1000px, 95vw);
+  max-height: 88vh;
+  overflow: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+
+.toss-drop-progress__overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.toss-drop-progress__overlay-title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-text-muted);
+}
+
+.toss-drop-progress__expand-btn--close {
+  width: 28px;
+  height: 28px;
+}
+
+.toss-drop-progress__overlay-body {
+  padding: var(--spacing-lg) var(--spacing-xl, var(--spacing-lg));
+  flex: 1;
+}

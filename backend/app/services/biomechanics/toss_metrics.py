@@ -5,9 +5,10 @@ Computes toss peak height, peak timestamp, and toss laterality for a serve windo
 
 import json
 import logging
-from typing import Dict, Optional
+from typing import Optional
 
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 
 from app.models.ball_detection import BallDetection
 from app.models.pose_detection import PoseDetection
@@ -16,6 +17,15 @@ from app.models.video import Video
 from app.services.pose_data_service import get_pose_at_timestamp
 
 logger = logging.getLogger(__name__)
+
+
+class TossMetricsDict(TypedDict):
+    """Typed dict for toss metrics computed from ball detection data."""
+
+    toss_peak_height: float | None
+    toss_peak_timestamp: float
+    toss_laterality: float | None
+    toss_drop: float | None
 
 
 def _get_best_ball_detection(db: Session, video_id: int) -> Optional[BallDetection]:
@@ -36,7 +46,7 @@ def _compute_toss_metrics(
     ball_detection: BallDetection,
     video: Video,
     pose_detection: Optional[PoseDetection],
-) -> Optional[Dict[str, any]]:
+) -> Optional[TossMetricsDict]:
     """
     Compute toss peak height and timestamp for a serve window from ball detection data.
 
@@ -115,6 +125,24 @@ def _compute_toss_metrics(
     if toss_peak_height is not None and toss_peak_height < 0:
         toss_peak_height = 0.0
 
+    # Data quality gate: if peak is at or below shoulder level, the "peak" is
+    # likely a ground ball or other false detection. All ball-derived metrics
+    # (peak height, laterality, drop) share the same bad best frame, so null
+    # them all out rather than propagate nonsensical values.
+    if toss_peak_height is not None and toss_peak_height <= 0:
+        logger.info(
+            "Toss peak at/below shoulder (height=%.2f) for sw %s — likely ground ball, "
+            "nulling ball-derived metrics",
+            toss_peak_height,
+            serve_window.id,
+        )
+        return {
+            "toss_peak_height": None,
+            "toss_peak_timestamp": round(toss_peak_timestamp, 4),
+            "toss_laterality": None,
+            "toss_drop": None,
+        }
+
     # Toss laterality: horizontal distance of ball from body center, normalized
     toss_laterality: Optional[float] = None
     if best.get("ball_x") is not None and pose_at_start is not None:
@@ -122,8 +150,26 @@ def _compute_toss_metrics(
         rs = pose_at_start.get("right_shoulder")
         if ls and rs:
             body_center_x = (ls[0] + rs[0]) / 2
-            toss_laterality = (best["ball_x"] - body_center_x) / player_height_px
+            toss_laterality = float(best["ball_x"] - body_center_x) / player_height_px
             toss_laterality = round(toss_laterality, 4)
+
+    # Toss drop: how far ball dropped from peak to contact, normalized by player height
+    toss_drop: Optional[float] = None
+    contact_ms = (serve_window.contact_timestamp or 0) * 1000
+    contact_tolerance_ms = 67  # ~2 frames at 30fps
+    valid_frames = [f for f in ball_list if f.get("ball_y") is not None]
+    if valid_frames and serve_window.contact_timestamp is not None:
+        nearest = min(valid_frames, key=lambda f: abs(f["timestamp_ms"] - contact_ms))
+        if (
+            abs(nearest["timestamp_ms"] - contact_ms) <= contact_tolerance_ms
+            and player_height_px > 0
+        ):
+            toss_drop = float(nearest["ball_y"] - best["ball_y"]) / player_height_px
+            toss_drop = round(toss_drop, 4)
+        else:
+            toss_drop = None
+    else:
+        toss_drop = None
 
     return {
         "toss_peak_height": round(toss_peak_height, 4)
@@ -131,4 +177,5 @@ def _compute_toss_metrics(
         else None,
         "toss_peak_timestamp": round(toss_peak_timestamp, 4),
         "toss_laterality": toss_laterality,
+        "toss_drop": toss_drop,
     }

@@ -28,6 +28,20 @@ alwaysApply: false
 - Use `useCallback` for functions passed as props to memoized children or used in dependency arrays.
 - Don't wrap simple primitive expressions in `useMemo` — the overhead exceeds the cost of recomputation.
 
+## Resource Lifecycle (blob URLs, object URLs)
+
+- **Never use `useMemo` to create blob URLs.** `useMemo` caches its return value across renders. In React StrictMode, the `useEffect` cleanup runs (revoking the URL) but `useMemo` won't re-run if the dep (e.g. the blob reference) hasn't changed — so the component is left holding a revoked URL. The bug only surfaces on re-mount with a cache hit (e.g. React Query returning the same blob object), which is why it looks intermittent.
+- **Use `useEffect` + `useState` for blob URL lifecycle.** `useEffect` always re-runs its setup on mount regardless of whether deps changed since the last unmount, so StrictMode's cleanup+re-run cycle correctly creates a fresh URL each time:
+  ```ts
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!blob) { setUrl(null); return; }
+    const newUrl = URL.createObjectURL(blob);
+    setUrl(newUrl);
+    return () => URL.revokeObjectURL(newUrl);
+  }, [blob]);
+  ```
+
 ## Code Splitting (Required for new routes/heavy components)
 
 - Use `React.lazy()` + `<Suspense>` for route-level code splitting when adding new top-level views.

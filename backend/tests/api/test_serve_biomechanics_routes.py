@@ -30,21 +30,12 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
         {
             "phases": [
                 {
-                    "phase": "toss",
+                    "phase": "toss_and_load",
                     "start_timestamp": 0.0,
-                    "end_timestamp": 0.7,
-                    "start_frame": 0,
-                    "end_frame": 21,
-                    "confidence": 0.8,
-                    "detected": True,
-                },
-                {
-                    "phase": "trophy_load",
-                    "start_timestamp": 0.7,
                     "end_timestamp": 0.97,
-                    "start_frame": 21,
+                    "start_frame": 0,
                     "end_frame": 29,
-                    "confidence": 0.7,
+                    "confidence": 0.8,
                     "detected": True,
                 },
                 {
@@ -84,9 +75,9 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
                     "method": "user_tagged",
                 },
             ],
-            "analysis_version": "phase-seg-v4",
-            "total_phases_detected": 4,
-            "total_phases_possible": 4,
+            "analysis_version": "phase-seg-v5",
+            "total_phases_detected": 3,
+            "total_phases_possible": 3,
             "detection_meta": {
                 "ktps": {
                     "ball_release": {
@@ -120,7 +111,7 @@ def _make_mock_report(serve_window_id: int = 1) -> ServeBiomechanicsReport:
         }
     )
     report.metrics = {
-        "toss": {
+        "toss_and_load": {
             "knee_flexion_min_deg": 95.0,
             "toss_peak_height": 1.8,
             "toss_laterality": 0.15,
@@ -147,10 +138,15 @@ def biomechanics_client():
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = mock_get_current_user
 
-    with TestClient(app) as client:
-        yield client
-
-    app.dependency_overrides.clear()
+    try:
+        with (
+            patch("app.main.create_tables_if_not_exists"),
+            patch("app.main.start_rq_worker", return_value=None),
+            TestClient(app) as client,
+        ):
+            yield client
+    finally:
+        app.dependency_overrides.clear()
 
 
 class TestGetServeBiomechanics:
@@ -291,10 +287,10 @@ class TestGetServeWindowFrame:
         )
         assert response.status_code == 404
 
-    def test_missing_ktp_param_returns_422(self, biomechanics_client):
-        """ktp query param is required."""
+    def test_missing_both_params_returns_400(self, biomechanics_client):
+        """Either ktp or timestamp is required; omitting both returns 400."""
         response = biomechanics_client.get("/v0/serve-windows/1/frame")
-        assert response.status_code == 422
+        assert response.status_code == 400
 
 
 def _make_mock_report_with_video(serve_window_id: int = 1) -> ServeBiomechanicsReport:

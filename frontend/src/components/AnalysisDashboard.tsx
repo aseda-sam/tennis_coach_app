@@ -12,6 +12,9 @@ import usePersistedState from '../hooks/usePersistedState';
 import { useServeBiomechanicsReport } from '../hooks/useServeBiomechanicsReport';
 import { useServePlayback } from '../hooks/useServePlayback';
 import { useServeProposals } from '../hooks/useServeProposals';
+import { useMetricHistory } from '../hooks/useMetricHistory';
+import { useTossDropProgress } from '../hooks/useTossDropProgress';
+import TossDropProgressSection from './TossDropProgressSection';
 import { useServeWindows } from '../hooks/useServeWindows';
 import { useVideoAnalysisStatus } from '../hooks/useVideos';
 import { useVideoUrl } from '../hooks/useVideoUrl';
@@ -20,7 +23,8 @@ import './AnalysisDashboard.css';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
 import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
 import CollapsibleSection from './CollapsibleSection';
-import { FeatureChartsSection, KTPTable } from './DetectionDetailsPanel';
+import { FeatureChartsSection } from './DetectionDetailsPanel';
+import MetricCard, { VISIBLE_METRICS } from './MetricCard';
 import ErrorBoundary from './ErrorBoundary';
 import HeroView from './HeroView';
 import { TourPlaybackControls } from './DemoTour/tourSteps';
@@ -117,11 +121,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   );
   const [viewMode, setViewMode] = useState<ViewMode>('analysis-focus');
   const focusViewRef = useRef<HTMLDivElement>(null);
-  const ktpRef = useRef<HTMLDivElement>(null);
   const currentTimeRef = useRef(0);
 
   // Collapsible sidebar section state (persisted across sessions)
-  const [ktpExpanded, setKtpExpanded] = usePersistedState('sidebar:ktp', false);
   const [chartsExpanded, setChartsExpanded] = usePersistedState(
     'sidebar:charts',
     true
@@ -129,6 +131,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isTrophyFilmstripOpen, setIsTrophyFilmstripOpen] = useState(false);
+  const [tossDropExpanded, setTossDropExpanded] = useState(true);
 
   // No-serves find state (mutually exclusive with edit panel)
   const [isFindingServes, setIsFindingServes] = useState(false);
@@ -136,6 +139,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const {
     serveWindows,
     updateServeWindow,
+    deleteServeWindow,
     loading: serveWindowsLoading,
   } = useServeWindows({
     videoId,
@@ -186,6 +190,14 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
   const { data: biomechanicsReport } = useServeBiomechanicsReport(
     currentServe?.id ?? null
   );
+
+  const metricHistory = useMetricHistory(biomechanicsReport?.player_id, isDemo);
+  const {
+    sessions: tossDropSessions,
+    mean: tossDropMean,
+    totalCount: tossDropCount,
+    isLoading: tossDropLoading,
+  } = useTossDropProgress(biomechanicsReport?.player_id, isDemo);
 
   const phases = useMemo(
     () => biomechanicsReport?.phase_segmentation ?? [],
@@ -366,24 +378,11 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
     handleToggleAutoAdvance,
   ]);
 
-  // Scroll wheel — frame navigation within current serve window (only when hovering over the player/chart area).
-  // currentTime is read from a ref so the listener registers once per serve, not once per frame.
-  useEffect(() => {
-    if (!currentServe) return;
-    const container = focusViewRef.current;
-    if (!container) return;
-    const handleWheel = (e: WheelEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLSelectElement
-      ) {
-        return;
-      }
-      if (ktpRef.current?.contains(e.target as Node)) {
-        return;
-      }
-      e.preventDefault();
-      const forward = naturalScroll ? e.deltaY > 0 : e.deltaY < 0;
+  // Scroll wheel — frame scrub only on the video player display
+  const handleWheelScrub = useCallback(
+    (deltaY: number) => {
+      if (!currentServe) return;
+      const forward = naturalScroll ? deltaY > 0 : deltaY < 0;
       const delta = (forward ? 1 : -1) * (1 / 30);
       handleSeek(
         Math.max(
@@ -391,10 +390,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           Math.min(currentServe.end_timestamp, currentTimeRef.current + delta)
         )
       );
-    };
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, [currentServe, naturalScroll, handleSeek]);
+    },
+    [currentServe, naturalScroll, handleSeek]
+  );
 
   // Find serves handler for the no-serves fallback state
   const handleFindServes = useCallback(async () => {
@@ -610,6 +608,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                         ? () => setIsEditModalOpen(true)
                         : undefined
                     }
+                    onWheelScrub={handleWheelScrub}
                   />
                 </ErrorBoundary>
 
@@ -707,6 +706,44 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               )}
 
               <div className="analysis-dashboard__side-col">
+                {/* Metric Cards */}
+                {biomechanicsReport?.metrics && (
+                  <div className="analysis-dashboard__metric-cards">
+                    {[...biomechanicsReport.metrics]
+                      .filter((m) => VISIBLE_METRICS.has(m.metric_name))
+                      .sort((a, b) => {
+                        // Toss height first (tall card fills col 1)
+                        const tall = 'toss_peak_height';
+                        if (a.metric_name === tall) return -1;
+                        if (b.metric_name === tall) return 1;
+                        return 0;
+                      })
+                      .map((m) => (
+                        <MetricCard
+                          key={m.metric_name}
+                          metricName={m.metric_name}
+                          value={m.value}
+                          timestamp={m.timestamp}
+                          historyValues={metricHistory[m.metric_name] ?? []}
+                          onScrubTo={handleSeek}
+                          serveWindowId={currentServe?.id ?? null}
+                        />
+                      ))}
+                  </div>
+                )}
+
+                {/* Ball Drop Trend — hidden in demo, needs ≥3 data points */}
+                {!isDemo && tossDropCount >= 3 && (
+                  <TossDropProgressSection
+                    sessions={tossDropSessions}
+                    mean={tossDropMean}
+                    isLoading={tossDropLoading}
+                    currentServeWindowId={currentServe?.id ?? null}
+                    expanded={tossDropExpanded}
+                    onToggle={() => setTossDropExpanded((v) => !v)}
+                  />
+                )}
+
                 {/* Feature Curves */}
                 {biomechanicsReport?.detection_meta && (
                   <div data-tour-step="feature-charts">
@@ -726,24 +763,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                         loopPhaseWindow={
                           loopCurrentPhase ? loopPhaseWindow : null
                         }
-                      />
-                    </CollapsibleSection>
-                  </div>
-                )}
-
-                {/* Key Time Points — debug detail */}
-                {biomechanicsReport?.detection_meta && (
-                  <div ref={ktpRef}>
-                    <CollapsibleSection
-                      title="Detection Details"
-                      expanded={ktpExpanded}
-                      onToggle={() => setKtpExpanded(!ktpExpanded)}
-                      variant="muted"
-                    >
-                      <KTPTable
-                        detectionMeta={biomechanicsReport.detection_meta}
-                        serveStart={currentServe!.start_timestamp}
-                        onSeek={handleSeek}
                       />
                     </CollapsibleSection>
                   </div>
@@ -839,6 +858,17 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
             setIsEditModalOpen(false);
           }}
+          onDelete={
+            !isDemo
+              ? async (id: number) => {
+                  await deleteServeWindow(id);
+                  queryClient.invalidateQueries({
+                    queryKey: ['serve-windows'],
+                  });
+                  setIsEditModalOpen(false);
+                }
+              : undefined
+          }
         />
       )}
 
@@ -847,6 +877,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         onClose={() => setIsTrophyFilmstripOpen(false)}
         serveWindows={sortedServeWindows}
         videoFilename={videoFilename}
+        activeServeWindowId={currentServe?.id}
       />
     </div>
   );

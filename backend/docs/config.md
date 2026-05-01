@@ -36,6 +36,15 @@ ADMIN_USER_IDS=uuid1,uuid2  # optional — required for admin UI and demo video 
 SUPABASE_DEMO_BUCKET=demo-videos  # optional — only needed if using public demo videos
 ```
 
+### LLM Coaching (optional)
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...  # Required for coaching feedback generation
+LLM_MODEL=claude-sonnet-4-6  # optional — defaults to claude-sonnet-4-6
+LLM_MAX_TOKENS=1024           # optional — max output tokens for coaching calls
+LLM_LOG_DIR=                  # optional — defaults to ../data/llm_logs/
+```
+
 ## Notes
 
 - `AUTO_CONTACT_DETECTOR_VERSION` controls auto-contact logic:

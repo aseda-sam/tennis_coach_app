@@ -56,6 +56,19 @@ RQ dashboard (if enabled in compose): `http://localhost:9181`
 
 Ball detection loads torch + YOLO + ByteTrack (~2-3 GB). On macOS, running the worker on the host gives MPS GPU acceleration and avoids Docker VM memory limits.
 
+### Why native matters on Apple Silicon
+
+Docker Desktop runs a Linux VM. That VM has no access to Metal (Apple's GPU API) or the Apple Neural Engine (ANE). Every inference call inside a Docker container — MediaPipe pose detection and YOLO ball detection — runs CPU-only, regardless of which Apple Silicon chip you have.
+
+Running the worker natively on the host unlocks:
+
+- **MPS (Metal Performance Shaders):** GPU acceleration for YOLO/PyTorch — automatically used when torch detects `mps` device.
+- **ANE (Apple Neural Engine):** MediaPipe can use the ANE via Core ML when running natively, giving a large speedup on M-series chips (especially M5, which has a significantly faster ANE than M1).
+
+The practical implication: on an M5 MacBook Air, a native host worker processes video substantially faster than the Docker worker, and without triggering the thermal limits that sustained CPU-only inference would hit inside Docker.
+
+**Planned migration:** the worker should move to running natively by default. The Docker worker remains useful for CI and Linux deploys, but for local video analysis it leaves significant acceleration on the table.
+
 ```bash
 # Start Docker services WITHOUT the worker container
 docker compose up --build backend frontend postgres redis rq-dashboard
