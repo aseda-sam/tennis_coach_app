@@ -104,6 +104,7 @@ data/analysis_cache/*
 data/trophy_frames/*
 data/llm_logs/*
 data/experiments/*
+data/tennis.duckdb
 
 # Keep directories but ignore contents
 !data/videos/raw/.gitkeep
