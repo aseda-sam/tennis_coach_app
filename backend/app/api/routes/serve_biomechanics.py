@@ -17,6 +17,7 @@ from app.api.schemas.serve_biomechanics import (
     MomentMarkerResponse,
     PhaseWindowResponse,
 )
+from app.core.config import settings
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user, get_optional_user
 from app.models.serve_biomechanics_report import ServeBiomechanicsReport
@@ -330,6 +331,11 @@ async def get_coaching_feedback(
     db: Session = Depends(get_db),
 ) -> CoachingFeedbackResponse:
     """Generate LLM coaching feedback for a serve window."""
+    if not settings.ANTHROPIC_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Coaching feedback is not configured on this server (ANTHROPIC_API_KEY missing).",
+        )
     try:
         sw = serve_window_service.get_serve_window_by_id_no_auth(db, serve_window_id)
         video = video_service.get_video_by_id(db, sw.video_id)
@@ -400,8 +406,6 @@ async def get_coaching_feedback(
             input_tokens=result.input_tokens,
             output_tokens=result.output_tokens,
         )
-    except ValueError as e:
-        raise handle_not_found_error("serve_window", str(serve_window_id)) from e
     except HTTPException:
         raise
     except Exception as e:  # noqa: BLE001 - catch-all for log_and_raise_error

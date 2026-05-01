@@ -103,6 +103,7 @@ data/videos/demo/*
 data/analysis_cache/*
 data/trophy_frames/*
 data/llm_logs/*
+data/experiments/*
 
 # Keep directories but ignore contents
 !data/videos/raw/.gitkeep

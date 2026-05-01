@@ -1,5 +1,10 @@
 # Coaching Service — LLM Intelligence Layer
 
+> **Status: paused.** The service, API endpoints, and JSONL logger are complete and stable.
+> The eval harness (Part 2) has not been built yet — open coding on traces has not started.
+> No coaching UI is exposed to users; the `/coaching` endpoint exists but is not called by
+> the frontend. Resume here when ready to build the eval harness.
+
 Turns biomechanics metrics into natural-language coaching feedback via Claude.
 
 ## Architecture
@@ -96,11 +101,12 @@ python scripts/test_coaching_feedback.py --serve-window-id 58
 jq '.' data/llm_logs/coaching_calls.jsonl
 ```
 
-## Next steps
+## Paused — what's next when resumed
 
-- **Part 2: Eval harness** — deterministic assertions over LLM outputs
-  (references data? no drills without data? addresses as "you"?)
-- **Camera angle** — pass to coaching service so LLM can caveat
-  angle-dependent metrics
-- **API endpoint** — `POST /v0/videos/{video_id}/coaching-feedback` via RQ
-- **Player goals/profile** — skill level, objectives, serve style context
+1. **Open coding** — review 50+ traces in `data/llm_logs/coaching_calls.jsonl`
+   (run `backend/scripts/generate_coaching_traces.py` first to build the corpus)
+2. **Eval harness** — deterministic assertions derived from open coding
+   (references data? no drills without data? addresses as "you"?)
+3. **Camera angle** — pass to coaching service so LLM can caveat angle-dependent metrics
+4. **Re-expose in UI** — coaching panel was removed; add back once eval harness validates quality
+5. **Player goals/profile** — skill level, objectives, serve style context (v2)
