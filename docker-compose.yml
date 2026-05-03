@@ -61,6 +61,7 @@ services:
   redis:
     container_name: tennis-coach-redis
     image: redis:alpine
+    command: redis-server --appendonly yes
     ports:
       - "6379:6379"
     volumes:

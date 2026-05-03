@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     POSE_TRACKING_CONFIDENCE: float = 0.5
     POSE_OVERALL_CONFIDENCE: float = 0.8
 
+    # Ball Detection (YOLO)
+    # Inference image size. 640 is YOLO default; 1280 ~doubles pixel resolution
+    # (better for small/far balls) at ~3-4x inference cost. Native MPS handles
+    # 1280 comfortably; Docker CPU does not.
+    YOLO_IMGSZ: int = 640
+
     # Serve Detection
     SERVE_DETECTION_LOW_CONFIDENCE_THRESHOLD: float = (
         0.6  # Proposals below this are "uncertain"

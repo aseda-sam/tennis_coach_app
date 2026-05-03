@@ -113,10 +113,13 @@ def _select_ball_track(
 class YoloBallDetectionService:
     """Detect tennis balls in video using fine-tuned YOLOv8 + ByteTrack."""
 
-    def __init__(self, device: Optional[str] = None) -> None:
+    def __init__(
+        self, device: Optional[str] = None, imgsz: Optional[int] = None
+    ) -> None:
         self._model: Optional[object] = None
         self._ball_class: int = FINE_TUNED_BALL_CLASS
         self._device: Optional[str] = device
+        self._imgsz: int = imgsz if imgsz is not None else settings.YOLO_IMGSZ
         self._logger = logger
 
     def _get_model(self) -> object:
@@ -163,6 +166,7 @@ class YoloBallDetectionService:
                 self._logger.info(
                     "YOLO inference requested device override: %s", self._device
                 )
+            self._logger.info("YOLO inference imgsz: %d", self._imgsz)
 
         return self._model
 
@@ -268,9 +272,14 @@ class YoloBallDetectionService:
                 timestamp_ms = (idx * 1000.0 / fps) if fps > 0 else 0.0
 
                 if self._device:
-                    results = model(frame, verbose=False, device=self._device)
+                    results = model(
+                        frame,
+                        verbose=False,
+                        device=self._device,
+                        imgsz=self._imgsz,
+                    )
                 else:
-                    results = model(frame, verbose=False)
+                    results = model(frame, verbose=False, imgsz=self._imgsz)
                 detections = sv.Detections.from_ultralytics(results[0])
 
                 # Filter to ball class only, above confidence threshold
