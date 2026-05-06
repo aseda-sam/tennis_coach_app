@@ -852,6 +852,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           videoUrl={resolvedVideoUrl}
           onSaved={() => {
             queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
+            queryClient.invalidateQueries({
+              queryKey: ['biomechanics-report', currentServe.id],
+            });
             setIsEditModalOpen(false);
           }}
           onSplit={() => {

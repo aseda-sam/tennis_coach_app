@@ -50,7 +50,7 @@ export function useServePlayback({
 
   const currentServe = sortedServeWindows[currentServeIndex] ?? null;
 
-  // Sync currentTime when switching serves
+  // Sync currentTime and clear loop state when switching serves
   useEffect(() => {
     if (currentServe) {
       setCurrentTime(currentServe.start_timestamp);
@@ -63,6 +63,13 @@ export function useServePlayback({
       setLoopPhaseWindow(null);
     }
   }, [currentServe?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When serve boundaries are edited (same serve, different timestamps), cancel loop mode
+  // so stale phase window timestamps don't drive playback outside the new clip bounds.
+  useEffect(() => {
+    setLoopCurrentPhase(false);
+    setLoopPhaseWindow(null);
+  }, [currentServe?.start_timestamp, currentServe?.end_timestamp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Playback timer for stick figure mode (and video mode sync)
   useEffect(() => {
