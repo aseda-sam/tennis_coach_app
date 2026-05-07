@@ -185,6 +185,16 @@ YOLOv8 is a bounding-box detector. It works per-frame and is easy to fine-tune o
 
 Full architecture rationale: [ADR 002](../../docs/decisions/002-yolo-bytetrack-ball-detection.md).
 
+### Known issue: static false-positive locks out the real ball (video 39, 2026-05-07)
+
+**Symptom:** ball detection runs without error, 100% detection rate, but no ball appears in the stick-figure view for any serve window.
+
+**Cause:** YOLO latched onto a fixed object at ~(32, 564) in every frame — probably a court marking, fence post, or similar feature at the far-left edge of the frame. ByteTrack kept it as a single persistent track. `_select_ball_track` then picked it as the "best" track because it was the only (or dominant) track. The actual moving ball was either not detected at all or detected on a shorter, lower-displacement track that lost the selection.
+
+**Why it's invisible in the UI:** After normalization, x≈32 maps to ~184px left of the body's hip center. With the stick-figure scale, that renders off the left edge of the canvas.
+
+**Fix needed in `_select_ball_track`:** add a minimum peak-displacement threshold (e.g. 5px). Reject any track whose peak-window displacement is below the threshold; return `None` rather than a static false positive. This prevents a parked object from winning when no real ball motion is found.
+
 ### What fine-tuning is
 
 Fine-tuning takes an existing trained model and specialises it: keep the learned visual features (edges, textures, shapes) but teach it what a tennis ball looks like in *your* conditions. Faster and more accurate than training from scratch. Each round should start from the *previous round's output*, not from `yolov8s.pt`.
