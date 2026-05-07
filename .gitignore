@@ -105,6 +105,10 @@ data/trophy_frames/*
 data/llm_logs/*
 data/experiments/*
 data/tennis.duckdb
+data/database/
+data/training_frames/
+data/training_frames_1080/
+data/training_frames_test/
 
 # Keep directories but ignore contents
 !data/videos/raw/.gitkeep
