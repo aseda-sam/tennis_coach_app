@@ -126,6 +126,8 @@ class StorageService:
                 return path_obj
             # Docker stores paths as /app/data/videos/raw/... which don't exist
             # on the host. Strip to a relative path the handlers below recognise.
+            # Native worker stores host paths like /Users/.../data/videos/raw/...
+            # which don't exist inside the Docker API container.
             docker_video_prefix = "/app/data/videos/"
             if file_path.startswith(docker_video_prefix):
                 # "/app/data/videos/raw/file.mp4" -> "raw/file.mp4"
@@ -133,7 +135,16 @@ class StorageService:
                 path_obj = Path(file_path)
                 # Fall through to relative path handling below
             else:
-                return path_obj
+                # Try stripping any host-absolute prefix up to /data/videos/
+                # e.g. "/Users/aseda/tennis_coach_app/data/videos/raw/f.mp4" -> "raw/f.mp4"
+                marker = "/data/videos/"
+                idx = file_path.find(marker)
+                if idx != -1:
+                    file_path = file_path[idx + len(marker) :]
+                    path_obj = Path(file_path)
+                    # Fall through to relative path handling below
+                else:
+                    return path_obj
         # If path starts with '..', it's a relative path to a parent directory
         # Use it as-is (it will be resolved relative to current working directory)
         if file_path.startswith(".."):
