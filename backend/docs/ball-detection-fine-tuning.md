@@ -73,19 +73,113 @@ Measured with `backend/scripts/measure_ball_detection.py`, defaults `conf=0.25`,
 
 **The `DEFAULT_CONFIDENCE = 0.25` and spline params are not actively hurting** — there's nothing useful to tune here without first improving recall on motion-blurred / low-resolution frames. That's a Round-3 dataset question, not a parameter knob.
 
-### Round 3 priorities (informed by post-fix baseline)
+### Round 3 playbook (informed by post-fix baseline)
 
-The next round of fine-tuning should target the failure modes the baseline exposed:
+Round 1 and Round 2 were "broad coverage" rounds — get the model working at all on these courts. The post-fix baseline shows the bottleneck has shifted: the model has decent precision on apex frames and good true-negative behaviour, but **near-zero recall on the ball during flight and after contact**. Round 3 is a *targeted* round aimed at exactly those failure modes. Different goal → different frame selection, different annotation effort, different training settings.
 
-1. **Drop 720p training frames entirely.** Inference distribution is now 1080p (post-May 2026 transcoder upgrade). 720p frames are out of distribution and v29's 60% empty-window rate suggests training on them no longer helps the cases we actually serve.
-2. **Prioritize ball-mid-flight frames over null images.** Round 1+2 leaned on null images to teach "this is not a ball" — useful, but the static-distractor filter now handles real distractors at runtime. The model's *true negative* rate is already good. The bottleneck is recall on motion-blurred / small balls, which only positive examples address. Aim for 70%+ positive frames in Round 3, focused on:
-   - Ball during toss flight (between toss release and apex) — **highest value, currently undetected**
-   - Ball just before contact (descending toward racket)
-   - Ball right after contact (fast-moving away from racket — small, motion-blurred)
-3. **Augmentation: turn on motion blur + small rotations in Roboflow.** Round 1+2 had augmentation off. Synthetic motion blur amplifies the small dataset where it matters. Hue/saturation augmentation also worth a shot for canopy-vs-ball separation.
-4. **More epochs (50 vs 30) since the new examples are harder to learn.** Watch validation mAP curve — stop early if it plateaus.
-5. **Ensure validation set includes flight frames.** Don't let the validation be dominated by easy apex frames; otherwise mAP won't reflect the failure modes we're trying to fix.
-6. **Aim for ~250 frames total**, weighted toward motion-blur / flight examples. Anchor with ~30 apex frames so we don't lose the existing detection.
+Work through this top to bottom. Each section is a checklist.
+
+#### Step 1 — Frame selection
+
+Goal: build a dataset where the model is forced to learn the cases it currently fails on.
+
+**Resolution:**
+- ☐ Use **only 1080p videos** (post-May 2026, transcoder-output 608×1080). Ignore the `training_frames` directory; use `training_frames_1080` only.
+- ☐ Do not mix 720p frames into the Round 3 dataset version. Inference distribution is 1080p; 720p is out of distribution and was hurting v29.
+
+**Frame mix — aim for ~250 frames total, weighted as follows:**
+
+| Type | % of dataset | What it looks like | Why |
+|---|---|---|---|
+| Mid-flight toss | **40–50%** | Ball ascending between trophy/release and apex. Often small, motion-blurred, against canopy. | Highest value. The model currently has near-zero recall here. |
+| Right after contact | **15–20%** | Ball moving away from racket, very motion-blurred, small. Use the 2–8 frames after contact_timestamp. | Currently zero recall. |
+| Just before contact | **10–15%** | Ball descending toward the racket, ~30° pre-contact zone. | Improves contact-frame detection for biomechanics. |
+| Apex anchor | **10–15%** | Ball at toss apex (where current model already works). | Anchor — prevents Round 3 from forgetting the case Round 2 learned. |
+| Null / hard negative | **5–10%** | Frames with no visible ball, especially canopy / fence / leaf-gap regions. | Just enough to keep true-negative behaviour; no longer the bottleneck. |
+
+**How to find frames:**
+- ☐ For each candidate video, scrub through Roboflow's video-frame uploader and pick frames manually for now. The current `extract_training_frames.py` only targets *apex-region failures + easy anchors* — it misses the flight regions we need. (See Step 6 for a planned extension.)
+- ☐ **Hard rule: only label frames where you can see the ball with the human eye.** Uncertain frames ("is that a ball or a leaf?") hurt training more than they help. If you have to squint, skip it.
+- ☐ Sample across multiple videos (4–6) so the model doesn't overfit to one lighting/court.
+
+#### Step 2 — Annotation effort
+
+The labelling cost per frame is higher than Round 2 because the current weights can't auto-detect flight frames. Plan accordingly.
+
+- ☐ Mid-flight / post-contact frames: **manual rectangle tool**, ~30 sec each. SAM3 Smart Select struggles with motion blur — don't bother.
+- ☐ Apex anchor frames: SAM3 Smart Select → polygon → Convert to box. ~10 sec each.
+- ☐ Null frames: 0 boxes, 1 sec to confirm and save.
+- ☐ Total budget: ~125 frames × 30 sec + 75 frames × 10 sec + 25 frames × 1 sec ≈ **75–90 minutes of pure labelling.** Plus ~30 min for frame selection. ~2 hours end-to-end.
+
+#### Step 3 — Roboflow dataset settings
+
+Different from Round 1+2: turn augmentation **on** for the first time.
+
+- **Preprocessing:** Auto-Orient only. No resize (YOLO handles imgsz internally).
+- **Augmentation (Round 3 first run, conservative):**
+  - ☐ **Motion blur, small intensity** (kernel 1–3 px). Highest leverage — synthesizes flight-like examples from clear ones.
+  - ☐ **Hue/saturation ±15%**. Helps canopy-vs-ball separation under different lighting.
+  - ☐ **Small rotations ±5°**. Phone-tilt invariance.
+  - ☐ **Skip horizontal flip.** Would put the ball on the wrong side of the player relative to dominant-hand assumptions.
+  - ☐ **Skip vertical flip and large rotations** — these break gravity-aware features (apex is up, contact is down).
+- **Validation split — manual check required:**
+  - Roboflow's auto-split is random. With our targeted dataset, that risks a validation set dominated by easy apex frames, making mAP look great while real-world recall stays bad.
+  - ☐ After auto-splitting, manually move frames so that **at least 30% of the validation set is mid-flight / post-contact frames**. mirror the train distribution roughly.
+
+#### Step 4 — Colab training tweaks
+
+Most settings stay the same as Round 2; two changes.
+
+```python
+from ultralytics import YOLO
+
+model = YOLO("yolo_tennis_ball.pt")  # Round 2 weights, NOT yolov8s.pt
+
+results = model.train(
+    data=f"{dataset.location}/data.yaml",
+    epochs=50,        # was 30 — Round 3 examples are harder
+    imgsz=1280,       # unchanged
+    batch=8,          # unchanged (T4 OOMs at 16)
+    name="tennis_ball_london_v3",
+    patience=10,      # early-stop if val mAP plateaus
+    save=True,
+    plots=True,
+)
+```
+
+- ☐ **Start from Round 2 weights** (`yolo_tennis_ball.pt`), not COCO. Round 2 already learned the easy cases; Round 3 only needs to refine the hard ones.
+- ☐ **50 epochs** (vs. Round 2's 30). The harder examples need more training time. `patience=10` handles plateaus.
+- ☐ Watch `runs/detect/tennis_ball_london_v3/results.csv`. Healthy run: precision stays high (>0.9), recall climbs slowly (target: 0.85+ after 30+ epochs).
+- ☐ **Watch for overfitting:** if training mAP keeps climbing while validation mAP plateaus or drops, stop. With only ~250 frames, this is a real risk. The early-stop will catch most cases.
+
+#### Step 5 — Verify on the baseline videos
+
+After training, before deploying:
+
+- ☐ Download `runs/detect/tennis_ball_london_v3/weights/best.pt` to a *temporary* location (not yet `backend/ml_models/`).
+- ☐ Run the measurement script with the new weights:
+  ```bash
+  # Temporarily symlink or copy best.pt as the active weight
+  cp best.pt /tmp/round3_best.pt
+  YOLO_MODEL_OVERRIDE=/tmp/round3_best.pt \
+    docker compose exec backend python scripts/measure_ball_detection.py \
+      --video-ids 37 38 39
+  ```
+  *(Note: the override env var doesn't exist yet — you'd either need to add it as a small change to `_get_model()`, or just temporarily replace `backend/ml_models/yolo_tennis_ball.pt` and remember to restore.)*
+- ☐ **Target metrics post-Round 3** (rough, not promises):
+  - Raw rate per window: **15–30%** (vs. current 4–7%) — meaning ~15 frames of ball detected per window instead of 5.
+  - Spline activation: should fire on **most windows** (vs. current 1 in 24) — because we'd have detections before AND after the apex now.
+  - Empty windows: **0** on 1080p videos. v29 (720p) will likely still have empties; that's OK.
+- ☐ If results are worse than baseline, do not deploy. Diagnose: check val mAP curve, check label quality on a sample of flight frames.
+
+#### Step 6 — Future improvement: `--mode flight` for the extract script
+
+Manual frame-picking is the slow step in Round 3. A targeted extraction mode would halve the time.
+
+- **Idea:** add `--mode flight` to `backend/scripts/extract_training_frames.py`. For each accepted serve window, extract 5–10 evenly-spaced frames from the **20–60% region** of the toss arc (between toss start and apex), regardless of current detection state. This is exactly the band where the model fails.
+- **Effort:** ~2 hours. Reuses existing window-iteration code.
+- **When to do it:** if you're going to repeat Round 3 (or Round 4), the script pays for itself in 30 min of saved labelling. If Round 3 is the only round, manual frame-picking is fine.
+- **Status:** not yet implemented. Captured in `backlog/inbox.md` as a follow-up.
 
 ---
 
