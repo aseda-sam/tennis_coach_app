@@ -7,7 +7,7 @@ This project is a personal-use tool — it only ever needs to work on the courts
 
 - **Narrow distribution is your friend.** A general tennis-ball detector has to handle thousands of courts. You have two. Fine-tuning a few hundred frames from *your* courts can move detection from broken to usable in one round, where the same effort applied to a general model would be invisible.
 - **Foliage backgrounds are the dominant failure mode.** A yellow ball against mid-spring tree canopy is camouflage, not occlusion — the model rejects the ball alongside thousands of similar-looking leaf-gap blobs. The ball is *visible to a human* in nearly every failure frame; the model just can't separate it from the noise floor.
-- **Realistic expectation:** detection rate on canopy-background frames goes from ~10–15% to **60–85%** after one round of fine-tuning with 150–400 well-chosen frames. That's enough for the spline smoother to fill the rest.
+- **Realistic expectation:** detection rate on canopy-background frames goes from ~10–15% to **60–85%** after one round of fine-tuning with 150–400 well-chosen frames. That's enough for the spline smoother to fill the rest. *(Caveat: those numbers were measured before the static-distractor filter shipped 2026-05-08, which corrected previously-inflated rates. See "Post-fix baseline (2026-05-08)" below.)*
 
 ## Locked-in decisions (don't reopen casually)
 
@@ -50,6 +50,42 @@ These are baked in by the data and the pipeline. Mixing them is what creates tra
 | v37 | TBD | 86.8% | 87.7% | +0.9% |
 | v38 | TBD | 71.6% | 72.5% | +0.9% |
 | v39 | TBD | 100.0% | 100.0% | 0% |
+
+### Post-fix baseline (2026-05-08)
+
+The Round-1 / Round-2 numbers above were measured against the old pipeline, where the `bt_kept / yolo_detected ≥ 25%` safety net + per-frame `argmax(confidence)` fallback inflated rates by treating *any* high-confidence detection (including stationary balls on the court) as the serve ball. After the static-distractor filter + min-displacement gate shipped (ADR 005), the rates now reflect the *moving* serve ball only.
+
+Measured with `backend/scripts/measure_ball_detection.py`, defaults `conf=0.25`, `max_gap=15`, `min_anchors=2`:
+
+| Video | Resolution | Raw | Spline | After-spline | Empty windows |
+|---|---|---|---|---|---|
+| v29 | 406×720 | 19/867 (2.2%) | 0 | 2.2% | **6/10** |
+| v37 | 1080p | 40/666 (6.0%) | 10 | 7.5% | 0/7 |
+| v38 | 1080p | 22/343 (6.4%) | 0 | 6.4% | 0/4 |
+| v39 | 1080p | 10/254 (3.9%) | 0 | 3.9% | 1/3 |
+
+**Honest reading:**
+- Raw rates of 4–7% per window mean the model only detects the ball as a 3–5 frame burst at the toss apex. Nothing during flight, nothing after contact.
+- Lowering `DEFAULT_CONFIDENCE` from 0.25 → 0.15 produced **identical** numbers — the model is bimodal: it either sees the ball at conf 0.55–0.75 or doesn't see it at all. There's no gray zone to recover.
+- The spline almost never fires (1 event in 24 windows). With one isolated burst per window and no detections on either side, there's nothing to bridge.
+- 720p videos are bottlenecked by resolution: v29 has 6/10 windows entirely empty.
+- Practical impact on biomechanics is small: `toss_peak_height` and `toss_drop` only need the apex burst + contact timestamp, both of which we have.
+
+**The `DEFAULT_CONFIDENCE = 0.25` and spline params are not actively hurting** — there's nothing useful to tune here without first improving recall on motion-blurred / low-resolution frames. That's a Round-3 dataset question, not a parameter knob.
+
+### Round 3 priorities (informed by post-fix baseline)
+
+The next round of fine-tuning should target the failure modes the baseline exposed:
+
+1. **Drop 720p training frames entirely.** Inference distribution is now 1080p (post-May 2026 transcoder upgrade). 720p frames are out of distribution and v29's 60% empty-window rate suggests training on them no longer helps the cases we actually serve.
+2. **Prioritize ball-mid-flight frames over null images.** Round 1+2 leaned on null images to teach "this is not a ball" — useful, but the static-distractor filter now handles real distractors at runtime. The model's *true negative* rate is already good. The bottleneck is recall on motion-blurred / small balls, which only positive examples address. Aim for 70%+ positive frames in Round 3, focused on:
+   - Ball during toss flight (between toss release and apex) — **highest value, currently undetected**
+   - Ball just before contact (descending toward racket)
+   - Ball right after contact (fast-moving away from racket — small, motion-blurred)
+3. **Augmentation: turn on motion blur + small rotations in Roboflow.** Round 1+2 had augmentation off. Synthetic motion blur amplifies the small dataset where it matters. Hue/saturation augmentation also worth a shot for canopy-vs-ball separation.
+4. **More epochs (50 vs 30) since the new examples are harder to learn.** Watch validation mAP curve — stop early if it plateaus.
+5. **Ensure validation set includes flight frames.** Don't let the validation be dominated by easy apex frames; otherwise mAP won't reflect the failure modes we're trying to fix.
+6. **Aim for ~250 frames total**, weighted toward motion-blur / flight examples. Anchor with ~30 apex frames so we don't lose the existing detection.
 
 ---
 
