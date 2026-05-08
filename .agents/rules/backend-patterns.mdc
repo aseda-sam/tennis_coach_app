@@ -25,6 +25,7 @@ alwaysApply: false
 
 - **Routes**: get sessions from `Depends(get_db)` (don’t construct sessions manually in routes).
 - **Background jobs/tasks**: must create their own DB session (never pass a `Session` into a task).
+- **Streaming / long-lived responses**: **never use `Depends(get_db)` on an endpoint that returns a `FileResponse`, `StreamingResponse`, or `RedirectResponse` to a large file.** FastAPI keeps the yielded session alive until the full response is sent — for video streams this means one DB connection is held per concurrent range request, which exhausts the pool (size 5 + overflow 10 = 15) with just a couple of open videos. Pattern: open a short-lived `with SessionLocal() as db:` block, fetch only what you need (file path, content type), close it, then return the response. See `stream_video` in `backend/app/api/routes/video.py` as the canonical example.
 
 ## Database Changes (When Editing Models)
 

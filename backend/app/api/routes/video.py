@@ -37,7 +37,7 @@ from app.api.schemas.video import (
     VideoUploadResponse,
 )
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import SessionLocal, get_db
 from app.dependencies.auth import get_current_user, get_optional_user
 from app.services import (
     player_service,
@@ -272,7 +272,6 @@ async def get_video(
 async def stream_video(
     video_id: int,
     current_user: Optional[dict] = Depends(get_optional_user),
-    db: Session = Depends(get_db),
 ) -> Response:
     """
     Stream a video file.
@@ -284,17 +283,14 @@ async def stream_video(
         Video file stream or redirect to storage URL
     """
     try:
-        # Get video from database
-        db_video = video_service.get_video_by_id(db, video_id)
-        if not db_video:
-            raise handle_not_found_error("video", str(video_id))
-
-        # Check authorization (allow public access for demo videos)
-        require_video_access_or_public_demo(db_video, current_user)
+        with SessionLocal() as db:
+            db_video = video_service.get_video_by_id(db, video_id)
+            if not db_video:
+                raise handle_not_found_error("video", str(video_id))
+            require_video_access_or_public_demo(db_video, current_user)
 
         return video_streaming_service.get_video_stream_response(
-            db=db,
-            video_id=video_id,
+            db_video=db_video,
             current_user=current_user,
         )
     except ValueError as e:
