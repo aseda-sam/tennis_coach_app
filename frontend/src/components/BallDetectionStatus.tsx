@@ -49,14 +49,22 @@ const BallDetectionStatus: React.FC<BallDetectionStatusProps> = ({
     <div className="ball-detection-status">
       <div className="ball-detection-status__header">
         <span className="ball-detection-status__label">Ball Tracking</span>
-        {isStale && (
+        <div className="ball-detection-status__badges">
           <span
-            className="ball-detection-status__stale"
-            title="Serve windows have changed since the last ball detection run"
+            className="ball-detection-status__scope"
+            title="Ball tracking runs across the entire video, not just the current serve"
           >
-            Stale
+            Whole Video
           </span>
-        )}
+          {isStale && (
+            <span
+              className="ball-detection-status__stale"
+              title="Serve windows have changed since the last ball detection run"
+            >
+              Stale
+            </span>
+          )}
+        </div>
       </div>
       <div className="ball-detection-status__body">
         <span className="ball-detection-status__value">

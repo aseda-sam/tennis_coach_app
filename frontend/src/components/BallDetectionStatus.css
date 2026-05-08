@@ -25,6 +25,25 @@
   margin: 0;
 }
 
+.ball-detection-status__badges {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.ball-detection-status__scope {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  background: var(--color-sand, #ebe7dd);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--spacing-xs);
+  text-transform: uppercase;
+}
+
 .ball-detection-status__stale {
   display: inline-flex;
   align-items: center;
