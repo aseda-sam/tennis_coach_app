@@ -785,11 +785,10 @@ def get_bulk_analysis_status(
         if has_ball:
             analysis_types.append("ball_detection")
 
-        is_stale = (
-            _is_ball_detection_stale(db, video_id, ball_det)
-            if ball_det and has_ball
-            else False
-        )
+        # Note: is_ball_detection_stale is intentionally NOT computed here.
+        # It would require a per-video SELECT on serve_windows (N+1) and is
+        # only consumed by the per-video analysis page (single endpoint).
+        # The Pydantic schema's default of False applies on the wire.
         statuses.append(
             {
                 "video_id": video_id,
@@ -800,7 +799,6 @@ def get_bulk_analysis_status(
                 if ball_det and ball_det.status == "completed"
                 else None,
                 "ball_detection_status": ball_det.status if ball_det else None,
-                "is_ball_detection_stale": is_stale,
             }
         )
 
