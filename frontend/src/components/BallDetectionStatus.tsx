@@ -39,25 +39,16 @@ const BallDetectionStatus: React.FC<BallDetectionStatusProps> = ({
           ? 'var(--color-warning)'
           : 'var(--color-error)';
 
+  const buttonLabel = isRunning
+    ? 'Running…'
+    : hasRate
+      ? 'Re-Run'
+      : 'Run Ball Detection';
+
   return (
     <div className="ball-detection-status">
-      <div className="ball-detection-status__row">
-        {hasRate && rate !== null ? (
-          <span
-            className="ball-detection-status__badge"
-            title={`Ball detected in ${Math.round(rate * 100)}% of frames`}
-          >
-            <span
-              className="ball-detection-status__dot"
-              style={{ backgroundColor: dotColor }}
-            />
-            Ball tracking {Math.round(rate * 100)}%
-          </span>
-        ) : (
-          <span className="ball-detection-status__badge ball-detection-status__badge--empty">
-            Ball tracking not run
-          </span>
-        )}
+      <div className="ball-detection-status__header">
+        <span className="ball-detection-status__label">Ball Tracking</span>
         {isStale && (
           <span
             className="ball-detection-status__stale"
@@ -66,13 +57,28 @@ const BallDetectionStatus: React.FC<BallDetectionStatusProps> = ({
             Stale
           </span>
         )}
+      </div>
+      <div className="ball-detection-status__body">
+        <span className="ball-detection-status__value">
+          <span
+            className="ball-detection-status__dot"
+            style={{ backgroundColor: dotColor }}
+          />
+          {hasRate && rate !== null ? (
+            <span className="ball-detection-status__rate">
+              {Math.round(rate * 100)}%
+            </span>
+          ) : (
+            <span className="ball-detection-status__rate--empty">Not run</span>
+          )}
+        </span>
         <button
           type="button"
           className="ball-detection-status__rerun"
           disabled={isRunning}
           onClick={() => startBallDetection.mutate(videoId)}
         >
-          {isRunning ? 'Running…' : hasRate ? 'Re-run' : 'Run ball detection'}
+          {buttonLabel}
         </button>
       </div>
       {startBallDetection.isError && (
