@@ -10,9 +10,11 @@ import numpy as np
 from app.services.ball_detection.yolo_detection_service import (
     DEFAULT_CONFIDENCE,
     YoloBallDetectionService,
+    _identify_static_distractors,
     _rotate_frame,
     _select_ball_track,
 )
+from tests.services.ball_detection import v39_fixture
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -281,6 +283,176 @@ class TestSelectBallTrack:
 
         result = _select_ball_track(tracked_frames)
         assert result == 2
+
+    def test_returns_none_when_all_tracks_below_displacement_gate(self) -> None:
+        """v39 serve 1 scenario: only a static track exists. Without the
+        min-displacement gate, today's code returns this track by default
+        (peak ≈ 1 px from sub-pixel jitter). With the gate, returns None."""
+        tracked_frames = []
+        for i in range(85):
+            det = MagicMock()
+            det.tracker_id = np.array([1], dtype=np.int32)
+            jitter = ((i % 3) - 1) * 0.1  # sub-pixel only
+            det.xyxy = np.array(
+                [[24 + jitter, 556 + jitter, 40 + jitter, 572 + jitter]],
+                dtype=np.float32,
+            )
+            tracked_frames.append((i, i * 33.3, det))
+
+        result = _select_ball_track(tracked_frames)
+        assert result is None
+
+    def test_excluded_track_ids_are_skipped(self) -> None:
+        """Tracks in `excluded_track_ids` are ignored during selection."""
+        tracked_frames = []
+        # Track 1: moving fast (would normally win)
+        # Track 2: moving slowly
+        for i in range(5):
+            det = MagicMock()
+            det.tracker_id = np.array([1, 2], dtype=np.int32)
+            det.xyxy = np.array(
+                [
+                    [90, 90 + i * 80, 110, 110 + i * 80],  # fast (excluded)
+                    [190, 190 + i * 20, 210, 210 + i * 20],  # slow (winner)
+                ],
+                dtype=np.float32,
+            )
+            tracked_frames.append((i, i * 33.3, det))
+
+        result = _select_ball_track(tracked_frames, excluded_track_ids={1})
+        assert result == 2
+
+
+# ---------------------------------------------------------------------------
+# _identify_static_distractors  — pooled cross-window distractor scan
+# ---------------------------------------------------------------------------
+
+
+class TestIdentifyStaticDistractors:
+    @staticmethod
+    def _static_track_frames(
+        track_id: int, n_frames: int, *, x: float = 100.0, y: float = 200.0
+    ) -> list[tuple]:
+        """Build tracked_frames for a single static track with sub-pixel jitter."""
+        out = []
+        for i in range(n_frames):
+            det = MagicMock()
+            det.tracker_id = np.array([track_id], dtype=np.int32)
+            jitter = ((i % 3) - 1) * 0.1
+            det.xyxy = np.array(
+                [
+                    [
+                        x - 8 + jitter,
+                        y - 8 + jitter,
+                        x + 8 + jitter,
+                        y + 8 + jitter,
+                    ]
+                ],
+                dtype=np.float32,
+            )
+            out.append((i, i * 33.3, det))
+        return out
+
+    @staticmethod
+    def _moving_track_frames(
+        track_id: int, n_frames: int, *, dx: float = 30.0, dy: float = 0.0
+    ) -> list[tuple]:
+        """Build tracked_frames for a single moving track."""
+        out = []
+        for i in range(n_frames):
+            det = MagicMock()
+            det.tracker_id = np.array([track_id], dtype=np.int32)
+            cx = 100.0 + dx * i
+            cy = 200.0 + dy * i
+            det.xyxy = np.array([[cx - 8, cy - 8, cx + 8, cy + 8]], dtype=np.float32)
+            out.append((i, i * 33.3, det))
+        return out
+
+    def test_flags_persistent_low_displacement_track(self) -> None:
+        """A 50-frame static track should be flagged as a distractor."""
+        window = self._static_track_frames(track_id=42, n_frames=50)
+        distractors = _identify_static_distractors([window])
+        assert distractors == [{42}]
+
+    def test_does_not_flag_moving_track(self) -> None:
+        """A track that moves significantly is not a distractor."""
+        window = self._moving_track_frames(track_id=42, n_frames=30)
+        distractors = _identify_static_distractors([window])
+        assert distractors == [set()]
+
+    def test_does_not_flag_short_static_track(self) -> None:
+        """A static track that appears in too few pooled frames is not flagged."""
+        window = self._static_track_frames(track_id=42, n_frames=5)
+        distractors = _identify_static_distractors([window])
+        assert distractors == [set()]
+
+    def test_pools_evidence_across_windows(self) -> None:
+        """A static ball seen across multiple windows at the same location is
+        flagged even if no single window has enough frames alone."""
+        w1 = self._static_track_frames(track_id=7, n_frames=15, x=200, y=500)
+        w2 = self._static_track_frames(track_id=3, n_frames=15, x=200, y=500)
+        distractors = _identify_static_distractors([w1, w2])
+        assert distractors == [{7}, {3}]
+
+    def test_does_not_pool_distant_tracks(self) -> None:
+        """Tracks at different spatial locations are not pooled together."""
+        w1 = self._static_track_frames(track_id=7, n_frames=15, x=200, y=500)
+        w2 = self._static_track_frames(track_id=3, n_frames=15, x=500, y=200)
+        distractors = _identify_static_distractors([w1, w2])
+        assert distractors == [set(), set()]
+
+    def test_empty_input_returns_empty_per_window(self) -> None:
+        assert _identify_static_distractors([]) == []
+        assert _identify_static_distractors([[]]) == [set()]
+
+
+# ---------------------------------------------------------------------------
+# Video-39 regression: full pipeline on frozen ByteTrack output
+# ---------------------------------------------------------------------------
+
+
+class TestV39Regression:
+    """End-to-end check on frozen v39 data — confirms the static-distractor
+    filter + min-displacement gate combine correctly to produce the right
+    track ID for each serve window. See `v39_fixture.py` for diagnosis."""
+
+    def test_static_balls_a_and_b_are_flagged_as_distractors(self) -> None:
+        windows = v39_fixture.build_all_windows()
+        distractors = _identify_static_distractors(windows)
+        # Static ball A (track id 1) is present and flagged in every window
+        assert 1 in distractors[0], "static A missing in serve1"
+        assert 1 in distractors[1], "static A missing in serve2"
+        assert 1 in distractors[2], "static A missing in serve3"
+        assert 1 in distractors[3], "static A missing in serve4"
+        # Static ball B (track id 20 in serve3, track id 2 in serve4) is
+        # also flagged because pooled coverage exceeds the threshold.
+        assert 20 in distractors[2], "static B missing in serve3"
+        assert 2 in distractors[3], "static B missing in serve4"
+
+    def test_serve1_returns_none(self) -> None:
+        """Only a static ball + 1-frame fragments — no qualifying moving track."""
+        windows = v39_fixture.build_all_windows()
+        distractors = _identify_static_distractors(windows)
+        result = _select_ball_track(windows[0], excluded_track_ids=distractors[0])
+        assert result is None
+
+    def test_serve2_returns_moving_track(self) -> None:
+        windows = v39_fixture.build_all_windows()
+        distractors = _identify_static_distractors(windows)
+        result = _select_ball_track(windows[1], excluded_track_ids=distractors[1])
+        assert result == 20  # 5-frame moving toss arc
+
+    def test_serve3_returns_moving_track(self) -> None:
+        windows = v39_fixture.build_all_windows()
+        distractors = _identify_static_distractors(windows)
+        result = _select_ball_track(windows[2], excluded_track_ids=distractors[2])
+        assert result == 34  # 5-frame moving toss arc
+
+    def test_serve4_returns_moving_track(self) -> None:
+        windows = v39_fixture.build_all_windows()
+        distractors = _identify_static_distractors(windows)
+        result = _select_ball_track(windows[3], excluded_track_ids=distractors[3])
+        assert result == 28  # 3-frame moving toss arc
 
 
 # ---------------------------------------------------------------------------

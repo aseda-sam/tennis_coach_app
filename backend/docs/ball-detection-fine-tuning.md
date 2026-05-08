@@ -185,15 +185,20 @@ YOLOv8 is a bounding-box detector. It works per-frame and is easy to fine-tune o
 
 Full architecture rationale: [ADR 002](../../docs/decisions/002-yolo-bytetrack-ball-detection.md).
 
-### Known issue: static false-positive locks out the real ball (video 39, 2026-05-07)
+### Resolved: static-distractor filter (video 39, 2026-05-08)
 
 **Symptom:** ball detection runs without error, 100% detection rate, but no ball appears in the stick-figure view for any serve window.
 
-**Cause:** YOLO latched onto a fixed object at ~(32, 564) in every frame — probably a court marking, fence post, or similar feature at the far-left edge of the frame. ByteTrack kept it as a single persistent track. `_select_ball_track` then picked it as the "best" track because it was the only (or dominant) track. The actual moving ball was either not detected at all or detected on a shorter, lower-displacement track that lost the selection.
+**Cause:** the (32, 564) cluster is a **real tennis ball lying on the court**, not a fence post or court marking. The fine-tuned model detects it confidently in every frame at ~0.74 confidence. With multiple stationary balls present (a second one at ~(200, 1058) appeared in serves 2–4), the moving serve ball — detected only as 3–5 frame bursts at the toss apex — was a small minority of YOLO's output and lost both the track-selection and the safety-net fallback.
 
-**Why it's invisible in the UI:** After normalization, x≈32 maps to ~184px left of the body's hip center. With the stick-figure scale, that renders off the left edge of the canvas.
+Two layered failures:
 
-**Fix needed in `_select_ball_track`:** add a minimum peak-displacement threshold (e.g. 5px). Reject any track whose peak-window displacement is below the threshold; return `None` rather than a static false positive. This prevents a parked object from winning when no real ball motion is found.
+1. **Selection-by-default in `_select_ball_track`.** When the moving ball formed only 1-frame fragments (no peak-window displacement), the static track was the sole multi-frame candidate and won with peak ≈ 1 px from sub-pixel jitter.
+2. **`bt_kept / yolo_detected >= 0.25` safety net.** When the moving ball *did* form a 3–5 frame track, its retention ratio (5/~94 ≈ 5%) tripped the safety net. The fallback `argmax(confidence)` per frame then picked the static ball (conf 0.74) over the moving ball (conf ~0.55) every time.
+
+**Fix (shipped 2026-05-08, see ADR 005):** pooled static-distractor scan across all serve windows, plus a minimum peak-displacement gate in `_select_ball_track`. The 25% safety net is removed. Auto-pipeline ball detection is now off by default (`AUTO_BALL_DETECTION_ON_UPLOAD`); the manual "Re-run ball detection" button in `ServeWindowsPanel` is the canonical entry point, with a `is_ball_detection_stale` indicator surfacing on window edits.
+
+**Lesson:** "ByteTrack handles static separation" was true for the older, weaker model that produced few false positives on background. With a stronger fine-tuned model, *real* incidental balls become first-class detections and need explicit handling. Multiple balls per session is the rule, not the exception.
 
 ### What fine-tuning is
 

@@ -50,5 +50,10 @@ LLM_LOG_DIR=                  # optional — defaults to ../data/llm_logs/
 - `AUTO_CONTACT_DETECTOR_VERSION` controls auto-contact logic:
   - `v1` (default): toss-peak-gated wrist proximity.
   - `v2`: phase-gated proximity (search starts at dominant-arm acceleration onset).
+- `AUTO_BALL_DETECTION_ON_UPLOAD` (default `False`) gates whether the
+  upload pipeline runs YOLO ball detection automatically. Default is off
+  because cleanup of serve windows almost always invalidates the auto-run;
+  use the "Re-run ball detection" button in `ServeWindowsPanel` after
+  cleanup. Set to `True` to restore the always-run-on-upload behaviour.
 - Don’t duplicate “API reference” docs: use `http://localhost:8000/docs`.
 - Keep `.env` permissive; the profile decides what’s required.

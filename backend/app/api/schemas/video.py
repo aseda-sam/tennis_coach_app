@@ -198,6 +198,14 @@ class VideoAnalysisStatus(BaseModel):
     ball_detection_status: Optional[str] = Field(
         default=None, description="Ball detection status: completed, failed, or null"
     )
+    is_ball_detection_stale: bool = Field(
+        default=False,
+        description=(
+            "True if the stored ball detection was computed against a different "
+            "set of serve windows than the currently accepted ones — typically "
+            "after the user edited/added/deleted a window post-analysis."
+        ),
+    )
 
 
 class BulkAnalysisStatusRequest(BaseModel):

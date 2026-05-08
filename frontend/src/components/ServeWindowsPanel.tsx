@@ -1,6 +1,10 @@
 import React, { useMemo } from 'react';
 import { useServeWindows } from '../hooks/useServeWindows';
-import { useVideoAnalysisStatus } from '../hooks/useVideos';
+import {
+  useStartBallDetection,
+  useVideoAnalysisStatus,
+} from '../hooks/useVideos';
+import { getApiErrorMessage } from '../utils/apiError';
 import { formatTime } from '../utils/validation';
 import './AnalysisRightPanel.css';
 import LoadingIndicator from './LoadingIndicator';
@@ -22,6 +26,12 @@ const ServeWindowsPanel: React.FC<ServeWindowsPanelProps> = ({
     autoRefresh: true,
   });
   const { data: analysisStatus } = useVideoAnalysisStatus(videoId);
+  const startBallDetection = useStartBallDetection();
+  const isStale = !!analysisStatus?.is_ball_detection_stale;
+  const isRunning =
+    startBallDetection.isPending ||
+    analysisStatus?.ball_detection_status === 'processing' ||
+    analysisStatus?.ball_detection_status === 'queued';
 
   const sortedServeWindows = useMemo(() => {
     return serveWindows.sort((a, b) => a.start_timestamp - b.start_timestamp);
@@ -76,8 +86,38 @@ const ServeWindowsPanel: React.FC<ServeWindowsPanelProps> = ({
                   {Math.round(analysisStatus.ball_detection_rate * 100)}%
                 </span>
               )}
+            {!isDemo && isStale && (
+              <span
+                className="analysis-right-panel__ball-detection-stale"
+                title="Serve windows have changed since the last ball detection run"
+              >
+                Stale
+              </span>
+            )}
+            {!isDemo && (
+              <button
+                type="button"
+                className="analysis-right-panel__ball-detection-rerun"
+                disabled={isRunning || sortedServeWindows.length === 0}
+                onClick={() => startBallDetection.mutate(videoId)}
+              >
+                {isRunning
+                  ? 'Running…'
+                  : analysisStatus?.has_ball_detection
+                    ? 'Re-run ball detection'
+                    : 'Run ball detection'}
+              </button>
+            )}
           </div>
         </div>
+        {startBallDetection.isError && (
+          <p className="analysis-right-panel__ball-detection-error">
+            {getApiErrorMessage(
+              startBallDetection.error,
+              'Failed to start ball detection'
+            )}
+          </p>
+        )}
         <div className="analysis-right-panel__metrics-list">
           {sortedServeWindows.length > 0 ? (
             sortedServeWindows.map((serveWindow) => {

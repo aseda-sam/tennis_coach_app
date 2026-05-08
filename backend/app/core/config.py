@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     AUTO_ACCEPT_CONFIDENCE_THRESHOLD: float = 0.6
     AUTO_COMPUTE_BIOMECHANICS: bool = True
     AUTO_CONTACT_DETECTOR_VERSION: str = "v1"
+    # Ball detection runs YOLO inference and is expensive (~90s/video).
+    # Default off: serve windows almost always need cleanup before they're
+    # the right input. Users trigger ball detection manually post-cleanup.
+    AUTO_BALL_DETECTION_ON_UPLOAD: bool = False
 
     # LLM Coaching
     ANTHROPIC_API_KEY: Optional[str] = None
