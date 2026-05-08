@@ -407,46 +407,6 @@
   flex-shrink: 0;
 }
 
-.analysis-right-panel__ball-detection-stale {
-  display: inline-flex;
-  align-items: center;
-  font-size: var(--font-size-xs);
-  letter-spacing: var(--letter-spacing-tight);
-  color: var(--color-warning);
-  border: 1px solid var(--color-warning);
-  border-radius: var(--radius-sm);
-  padding: 0 var(--spacing-xs);
-  text-transform: uppercase;
-}
-
-.analysis-right-panel__ball-detection-rerun {
-  font: inherit;
-  font-size: var(--font-size-xs);
-  color: var(--color-text);
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--spacing-2xs) var(--spacing-sm);
-  cursor: pointer;
-  letter-spacing: var(--letter-spacing-tight);
-  transition: background-color 0.15s ease;
-}
-
-.analysis-right-panel__ball-detection-rerun:hover:not(:disabled) {
-  background: var(--color-surface-hover);
-}
-
-.analysis-right-panel__ball-detection-rerun:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.analysis-right-panel__ball-detection-error {
-  margin-top: var(--spacing-xs);
-  font-size: var(--font-size-xs);
-  color: var(--color-error);
-}
-
 .analysis-right-panel__metrics-empty {
   text-align: center;
   padding: var(--spacing-xl);
