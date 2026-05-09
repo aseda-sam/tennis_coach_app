@@ -37,7 +37,7 @@ from app.api.schemas.video import (
     VideoUploadResponse,
 )
 from app.core.config import settings
-from app.core.database import SessionLocal, get_db
+from app.core.database import get_db
 from app.dependencies.auth import get_current_user, get_optional_user
 from app.services import (
     player_service,
@@ -272,6 +272,7 @@ async def get_video(
 async def stream_video(
     video_id: int,
     current_user: Optional[dict] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
 ) -> Response:
     """
     Stream a video file.
@@ -283,11 +284,14 @@ async def stream_video(
         Video file stream or redirect to storage URL
     """
     try:
-        with SessionLocal() as db:
-            db_video = video_service.get_video_by_id(db, video_id)
-            if not db_video:
-                raise handle_not_found_error("video", str(video_id))
-            require_video_access_or_public_demo(db_video, current_user)
+        db_video = video_service.get_video_by_id(db, video_id)
+        if not db_video:
+            raise handle_not_found_error("video", str(video_id))
+        require_video_access_or_public_demo(db_video, current_user)
+        # Close the session before returning the response — FastAPI keeps
+        # yielded sessions alive until the full response is sent, which
+        # for video streams holds a pool connection per concurrent request.
+        db.close()
 
         return video_streaming_service.get_video_stream_response(
             db_video=db_video,
