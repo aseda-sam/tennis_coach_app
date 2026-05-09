@@ -89,6 +89,7 @@ const ServeWindowEditModal: React.FC<ServeWindowEditModalProps> = ({
     setStartTime(serveWindow.start_timestamp);
     setEndTime(serveWindow.end_timestamp);
     setSplitMode(false);
+    setConfirmingDelete(false);
     setSplitPoint(
       (serveWindow.start_timestamp + serveWindow.end_timestamp) / 2
     );

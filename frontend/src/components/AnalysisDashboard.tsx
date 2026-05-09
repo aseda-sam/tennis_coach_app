@@ -22,6 +22,7 @@ import { PhaseWindow } from '../types/biomechanics';
 import './AnalysisDashboard.css';
 import AnalysisDashboardHeader from './AnalysisDashboardHeader';
 import AnalysisViewToggle, { ViewMode } from './AnalysisViewToggle';
+import BallDetectionStatus from './BallDetectionStatus';
 import CollapsibleSection from './CollapsibleSection';
 import { FeatureChartsSection } from './DetectionDetailsPanel';
 import MetricCard, { VISIBLE_METRICS } from './MetricCard';
@@ -706,6 +707,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               )}
 
               <div className="analysis-dashboard__side-col">
+                {/* Ball detection status + manual re-run trigger.
+                    Hidden in demo. */}
+                <BallDetectionStatus videoId={videoId} isDemo={isDemo} />
+
                 {/* Metric Cards */}
                 {biomechanicsReport?.metrics && (
                   <div className="analysis-dashboard__metric-cards">
@@ -852,6 +857,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           videoUrl={resolvedVideoUrl}
           onSaved={() => {
             queryClient.invalidateQueries({ queryKey: ['serve-windows'] });
+            queryClient.invalidateQueries({
+              queryKey: ['biomechanics-report', currentServe.id],
+            });
             setIsEditModalOpen(false);
           }}
           onSplit={() => {

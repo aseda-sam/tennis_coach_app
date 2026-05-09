@@ -25,7 +25,7 @@ if sys.platform == "darwin":  # macOS
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from redis.exceptions import ResponseError as RedisResponseError
-from rq import Worker
+from rq import SimpleWorker, Worker
 
 from app.core.redis_config import (
     analysis_queue,
@@ -33,6 +33,11 @@ from app.core.redis_config import (
     get_worker_info,
     redis_conn,
 )
+
+# On macOS, RQ's default Worker forks per job, which crashes ML libraries
+# that initialize Apple frameworks (MediaPipe, OpenCV, torch) with SIGABRT.
+# SimpleWorker runs jobs in-process — no fork, no crash.
+WorkerClass = SimpleWorker if sys.platform == "darwin" else Worker
 
 
 def cleanup_stale_workers() -> None:
@@ -125,6 +130,7 @@ if __name__ == "__main__":
     print(f"Platform: {sys.platform}")
     print(f"Multiprocessing start method: {multiprocessing.get_start_method()}")
     print(f"Worker Name: {worker_name}")
+    print(f"Worker Class: {WorkerClass.__name__}")
     print(f"Worker TTL: {worker_ttl}s")
     print(f"Dequeue Timeout: {max(1, worker_ttl - 15)}s")
     print("=" * 60)
@@ -138,7 +144,7 @@ if __name__ == "__main__":
     while retry_count < max_retries:
         try:
             # Create worker with connection
-            worker = Worker(
+            worker = WorkerClass(
                 [default_queue, analysis_queue],
                 connection=redis_conn,
                 name=worker_name,

@@ -1,3 +1,4 @@
+import json
 import logging
 import tempfile
 import time
@@ -13,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.ball_detection import BallDetection
 from app.models.pose_detection import PoseDetection
+from app.models.serve_window import ServeWindow
 from app.models.video import Video
 from app.services import player_service
 from app.services.storage_service import storage_service
@@ -608,6 +610,49 @@ def get_video_metadata(video_path: Path) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
+def _is_ball_detection_stale(
+    db: Session,
+    video_id: int,
+    ball_detection: BallDetection,
+    *,
+    tolerance_ms: float = 1.0,
+) -> bool:
+    """Compare the stored ball-detection time-window snapshot to the current
+    accepted serve windows. Returns True if they differ.
+
+    A snapshot mismatch means the user has edited / added / deleted a serve
+    window since the last ball detection run, so the stored ball_data no
+    longer covers (or covers extra/different frames from) the current windows.
+    """
+    if not ball_detection.time_windows:
+        return False
+    try:
+        snapshot = json.loads(ball_detection.time_windows)
+    except (TypeError, ValueError):
+        return True
+
+    accepted = (
+        db.query(ServeWindow)
+        .filter(ServeWindow.video_id == video_id, ServeWindow.status == "accepted")
+        .order_by(ServeWindow.start_timestamp)
+        .all()
+    )
+    current = [
+        {"start_ms": sw.start_timestamp * 1000.0, "end_ms": sw.end_timestamp * 1000.0}
+        for sw in accepted
+    ]
+    snapshot_sorted = sorted(snapshot, key=lambda w: w.get("start_ms", 0.0))
+
+    if len(current) != len(snapshot_sorted):
+        return True
+    for cur, snap in zip(current, snapshot_sorted, strict=True):
+        if abs(cur["start_ms"] - snap.get("start_ms", 0.0)) > tolerance_ms:
+            return True
+        if abs(cur["end_ms"] - snap.get("end_ms", 0.0)) > tolerance_ms:
+            return True
+    return False
+
+
 def get_video_analysis_status(db: Session, video_id: int) -> dict:
     """Get analysis status for a single video.
 
@@ -647,6 +692,12 @@ def get_video_analysis_status(db: Session, video_id: int) -> dict:
     if has_ball_detection:
         analysis_types.append("ball_detection")
 
+    is_stale = (
+        _is_ball_detection_stale(db, video_id, ball_detection)
+        if ball_detection and has_ball_detection
+        else False
+    )
+
     return {
         "video_id": video_id,
         "has_analysis": has_analysis,
@@ -656,6 +707,7 @@ def get_video_analysis_status(db: Session, video_id: int) -> dict:
         if ball_detection and ball_detection.status == "completed"
         else None,
         "ball_detection_status": ball_detection.status if ball_detection else None,
+        "is_ball_detection_stale": is_stale,
     }
 
 
@@ -733,6 +785,10 @@ def get_bulk_analysis_status(
         if has_ball:
             analysis_types.append("ball_detection")
 
+        # Note: is_ball_detection_stale is intentionally NOT computed here.
+        # It would require a per-video SELECT on serve_windows (N+1) and is
+        # only consumed by the per-video analysis page (single endpoint).
+        # The Pydantic schema's default of False applies on the wire.
         statuses.append(
             {
                 "video_id": video_id,

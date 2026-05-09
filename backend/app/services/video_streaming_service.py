@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.models.video import Video
 from app.services import video_service
 from app.services.storage_service import storage_service
 from app.utils.file_validation import get_safe_filename, validate_file_exists
@@ -16,29 +17,25 @@ logger = logging.getLogger(__name__)
 
 
 def get_video_stream_response(
-    db: Session,
-    video_id: int,
+    db_video: Video,
     current_user: Optional[dict] = None,
 ) -> Response:
     """Get streaming response for a video.
 
+    The caller is responsible for fetching db_video and closing the DB session
+    before calling this function — the session must not be held open while
+    the response streams, or it will exhaust the connection pool.
+
     Args:
-        db: Database session
-        video_id: Video ID
-        current_user: Optional user dict for authorization
+        db_video: Already-fetched Video ORM object
+        current_user: Optional user dict (used for logging only)
 
     Returns:
         Response object (FileResponse, RedirectResponse, or StreamingResponse)
 
     Raises:
-        ValueError: If video not found
         RuntimeError: If storage operations fail
     """
-    # Get video from database
-    db_video = video_service.get_video_by_id(db, video_id)
-    if not db_video:
-        raise ValueError(f"Video with ID {video_id} not found")
-
     # Use storage service to get file
     if settings.STORAGE_TYPE == "supabase":
         # For active demo videos, use public demo bucket URL
@@ -50,12 +47,14 @@ def get_video_stream_response(
                     demo_path = f"demo/{db_video.id}_{db_video.filename}"
                 demo_url = storage_service.get_demo_public_url(demo_path)
                 logger.info(
-                    f"Redirecting to demo bucket URL for active demo video {video_id}: {demo_url}"
+                    "Redirecting to demo bucket URL for active demo video %s: %s",
+                    db_video.id,
+                    demo_url,
                 )
                 return RedirectResponse(url=demo_url)
             except (ValueError, RuntimeError) as e:
                 logger.error(
-                    "Failed to get demo bucket URL for video %s: %s", video_id, e
+                    "Failed to get demo bucket URL for video %s: %s", db_video.id, e
                 )
                 # Fallback to regular flow
 
@@ -64,12 +63,15 @@ def get_video_stream_response(
         try:
             file_url = storage_service.get_file_url(storage_path)
             logger.info(
-                "Redirecting to Supabase URL for video %s: %s", video_id, file_url
+                "Redirecting to Supabase URL for video %s: %s", db_video.id, file_url
             )
             return RedirectResponse(url=file_url)
         except (ValueError, RuntimeError, OSError) as e:
             logger.error(
-                f"Failed to get Supabase URL for video {video_id}, storage_path={storage_path}: {e}"
+                "Failed to get Supabase URL for video %s, storage_path=%s: %s",
+                db_video.id,
+                storage_path,
+                e,
             )
             # Fallback: download and stream
             file_data = storage_service.download_file(storage_path)

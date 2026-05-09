@@ -267,8 +267,22 @@ export const videoApi = {
     has_ball_detection: boolean;
     ball_detection_rate: number | null;
     ball_detection_status: string | null;
+    is_ball_detection_stale: boolean;
   }> => {
     const response = await api.get(`/videos/${videoId}/analysis-status`);
+    return response.data;
+  },
+
+  startBallDetection: async (
+    videoId: number
+  ): Promise<{
+    job_id: string;
+    video_id: number;
+    status: string;
+    message: string;
+    estimated_duration: number;
+  }> => {
+    const response = await api.post(`/videos/${videoId}/ball-detection`);
     return response.data;
   },
 
@@ -291,6 +305,7 @@ export const videoApi = {
       has_ball_detection: boolean;
       ball_detection_rate: number | null;
       ball_detection_status: string | null;
+      is_ball_detection_stale: boolean;
     }[]
   > => {
     const response = await api.post<{
@@ -301,6 +316,7 @@ export const videoApi = {
         has_ball_detection: boolean;
         ball_detection_rate: number | null;
         ball_detection_status: string | null;
+        is_ball_detection_stale: boolean;
       }[];
     }>('/videos/analysis-status/bulk', { video_ids: videoIds });
     return response.data.statuses;

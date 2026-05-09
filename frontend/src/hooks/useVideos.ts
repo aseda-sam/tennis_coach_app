@@ -9,6 +9,7 @@ export type VideoAnalysisStatus = {
   has_ball_detection: boolean;
   ball_detection_rate: number | null;
   ball_detection_status: string | null;
+  is_ball_detection_stale: boolean;
 };
 
 export type VideoAnalysisStatusById = Record<number, VideoAnalysisStatus>;
@@ -96,6 +97,22 @@ export const useUploadVideo = () => {
       clientRecordedAt?: string;
       metadata?: { session_type?: string; camera_angle?: string };
     }) => videoApi.uploadVideo(file, isDemo, clientRecordedAt, metadata),
+  });
+};
+
+export const useStartBallDetection = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (videoId: number) => videoApi.startBallDetection(videoId),
+    onSuccess: (_data, videoId) => {
+      queryClient.invalidateQueries({
+        queryKey: ['video-analysis-status', videoId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['video-analysis-statuses'],
+      });
+    },
   });
 };
 

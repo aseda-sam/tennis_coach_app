@@ -853,50 +853,66 @@ def analyze_pose_detection_scout_refine_rq(
                 frames_with_poses,
             )
 
-            # Ball detection on serve windows (optional: skip if import/runtime fails)
-            try:
-                from app.services.ball_detection import YoloBallDetectionService
-
-                ball_service = YoloBallDetectionService()
-                ball_results = ball_service.analyze_serve_windows(
-                    video_path=Path(local_path),
-                    windows=windows,
-                    padding_ms=300,
-                )
-                if "error" not in ball_results:
-                    ball_record = BallDetection(
-                        video_id=video_id,
-                        total_frames=ball_results["total_frames"],
-                        frames_with_ball=ball_results["frames_with_ball"],
-                        detection_rate=ball_results["detection_rate"],
-                        ball_data=json.dumps(ball_results["ball_detections"]),
-                        processing_time_seconds=ball_results["processing_time_seconds"],
-                        frame_processing_rate=ball_results.get("frame_processing_rate"),
-                        status="completed",
-                        time_windows=json.dumps(windows),
-                        completed_at=datetime.utcnow(),
-                    )
-                    db.add(ball_record)
-                    db.commit()
-                    logger.info(
-                        "Ball detection completed for video %s: %s/%s frames with ball",
-                        video_id,
-                        ball_results["frames_with_ball"],
-                        ball_results["total_frames"],
-                    )
-                else:
-                    logger.warning(
-                        "Ball detection failed for video %s: %s",
-                        video_id,
-                        ball_results.get("error"),
-                    )
-            except Exception as ball_err:  # noqa: BLE001
-                logger.warning(
-                    "Ball detection skipped for video %s: %s",
+            # Ball detection on serve windows.
+            # Gated by settings.AUTO_BALL_DETECTION_ON_UPLOAD — default off.
+            # Cleanup of serve windows almost always invalidates the auto-run,
+            # so the manual "Re-run ball detection" button is the canonical
+            # path. Subsequent steps (contact detection, auto-accept,
+            # biomechanics) tolerate missing ball data.
+            if not settings.AUTO_BALL_DETECTION_ON_UPLOAD:
+                logger.info(
+                    "Skipping auto ball detection for video %s "
+                    "(AUTO_BALL_DETECTION_ON_UPLOAD=False)",
                     video_id,
-                    ball_err,
-                    exc_info=True,
                 )
+            else:
+                try:
+                    from app.services.ball_detection import YoloBallDetectionService
+
+                    ball_service = YoloBallDetectionService()
+                    ball_results = ball_service.analyze_serve_windows(
+                        video_path=Path(local_path),
+                        windows=windows,
+                        padding_ms=300,
+                    )
+                    if "error" not in ball_results:
+                        ball_record = BallDetection(
+                            video_id=video_id,
+                            total_frames=ball_results["total_frames"],
+                            frames_with_ball=ball_results["frames_with_ball"],
+                            detection_rate=ball_results["detection_rate"],
+                            ball_data=json.dumps(ball_results["ball_detections"]),
+                            processing_time_seconds=ball_results[
+                                "processing_time_seconds"
+                            ],
+                            frame_processing_rate=ball_results.get(
+                                "frame_processing_rate"
+                            ),
+                            status="completed",
+                            time_windows=json.dumps(windows),
+                            completed_at=datetime.utcnow(),
+                        )
+                        db.add(ball_record)
+                        db.commit()
+                        logger.info(
+                            "Ball detection completed for video %s: %s/%s frames with ball",
+                            video_id,
+                            ball_results["frames_with_ball"],
+                            ball_results["total_frames"],
+                        )
+                    else:
+                        logger.warning(
+                            "Ball detection failed for video %s: %s",
+                            video_id,
+                            ball_results.get("error"),
+                        )
+                except Exception as ball_err:  # noqa: BLE001
+                    logger.warning(
+                        "Ball detection skipped for video %s: %s",
+                        video_id,
+                        ball_err,
+                        exc_info=True,
+                    )
 
             # Auto-detect contact timestamps from ball + wrist data (only when contact not set)
             try:

@@ -284,17 +284,17 @@ async def stream_video(
         Video file stream or redirect to storage URL
     """
     try:
-        # Get video from database
         db_video = video_service.get_video_by_id(db, video_id)
         if not db_video:
             raise handle_not_found_error("video", str(video_id))
-
-        # Check authorization (allow public access for demo videos)
         require_video_access_or_public_demo(db_video, current_user)
+        # Close the session before returning the response — FastAPI keeps
+        # yielded sessions alive until the full response is sent, which
+        # for video streams holds a pool connection per concurrent request.
+        db.close()
 
         return video_streaming_service.get_video_stream_response(
-            db=db,
-            video_id=video_id,
+            db_video=db_video,
             current_user=current_user,
         )
     except ValueError as e:

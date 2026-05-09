@@ -5,8 +5,9 @@
 import '@testing-library/jest-dom';
 
 // Mock ResizeObserver for jsdom
-global.ResizeObserver = class ResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-};
+(globalThis as unknown as Record<string, unknown>).ResizeObserver =
+  class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
