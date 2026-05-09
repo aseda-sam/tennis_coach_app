@@ -43,7 +43,7 @@ export function useAnalysisProgress(
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentJobIdRef = useRef<string | null>(null);
   const isVisibleRef = useRef(true);
 
