@@ -329,11 +329,11 @@ def generate_proposals(
             video_id=video_id,
             user_id=user_id,
             player_id=None,
-            start_timestamp=float(proposal_data["start_timestamp"]),
-            end_timestamp=float(proposal_data["end_timestamp"]),
+            start_timestamp=float(proposal_data["start_timestamp"]),  # type: ignore[arg-type]
+            end_timestamp=float(proposal_data["end_timestamp"]),  # type: ignore[arg-type]
             source="auto",
             model_version=MODEL_VERSION,
-            confidence=float(proposal_data["confidence"]),
+            confidence=float(proposal_data["confidence"]),  # type: ignore[arg-type]
             detection_features=detection_features_json,
             status="pending",
         )
