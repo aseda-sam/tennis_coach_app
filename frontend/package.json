@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
-    "@vitejs/plugin-react": "^5.0.4",
+    "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^4.1.5",
     "@vitest/ui": "^4.1.5",
     "eslint": "^8.57.0",
@@ -49,7 +49,7 @@
     "eslint-plugin-vitest-globals": "^1.5.0",
     "jsdom": "^27.0.0",
     "prettier": "^3.0.0",
-    "vite": "^7.1.7",
+    "vite": "^8.0.16",
     "vitest": "^4.1.5"
   },
   "eslintConfig": {
