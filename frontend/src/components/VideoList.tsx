@@ -111,10 +111,9 @@ const VideoList: React.FC<VideoListProps> = ({
     (video: VideoMetadata): 'you' | 'someone_else' | null => {
       if (profileLoading) return null;
       if (!playerProfile?.id) return null;
-      if (
-        !video.primary_player_id ||
-        video.primary_player_id === playerProfile.id
-      ) {
+      // Untagged videos get no badge — absence of a tag is not identity.
+      if (!video.primary_player_id) return null;
+      if (video.primary_player_id === playerProfile.id) {
         return 'you';
       }
       return 'someone_else';

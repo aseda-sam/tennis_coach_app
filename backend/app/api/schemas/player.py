@@ -65,6 +65,10 @@ class PlayerInfo(BaseModel):
     age_group: Optional[AgeGroup] = Field(description="Player age group")
     gender: Optional[Gender] = Field(description="Player gender identity")
     notes: Optional[str] = Field(description="Additional notes")
+    is_self: bool = Field(
+        default=False,
+        description="True when this player represents the account owner",
+    )
     created_at: datetime = Field(description="Creation timestamp")
     updated_at: Optional[datetime] = Field(description="Last update timestamp")
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -43,6 +43,11 @@ class Player(Base):
 
     # Authentication - user who owns this player
     user_id: Mapped[str] = mapped_column(String(36), index=True)  # UUID as string
+
+    # True for the player representing the account owner themselves.
+    # Exactly one player per user should have this set; identity must come
+    # from this flag, never from creation order.
+    is_self: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
 
     # Relationships
     serve_windows: Mapped[list["ServeWindow"]] = relationship(  # type: ignore[name-defined]

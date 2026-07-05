@@ -262,12 +262,26 @@ describe('VideoList', () => {
       expect(screen.getByText('2 sessions')).toBeInTheDocument();
     });
 
-    it('shows "You" badge when primary_player_id matches', () => {
+    it('shows "You" badge only when primary_player_id matches the profile', () => {
       renderWithProviders(<VideoList />);
 
-      // Both videos resolve to "You": video 1 matches by id, video 2 has null primary_player_id
+      // Only video 1 matches by id; video 2 is untagged and gets no badge
       const labels = screen.getAllByText('You');
-      expect(labels.length).toBeGreaterThan(0);
+      expect(labels).toHaveLength(1);
+    });
+
+    it('shows no player badge for untagged videos', () => {
+      // Untagged (primary_player_id null/undefined) means "we don't know",
+      // not "you" — no badge should render.
+      const untaggedOnly: VideoMetadata[] = [
+        { ...mockVideos[1], primary_player_id: null },
+      ];
+      setDefaultMocks({ videos: untaggedOnly });
+
+      renderWithProviders(<VideoList />);
+
+      expect(screen.queryByText('You')).not.toBeInTheDocument();
+      expect(screen.queryByText('Someone Else')).not.toBeInTheDocument();
     });
 
     it('shows no player badge when player profile is not available', () => {

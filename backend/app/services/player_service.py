@@ -337,14 +337,34 @@ def get_or_create_default_player(
     Returns:
         Player: The default player for this user
     """
-    # Check for existing default player (look for any player owned by this user)
-    # In practice, users should only have one default player, but we check by user_id
+    # The owner's player is identified by the is_self flag, never by
+    # creation order (a "someone else" player may predate the owner's own).
     default_player = (
         db.query(Player)
-        .filter(Player.user_id == user_id)
-        .order_by(Player.created_at.asc())  # Get the first created player
+        .filter(Player.user_id == user_id, Player.is_self.is_(True))
         .first()
     )
+
+    if default_player is None:
+        # Legacy data: players exist but none is flagged. Adopt the earliest
+        # (matching the old creation-order behaviour) and persist the flag.
+        legacy_player = (
+            db.query(Player)
+            .filter(Player.user_id == user_id, Player.name != OTHER_PLAYER_NAME)
+            .order_by(Player.created_at.asc())
+            .first()
+        )
+        if legacy_player:
+            logger.info(
+                "Adopting earliest player as self for user %s: ID=%s, name='%s'",
+                user_id,
+                legacy_player.id,
+                legacy_player.name,
+            )
+            legacy_player.is_self = True
+            db.commit()
+            db.refresh(legacy_player)
+            default_player = legacy_player
 
     if default_player:
         logger.debug(
@@ -395,6 +415,7 @@ def get_or_create_default_player(
         age_group=age_group,
         gender=gender,
         user_id=user_id,
+        is_self=True,
     )
     db.add(default_player)
     db.commit()
