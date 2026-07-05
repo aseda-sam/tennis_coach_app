@@ -33,6 +33,10 @@ Stores player profiles (one default per user, with optional additional players).
 - `name` (required)
 - `dominant_hand` (required)
 - `backhand_style`, `height_cm`, `age_group`, `gender`, `notes`
+- `is_self` (bool, default false) — true for the player representing the account
+  owner. Exactly one per user; identity derives from this flag, never from
+  creation order. Backfilled in migration `b7e4d1a9c3f2` (earliest non-"Someone
+  Else" player per user).
 
 ## ball_detections
 
