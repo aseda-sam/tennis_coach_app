@@ -14,7 +14,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.575.0",
+    "lucide-react": "^1.23.0",
     "react": "^19.2.5",
     "react-day-picker": "^9.13.2",
     "react-dom": "^19.2.5",
