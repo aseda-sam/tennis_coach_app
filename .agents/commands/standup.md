@@ -13,9 +13,9 @@ Trigger phrases:
 
 ## Workflow
 
-1. Read `backlog/issues.md` and `backlog/triaged.md`.
+1. Read the Linear backlog: team **S²Serve** (key `SERVE`) in the Personal OS workspace. Todo = the Now list; Backlog = Next/Later. If this session has no Linear access, ask Aseda to paste the current SERVE issue list (or read `backlog/README.md` for where things live).
 2. Check `git log --oneline -20` and recent merged PRs to identify work that has shipped.
-3. **Cleanup pass:** Cross-reference shipped work against both backlog files:
+3. **Cleanup pass:** Cross-reference shipped work against the SERVE issues:
    - Remove any issues from `issues.md` that are clearly resolved (matching feature/fix is in git history).
    - Remove or move to a "Done" comment any items in `triaged.md` that have shipped.
    - If you remove anything, list each removed item in chat so the user knows what was cleaned up.

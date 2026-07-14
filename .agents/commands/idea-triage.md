@@ -6,10 +6,10 @@ description: Triage raw product/app notes into a prioritized backlog (Now / Next
 
 ## Workflow
 
-1. Capture the raw text verbatim in `backlog/inbox.md` with today's date.
+1. File each triaged item as an issue in Linear, team **S²Serve** (key `SERVE`): Now → Todo, Next/Later → Backlog, priority 2 serious / 3 concrete / 4 deferred (record the trigger in the body), Fibonacci estimate. Titles must make sense alone on a phone screen. If this session has no Linear access, stage the issues as a list for Aseda to file.
 2. Split ideas into atomic items (one problem/outcome per item).
 3. Score each item using the rubric below.
-4. Produce `backlog/triaged.md` with these sections only:
+4. For each item, structure the issue body with these elements:
    - Now (highest leverage)
    - Next
    - Later

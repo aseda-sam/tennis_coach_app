@@ -179,7 +179,7 @@ Manual frame-picking is the slow step in Round 3. A targeted extraction mode wou
 - **Idea:** add `--mode flight` to `backend/scripts/extract_training_frames.py`. For each accepted serve window, extract 5–10 evenly-spaced frames from the **20–60% region** of the toss arc (between toss start and apex), regardless of current detection state. This is exactly the band where the model fails.
 - **Effort:** ~2 hours. Reuses existing window-iteration code.
 - **When to do it:** if you're going to repeat Round 3 (or Round 4), the script pays for itself in 30 min of saved labelling. If Round 3 is the only round, manual frame-picking is fine.
-- **Status:** not yet implemented. Captured in `backlog/inbox.md` as a follow-up.
+- **Status:** not yet implemented. Tracked as SERVE-17 in Linear.
 
 ---
 
