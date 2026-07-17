@@ -52,7 +52,7 @@ api = [
 worker = [
     # ML stack dependencies (only needed in worker)
     "mediapipe>=0.10.0",
-    "torch>=2.6.0",
+    "torch>=2.13.0",
     "torchvision>=0.21.0",
     "scipy>=1.10.0",
     "ultralytics>=8.0.0",
